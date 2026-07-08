@@ -1,0 +1,33 @@
+[
+  {
+    "id": "voice-test",
+    "show": "PodWash Fixture",
+    "title": "Voice test",
+    "source_type": "local",
+    "source": "Voice test.m4a",
+    "clip_start_seconds": 0,
+    "clip_duration_seconds": null,
+    "target_profile": "harmless"
+  },
+  {
+    "id": "wtf-marc-maron-1685",
+    "show": "WTF with Marc Maron",
+    "title": "Episode 1685 - Marc Maron",
+    "source_type": "url",
+    "source": "https://sphinx.acast.com/p/open/s/62a222737c02140013aa4c03/e/68e4923d5f95c3d419e2692b/media.mp3",
+    "clip_start_seconds": 0,
+    "clip_duration_seconds": 180,
+    "target_profile": "profanity"
+  },
+  {
+    "id": "wtf-marc-maron-1685-long",
+    "show": "WTF with Marc Maron",
+    "title": "Episode 1685 - Marc Maron (15 min chunked)",
+    "source_type": "url",
+    "source": "https://sphinx.acast.com/p/open/s/62a222737c02140013aa4c03/e/68e4923d5f95c3d419e2692b/media.mp3",
+    "clip_start_seconds": 0,
+    "clip_duration_seconds": 900,
+    "target_profile": "profanity",
+    "chunking_enabled": true
+  }
+]
