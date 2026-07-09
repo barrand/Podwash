@@ -91,8 +91,8 @@ Then run Slice {nn} to completion per that slice file:
   QA test spec, Engineer implementation, QA verification.
 - Spawn role subagents as needed. **Delegate by name:** `podwash-pm`, `podwash-ux`,
   `podwash-qa`, `podwash-architect`, `podwash-engineer` (models pinned in
-  `.cursor/agents/`). If using Task `model`: PM/UX/QA → `composer-2.5[fast=false]`;
-  Architect/Engineer → `grok-4.5[effort=high,fast=false]`. Never `composer-2.5-fast`
+  `.cursor/agents/`). If using Task `model`: PM/UX/QA → `composer-2.5`;
+  Architect/Engineer → `grok-4.5` or subagent names. Never `composer-2.5-fast`
   or `grok-4.5-fast-xhigh`.
 - Definition of Done (all required): full `scripts/verify.sh` suite green
   (exit 0, 0 failed, 0 skipped), the `VERIFY RESULT:` line recorded in the slice
@@ -174,8 +174,8 @@ def main():
     parser = argparse.ArgumentParser(description="Run PodWash slices to Done, sequentially, locally.")
     parser.add_argument("--max", type=int, default=6,
                         help="max slices to run this session (default 6; safety cap)")
-    parser.add_argument("--model", default="composer-2.5[fast=false]",
-                        help="coordinator model (default composer-2.5[fast=false]; never composer-2.5-fast)")
+    parser.add_argument("--model", default="composer-2.5",
+                        help="coordinator model (default composer-2.5; never composer-2.5-fast)")
     parser.add_argument("--dry-run", action="store_true",
                         help="show the next decision and exit without spawning any agent")
     parser.add_argument("--verbose", action="store_true",

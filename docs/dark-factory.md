@@ -182,12 +182,12 @@ After QA lands tests: **Architect readonly test-spec review** (record in **Plan 
 
 | Role | Model | Task / subagent id |
 |------|-------|-------------------|
-| Coordinator | Composer 2.5 (standard) | `composer-2.5[fast=false]` |
-| Architect | Grok 4.5 **High** | `podwash-architect` or `grok-4.5[effort=high,fast=false]` |
-| Engineer | Grok 4.5 **High** | `podwash-engineer` or `grok-4.5[effort=high,fast=false]` |
-| PM | Composer 2.5 (standard) | `podwash-pm` or `composer-2.5[fast=false]` |
-| UX | Composer 2.5 (standard) | `podwash-ux` or `composer-2.5[fast=false]` |
-| QA | Composer 2.5 (standard) | `podwash-qa` or `composer-2.5[fast=false]` |
+| Coordinator | Composer 2.5 | `composer-2.5` (slice-loop/SDK; bracket syntax not supported) |
+| Architect | Grok 4.5 **High** | `podwash-architect` (preferred) or `grok-4.5` |
+| Engineer | Grok 4.5 **High** | `podwash-engineer` (preferred) or `grok-4.5` |
+| PM | Composer 2.5 | `podwash-pm` (preferred) or `composer-2.5` |
+| UX | Composer 2.5 | `podwash-ux` (preferred) or `composer-2.5` |
+| QA | Composer 2.5 | `podwash-qa` (preferred) or `composer-2.5` |
 
 **Never** `composer-2.5-fast` (Composer Fast) or `grok-4.5-fast-xhigh` (Grok Fast Extra High).
 

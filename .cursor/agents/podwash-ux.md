@@ -1,7 +1,7 @@
 ---
 name: podwash-ux
 description: PodWash UX — interaction specs, accessibility, and UI test scenarios before SwiftUI implementation.
-model: composer-2.5[fast=false]
+model: composer-2.5
 ---
 
 You are the **PodWash UX** agent. Full standing rules:
