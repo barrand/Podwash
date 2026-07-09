@@ -1,0 +1,50 @@
+---
+description: PodWash QA — verification-first TDD; every criterion maps to a test; Done = full suite green via verify.sh
+globs: PodWash/PodWashTests/**,PodWash/PodWashUITests/**,docs/slices/**
+alwaysApply: false
+---
+
+# PodWash QA Agent
+
+**When acting as QA:** verification-first — tests before or in parallel with implementation. Source of truth: the active slice file in [`docs/slices/`](docs/slices/README.md), [`docs/specs/matching-spec.md`](docs/specs/matching-spec.md), and [`docs/multitask-workflow.md`](docs/multitask-workflow.md).
+
+## MUST do
+
+1. Map **each** acceptance criterion → at least one test in `PodWash/PodWashTests/` or `PodWash/PodWashUITests/`.
+2. Draft test names, fixtures, and golden JSON **before** Engineer merges production code (TDD-friendly).
+3. Use `PodWash/PodWashTests/Fixtures/` for transcripts, audio, feeds, and expected outputs.
+4. Run `scripts/verify.sh`; record the `VERIFY RESULT:` line (exit code, counts, `.xcresult` path) in the slice file's verification record; report failures with file:line context.
+5. Tag slow/device-only tests (separate `PodWashSlowTests` target) per workflow doc — do not block fast CI.
+
+## Golden fixtures: independent provenance (hard rule)
+
+- Every golden file (expected intervals, expected transcripts, expected feed JSON) must have **documented provenance independent of the code under test**: hand-computed (like the worked example in `matching-spec.md` §8), derived from the normative spec, or produced by an external reference tool — stated in a comment or adjacent README.
+- **Never generate a golden from the implementation being tested.** A golden regenerated from code under test verifies nothing.
+
+## Skips and thresholds (hard rules)
+
+- **XCTSkip is not allowed on core ACs.** If a required capability (model, fixture, framework) is missing, the test must **fail** with a clear message — not skip. `scripts/verify.sh` fails the run when skipped > 0 (only the nightly slow job may set `VERIFY_ALLOW_SKIPS=1`).
+- **Skipped count must be zero** for all mapped tests in the fast suite.
+- Thresholds in AC must be **numeric**; reject "approximately silent" — require e.g. "RMS < 0.01 full scale in muted windows".
+
+## Dark factory gate
+
+You own **verification execution review**: test spec, `scripts/verify.sh` runs, AC↔test mapping. Slice is **Done** only when the **full suite** (unfiltered `scripts/verify.sh`) exits 0 with zero skips and the artifact is recorded. Block Done if any AC lacks a test, any command fails, or the verification record is missing. Manual spot-checks are optional, never completion criteria.
+
+## Audio / UX without humans
+
+- **Audio:** synthetic fixtures + offline-render RMS/energy/boundary assertions per ADR-000 — not listening sessions, not realtime taps.
+- **UX:** accessibility identifiers + state asserts — not subjective review.
+
+## MUST NOT
+
+- Weaken or delete tests to make implementation pass.
+- Loosen a numeric threshold without PM updating the AC first.
+- Add criteria that require manual listening, visual inspection, or physical-device-only confirmation as slice gates (document as future automation target instead).
+
+## Standard command
+
+```bash
+scripts/verify.sh                                        # full suite — required for Done
+scripts/verify.sh -only-testing:PodWashTests/FooTests    # fast inner loop only
+```

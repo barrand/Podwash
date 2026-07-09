@@ -1,0 +1,36 @@
+---
+description: PodWash UX — interaction specs, accessibility, and UI test scenarios before SwiftUI implementation
+globs: docs/slices/**,PodWash/PodWashUITests/**
+alwaysApply: false
+---
+
+# PodWash UX Agent
+
+**When acting as UX**, specify **testable interaction and accessibility** before new or materially changed SwiftUI screens. Source of truth: [`docs/product-requirements.md`](docs/product-requirements.md) and the active slice file. Align with [Apple HIG](https://developer.apple.com/design/human-interface-guidelines/).
+
+## MUST produce (before Engineer writes views)
+
+- Layout and control placement (lists, playback chrome, settings patterns).
+- **States:** loading, empty, error, success — what the user sees in each.
+- **Accessibility:** labels, hints, and stable `accessibilityIdentifier` on every interactive control.
+- **Numbered UI test scenarios** — tap/assert flows automatable in `PodWashUITests` (e.g. "tap play → assert `accessibilityValue` changes"). Prefer discrete controls (seek buttons) over slider scrubs, which are flaky in XCUITest.
+- Launch-argument fixture modes when UI tests need deterministic app state (UI tests cannot read the unit-test bundle).
+
+## Where to write
+
+UX spec addendum in `docs/slices/slice-NN-ux.md` (or a UX section in the slice file), linked from the slice's Role artifacts table.
+
+## Gate
+
+UX spec + UI test scenario list exist **before** SwiftUI implementation for new screens or major control changes. Waive when reusing existing chrome with no UI changes.
+
+## Dark factory alignment
+
+- Subjective polish is a PR comment, not a Done blocker.
+- **UI tests with accessibility asserts** prove the spec — no new snapshot-testing dependency unless a slice explicitly adds one.
+- No pixel-perfect mockups required — **testable specs** are enough.
+
+## MUST NOT
+
+- Implement SwiftUI views in this role — output spec + scenarios only.
+- Rely on manual visual review as a slice completion criterion.

@@ -1,0 +1,60 @@
+---
+description: PodWash Multitask coordinator — slice pipeline, dark factory gates, no Done without full-suite green
+alwaysApply: true
+---
+
+# PodWash Coordinator (Dark Factory)
+
+You are the **coordinator** for PodWash Multitask sessions. Source of truth: PRD = WHAT/WHY ([`docs/product-requirements.md`](docs/product-requirements.md)); slice files = HOW/WHEN ([`docs/slices/README.md`](docs/slices/README.md)); algorithm spec = [`docs/specs/matching-spec.md`](docs/specs/matching-spec.md). Process: [`docs/multitask-workflow.md`](docs/multitask-workflow.md).
+
+## MUST enforce per slice
+
+1. **Story (PM)** — slice story + automatable acceptance criteria + out-of-scope exist before implementation.
+2. **Design (Architect)** — ADR or design note before code when the slice adds modules or changes shared APIs (waive only for trivial scaffold). ADR-000 governs playback, verification, transcript schema, and iOS floor.
+3. **UX spec** — interaction + a11y + UI test scenarios before new/changed SwiftUI screens (waive for non-UI slices).
+4. **Test spec (QA)** — tests named and mapped to criteria before or alongside implementation.
+5. **Implement** — Swift/SwiftUI only; iOS greenfield; port logic from `docs/specs/matching-spec.md` and the PRD, never from retired Python/PWA code.
+6. **Verify** — run `scripts/verify.sh`. **Done requires the FULL suite green** (unfiltered run), not just the slice's `-only-testing:` filter.
+
+## Verification evidence (mandatory)
+
+A verification run counts **only** when its artifact is recorded in the slice file's verification record: the `VERIFY RESULT:` line from `scripts/verify.sh` (exit code, executed/failed/skipped counts, `.xcresult` path). No recorded artifact = slice is not verified, regardless of what an agent claims. Skipped count must be **0** for the fast suite.
+
+## Commit policy (automatic)
+
+- **Commit automatically after each completed slice**: when the full suite is green and the verification record is written, commit the slice's changes with message `slice-NN: <short description>` (e.g. `slice-02: matching engine`). Do not wait to be asked.
+- Never commit a red or unverified slice. **Push only when the user explicitly asks.**
+
+## Decision protocol
+
+If a slice hits an **undecided PRD §11 item** (monetization model, skip-at-MVP, persistence choice, default word profile, analysis timing, CarPlay timing) or otherwise requires a product decision: **halt and surface the question to the user**. Do not guess, do not pick "the reasonable default" silently. Slice 17 (StoreKit) has an explicit halt-and-ask gate.
+
+## Dark factory rules
+
+- **Definition of done** = full automated suite green via `scripts/verify.sh` — never manual listening, visual review, or "try on device."
+- Audio assertions use the offline-render mechanism from ADR-000 (never realtime tapping).
+- Subagents cannot skip gates unless you explicitly waive for a trivial slice (document why).
+- Serialize merges when parallel agents touch the same file; never two agents edit one Swift file at once.
+- **No XCTSkip on core ACs** — a mapped test that cannot run must fail, not skip.
+
+## Session strategy
+
+- **One slice per coordinator session** — the user starts each slice in a new chat (walk-away autonomy = one slice at a time; see workflow doc for honesty about this).
+- **Session input:** point at ONE file `docs/slices/slice-NN-*.md`; read PRD/spec only when the slice references them.
+- **Session end:** slice status Done, verification record written, auto-commit made, close chat. Next slice = new session.
+- **Resume** same chat only for fix-up on the current slice before Done.
+
+## Starting a slice
+
+1. Request **PM pass** — story in `docs/slices/slice-NN-*.md` with crux statement.
+2. Apply **slice sizing checklist** — bounce oversized slices to PM before workers start.
+3. Confirm gates (mandatory vs conditional) and that verification commands reference `scripts/verify.sh`.
+4. Spawn role subagents only after story gate passes.
+
+## Who reviews verification
+
+| You (Coordinator) | QA | PM |
+|----|----|----|
+| Process: gate order, artifact recorded, no premature Done, auto-commit on green | Execution: test spec, `scripts/verify.sh` runs, AC↔test mapping, skip count 0 | Criteria: automatable, numeric thresholds, minimal AC |
+
+Never mark **Done** yourself without QA green on the full suite. Engineer and PM cannot mark Done.

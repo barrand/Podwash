@@ -1,0 +1,60 @@
+name: test
+
+on:
+  push:
+  workflow_dispatch:
+  schedule:
+    # Nightly slow-suite run (03:00 UTC). The fast job runs on every push.
+    - cron: "0 3 * * *"
+
+jobs:
+  # Full fast suite on every push — this is the dark-factory gate.
+  test:
+    if: github.event_name != 'schedule'
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      # The project's deployment target is iOS 26.1; the runner image must
+      # provide a matching Xcode. Pin explicitly so image updates don't
+      # silently change toolchains.
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -n 1)"
+          xcodebuild -version
+
+      - name: Run full test suite
+        run: scripts/verify.sh
+
+      - name: Upload result bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresult
+          path: build/test-results/*.xcresult
+          if-no-files-found: ignore
+
+  # Nightly / manual job for @slow tests (ASR benchmarks, long-audio fixtures).
+  # Stub until the slow target exists (Slice 05); VERIFY_ALLOW_SKIPS=1 because
+  # slow suites may XCTSkip on hardware constraints — this leniency NEVER
+  # applies to the fast gate above.
+  slow-tests:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: macos-26
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -n 1)"
+          xcodebuild -version
+
+      - name: Run slow suite (no-op until PodWashSlowTests exists)
+        run: |
+          if xcodebuild -list -project PodWash/PodWash.xcodeproj | grep -q PodWashSlowTests; then
+            VERIFY_ALLOW_SKIPS=1 scripts/verify.sh -only-testing:PodWashSlowTests
+          else
+            echo "PodWashSlowTests target not present yet - skipping (stub)."
+          fi

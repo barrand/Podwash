@@ -1,26 +1,57 @@
 # OS
 .DS_Store
+*.swp
 
-# Python
-__pycache__/
-.pycache/
-*.py[cod]
-.venv/
-venv/
-.env
-.env.*
+# Xcode
+build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
 
-# Generated prototype outputs (audio + processing artifacts)
-outputs/
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
 
-# Test / sample audio (large files — add locally when needed)
-pwa-spike/audio/
-Voice test.m4a
+# CocoaPods
+Pods/
+*.xcworkspace
+!default.xcworkspace
 
-# Firebase deploy cache
-pwa-spike/.firebase/
+# Carthage
+Carthage/Build/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
 
 # Editor
 .idea/
 .vscode/
-*.swp
+
+# Secrets / local config
+.env
+.env.*
+*.xcconfig.local
+
+# Audio: large media ignored by default...
+*.m4a
+*.mp3
+*.wav
+
+# ...but small test fixtures ARE committed (keep fixture audio under ~1 MB each;
+# document local setup for anything larger instead of committing it)
+!PodWash/PodWashTests/Fixtures/**
+!PodWash/PodWashUITests/Fixtures/**
+
+# ASR models are never committed (downloaded by scripts/setup-asr-models.sh)
+Models/
