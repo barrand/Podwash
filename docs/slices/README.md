@@ -24,6 +24,8 @@ If you have never worked this way before, read this page once, skim [`_template.
 
 The dependency graph and parallel groups live in [`multitask-workflow.md`](../multitask-workflow.md#kanban-dependency-order). Current slices:
 
+> **Next slice selection:** run [`scripts/next-slice.sh`](../../scripts/next-slice.sh) — it reads statuses + `## Depends on` here and prints the next eligible slice (or `wait`/`halt`/`done`). See [`slice-runner.md`](../slice-runner.md).
+
 | # | File | Track |
 |---|------|-------|
 | 01 | `slice-01-foundation.md` | Foundation |
@@ -54,6 +56,7 @@ Use [`_template.md`](_template.md). Beyond the classic sections (crux, deliverab
 |---------|------|
 | **Verification commands** | Reference **`scripts/verify.sh`** — never raw `xcodebuild` with a hardcoded simulator. Filtered runs are the inner loop; **Done requires the full suite**. |
 | **Verification record** | QA pastes the `VERIFY RESULT:` line (exit code, counts, `.xcresult` path) from the full-suite run. No artifact = not verified. |
+| **Plan review record** | Coordinator pastes readonly ADR + test-spec review outcomes before QA test spec / Engineer. No record = next role blocked. |
 | **Done gate** | Includes **"full suite green"** and the **auto-commit** (`slice-NN: <description>`) made on green. Push only when the user asks. |
 | **Acceptance criteria** | Numeric thresholds where thresholds exist. Golden fixtures need documented **independent provenance** (hand-computed or spec-derived — never generated from code under test). **No XCTSkip on core ACs** — tests fail, not skip. |
 
@@ -75,10 +78,12 @@ Only the Coordinator changes the `status` field (Engineers never do).
 2. **PM** creates or refreshes `slice-NN-*.md`: crux, AC, out-of-scope, verification commands.
 3. **Coordinator** confirms sizing checklist → status **Ready**. If the slice hits an undecided PRD §11 item, **halt and ask the user** first.
 4. **Architect** (if needed) adds ADR path or design addendum; **UX** (if needed) adds spec + UI scenarios.
-5. **QA** fills the verification mapping with real test names; writes the test skeleton.
-6. **Engineer** implements → status **In Progress**.
-7. **QA** runs `scripts/verify.sh` (full suite) → pastes verification record → status **Verify**, then **Done** when green with zero skips.
-8. **Coordinator** makes the auto-commit `slice-NN: <description>`.
+5. **Coordinator** runs **ADR plan review** (QA + PM, readonly); records in slice file; resolves blockers.
+6. **QA** fills the verification mapping with real test names; writes the test skeleton.
+7. **Coordinator** runs **test spec plan review** (Architect, readonly); records in slice file; resolves blockers.
+8. **Engineer** implements → status **In Progress**.
+9. **QA** runs `scripts/verify.sh` (full suite) → pastes verification record → status **Verify**, then **Done** when green with zero skips.
+10. **Coordinator** makes the auto-commit `slice-NN: <description>`.
 
 PM does not run verify or mark Done. Engineer never edits test assertions, thresholds, slice status, or goldens (see `.cursor/rules/podwash-engineer.mdc`).
 

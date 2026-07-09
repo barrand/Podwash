@@ -123,10 +123,17 @@ Roles are **hats worn per slice phase**, enforced by `.cursor/rules/podwash-*.md
 > human opens the next session and points it at the next slice file. Nineteen
 > slices ≈ nineteen session starts.
 
-**Optional future upgrade (backlog, not promised):** chain sessions automatically
-via Cursor Automations or the Cursor SDK (a scheduled/scripted runner that opens
-the next slice when the previous commit lands). Worth a spike once the factory has
-proven itself over a few manual slices — do not build it first.
+**Next-slice selection (built):** [`scripts/next-slice.sh`](../scripts/next-slice.sh)
+is the dependency-aware brain — it reads every slice's status + `## Depends on`
+graph and prints the single next eligible slice (or `wait`/`halt`/`done`) with a
+copy-paste coordinator prompt. Run it between sessions instead of eyeballing the
+kanban. See [`slice-runner.md`](slice-runner.md).
+
+**Optional future upgrade (deferred):** auto-*trigger* the next session via a
+local Cursor Automation (on `slice-NN:` push) or a Cursor SDK loop calling
+`scripts/next-slice.sh --json`. Both reuse the script unchanged; wiring the
+trigger is an independent, low-risk add once the factory has proven itself over a
+few manual slices — see the Phase 2 section of [`slice-runner.md`](slice-runner.md).
 
 | Do | Don't |
 |----|-------|
@@ -191,12 +198,18 @@ flowchart LR
     A[Design Architect]
     U[UX spec UX]
   end
+  subgraph planReview["Plan review readonly — coordinator blocks if open"]
+    R1[ADR review QA + PM]
+    R2[Test spec review Architect]
+  end
   S --> A
   S --> U
-  A --> T
-  U --> T
+  A --> R1
+  U --> R1
+  R1 --> T
   S --> T
-  T --> I
+  T --> R2
+  R2 --> I
   I --> V
   V --> D
 ```
@@ -207,17 +220,79 @@ flowchart LR
 |------|--------------|--------------|
 | **Story approved (PM)** | **Yes** | Never |
 | **Design approved (Architect)** | No | Trivial slices with no new modules |
+| **ADR plan review (QA + PM, readonly)** | No | When Architect gate is waived |
 | **UX spec + UI scenarios (UX)** | No | No new/changed SwiftUI screens |
 | **Test spec before implement (QA)** | **Yes** | Never |
+| **Test spec plan review (Architect, readonly)** | **Yes** | Never — even when Architect gate was waived |
 | **Full suite green + artifact (QA)** | **Yes** | Never — this is Done |
 | **Auto-commit on green (Coordinator)** | **Yes** | Never (push remains user-initiated) |
+
+### Plan review gates (upstream quality)
+
+`scripts/verify.sh` is the **downstream** arbiter — it catches wrong implementation,
+not wrong plans. Slice 04 showed that flawed ADRs and fixture assumptions can burn a
+full red loop before tests fail. These **readonly review beats** run **after the
+author lands an artifact** and **before the next role starts**. The coordinator
+records the outcome in the slice file's **Plan review record** (see slice template).
+
+**Rules:**
+
+- Review subagents are **readonly** — list findings only; they do not edit ADRs,
+  tests, slice status, or AC thresholds. Author revises; coordinator re-runs review
+  if blockers were raised.
+- **No recorded plan review = do not spawn the next downstream role** (same
+  discipline as missing `VERIFY RESULT:`).
+- Waive ADR review only when the Architect gate is waived (trivial / test-only slice).
+  **Test-spec review is never waived** — even trivial slices need Architect (or
+  coordinator acting as reviewer) to confirm tests match the public API under test.
+
+#### Beat 1 — After Architect ADR (before QA test spec)
+
+Spawn **two readonly subagents** (can run in parallel):
+
+| Reviewer | Lens | Block if… |
+|----------|------|-----------|
+| **QA** | Testability | Any AC cannot be asserted offline; fixture/provenance is fragile or circular; harness assumptions contradict ADR-000 |
+| **PM** | Story alignment | ADR changes scope vs slice AC/out-of-scope; AC wording will be fragile; crux is no longer one hypothesis |
+
+**Empirical spike requirement:** when the ADR claims behavior of a **framework or
+renderer** (audio mix, ASR, StoreKit, CarPlay, networking, HLS), the ADR must
+include measured validation or an explicit spike step **before** QA writes tests.
+Slice 04 ADR-002 Revision is the template. QA review **blocks** if audio/framework
+claims lack empirical backing.
+
+Coordinator records: `ADR review: QA cleared / PM cleared` or lists open blockers.
+
+#### Beat 2 — After QA test spec (before Engineer)
+
+Spawn **one readonly subagent**:
+
+| Reviewer | Lens | Block if… |
+|----------|------|-----------|
+| **Architect** | Contract fidelity | Tests call APIs the ADR does not specify; harness measures something the design cannot guarantee; thresholds assume behavior the ADR flags as uncertain |
+
+Waive only when there is **no ADR** (Architect gate waived) — then the coordinator
+performs the same checklist against the slice deliverables and ADR-000.
+
+Coordinator records: `Test spec review: Architect cleared` or lists open blockers.
+
+#### Plan review record (coordinator writes in slice file)
+
+```markdown
+## Plan review record
+
+ADR review (YYYY-MM-DD): QA cleared — …; PM cleared — …
+Test spec review (YYYY-MM-DD): Architect cleared — …
+```
+
+If waived, state why: `ADR review: waived (no new modules)`.
 
 ### Dark factory alignment
 
 | Quality concern | Enforcement (not "human likes it") |
 |-----------------|-------------------------------------|
 | Requirements clear | Written story; `[ ]` criteria with test mapping; numeric thresholds |
-| Design sound | ADRs; compiler + unit tests enforce boundaries |
+| Design sound | ADRs + **readonly plan review** before QA/Engineer; compiler + unit tests enforce boundaries |
 | UX good enough | UI tests assert identifiers/values/states; a11y identifiers on every control |
 | Implementation correct | Full suite green via `scripts/verify.sh` |
 | Audio behavior | Offline render + RMS assertions (ADR-000 §2) — not listening sessions |
@@ -226,8 +301,10 @@ flowchart LR
 
 ### Parallel agent orchestration
 
-Safe in parallel: QA test skeleton ∥ Architect layout; UX spec ∥ PM refinement.
-Must be sequential: Story → Design/UX → Test spec → Implement → Verify → Done.
+Safe in parallel: QA test skeleton ∥ Architect layout; UX spec ∥ PM refinement;
+**ADR plan review (QA ∥ PM)** after Architect lands.
+Must be sequential: Story → Design/UX → **ADR plan review** → Test spec →
+**Test spec plan review** → Implement → Verify → Done.
 When parallel agents touch the same file, the coordinator serializes the merge —
 never two agents editing one Swift file at once.
 
@@ -277,6 +354,37 @@ No XCTSkip on core ACs. Run scripts/verify.sh (full suite for Done), paste the
 VERIFY RESULT line into the slice file, report failures with file:line.
 ```
 
+**QA — ADR plan review (readonly; spawn after Architect, before you write tests)**
+
+```
+You are the QA agent reviewing an Architect ADR for PodWash Slice NN (READONLY).
+Read the ADR, the slice ACs, and ADR-000 verification rules. Do NOT edit any files.
+List: (a) assumptions that cannot be asserted offline, (b) fixture/provenance risks,
+(c) AC wording fragile under real framework behavior, (d) missing empirical
+validation for audio/ASR/StoreKit/CarPlay/network claims. Label each finding
+blocker vs recommendation. Block downstream if any blocker remains.
+```
+
+**PM — ADR plan review (readonly; spawn after Architect, parallel with QA review)**
+
+```
+You are the PM agent reviewing an Architect ADR against the slice story (READONLY).
+Read the ADR and docs/slices/slice-NN-*.md. Do NOT edit any files.
+List: (a) scope drift vs deliverables/out-of-scope, (b) AC wording that should be
+pinned or clarified, (c) crux no longer single-hypothesis. Label blocker vs
+recommendation. Block downstream if any blocker remains.
+```
+
+**Architect — test spec plan review (readonly; spawn after QA test spec, before Engineer)**
+
+```
+You are the Architect agent reviewing QA's test spec for PodWash Slice NN (READONLY).
+Read the test files, harness, fixtures, and the ADR (or ADR-000 if no slice ADR).
+Do NOT edit any files. Confirm tests exercise the ADR's public API and harness
+contract; flag tests that assume behavior the design does not guarantee. Label
+blocker vs recommendation. Block Engineer if any blocker remains.
+```
+
 ### Cursor rules (standing guidance)
 
 | File | Applies | Role |
@@ -296,8 +404,10 @@ Architect's "MUST NOT implement"), and doc editors get PM/Architect/UX rules.
 - [ ] **PM:** Story written; criteria automatable + numeric; out-of-scope listed
 - [ ] **Halt-and-ask:** No undecided PRD §11 item silently assumed
 - [ ] **Architect:** Design note/ADR (if architectural slice)
+- [ ] **Plan review 1:** ADR reviewed by QA + PM (readonly); record in slice file; blockers resolved
 - [ ] **UX:** Spec + UI scenarios (if UI slice)
 - [ ] **QA:** Test spec mapped to criteria; goldens have provenance
+- [ ] **Plan review 2:** Test spec reviewed by Architect (readonly); record in slice file; blockers resolved
 - [ ] **Engineer:** Implementation complete; no test/threshold edits
 - [ ] **QA:** `scripts/verify.sh` full suite green, zero skips; `VERIFY RESULT:` recorded
 - [ ] **Coordinator:** Status → Done; auto-commit `slice-NN: <description>`
@@ -319,11 +429,11 @@ tickets, split the slice.
 
 ### Who reviews verification
 
-| Level | Criteria review | Execution review | Process review |
-|-------|-----------------|------------------|----------------|
-| **Slice** | PM (story gate); QA (test-spec gate) | **QA** — runs `scripts/verify.sh`, confirms mapping + artifact | **Coordinator** — no Done without QA green; makes the auto-commit |
-| **Story** | **PM** — rewrites vague criteria, numeric thresholds | **QA** — rejects unmappable criteria | **Coordinator** — story exists before workers spawn |
-| **Effort** | Parent story + test spec | **QA** — verifies output against mapped tests | **Coordinator** — no skipping ahead |
+| Level | Criteria review | Plan review | Execution review | Process review |
+|-------|-----------------|-------------|------------------|----------------|
+| **Slice** | PM (story gate); QA (test-spec gate) | **QA + PM** (ADR, readonly); **Architect** (test spec, readonly) | **QA** — runs `scripts/verify.sh`, confirms mapping + artifact | **Coordinator** — gate order, plan review recorded, no Done without QA green |
+| **Story** | **PM** — rewrites vague criteria, numeric thresholds | PM lens on ADR alignment | **QA** — rejects unmappable criteria | **Coordinator** — story exists before workers spawn |
+| **Effort** | Parent story + test spec | Reviewer role per beat | **QA** — verifies output against mapped tests | **Coordinator** — no skipping ahead |
 
 ### Slice sizing (crux-only)
 

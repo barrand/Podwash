@@ -68,6 +68,17 @@ scripts/verify.sh
 VERIFY RESULT: (pending)
 ```
 
+## Plan review record (coordinator fills before downstream roles)
+
+> Record readonly review outcomes before QA writes tests (ADR review) and before
+> Engineer starts (test spec review). No record = next role must not spawn.
+> See [`multitask-workflow.md`](../multitask-workflow.md) § Plan review gates.
+
+```
+ADR review: (pending)
+Test spec review: (pending)
+```
+
 ## Done gate
 
 - [ ] Every AC mapped to a test; all rows in the mapping table filled

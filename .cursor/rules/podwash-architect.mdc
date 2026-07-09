@@ -16,6 +16,9 @@ alwaysApply: false
 - Key types and public API sketch — what crosses module boundaries.
 - Tradeoff notes (ADR style) consistent with ADR-000; supersede it explicitly if a decision must change.
 - Cross-cutting impact flags — changes to `PlaybackEngine`, `TimedWord`, or shared models block parallel slices.
+- **Empirical validation** when the design claims framework/renderer behavior (audio mix,
+  ASR, StoreKit, CarPlay, networking): include measured results or an explicit spike step
+  in the ADR before QA writes tests (see ADR-002 Revision for the audio pattern).
 
 ## Where to write
 
@@ -36,3 +39,12 @@ Design approved **before implementation** on architectural slices. Waive only fo
 
 - Implement production code in this role — output design artifacts only.
 - Approve designs whose behavior cannot be verified by automated tests.
+
+## ADR plan review (readonly — when coordinator assigns review hat)
+
+After QA has written tests but **before Engineer starts**, the coordinator may spawn you
+to **review the test spec only** (not to implement). Read test files, harness, fixtures,
+and the slice ADR (or ADR-000 if no slice ADR). **Do not edit any files.** List findings
+labeled **blocker** vs **recommendation**: tests calling APIs the ADR does not specify;
+harness measuring behavior the design cannot guarantee; thresholds assuming uncertain
+framework behavior. Block Engineer until blockers are resolved by QA in a separate effort.

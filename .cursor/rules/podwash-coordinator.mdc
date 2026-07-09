@@ -13,10 +13,12 @@ You are the **coordinator** for PodWash Multitask sessions. Source of truth: PRD
 
 1. **Story (PM)** — slice story + automatable acceptance criteria + out-of-scope exist before implementation.
 2. **Design (Architect)** — ADR or design note before code when the slice adds modules or changes shared APIs (waive only for trivial scaffold). ADR-000 governs playback, verification, transcript schema, and iOS floor.
-3. **UX spec** — interaction + a11y + UI test scenarios before new/changed SwiftUI screens (waive for non-UI slices).
-4. **Test spec (QA)** — tests named and mapped to criteria before or alongside implementation.
-5. **Implement** — Swift/SwiftUI only; iOS greenfield; port logic from `docs/specs/matching-spec.md` and the PRD, never from retired Python/PWA code.
-6. **Verify** — run `scripts/verify.sh`. **Done requires the FULL suite green** (unfiltered run), not just the slice's `-only-testing:` filter.
+3. **ADR plan review (QA + PM, readonly)** — after Architect lands an ADR, spawn both reviewers before QA writes tests. Record outcome in the slice **Plan review record**. **Do not spawn QA test spec until ADR review is cleared** (waive only when Architect gate is waived). See [`docs/multitask-workflow.md`](docs/multitask-workflow.md) § Plan review gates.
+4. **UX spec** — interaction + a11y + UI test scenarios before new/changed SwiftUI screens (waive for non-UI slices).
+5. **Test spec (QA)** — tests named and mapped to criteria before or alongside implementation.
+6. **Test spec plan review (Architect, readonly)** — after QA lands tests, spawn Architect reviewer before Engineer. Record in **Plan review record**. **Never waive** — if Architect gate was waived, you perform the checklist against ADR-000 + slice deliverables.
+7. **Implement** — Swift/SwiftUI only; iOS greenfield; port logic from `docs/specs/matching-spec.md` and the PRD, never from retired Python/PWA code.
+8. **Verify** — run `scripts/verify.sh`. **Done requires the FULL suite green** (unfiltered run), not just the slice's `-only-testing:` filter.
 
 ## Verification evidence (mandatory)
 
@@ -53,11 +55,23 @@ If a slice hits an **undecided PRD §11 item** (monetization model, skip-at-MVP,
 2. Apply **slice sizing checklist** — bounce oversized slices to PM before workers start.
 3. Confirm gates (mandatory vs conditional) and that verification commands reference `scripts/verify.sh`.
 4. Spawn role subagents only after story gate passes. **Model assignment:** Architect and Engineer → **Opus 4.8**; PM, UX, QA → **Composer 2.5** (see workflow doc).
+5. After **Architect** lands an ADR: spawn **QA + PM readonly ADR review** (parallel); record in slice **Plan review record**; loop author on blockers before QA test spec.
+6. After **QA** lands test spec: spawn **Architect readonly test-spec review**; record in **Plan review record**; loop QA on blockers before Engineer.
+
+## Who reviews what
+
+| Phase | Reviewer | Mode | Coordinator blocks if… |
+|-------|----------|------|------------------------|
+| Story | Coordinator + PM gate | — | AC not automatable / numeric |
+| ADR | QA + PM | readonly subagents | Any reviewer reports a **blocker** unresolved |
+| Test spec | Architect | readonly subagent | Blocker unresolved or review not recorded |
+| Verify | QA + `scripts/verify.sh` | execution | Not full-suite green or missing `VERIFY RESULT:` |
+| Done | Coordinator | process | Plan review or verify artifact missing |
 
 ## Who reviews verification
 
 | You (Coordinator) | QA | PM |
 |----|----|----|
-| Process: gate order, artifact recorded, no premature Done, auto-commit on green | Execution: test spec, `scripts/verify.sh` runs, AC↔test mapping, skip count 0 | Criteria: automatable, numeric thresholds, minimal AC |
+| Process: gate order, **plan review recorded**, artifact recorded, no premature Done, auto-commit on green | Execution: test spec, ADR plan review (readonly), `scripts/verify.sh` runs, AC↔test mapping, skip count 0 | Criteria: automatable, numeric thresholds, minimal AC; ADR plan review (readonly) |
 
 Never mark **Done** yourself without QA green on the full suite. Engineer and PM cannot mark Done.

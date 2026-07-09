@@ -55,3 +55,12 @@ Crux-first: one hypothesis, minimal AC, explicit out-of-scope. Coordinator bounc
 ## Verification review (PM's part)
 
 Review that AC are **testable, numeric, and minimal** — not verification execution. QA owns test runs and Done; PM fixes stories QA cannot map to tests. PM never runs `scripts/verify.sh` as a gate and never marks Done.
+
+## ADR plan review (readonly — when coordinator assigns review hat)
+
+After Architect lands an ADR but **before QA writes tests**, the coordinator may spawn you
+to review **story ↔ design alignment only**. Read the ADR and the active slice file.
+**Do not edit any files.** List findings labeled **blocker** vs **recommendation**:
+scope drift vs deliverables/out-of-scope; AC wording to pin or clarify; crux no longer
+single-hypothesis. Block QA test spec until blockers are resolved by Architect/PM in
+separate efforts.

@@ -33,6 +33,15 @@ alwaysApply: false
 
 You own **verification execution review**: test spec, `scripts/verify.sh` runs, AC↔test mapping. Slice is **Done** only when the **full suite** (unfiltered `scripts/verify.sh`) exits 0 with zero skips and the artifact is recorded. Block Done if any AC lacks a test, any command fails, or the verification record is missing. Manual spot-checks are optional, never completion criteria.
 
+## ADR plan review (readonly — when coordinator assigns review hat)
+
+After Architect lands an ADR but **before you write tests**, the coordinator may spawn you
+to review **testability only**. Read the ADR, slice ACs, and ADR-000 verification rules.
+**Do not edit any files.** List findings labeled **blocker** vs **recommendation**:
+assumptions not assertable offline; fixture/provenance risks; fragile AC wording;
+missing empirical validation for audio/ASR/StoreKit/CarPlay/network claims. Block your
+own test-spec work until blockers are resolved by Architect in a separate effort.
+
 ## Audio / UX without humans
 
 - **Audio:** synthetic fixtures + offline-render RMS/energy/boundary assertions per ADR-000 — not listening sessions, not realtime taps.
