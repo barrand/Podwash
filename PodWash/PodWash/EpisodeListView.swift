@@ -92,19 +92,18 @@ private final class EpisodeTableViewController: UITableViewController {
             guard let self else { return }
             let episodeID = self.feed.episodes[indexPath.row].id
             if enabled && self.analysisViewModel.autoAnalyzeOnEpisodeEnable {
+                // Publish progress synchronously so the AX tree updates before the
+                // toggle handler returns. Completion runs in a Task (not
+                // `asyncAfter`): pending GCD timers keep XCTest non-idle until
+                // they fire, so the app only becomes idle *after* progress is
+                // already cleared. `Task.sleep` inside the view model suspends
+                // without blocking idleness, leaving `analysisProgress` visible.
                 self.analysisViewModel.primeEpisodeCleaningToggle(episodeID: episodeID)
                 self.refreshAnalysisDisplayOnVisibleRows()
-                // Hold analyzing UI across XCTest's post-tap quiescence. A bare
-                // `main.async` still runs before idle settles, so completion finishes
-                // before `waitForExistence(analysisProgress)`. Real delay lets the
-                // app go idle with progress visible; keep total under UX 1s / AC 5s.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
+                Task { @MainActor [weak self] in
                     guard let self else { return }
-                    Task { @MainActor [weak self] in
-                        guard let self else { return }
-                        await self.analysisViewModel.completePrimedEpisodeAnalysis(episodeID: episodeID)
-                        self.refreshAnalysisDisplayOnVisibleRows()
-                    }
+                    await self.analysisViewModel.completePrimedEpisodeAnalysis(episodeID: episodeID)
+                    self.refreshAnalysisDisplayOnVisibleRows()
                 }
             } else {
                 Task { @MainActor [weak self] in
@@ -210,6 +209,7 @@ private final class EpisodeTableViewCell: UITableViewCell {
         progressAccessibilityHost.isHidden = true
         progressAccessibilityHost.isAccessibilityElement = false
         progressAccessibilityHost.accessibilityLabel = "Analyzing episode"
+        progressAccessibilityHost.isUserInteractionEnabled = false
         progressAccessibilityHost.addSubview(progressStack)
         progressAccessibilityHost.addSubview(progressLabel)
         progressStack.translatesAutoresizingMaskIntoConstraints = false
@@ -280,7 +280,11 @@ private final class EpisodeTableViewCell: UITableViewCell {
 
         progressAccessibilityHost.isHidden = !showsProgress
         progressAccessibilityHost.isAccessibilityElement = showsProgress
+        // Keep the identifier stable while visible so XCTest descendant queries
+        // (cell-scoped and app-global) can resolve `analysisProgress` on the
+        // main-actor-published analyzing state before completion.
         progressAccessibilityHost.accessibilityIdentifier = showsProgress ? "analysisProgress" : nil
+        progressAccessibilityHost.accessibilityLabel = "Analyzing episode"
         progressLabel.isHidden = !showsProgress
         progressLabel.isAccessibilityElement = false
         progressLabel.accessibilityIdentifier = nil
@@ -292,6 +296,17 @@ private final class EpisodeTableViewCell: UITableViewCell {
         } else {
             progressView.stopAnimating()
         }
+
+        // Explicit AX children so UITableViewCell exposes progress alongside the
+        // accessory switch (grouped cell AX can otherwise omit nested hosts).
+        var axChildren: [UIView] = []
+        if showsProgress {
+            axChildren.append(progressAccessibilityHost)
+        }
+        if showsBadge {
+            axChildren.append(badgeLabel)
+        }
+        contentView.accessibilityElements = axChildren.isEmpty ? nil : axChildren
 
         setNeedsLayout()
         layoutIfNeeded()

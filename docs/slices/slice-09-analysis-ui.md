@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 09 |
 | **Title** | Analysis progress UI + cleaning toggles |
-| **Status** | Verify |
+| **Status** | Done |
 | **Crux** | Per-channel and per-episode cleaning toggles plus an analysis progress indicator are drivable and assertable through accessibility identifiers with a stubbed (instant) pipeline. |
 
 ## PRD / spec references
@@ -65,7 +65,7 @@ scripts/verify.sh    # Done gate
 ## Verification record (QA fills at Verify)
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=40 passed=40 failed=0 skipped=0 filtered=0 bundle=build/test-results/verify-20260709-155305.xcresult
 ```
 
 ## Plan review record

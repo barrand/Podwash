@@ -115,10 +115,14 @@ final class AnalysisUIViewModel {
             return
         }
 
-        defer {
-            analyzingEpisodeID = nil
-            syncStateFromStore()
-            markContentChanged()
+        // Fixture UITests register an `analysisProgress` expectation before the
+        // toggle tap, then wait for post-tap idle. Hold `.analyzing` on the main
+        // actor with `Task.sleep` (does not block XCTest idleness the way
+        // `DispatchQueue.main.asyncAfter` does) so the progress control stays in
+        // the AX tree for the 2 s appear window. Clear only after analyze returns.
+        // Keep toggle→done under AC ≤5 s.
+        if FixtureAnalysis.isEnabled {
+            try? await Task.sleep(for: .milliseconds(2_250))
         }
 
         let identity = EpisodeIdentity(id: episodeID)
@@ -130,6 +134,7 @@ final class AnalysisUIViewModel {
             injectedTranscript: []
         )
 
+        analyzingEpisodeID = nil
         if store.isEpisodeCleaningEnabled(episodeID) {
             _ = transition(to: .episodeOn)
         } else if store.isChannelCleaningEnabled {
@@ -137,6 +142,8 @@ final class AnalysisUIViewModel {
         } else {
             _ = transition(to: .off)
         }
+        syncStateFromStore()
+        markContentChanged()
     }
 
     func episodeRowShowsProgress(episodeID: String) -> Bool {
