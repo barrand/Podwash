@@ -8,7 +8,8 @@
 #   scripts/slice-loop.sh                 # run the queue until it stops
 #   scripts/slice-loop.sh --dry-run       # show the next decision; spawns no agent
 #   scripts/slice-loop.sh --max 3         # run at most 3 slices this session
-#   scripts/slice-loop.sh --model auto    # let the server pick the coordinator model
+#   scripts/slice-loop.sh --verbose       # also stream full coordinator text
+#   scripts/slice-loop.sh --heartbeat 60  # idle ping every 60s (0 to disable)
 #
 # Auth (non-dry-run): export CURSOR_API_KEY=cursor_...
 #
