@@ -31,6 +31,8 @@ isProject: false
 
 # Loop-as-Orchestrator Refactor (Option B)
 
+> Follow-on: [`factory-fix-confidence.md`](factory-fix-confidence.md) — FailurePacket, stuck card, verify ban, diagnose, playbooks.
+
 ## The fatal flaw we are removing
 Today `run_slice` in [scripts/slice_loop.py](scripts/slice_loop.py) launches ONE SDK agent (the coordinator LLM). That coordinator spawns PM/UX/QA/Architect/Engineer through the IDE Task tool **inside its own turn**, so those subagents are invisible to and uncontrollable by our Python. Every guard we have (`red verify N/2`, ps-sniff in `sniff_background_build`, `next-slice.sh` post-hoc re-check, the advisory WRONG ROLE warning) is a workaround for that opaque boundary. Result: roles are personas not capabilities, the least-reliable component (an LLM) owns deterministic control flow, and verification is trusted until too late.
 

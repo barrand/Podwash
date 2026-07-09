@@ -1103,6 +1103,8 @@ class RunProgress:
         heartbeat_secs: int = 90,
         repo_root: str | None = None,
         max_red_verifies: int = DEFAULT_MAX_RED_VERIFIES,
+        forced_role: str | None = None,
+        fix_worker: bool = False,
     ):
         self.slice_id = slice_id
         self.slice_title = slice_title
@@ -1111,7 +1113,13 @@ class RunProgress:
         self.verbose = verbose
         self.heartbeat_secs = heartbeat_secs
         self.repo_root = repo_root or os.getcwd()
-        self.max_red_verifies = max(1, int(max_red_verifies))
+        # Fix workers: disable nested red-verify thrash (loop owns budget).
+        if fix_worker:
+            self.max_red_verifies = 0
+        else:
+            self.max_red_verifies = max(1, int(max_red_verifies))
+        self.forced_role = (forced_role or "").strip() or None
+        self.fix_worker = bool(fix_worker)
         self.last_activity = 0.0
         self.last_label = "coordinator starting"
         self._seen_starts: set[str] = set()
@@ -1139,6 +1147,20 @@ class RunProgress:
         self._halt_reason: str | None = None
         self._wrong_role_warned: set[str] = set()
         self.halted = False
+        # Verify-ban (fix workers)
+        self._bound_run: Any = None
+        self._verify_violations = 0
+        self.verify_violation_burned = False
+        self._reprompt_pending = False
+        self.assistant_text = ""
+        self._files_touched: list[str] = []
+
+    def bind_run(self, run: Any) -> None:
+        self._bound_run = run
+
+    def set_assistant_text(self, text: str) -> None:
+        self.assistant_text = text or ""
+
     def refresh_gates(self) -> dict[str, Any]:
         return assess_slice_gates(self.slice_file, self.repo_root)
 
@@ -1162,7 +1184,7 @@ class RunProgress:
     def active_role(self) -> str:
         """Role shown in progress lines — prefers long-running workers when parallel."""
         if not self._active_tasks:
-            return "Coordinator"
+            return self.forced_role or "Coordinator"
         roles = [str(t.get("role") or "Subagent") for t in self._active_tasks.values()]
         # Prefer implement/verify over short readonly reviews when both are open.
         for preferred in (
@@ -1188,7 +1210,7 @@ class RunProgress:
     def active_roles_label(self) -> str:
         """Heartbeat label when multiple subagents are in flight."""
         if not self._active_tasks:
-            return "Coordinator"
+            return self.forced_role or "Coordinator"
         roles = [str(t.get("role") or "Subagent") for t in self._active_tasks.values()]
         primary = self.active_role()
         others = [r for r in roles if r != primary]
@@ -1388,6 +1410,9 @@ class RunProgress:
         """Count red verify/xcodebuild outcomes; halt after max_red_verifies."""
         if not is_verify_run(cmd):
             return
+        # Fix workers: loop owns thrash budget — never nest halt here.
+        if self.fix_worker or self.max_red_verifies <= 0:
+            return
 
         if verify and verify_is_green(verify):
             self._clear_failure_streak()
@@ -1432,6 +1457,47 @@ class RunProgress:
             "podwash-engineer (app Swift) or podwash-qa (test edits) in a fresh "
             "session, then re-run scripts/slice-loop.sh."
         )
+
+    def _handle_verify_ban(self, cmd: str) -> bool:
+        """If fix worker runs verify, cancel + re-prompt once; burn on 2nd.
+
+        Returns True if the shell event was handled as a violation.
+        """
+        if not self.fix_worker or not is_verify_run(cmd):
+            return False
+        self._verify_violations += 1
+        self.log(
+            f"⚠ {self.prefix()} WORKER VIOLATION: verify owned by loop — "
+            f"do not run verify.sh / xcodebuild test (violation "
+            f"{self._verify_violations})"
+        )
+        run = self._bound_run
+        if run is not None and hasattr(run, "supports") and run.supports("cancel"):
+            try:
+                run.cancel()
+            except Exception as exc:  # noqa: BLE001 — best-effort cancel
+                self.log(f"   {self.prefix()} cancel failed: {exc}")
+        elif run is not None and hasattr(run, "cancel"):
+            try:
+                run.cancel()
+            except Exception as exc:  # noqa: BLE001
+                self.log(f"   {self.prefix()} cancel failed: {exc}")
+
+        if self._verify_violations == 1:
+            self._reprompt_pending = True
+            self.log(
+                f"   {self.prefix()} re-prompt: continue the fix without verifying; "
+                f"loop will verify after you end your turn"
+            )
+            # First violation does not burn the attempt by itself; caller may
+            # continue. If the run was cancelled, run_worker will see non-finished.
+            return True
+
+        self.verify_violation_burned = True
+        self.log(
+            f"   {self.prefix()} second verify violation — attempt burned"
+        )
+        return True
     def _halt_for_thrash(self, reason: str) -> None:
         """Log a clear halt explanation and raise ThrashHalt for the driver."""
         if self.halted:
@@ -1541,6 +1607,12 @@ class RunProgress:
         if status == "running" and call_id not in self._seen_starts:
             self._seen_starts.add(call_id)
             self._warn_delegate_violation(norm, args)
+            cmd_early = arg_shell_command(args if isinstance(args, dict) else {})
+            if norm == "shell" and self.fix_worker and is_verify_run(cmd_early):
+                self._handle_verify_ban(cmd_early)
+                self.log(f"→ {self.prefix()} blocked verify: {label}")
+                self.note(f"blocked verify: {label}")
+                return
             self.log(f"→ {self.prefix()} {label}")
             import time
 
@@ -1555,6 +1627,9 @@ class RunProgress:
             self.log(f"{mark} {self.prefix()} {label}")
             self.note(f"{mark} {label}")
             cmd = arg_shell_command(args if isinstance(args, dict) else {})
+            if norm == "shell" and self.fix_worker and is_verify_run(cmd):
+                self._handle_verify_ban(cmd)
+                return
             blob = _result_blob(result)
             # Real test runs OR inspection of results (xcresulttool) / crash text.
             if norm == "shell" and (

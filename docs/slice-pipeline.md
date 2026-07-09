@@ -2,6 +2,7 @@
 
 > Design reference for `scripts/slice_pipeline.py` and `--orchestrator=pipeline`.
 > Plan: [`plans/loop-as-orchestrator-refactor.md`](plans/loop-as-orchestrator-refactor.md).
+> Fix confidence: [`plans/factory-fix-confidence.md`](plans/factory-fix-confidence.md).
 > Runner mechanics: [`slice-runner.md`](slice-runner.md).
 
 ## What moved into Python
@@ -10,7 +11,9 @@
 |---------|--------|
 | Gate ordering / skip-done | `GateState` + FSM in `slice_pipeline.py` |
 | `scripts/verify.sh` | Loop (subprocess) — source of truth |
-| Red → fix | Engineer\|QA router + `--max-fix-attempts` |
+| Red → FailurePacket + stuck card | `failure_packet.py` (xcresult summary + attachments) |
+| Red → diagnose → fix | Free plan-mode diagnose + Engineer\|QA + playbooks |
+| Red → fix budget | `--max-fix-attempts` (default 2); flake cold-retry is free |
 | `VERIFY RESULT` + Status Done | Deterministic doc writer |
 | Split commits + isolation + push | Loop (pipeline mode) |
 | Story / UX / ADR / tests / app / reviews | One visible SDK worker per gate |
@@ -51,16 +54,65 @@ story ─┬─► architect ─┐
 `assess_slice_gates()` in `slice_loop_progress.py` remains a **progress heuristic**
 for heartbeats only — do not treat it as the FSM.
 
+## Fix path (FailurePacket → stuck card → diagnose → playbook)
+
+Applies to **both** coordinator and pipeline modes via shared `run_fix_loop`.
+
+```text
+loop-owned verify.sh (red)
+  → FailurePacket (summary testFailures + exported attachments)
+  → print + persist stuck card (build/test-results/stuck-slice-NN.txt)
+  → heuristic class (+ free plan-mode diagnose when unknown / UITest / assertion)
+  → playbook lever for attempt N
+  → Engineer|QA fix worker (verify banned)
+  → loop-owned verify again
+```
+
+### FailurePacket
+
+Built by `scripts/failure_packet.py` from:
+
+1. `xcresulttool get test-results summary` — **must** surface real test ids (never leave prompts on only `xcodebuild — TEST FAILED` when summary has names).
+2. `xcresulttool export attachments --test-id 'Class/testName()'` — hierarchy + query-chain `.txt` files.
+3. Soft undiagnosable: build/lock reds without test ids still route Engineer (`build_error`). Hard-halt only when there is **no** actionable evidence and no bundle.
+
+Signature is stable: sorted `test_ids` + crash fingerprint (not assertion/hierarchy text).
+
+### Stuck card
+
+Human-readable card printed on every red loop-owned verify and thrash halt, also written to `build/test-results/stuck-slice-NN.txt`, and embedded in fix prompts.
+
+### Diagnose (free)
+
+Plan-mode `QA review` worker when class is `unknown`, first UITest attempt, or `assertion`. Does **not** increment `--max-fix-attempts`. Heuristic `failure_class` wins unless heuristic was `unknown`; diagnose may still set hypothesis / `fix_scope` / `suggested_files`.
+
+### Playbooks
+
+`scripts/fix_playbooks.py` — per-class levers. Same packet signature advances lever index. Notable rules:
+
+| Class | Lever 1 | Lever 2 (same signature) |
+|-------|---------|---------------------------|
+| `ui_race` | Engineer: hold analyzing / defer completion | Halt for PM/UX AC clarity unless diagnose `fix_scope=tests` + AC requires transient |
+| `flake` | Cold re-verify once (no budget burn) | Then normal levers for reclassified class |
+| `unknown` | Diagnose then minimal Engineer | Halt with stuck card |
+
+Slice Role artifacts / Deliverables Swift paths are unioned into `suggested_files`.
+
+### Verify ban (fix workers)
+
+Fix-worker `RunProgress` uses `fix_worker=True` + `forced_role=` so logs show `[Engineer]` / `[QA]`, nested red-verify thrash is disabled (`max_red_verifies=0`), and shell `verify.sh` / `xcodebuild … test` is cancelled. First violation → re-prompt; second → attempt burned.
+
 ## Fix router
 
 | Signal | Worker |
 |--------|--------|
-| Crash / IPS / app paths | Engineer (`PodWash/PodWash/**`) |
-| Fixture / XCTAssert-only / same signature after Engineer | QA (tests only) |
+| Crash / IPS / `ui_race` / `missing_identifier` / `build_error` | Engineer (`PodWash/PodWash/**`) |
+| `assertion` with `fix_scope=tests` / fixture-only | QA (tests only) |
+| Same signature after first role | Opposite role (or playbook halt for `ui_race`) |
 | Ambiguous | Engineer first |
 
 Shared budget: `--max-fix-attempts` (default 2) → exit **5** on exhaustion.
-Budget **persists** across bridge retries.
+Budget **persists** across bridge retries. Diagnose + flake cold-retry do **not** burn budget.
 
 ## Partial-failure policy
 

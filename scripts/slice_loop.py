@@ -338,6 +338,8 @@ def run_slice_coordinator(
                             heartbeat_secs=heartbeat_secs,
                             repo_root=REPO_ROOT,
                             max_red_verifies=max_red_verifies,
+                            forced_role=role,
+                            fix_worker=role in ("Engineer", "QA"),
                         )
 
                     try:

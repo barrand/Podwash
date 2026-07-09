@@ -115,6 +115,68 @@ class FixRouterTests(unittest.TestCase):
         qa = build_fix_prompt("QA", "docs/slices/x.md", ["t"], [], None, 2, 2)
         self.assertIn("PodWashTests", qa)
 
+    def test_halts_when_budget_exhausted(self):
+        budget = FixBudget(max_attempts=2)
+        # crash class has two Engineer levers (no early playbook halt)
+        from failure_packet import FailurePacket
+
+        packet = FailurePacket(
+            test_ids=[],
+            crashes=["Crash: PodWash EXC_BAD_ACCESS at Foo"],
+            failure_class="crash",
+            signature="crash:podwash",
+            raw_failures=[],
+            actionable=True,
+        )
+        red = VerifyOutcome(
+            result={"exit": "1", "total": "1", "passed": "0", "failed": "1", "skipped": "0"},
+            green=False,
+            failures=[],
+            crashes=packet.crashes,
+            packet=packet,
+        )
+        calls = {"n": 0}
+
+        def fake_verify(**_kw):
+            calls["n"] += 1
+            return red
+
+        with mock.patch("slice_pipeline.run_worker", return_value=(True, "finished")):
+            with self.assertRaises(ThrashHalt) as ctx:
+                run_fix_loop(
+                    client=object(),
+                    slice_file="x.md",
+                    repo_root=REPO,
+                    api_key="k",
+                    budget=budget,
+                    verify_fn=fake_verify,
+                )
+        self.assertTrue(
+            "exhausted" in str(ctx.exception.reason).lower()
+            or "playbook halt" in str(ctx.exception.reason).lower()
+            or "crash" in str(ctx.exception.reason).lower()
+        )
+        self.assertEqual(budget.attempts_used, 2)
+        # initial verify + 2 after fixes
+        self.assertGreaterEqual(calls["n"], 3)
+
+    def test_returns_on_green(self):
+        budget = FixBudget(max_attempts=2)
+        green = VerifyOutcome(
+            result={"exit": "0", "total": "1", "passed": "1", "failed": "0", "skipped": "0"},
+            green=True,
+        )
+        out = run_fix_loop(
+            client=None,
+            slice_file="x.md",
+            repo_root=REPO,
+            api_key="k",
+            budget=budget,
+            verify_fn=lambda: green,
+        )
+        self.assertTrue(out.green)
+        self.assertEqual(budget.attempts_used, 0)
+
 
 class ModelModeMapTests(unittest.TestCase):
     def test_models_are_plain_ids(self):
@@ -140,11 +202,9 @@ class GateStateTests(unittest.TestCase):
 
     def test_slice_09_partial(self):
         state = assess_gate_state("docs/slices/slice-09-analysis-ui.md", REPO)
-        # Architect waived on slice 09 — adr forks waived/applicable
         arch = state.gate("architect")
         self.assertTrue(arch.applicable)
         self.assertEqual(arch.status, "waived")
-        # Should not be fully done (verify/commit pending mid-slice)
         self.assertFalse(state.all_done)
         nxt = next_gate(state)
         self.assertIsNotNone(nxt)
@@ -287,53 +347,6 @@ class SplitCommitTests(unittest.TestCase):
         self.assertEqual(tests, ["PodWash/PodWashTests/FooTests.swift"])
         self.assertEqual(apps, ["PodWash/PodWash/Foo.swift"])
         self.assertEqual(other, ["docs/slices/slice-01.md"])
-
-
-class FixLoopTests(unittest.TestCase):
-    def test_halts_when_budget_exhausted(self):
-        budget = FixBudget(max_attempts=2)
-        red = VerifyOutcome(
-            result={"exit": "1", "total": "1", "passed": "0", "failed": "1", "skipped": "0"},
-            green=False,
-            failures=["FooTests/testX — fail"],
-        )
-        calls = {"n": 0}
-
-        def fake_verify():
-            calls["n"] += 1
-            return red
-
-        with mock.patch("slice_pipeline.run_worker", return_value=(True, "finished")):
-            with self.assertRaises(ThrashHalt) as ctx:
-                run_fix_loop(
-                    client=object(),
-                    slice_file="x.md",
-                    repo_root=REPO,
-                    api_key="k",
-                    budget=budget,
-                    verify_fn=fake_verify,
-                )
-        self.assertIn("exhausted", str(ctx.exception.reason).lower())
-        self.assertEqual(budget.attempts_used, 2)
-        # initial verify + 2 after fixes
-        self.assertGreaterEqual(calls["n"], 3)
-
-    def test_returns_on_green(self):
-        budget = FixBudget(max_attempts=2)
-        green = VerifyOutcome(
-            result={"exit": "0", "total": "1", "passed": "1", "failed": "0", "skipped": "0"},
-            green=True,
-        )
-        out = run_fix_loop(
-            client=None,
-            slice_file="x.md",
-            repo_root=REPO,
-            api_key="k",
-            budget=budget,
-            verify_fn=lambda: green,
-        )
-        self.assertTrue(out.green)
-        self.assertEqual(budget.attempts_used, 0)
 
 
 if __name__ == "__main__":
