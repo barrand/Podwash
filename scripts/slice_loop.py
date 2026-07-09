@@ -32,8 +32,15 @@ import json
 import os
 import subprocess
 import sys
-import threading
 import time
+
+from slice_loop_progress import (
+    RunProgress,
+    read_slice_meta,
+    read_verify_from_slice,
+    slice_done_banner,
+    slice_start_banner,
+)
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 NEXT_SLICE = os.path.join(REPO_ROOT, "scripts", "next-slice.sh")
@@ -48,152 +55,6 @@ EXIT_HALT = 4          # halt-and-ask gate needs a user decision
 
 def log(msg):
     print(f"[slice-loop] {msg}", flush=True)
-
-
-def _short_path(path, max_len=56):
-    if not path:
-        return ""
-    path = str(path)
-    if len(path) <= max_len:
-        return path
-    return "…" + path[-(max_len - 1) :]
-
-
-def _summarize_tool(name, args):
-    """One-line label for a tool invocation (kept short for terminal progress)."""
-    if args is None:
-        args = {}
-    if isinstance(args, str):
-        try:
-            args = json.loads(args)
-        except json.JSONDecodeError:
-            return f"{name}: {args[:60]}"
-    if not isinstance(args, dict):
-        return name
-
-    if name == "Shell":
-        cmd = (args.get("command") or args.get("description") or "").strip()
-        line = cmd.split("\n", 1)[0].strip()
-        return f"Shell: {line[:72]}" if line else "Shell"
-    if name in ("Read", "Write", "StrReplace", "Delete"):
-        return f"{name}: {_short_path(args.get('path', ''))}"
-    if name == "Task":
-        desc = (args.get("description") or args.get("prompt") or "subagent")[:72]
-        return f"subagent: {desc}"
-    if name == "Grep":
-        pat = str(args.get("pattern", ""))[:40]
-        return f"Grep: {pat}" if pat else "Grep"
-    if name == "Glob":
-        return f"Glob: {args.get('glob_pattern', '')[:40]}"
-    return name
-
-
-class RunProgress:
-    """Concise terminal progress without dumping the full agent transcript."""
-
-    def __init__(self, verbose=False, heartbeat_secs=90):
-        self.verbose = verbose
-        self.heartbeat_secs = heartbeat_secs
-        self.last_activity = time.time()
-        self.last_label = "coordinator starting"
-        self._seen_starts = set()
-        self._stop = threading.Event()
-        self._thread = None
-
-    def start(self):
-        if self.heartbeat_secs > 0:
-            self._thread = threading.Thread(target=self._heartbeat, daemon=True)
-            self._thread.start()
-
-    def stop(self):
-        self._stop.set()
-
-    def _heartbeat(self):
-        while not self._stop.wait(self.heartbeat_secs):
-            idle = int(time.time() - self.last_activity)
-            log(f"still running ({idle}s idle — last: {self.last_label})")
-
-    def note(self, label):
-        self.last_activity = time.time()
-        self.last_label = label
-
-    def handle(self, message):
-        if isinstance(message, dict):
-            mtype = message.get("type")
-            if mtype == "tool_call":
-                self._tool(
-                    message.get("callId") or message.get("call_id", ""),
-                    message.get("name", "tool"),
-                    message.get("status", ""),
-                    message.get("args"),
-                )
-            elif mtype == "task":
-                self._task(message.get("status", ""), message.get("text", ""))
-            elif mtype == "status":
-                self._status(message.get("message") or message.get("status", ""))
-            elif mtype == "assistant" and self.verbose:
-                self._assistant_dict(message)
-            return
-
-        mtype = getattr(message, "type", None)
-        if mtype == "tool_call":
-            self._tool(
-                getattr(message, "call_id", ""),
-                getattr(message, "name", "tool"),
-                getattr(message, "status", ""),
-                getattr(message, "args", None),
-            )
-        elif mtype == "task":
-            self._task(getattr(message, "status", ""), getattr(message, "text", ""))
-        elif mtype == "status":
-            self._status(getattr(message, "message", "") or getattr(message, "status", ""))
-        elif mtype == "assistant" and self.verbose:
-            self._assistant_typed(message)
-
-    def _tool(self, call_id, name, status, args):
-        label = _summarize_tool(name, args)
-        if status == "running" and call_id not in self._seen_starts:
-            self._seen_starts.add(call_id)
-            log(f"→ {label}")
-            self.note(label)
-        elif status in ("completed", "error"):
-            mark = "✓" if status == "completed" else "✗"
-            log(f"{mark} {label}")
-            self.note(f"{mark} {label}")
-
-    def _task(self, status, text):
-        text = (text or "").strip()
-        if not text:
-            return
-        line = text.split("\n", 1)[0][:72]
-        log(f"task [{status}]: {line}" if status else f"task: {line}")
-        self.note(line)
-
-    def _status(self, text):
-        text = (text or "").strip()
-        if not text:
-            return
-        log(f"status: {text[:100]}")
-        self.note(text[:72])
-
-    def _assistant_typed(self, message):
-        for block in getattr(getattr(message, "message", None), "content", []):
-            if getattr(block, "type", None) == "text":
-                text = getattr(block, "text", "")
-                if text:
-                    sys.stdout.write(text)
-                    sys.stdout.flush()
-                    self.note("assistant text")
-
-    def _assistant_dict(self, message):
-        msg = message.get("message") or {}
-        for block in msg.get("content") or []:
-            if isinstance(block, dict) and block.get("type") == "text":
-                text = block.get("text", "")
-                if text:
-                    sys.stdout.write(text)
-                    sys.stdout.flush()
-                    self.note("assistant text")
 
 
 def query_next():
@@ -228,9 +89,11 @@ First, load the process and gates by reading:
 Then run Slice {nn} to completion per that slice file:
 - Enforce every gate: PM story, Architect/UX design (if the slice adds modules or UI),
   QA test spec, Engineer implementation, QA verification.
-- Spawn role subagents as needed. Model assignment: Architect and Engineer on
-  Grok 4.5 High (`grok-4.5[effort=high,fast=false]` or subagents `podwash-architect` /
-  `podwash-engineer`). Never `grok-4.5-fast-xhigh`. PM, UX, QA on Composer 2.5.
+- Spawn role subagents as needed. **Delegate by name:** `podwash-pm`, `podwash-ux`,
+  `podwash-qa`, `podwash-architect`, `podwash-engineer` (models pinned in
+  `.cursor/agents/`). If using Task `model`: PM/UX/QA → `composer-2.5[fast=false]`;
+  Architect/Engineer → `grok-4.5[effort=high,fast=false]`. Never `composer-2.5-fast`
+  or `grok-4.5-fast-xhigh`.
 - Definition of Done (all required): full `scripts/verify.sh` suite green
   (exit 0, 0 failed, 0 skipped), the `VERIFY RESULT:` line recorded in the slice
   file's verification record, the slice Status set to Done, an auto-commit
@@ -245,17 +108,24 @@ Work ONLY on Slice {nn}. When it is Done, committed, and pushed, end your turn."
 
 
 def run_slice(slice_id, slice_file, model, api_key, verbose=False, heartbeat_secs=90):
-    """Run one slice via a local Cursor SDK agent. Returns True if the run finished
-    cleanly (status == 'finished'); raises on startup failure."""
+    """Run one slice via a local Cursor SDK agent.
+
+    Returns (finished: bool, elapsed_secs: int, last_verify: dict|None).
+    Raises SystemExit on startup failure.
+    """
     # Import lazily so --dry-run works without the SDK installed.
     from cursor_sdk import Agent, CursorAgentError, LocalAgentOptions, AgentOptions
 
-    prompt = build_prompt(slice_id, slice_file)
-    log(f"--- slice {slice_id:02d} coordinator run (model={model}) ---")
-    log(f"slice file: {slice_file}")
-    log("progress: tool/subagent lines below; heartbeat every 90s if idle (use --verbose for full agent text)")
+    title, _rel = read_slice_meta(slice_file, REPO_ROOT)
+    print(slice_start_banner(slice_id, title, slice_file), flush=True)
 
-    progress = RunProgress(verbose=verbose, heartbeat_secs=heartbeat_secs)
+    prompt = build_prompt(slice_id, slice_file)
+    log(f"coordinator run (model={model})")
+    log("progress lines: [slice NN][Role] action — use --verbose for full agent text")
+
+    progress = RunProgress(
+        slice_id, title, slice_file, log, verbose=verbose, heartbeat_secs=heartbeat_secs
+    )
     t0 = time.time()
 
     try:
@@ -277,8 +147,8 @@ def run_slice(slice_id, slice_file, model, api_key, verbose=False, heartbeat_sec
                 print()
             elapsed = int(time.time() - t0)
             status = getattr(result, "status", "unknown")
-            log(f"run finished: status={status} elapsed={elapsed}s")
-            return status == "finished"
+            log(f"coordinator finished: status={status} elapsed={elapsed}s")
+            return status == "finished", elapsed, progress.last_verify
     except CursorAgentError as err:
         progress.stop()
         log(
@@ -304,8 +174,8 @@ def main():
     parser = argparse.ArgumentParser(description="Run PodWash slices to Done, sequentially, locally.")
     parser.add_argument("--max", type=int, default=6,
                         help="max slices to run this session (default 6; safety cap)")
-    parser.add_argument("--model", default="composer-2.5",
-                        help="coordinator model (default composer-2.5; 'auto' lets the server pick)")
+    parser.add_argument("--model", default="composer-2.5[fast=false]",
+                        help="coordinator model (default composer-2.5[fast=false]; never composer-2.5-fast)")
     parser.add_argument("--dry-run", action="store_true",
                         help="show the next decision and exit without spawning any agent")
     parser.add_argument("--verbose", action="store_true",
@@ -355,7 +225,7 @@ def main():
             return EXIT_RUN_FAILED
         last_started = slice_id
 
-        finished = run_slice(
+        finished, elapsed, last_verify = run_slice(
             slice_id, slice_file, args.model, api_key,
             verbose=args.verbose, heartbeat_secs=args.heartbeat,
         )
@@ -371,7 +241,14 @@ def main():
             return EXIT_RUN_FAILED
 
         ran += 1
-        log(f"slice {slice_id:02d} complete. ({ran}/{args.max} this session)")
+        title, _rel = read_slice_meta(slice_file, REPO_ROOT)
+        verify = read_verify_from_slice(slice_file, REPO_ROOT) or last_verify
+        print(
+            slice_done_banner(
+                slice_id, title, verify, elapsed, session=(ran, args.max)
+            ),
+            flush=True,
+        )
 
     log(f"reached --max {args.max} slices for this session. Re-run to continue.")
     return EXIT_OK

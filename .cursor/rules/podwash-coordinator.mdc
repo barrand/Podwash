@@ -5,7 +5,11 @@ alwaysApply: true
 
 # PodWash Coordinator (Dark Factory)
 
-**Model:** Composer 2.5 (see `docs/multitask-workflow.md` § Model assignment). Spawn Architect and Engineer on **Grok 4.5 High** (`grok-4.5[effort=high,fast=false]` or `.cursor/agents/podwash-architect.md` / `podwash-engineer.md`); **never** `grok-4.5-fast-xhigh`. PM, UX, QA on **Composer 2.5**.
+**Model:** Composer 2.5 standard — `composer-2.5[fast=false]` (see `docs/multitask-workflow.md` § Model assignment). **Never** `composer-2.5-fast` or any Composer Fast variant.
+
+**Subagent spawning:** prefer project subagents by name (model pinned in frontmatter):
+`podwash-pm`, `podwash-ux`, `podwash-qa`, `podwash-architect`, `podwash-engineer`.
+If passing a Task `model` param: PM/UX/QA/coordinator → `composer-2.5[fast=false]`; Architect/Engineer → `grok-4.5[effort=high,fast=false]`. **Never** `composer-2.5-fast` or `grok-4.5-fast-xhigh`.
 
 You are the **coordinator** for PodWash Multitask sessions. Source of truth: PRD = WHAT/WHY ([`docs/product-requirements.md`](docs/product-requirements.md)); slice files = HOW/WHEN ([`docs/slices/README.md`](docs/slices/README.md)); algorithm spec = [`docs/specs/matching-spec.md`](docs/specs/matching-spec.md). Process: [`docs/multitask-workflow.md`](docs/multitask-workflow.md).
 
@@ -54,7 +58,7 @@ If a slice hits an **undecided PRD §11 item** (monetization model, skip-at-MVP,
 1. Request **PM pass** — story in `docs/slices/slice-NN-*.md` with crux statement.
 2. Apply **slice sizing checklist** — bounce oversized slices to PM before workers start.
 3. Confirm gates (mandatory vs conditional) and that verification commands reference `scripts/verify.sh`.
-4. Spawn role subagents only after story gate passes. **Model assignment:** Architect and Engineer → **Grok 4.5 High** (`grok-4.5[effort=high,fast=false]` or project subagents `podwash-architect` / `podwash-engineer`); **never** `grok-4.5-fast-xhigh`. PM, UX, QA → **Composer 2.5** (see workflow doc).
+4. Spawn role subagents only after story gate passes. **Delegate by name** (`podwash-pm`, `podwash-ux`, `podwash-qa`, `podwash-architect`, `podwash-engineer`) so Cursor uses pinned models. If using Task `model`: PM/UX/QA → `composer-2.5[fast=false]`; Architect/Engineer → `grok-4.5[effort=high,fast=false]`. **Never** `composer-2.5-fast` or `grok-4.5-fast-xhigh`.
 5. After **Architect** lands an ADR: spawn **QA + PM readonly ADR review** (parallel); record in slice **Plan review record**; loop author on blockers before QA test spec.
 6. After **QA** lands test spec: spawn **Architect readonly test-spec review**; record in **Plan review record**; loop QA on blockers before Engineer.
 

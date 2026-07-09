@@ -81,8 +81,11 @@ scripts/slice-loop.sh              # run until halt / done / failure
 
 Options: `--verbose` (full coordinator text), `--heartbeat 60` (idle ping every N seconds).
 
-**Progress output (default):** one-line tool/subagent updates (`→` start, `✓` done) plus
-an idle heartbeat so long `verify.sh` runs don’t look hung.
+**Progress output (default):** one-line updates tagged with **`[slice NN][Role]`**
+(e.g. `[slice 07][QA] verify.sh (full suite) — GREEN — 48/48 passed…`). Subagent
+spawns show as `[Coordinator] spawn QA: …`; completions show `[QA] finished — …`.
+Idle heartbeat every N seconds (default 90). A **done banner** prints when
+`next-slice.sh` confirms the slice reached Done with green verify.
 
 **Known failure:** `Bridge request timed out: ReadTimeout` — the SDK lost contact
 during a long subagent stretch; slice is usually still **In Progress**. Re-run
@@ -109,7 +112,7 @@ Paste the printed block into a **new** chat.
 ```
 Run Slice NN per docs/slices/slice-NN-<title>.md.
 Coordinator: enforce gates per .cursor/rules/podwash-coordinator.mdc and docs/multitask-workflow.md.
-Spawn role subagents as needed (Architect/Engineer → Grok 4.5 High `grok-4.5[effort=high,fast=false]`; PM/UX/QA → Composer 2.5). Never `grok-4.5-fast-xhigh`.
+Spawn role subagents by name (`podwash-pm`, `podwash-ux`, `podwash-qa`, `podwash-architect`, `podwash-engineer`). Never `composer-2.5-fast` or `grok-4.5-fast-xhigh`.
 Done = scripts/verify.sh full suite green + VERIFY RESULT in slice file + Status Done + auto-commit slice-NN: <description>.
 If halt-and-ask or PRD §11 is open, STOP and ask the user — never guess.
 ```
@@ -178,14 +181,16 @@ After QA lands tests: **Architect readonly test-spec review** (record in **Plan 
 
 | Role | Model | Task / subagent id |
 |------|-------|-------------------|
-| Coordinator | Composer 2.5 | `composer-2.5` |
-| Architect | Grok 4.5 **High** | `grok-4.5[effort=high,fast=false]` or `podwash-architect` |
-| Engineer | Grok 4.5 **High** | `grok-4.5[effort=high,fast=false]` or `podwash-engineer` |
-| PM, UX, QA | Composer 2.5 | `composer-2.5` |
+| Coordinator | Composer 2.5 (standard) | `composer-2.5[fast=false]` |
+| Architect | Grok 4.5 **High** | `podwash-architect` or `grok-4.5[effort=high,fast=false]` |
+| Engineer | Grok 4.5 **High** | `podwash-engineer` or `grok-4.5[effort=high,fast=false]` |
+| PM | Composer 2.5 (standard) | `podwash-pm` or `composer-2.5[fast=false]` |
+| UX | Composer 2.5 (standard) | `podwash-ux` or `composer-2.5[fast=false]` |
+| QA | Composer 2.5 (standard) | `podwash-qa` or `composer-2.5[fast=false]` |
 
-**Not** `grok-4.5-fast-xhigh` (Fast Extra High) for Architect/Engineer.
+**Never** `composer-2.5-fast` (Composer Fast) or `grok-4.5-fast-xhigh` (Grok Fast Extra High).
 
-Project subagents (model pinned in frontmatter): [`.cursor/agents/podwash-architect.md`](../.cursor/agents/podwash-architect.md), [`.cursor/agents/podwash-engineer.md`](../.cursor/agents/podwash-engineer.md). Prefer delegating to these by name so Cursor does not default to Fast Extra High.
+Project subagents (model pinned in frontmatter): [`.cursor/agents/`](../.cursor/agents/). **Prefer delegating by subagent name** so Cursor does not default to Fast variants.
 
 ## What carries forward without bloating context
 

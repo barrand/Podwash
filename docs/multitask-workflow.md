@@ -147,7 +147,7 @@ runs eligible slices sequentially via a **local** Cursor SDK agent. See
 
 ```
 Run Slice 02 per docs/slices/slice-02-matching-engine.md.
-Coordinator: enforce gates, spawn role subagents as needed (Architect/Engineer → Grok 4.5 High `grok-4.5[effort=high,fast=false]`; PM/UX/QA → Composer 2.5). Never use `grok-4.5-fast-xhigh`.
+Coordinator: enforce gates, spawn role subagents by name (podwash-pm, podwash-ux, podwash-qa, podwash-architect, podwash-engineer). Never composer-2.5-fast or grok-4.5-fast-xhigh.
 Done = scripts/verify.sh full suite green + verification record + auto-commit.
 ```
 
@@ -173,15 +173,15 @@ project subagents in `.cursor/agents/` where model is pinned in frontmatter):
 
 | Role | Model (display) | Task / subagent id |
 |------|-----------------|-------------------|
-| **Architect** | Grok 4.5 **High** | `grok-4.5[effort=high,fast=false]` or `podwash-architect` |
-| **Engineer** | Grok 4.5 **High** | `grok-4.5[effort=high,fast=false]` or `podwash-engineer` |
-| **PM** | Composer 2.5 | `composer-2.5` |
-| **UX** | Composer 2.5 | `composer-2.5` |
-| **QA** | Composer 2.5 | `composer-2.5` |
-| **Coordinator** | Composer 2.5 | `composer-2.5` |
+| **Coordinator** | Composer 2.5 (standard) | `composer-2.5[fast=false]` |
+| **Architect** | Grok 4.5 **High** | `podwash-architect` or `grok-4.5[effort=high,fast=false]` |
+| **Engineer** | Grok 4.5 **High** | `podwash-engineer` or `grok-4.5[effort=high,fast=false]` |
+| **PM** | Composer 2.5 (standard) | `podwash-pm` or `composer-2.5[fast=false]` |
+| **UX** | Composer 2.5 (standard) | `podwash-ux` or `composer-2.5[fast=false]` |
+| **QA** | Composer 2.5 (standard) | `podwash-qa` or `composer-2.5[fast=false]` |
 
-**Do not use** `grok-4.5-fast-xhigh` (Grok 4.5 Fast Extra High) for Architect or
-Engineer — it is faster/costlier and not the project's chosen tier.
+**Never** `composer-2.5-fast` (Composer Fast) or `grok-4.5-fast-xhigh` (Grok Fast Extra High).
+Prefer **subagent name** delegation (`.cursor/agents/`) so models stay pinned.
 
 **Decision protocol (all roles):** if a slice hits an undecided PRD §11 item
 (monetization, persistence, default profile, analysis timing, skip-at-MVP,

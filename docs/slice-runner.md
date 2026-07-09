@@ -213,9 +213,9 @@ scripts/slice-loop.sh --model auto       # let the server pick the coordinator m
 
 The wrapper creates an isolated venv under `build/` (gitignored) and installs
 [`scripts/slice-loop-requirements.txt`](../scripts/slice-loop-requirements.txt)
-(`cursor-sdk`). The coordinator agent runs on `composer-2.5` and spawns role
-subagents per the workflow's model assignment (Architect/Engineer on Grok 4.5 High,
-not Fast Extra High).
+(`cursor-sdk`). The coordinator agent runs on `composer-2.5[fast=false]` and spawns role
+subagents by name per the workflow's model assignment (`.cursor/agents/`; never
+`composer-2.5-fast` or `grok-4.5-fast-xhigh`).
 
 ### Exit codes
 
