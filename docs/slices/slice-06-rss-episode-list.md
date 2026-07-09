@@ -87,7 +87,7 @@ scripts/verify.sh
 > A slice without a recorded full-suite green artifact is not Done.
 
 ```
-VERIFY RESULT: exit=0 total=28 passed=28 failed=0 skipped=0 filtered=0 bundle=build/test-results/verify-20260709-085716.xcresult
+VERIFY RESULT: exit=0 total=28 passed=28 failed=0 skipped=0 filtered=0 bundle=build/test-results/verify-20260709-090009.xcresult
 ```
 
 ## Plan review record (coordinator fills before downstream roles)
