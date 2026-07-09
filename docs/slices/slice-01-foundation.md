@@ -42,12 +42,12 @@ Prove the build/test/CI loop every later slice depends on: full suite green loca
 
 ## Acceptance criteria
 
-- [ ] 1. `scripts/verify.sh` (full suite) exits 0 locally with failed = 0 and skipped = 0.
-- [ ] 2. `PodWashTests` contains ≥ 1 non-template smoke test that asserts on the app module (not an empty `testExample`).
-- [ ] 3. `PodWashUITests` contains a passing `testLaunch`; total UI test wall time < 120 s on the local machine.
-- [ ] 4. `PodWash/PodWashTests/Fixtures/` exists in the repo with a README describing fixture conventions and provenance rules.
-- [ ] 5. The `PodWash` scheme is **shared** (`PodWash/PodWash.xcodeproj/xcshareddata/xcschemes/PodWash.xcscheme` tracked in git).
-- [ ] 6. GitHub Actions fast job completes green on push (verify.sh full suite on the macOS runner).
+- [x] 1. `scripts/verify.sh` (full suite) exits 0 locally with failed = 0 and skipped = 0.
+- [x] 2. `PodWashTests` contains ≥ 1 non-template smoke test that asserts on the app module (not an empty `testExample`).
+- [x] 3. `PodWashUITests` contains a passing `testLaunch`; total UI test wall time < 120 s on the local machine.
+- [x] 4. `PodWash/PodWashTests/Fixtures/` exists in the repo with a README describing fixture conventions and provenance rules.
+- [x] 5. The `PodWash` scheme is **shared** (`PodWash/PodWash.xcodeproj/xcshareddata/xcschemes/PodWash.xcscheme` tracked in git).
+- [ ] 6. GitHub Actions fast job completes green on push (verify.sh full suite on the macOS runner). — **blocked: requires a push; per commit policy the user must grant permission to push.**
 
 ## Verification mapping
 
@@ -72,15 +72,20 @@ CI check: latest `test` workflow run on the pushed commit is green (AC6). Note: 
 ## Verification record (QA fills at Verify)
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=3 passed=3 failed=0 skipped=0 filtered=0 bundle=build/test-results/verify-20260708-185754.xcresult
 ```
+
+Full-suite run on 2026-07-08 (simulator: iPhone 17 Pro). Testing completed in
+~107 s wall time (UI + unit), under the 120 s AC3 budget. 3 tests executed:
+`SmokeTests.testAppModuleLoads`, `PodWashUITests.testLaunch`, and
+`PodWashUITestsLaunchTests.testLaunch`.
 
 ## Done gate
 
-- [ ] Every AC mapped to a test; all rows in the mapping table filled
-- [ ] **Full suite green:** unfiltered `scripts/verify.sh` exit 0, failed 0, skipped 0
-- [ ] Verification record pasted above
-- [ ] Auto-commit on green: `slice-01: <short description>`
+- [x] Every AC mapped to a test; all rows in the mapping table filled
+- [x] **Full suite green:** unfiltered `scripts/verify.sh` exit 0, failed 0, skipped 0
+- [x] Verification record pasted above
+- [x] Auto-commit on green: `slice-01: <short description>`
 
 ## Role artifacts
 
