@@ -83,6 +83,15 @@ class ProgressFormattingTests(unittest.TestCase):
         self.assertEqual(rel, "docs/slices/slice-06-rss-episode-list.md")
         self.assertIn("RSS", title)
 
+    def test_done_banner_includes_ascii_art_when_green(self):
+        from slice_loop_progress import slice_done_banner
+
+        v = {"exit": "0", "total": "10", "passed": "10", "failed": "0", "skipped": "0"}
+        banner = slice_done_banner(7, "Test slice", v, 60)
+        self.assertIn("MOUNTAIN", banner)
+        self.assertIn("CONQUERED", banner)
+        self.assertIn("ALL TESTS PASSED", banner)
+
 
 if __name__ == "__main__":
     unittest.main()

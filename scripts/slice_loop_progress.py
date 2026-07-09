@@ -276,6 +276,31 @@ def _banner_line(text: str, width: int = 56) -> str:
     return f"║  {text:<{width}}║"
 
 
+def slice_done_ascii_art() -> str:
+    """Epic summit scene for a green slice — rider, mountain lion, eagle."""
+    return (
+        "                          __/\\__\n"
+        "                         / >  < \\\n"
+        "                        |  \\__/  |\n"
+        "                         \\  ||  /\n"
+        "              ,~~~.       _\\||/_\n"
+        "             /     \\_____/ @ @ \\_____\n"
+        "            |   |\\       /  \\|/  \\       /|\n"
+        "            |   | \\_____/  o o  \\_____/ |\n"
+        "             \\  |  `~ ~`  \\  ^  /  `~ ~`  |\n"
+        "              \\/    ,------+------.    \\/\n"
+        "               \\___/  |\\________/|  \\___/\n"
+        "                    \\ |  |    |  | /\n"
+        "                     \\|_/      \\_|/\n"
+        "                      / `~ ~ ~ ~ ~` \\\n"
+        "                     /  /\\    /\\  \\\n"
+        "                    /__/  \\__/  \\__\\\n"
+        "                   /____/ MOUNTAIN \\____\\\n"
+        "                  /_____  SUMMIT   ______\\\n"
+        "                 /_______ CONQUERED ______\\"
+    )
+
+
 def slice_done_banner(
     slice_id: int,
     title: str,
@@ -312,6 +337,8 @@ def slice_done_banner(
         lines.append(_banner_line(""))
         lines.append(_banner_line(f"{emoji}  Dark factory gate cleared — safe to advance queue."))
     lines.append("╚" + "═" * 58 + "╝")
+    if green:
+        lines.append(slice_done_ascii_art())
     lines.append("")
     return "\n".join(lines)
 

@@ -85,7 +85,8 @@ Options: `--verbose` (full coordinator text), `--heartbeat 60` (idle ping every 
 (e.g. `[slice 07][QA] verify.sh (full suite) — GREEN — 48/48 passed…`). Subagent
 spawns show as `[Coordinator] spawn QA: …`; completions show `[QA] finished — …`.
 Idle heartbeat every N seconds (default 90). A **done banner** prints when
-`next-slice.sh` confirms the slice reached Done with green verify.
+`next-slice.sh` confirms the slice reached Done with green verify, followed by
+epic summit ASCII art.
 
 **Known failure:** `Bridge request timed out: ReadTimeout` — the SDK lost contact
 during a long subagent stretch; slice is usually still **In Progress**. Re-run
