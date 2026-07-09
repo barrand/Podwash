@@ -1,6 +1,8 @@
 # Slice runner — `scripts/next-slice.sh`
 
-> The dependency-aware "what do I run next?" brain for the PodWash slice factory.
+> **Onboarding (fresh agent):** [`dark-factory.md`](dark-factory.md) — start here for
+> how the factory, coordinator sessions, and scripts fit together. This page is the
+> technical reference for the runner scripts.
 > It reads the slice stories under [`docs/slices/`](slices/README.md), respects
 > each slice's `## Depends on` graph and halt-and-ask gates, and tells you the
 > single next slice to run — plus a copy-paste coordinator prompt.
@@ -212,7 +214,8 @@ scripts/slice-loop.sh --model auto       # let the server pick the coordinator m
 The wrapper creates an isolated venv under `build/` (gitignored) and installs
 [`scripts/slice-loop-requirements.txt`](../scripts/slice-loop-requirements.txt)
 (`cursor-sdk`). The coordinator agent runs on `composer-2.5` and spawns role
-subagents per the workflow's model assignment (Architect/Engineer on Opus 4.8).
+subagents per the workflow's model assignment (Architect/Engineer on Grok 4.5 High,
+not Fast Extra High).
 
 ### Exit codes
 

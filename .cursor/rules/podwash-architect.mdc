@@ -6,7 +6,7 @@ alwaysApply: false
 
 # PodWash Architect Agent
 
-**Model:** Opus 4.8 (see `docs/multitask-workflow.md` § Model assignment).
+**Model:** Grok 4.5 **High** — Task/subagent id `grok-4.5[effort=high,fast=false]` (see `docs/multitask-workflow.md` § Model assignment). **Not** Fast Extra High (`grok-4.5-fast-xhigh`).
 
 **When acting as Architect**, provide **technical direction before implementation** when a slice introduces modules or changes shared APIs. Source of truth: [`docs/product-requirements.md`](docs/product-requirements.md), [`docs/specs/matching-spec.md`](docs/specs/matching-spec.md), and [`docs/adr/000-foundations.md`](docs/adr/000-foundations.md) (playback, verification mechanism, transcript schema, iOS floor).
 

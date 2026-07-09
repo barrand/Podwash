@@ -229,7 +229,8 @@ Then run Slice {nn} to completion per that slice file:
 - Enforce every gate: PM story, Architect/UX design (if the slice adds modules or UI),
   QA test spec, Engineer implementation, QA verification.
 - Spawn role subagents as needed. Model assignment: Architect and Engineer on
-  Grok 4.5; PM, UX, QA on Composer 2.5.
+  Grok 4.5 High (`grok-4.5[effort=high,fast=false]` or subagents `podwash-architect` /
+  `podwash-engineer`). Never `grok-4.5-fast-xhigh`. PM, UX, QA on Composer 2.5.
 - Definition of Done (all required): full `scripts/verify.sh` suite green
   (exit 0, 0 failed, 0 skipped), the `VERIFY RESULT:` line recorded in the slice
   file's verification record, the slice Status set to Done, an auto-commit

@@ -129,11 +129,11 @@ graph and prints the single next eligible slice (or `wait`/`halt`/`done`) with a
 copy-paste coordinator prompt. Run it between sessions instead of eyeballing the
 kanban. See [`slice-runner.md`](slice-runner.md).
 
-**Optional future upgrade (deferred):** auto-*trigger* the next session via a
-local Cursor Automation (on `slice-NN:` push) or a Cursor SDK loop calling
-`scripts/next-slice.sh --json`. Both reuse the script unchanged; wiring the
-trigger is an independent, low-risk add once the factory has proven itself over a
-few manual slices — see the Phase 2 section of [`slice-runner.md`](slice-runner.md).
+**Optional auto-run (built):** [`scripts/slice-loop.sh`](../scripts/slice-loop.sh)
+runs eligible slices sequentially via a **local** Cursor SDK agent. See
+[`dark-factory.md`](dark-factory.md) (onboarding) and [`slice-runner.md`](slice-runner.md)
+(mechanics). Cloud Automations cannot replace this — they lack Xcode/Simulator for
+`verify.sh`.
 
 | Do | Don't |
 |----|-------|
@@ -147,7 +147,7 @@ few manual slices — see the Phase 2 section of [`slice-runner.md`](slice-runne
 
 ```
 Run Slice 02 per docs/slices/slice-02-matching-engine.md.
-Coordinator: enforce gates, spawn role subagents as needed (Architect/Engineer → Opus 4.8; PM/UX/QA → Composer 2.5).
+Coordinator: enforce gates, spawn role subagents as needed (Architect/Engineer → Grok 4.5 High `grok-4.5[effort=high,fast=false]`; PM/UX/QA → Composer 2.5). Never use `grok-4.5-fast-xhigh`.
 Done = scripts/verify.sh full suite green + verification record + auto-commit.
 ```
 
@@ -168,16 +168,20 @@ slice status + verification records, ADRs in `docs/adr/`, fixtures in
 
 ### Model assignment
 
-Fixed per role — coordinator passes the model when spawning subagents:
+Fixed per role — coordinator passes the model when spawning subagents (or uses
+project subagents in `.cursor/agents/` where model is pinned in frontmatter):
 
-| Role | Model |
-|------|-------|
-| **Architect** | Opus 4.8 |
-| **Engineer** | Opus 4.8 |
-| **PM** | Composer 2.5 |
-| **UX** | Composer 2.5 |
-| **QA** | Composer 2.5 |
-| **Coordinator** | Composer 2.5 |
+| Role | Model (display) | Task / subagent id |
+|------|-----------------|-------------------|
+| **Architect** | Grok 4.5 **High** | `grok-4.5[effort=high,fast=false]` or `podwash-architect` |
+| **Engineer** | Grok 4.5 **High** | `grok-4.5[effort=high,fast=false]` or `podwash-engineer` |
+| **PM** | Composer 2.5 | `composer-2.5` |
+| **UX** | Composer 2.5 | `composer-2.5` |
+| **QA** | Composer 2.5 | `composer-2.5` |
+| **Coordinator** | Composer 2.5 | `composer-2.5` |
+
+**Do not use** `grok-4.5-fast-xhigh` (Grok 4.5 Fast Extra High) for Architect or
+Engineer — it is faster/costlier and not the project's chosen tier.
 
 **Decision protocol (all roles):** if a slice hits an undecided PRD §11 item
 (monetization, persistence, default profile, analysis timing, skip-at-MVP,

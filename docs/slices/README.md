@@ -4,6 +4,8 @@ This folder holds **slice stories** — the working documents agents use to buil
 
 If you have never worked this way before, read this page once, skim [`_template.md`](_template.md), then open [`slice-01-foundation.md`](slice-01-foundation.md) as your first example.
 
+**New agent / fresh chat:** start with [`dark-factory.md`](../dark-factory.md) — how the factory, scripts, and coordinator sessions work.
+
 ## Source of truth model
 
 | Document | Answers | Changes |

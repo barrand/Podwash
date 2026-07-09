@@ -194,14 +194,14 @@ deps_desc() {
 }
 
 coordinator_prompt_oneline() {
-    printf 'Run Slice %02d per %s. Coordinator: enforce gates, spawn role subagents as needed (Architect/Engineer -> Opus 4.8; PM/UX/QA -> Composer 2.5). Done = scripts/verify.sh full suite green + verification record + auto-commit. If this slice hits a halt-and-ask item, stop and ask before implementation.' "$1" "$2"
+    printf 'Run Slice %02d per %s. Coordinator: enforce gates, spawn role subagents as needed (Architect/Engineer -> Grok 4.5 High grok-4.5[effort=high,fast=false]; PM/UX/QA -> Composer 2.5). Never grok-4.5-fast-xhigh. Done = scripts/verify.sh full suite green + verification record + auto-commit. If this slice hits a halt-and-ask item, stop and ask before implementation.' "$1" "$2"
 }
 
 coordinator_prompt_block() {
     cat <<EOF
 Run Slice $(printf '%02d' "$1") per $2.
 Coordinator: enforce gates, spawn role subagents as needed
-(Architect/Engineer -> Opus 4.8; PM/UX/QA -> Composer 2.5).
+(Architect/Engineer -> Grok 4.5 High; PM/UX/QA -> Composer 2.5).
 Done = scripts/verify.sh full suite green + verification record + auto-commit.
 If this slice hits a halt-and-ask item, stop and ask before implementation.
 EOF
