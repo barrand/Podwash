@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 02 |
 | **Title** | Matching engine |
-| **Status** | Draft |
+| **Status** | Done |
 | **Crux** | The Swift port of `docs/specs/matching-spec.md` reproduces the spec's hand-computed golden intervals exactly (±0.0005 s) from fixture transcripts, via unit tests alone. |
 
 ## PRD / spec references
@@ -42,23 +42,29 @@ Port the matching and interval padding/merge algorithm from the spec into tested
 
 ## Acceptance criteria
 
-- [ ] 1. `normalize(_:)` matches spec §3 for the spec's example table (`"Shit!"` → `"shit"`, `"'ship'"` → `"ship"`, `"$#!%"` → `""`, interior chars kept).
-- [ ] 2. Exact set-membership matching only: `"shipment"` does NOT match a list containing `"ship"` (spec §4).
-- [ ] 3. Padding constants are exactly `START_PADDING_SECONDS = 0.080`, `END_PADDING_SECONDS = 0.120`, `MIN_CENSOR_SECONDS = 0.180`; midpoint expansion implements spec §5 including the t=0 clamp quirk (word `[0.00, 0.05]` → interval `[0.000, 0.175]`).
-- [ ] 4. Sort-and-merge implements spec §6: touching intervals (`start == previous.end`) merge; contained intervals don't shorten containers.
-- [ ] 5. Spec §8 golden: the 5-word example transcript produces exactly `[{0.92, 1.87}, {2.92, 3.32}]` within ±0.0005 s, loaded from fixture JSON.
-- [ ] 6. Full suite green via `scripts/verify.sh`.
+- [x] 1. `normalize(_:)` matches spec §3 for the spec's example table (`"Shit!"` → `"shit"`, `"'ship'"` → `"ship"`, `"$#!%"` → `""`, interior chars kept).
+- [x] 2. Exact set-membership matching only: `"shipment"` does NOT match a list containing `"ship"` (spec §4).
+- [x] 3. Padding constants are exactly `START_PADDING_SECONDS = 0.080`, `END_PADDING_SECONDS = 0.120`, `MIN_CENSOR_SECONDS = 0.180`; midpoint expansion implements spec §5 including the t=0 clamp quirk (word `[0.00, 0.05]` → interval `[0.000, 0.175]`).
+- [x] 4. Sort-and-merge implements spec §6: touching intervals (`start == previous.end`) merge; contained intervals don't shorten containers.
+- [x] 5. Spec §8 golden: the 5-word example transcript produces exactly `[{0.92, 1.87}, {2.92, 3.32}]` within ±0.0005 s, loaded from fixture JSON.
+- [x] 6. Full suite green via `scripts/verify.sh`.
 
 ## Verification mapping
 
 | AC# | Test file | Test method | Notes |
 |-----|-----------|-------------|-------|
-| 1 | `PodWash/PodWashTests/WordMatcherTests.swift` | `testNormalizeMatchesSpecTable` | TBD |
-| 2 | `PodWash/PodWashTests/WordMatcherTests.swift` | `testNoSubstringFalsePositive` | TBD |
-| 3 | `PodWash/PodWashTests/IntervalBuilderTests.swift` | `testPaddingConstantsAndMidpointExpansion` | TBD |
-| 4 | `PodWash/PodWashTests/IntervalBuilderTests.swift` | `testSortAndMergeSemantics` | TBD |
-| 5 | `PodWash/PodWashTests/IntervalBuilderTests.swift` | `testSpecGoldenExample` | Golden from spec §8 (hand-computed provenance) |
-| 6 | — | — | Command-level |
+| 1 | `PodWash/PodWashTests/WordMatcherTests.swift` | `testNormalizeMatchesSpecTable` | Green — spec §3 table incl. `"'ship'"`→`"ship"`, interior `f*ck`/`shit's` kept. See note on §3 apostrophe contradiction below. |
+| 2 | `PodWash/PodWashTests/WordMatcherTests.swift` | `testNoSubstringFalsePositive` | Green — `"shipment"` rejected against `{ship,shipped,...}`; positive controls pass. |
+| 3 | `PodWash/PodWashTests/IntervalBuilderTests.swift` | `testPaddingConstantsAndMidpointExpansion` | Green — constants exact; `[0.00,0.05]`→`[0.000,0.175]` clamp quirk; cross-checked vs `clamp-expansion` fixture. |
+| 4 | `PodWash/PodWashTests/IntervalBuilderTests.swift` | `testSortAndMergeSemantics` | Green — touch-merge, contained-doesn't-shorten, unsorted-disjoint, partial-overlap cases. |
+| 5 | `PodWash/PodWashTests/IntervalBuilderTests.swift` | `testSpecGoldenExample` | Green — golden from spec §8 (hand-computed provenance) loaded from fixture JSON; ±0.0005 s. |
+| 6 | — | — | Command-level — full unfiltered `scripts/verify.sh` green (see record). |
+
+> **Spec note (§3 apostrophe):** the spec §3 prose and Python regex keep `'` in the
+> boundary keep-set, but the §3 example table (and AC1) require `"'ship'"` → `"ship"`
+> with `"shit's"` → `"shit's"`. The example table is the acceptance gate, so
+> `WordMatcher.normalize` uses boundary keep-set `[a-z0-9]` (edge apostrophes
+> stripped, interior apostrophes preserved). Flagged to coordinator.
 
 ## Verification commands
 
@@ -73,15 +79,18 @@ scripts/verify.sh
 ## Verification record (QA fills at Verify)
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=8 passed=8 failed=0 skipped=0 filtered=0 bundle=build/test-results/verify-20260708-193150.xcresult
 ```
+
+Full unfiltered `scripts/verify.sh` run on simulator **iPhone 17 Pro**, 2026-07-08.
+(All 8 tests: 5 new Slice-02 tests + Slice-01 `SmokeTests`/UI tests, 0 failed, 0 skipped.)
 
 ## Done gate
 
-- [ ] Every AC mapped to a test; all rows filled
-- [ ] **Full suite green:** unfiltered `scripts/verify.sh` exit 0, failed 0, skipped 0
-- [ ] Verification record pasted above
-- [ ] Auto-commit on green: `slice-02: <short description>`
+- [x] Every AC mapped to a test; all rows filled
+- [x] **Full suite green:** unfiltered `scripts/verify.sh` exit 0, failed 0, skipped 0
+- [x] Verification record pasted above
+- [x] Auto-commit on green: `slice-02: matching engine`
 
 ## Role artifacts
 
