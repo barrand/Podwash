@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 01 |
 | **Title** | Foundation: test harness, verify.sh, CI |
-| **Status** | Ready |
+| **Status** | Done |
 | **Crux** | The user-created Xcode project runs its full test suite green via `scripts/verify.sh` locally **and** in GitHub Actions CI, with real (non-template) smoke tests and a committed fixtures directory. |
 
 ## PRD / spec references
@@ -47,7 +47,7 @@ Prove the build/test/CI loop every later slice depends on: full suite green loca
 - [x] 3. `PodWashUITests` contains a passing `testLaunch`; total UI test wall time < 120 s on the local machine.
 - [x] 4. `PodWash/PodWashTests/Fixtures/` exists in the repo with a README describing fixture conventions and provenance rules.
 - [x] 5. The `PodWash` scheme is **shared** (`PodWash/PodWash.xcodeproj/xcshareddata/xcschemes/PodWash.xcscheme` tracked in git).
-- [ ] 6. GitHub Actions fast job completes green on push (verify.sh full suite on the macOS runner). — **blocked: requires a push; per commit policy the user must grant permission to push.**
+- [x] 6. GitHub Actions fast job completes green on push (verify.sh full suite on the macOS runner). — CI run [28986955592](https://github.com/barrand/Podwash/actions/runs/28986955592) green on commit `237ad8f` (`test` job passed in 5m38s, 2026-07-09).
 
 ## Verification mapping
 
