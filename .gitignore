@@ -52,6 +52,7 @@ fastlane/test_output
 # document local setup for anything larger instead of committing it)
 !PodWash/PodWashTests/Fixtures/**
 !PodWash/PodWashUITests/Fixtures/**
+!PodWash/PodWash/Fixtures/**
 
 # ASR models are never committed (downloaded by scripts/setup-asr-models.sh)
 Models/

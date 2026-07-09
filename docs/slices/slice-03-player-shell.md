@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 03 |
 | **Title** | Player shell |
-| **Status** | Draft |
+| **Status** | Done |
 | **Crux** | `PlaybackEngine` (AVPlayer) plays a bundled local clip with play/pause/seek assertable deterministically: KVO/expectation on `timeControlStatus`, injected Now Playing double, and a launch-argument fixture mode for UI tests. |
 
 ## PRD / spec references
@@ -42,23 +42,23 @@ Play a bundled local test audio file with standard controls and fully testable p
 
 ## Acceptance criteria
 
-- [ ] 1. Unit test: given the bundled clip, `PlaybackEngine.play()` reaches `timeControlStatus == .playing` within 5 s, asserted via KVO-driven `XCTestExpectation` (no polling sleeps).
-- [ ] 2. Unit test: `seek(to:)` updates `currentTime` within ±0.25 s of the target.
-- [ ] 3. Unit test: after play starts, the **injected `NowPlayingInfoUpdating` double** receives title and artist (no assertion on the real `MPNowPlayingInfoCenter`).
-- [ ] 4. UI test (launched with the fixture-mode argument): tap play → assert play button `accessibilityValue` flips to "playing"; tap pause → flips back; tap +15 s seek button → elapsed-time label's accessibility value increases.
-- [ ] 5. UI tests run with parallelization disabled in the scheme/test plan (structural check: scheme file setting).
-- [ ] 6. Full suite green via `scripts/verify.sh`.
+- [x] 1. Unit test: given the bundled clip, `PlaybackEngine.play()` reaches `timeControlStatus == .playing` within 5 s, asserted via KVO-driven `XCTestExpectation` (no polling sleeps).
+- [x] 2. Unit test: `seek(to:)` updates `currentTime` within ±0.25 s of the target.
+- [x] 3. Unit test: after play starts, the **injected `NowPlayingInfoUpdating` double** receives title and artist (no assertion on the real `MPNowPlayingInfoCenter`).
+- [x] 4. UI test (launched with the fixture-mode argument): tap play → assert play button `accessibilityValue` flips to "playing"; tap pause → flips back; tap +15 s seek button → elapsed-time label's accessibility value increases.
+- [x] 5. UI tests run with parallelization disabled in the scheme/test plan (structural check: scheme file setting).
+- [x] 6. Full suite green via `scripts/verify.sh`.
 
 ## Verification mapping
 
 | AC# | Test file | Test method | Notes |
 |-----|-----------|-------------|-------|
-| 1 | `PodWash/PodWashTests/PlaybackEngineTests.swift` | `testPlayReachesPlayingViaKVOExpectation` | TBD |
-| 2 | `PodWash/PodWashTests/PlaybackEngineTests.swift` | `testSeekUpdatesCurrentTime` | TBD |
-| 3 | `PodWash/PodWashTests/PlaybackEngineTests.swift` | `testNowPlayingDoubleReceivesMetadata` | TBD |
-| 4 | `PodWash/PodWashUITests/PlaybackControlsUITests.swift` | `testPlayPauseSeekButtons` | Fixture mode via launch argument |
-| 5 | — | — | Structural: scheme `parallelizable = "NO"` |
-| 6 | — | — | Command-level |
+| 1 | `PodWash/PodWashTests/PlaybackEngineTests.swift` | `testPlayReachesPlayingViaKVOExpectation` | KVO on `avPlayer.timeControlStatus`, 5 s timeout |
+| 2 | `PodWash/PodWashTests/PlaybackEngineTests.swift` | `testSeekUpdatesCurrentTime` | ±0.25 s tolerance |
+| 3 | `PodWash/PodWashTests/PlaybackEngineTests.swift` | `testNowPlayingDoubleReceivesMetadata` | `NowPlayingInfoRecorder` double |
+| 4 | `PodWash/PodWashUITests/PlaybackControlsUITests.swift` | `testPlayPauseSeekButtons` | `-UITestFixtureAudio` launch argument |
+| 5 | `PodWash/PodWashTests/PlaybackEngineTests.swift` | `testUITestTargetParallelizationDisabledInScheme` | Regex on `PodWash.xcscheme` TestableReference |
+| 6 | — | `scripts/verify.sh` (full suite) | Command-level |
 
 ## Verification commands
 
@@ -73,19 +73,19 @@ scripts/verify.sh
 ## Verification record (QA fills at Verify)
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=13 passed=13 failed=0 skipped=0 filtered=0 bundle=build/test-results/verify-20260708-202910.xcresult
 ```
 
 ## Done gate
 
-- [ ] Every AC mapped to a test; all rows filled
-- [ ] **Full suite green:** unfiltered `scripts/verify.sh` exit 0, failed 0, skipped 0
-- [ ] Verification record pasted above
-- [ ] Auto-commit on green: `slice-03: <short description>`
+- [x] Every AC mapped to a test; all rows filled
+- [x] **Full suite green:** unfiltered `scripts/verify.sh` exit 0, failed 0, skipped 0
+- [x] Verification record pasted above
+- [x] Auto-commit on green: `slice-03: <short description>`
 
 ## Role artifacts
 
 | Role | Gate | Artifact path |
 |------|------|---------------|
-| Architect | Required | `docs/adr/001-playback-engine.md` (TBD; must conform to ADR-000) |
-| UX | Required (minimal chrome) | `docs/slices/slice-03-ux.md` (TBD) — play/pause/seek buttons only |
+| Architect | Required | [`docs/adr/001-playback-engine.md`](../adr/001-playback-engine.md) |
+| UX | Required (minimal chrome) | [`docs/slices/slice-03-ux.md`](slice-03-ux.md) — play/pause/seek buttons only |
