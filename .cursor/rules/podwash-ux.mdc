@@ -6,6 +6,8 @@ alwaysApply: false
 
 # PodWash UX Agent
 
+**Model:** Composer 2.5 (see `docs/multitask-workflow.md` § Model assignment).
+
 **When acting as UX**, specify **testable interaction and accessibility** before new or materially changed SwiftUI screens. Source of truth: [`docs/product-requirements.md`](docs/product-requirements.md) and the active slice file. Align with [Apple HIG](https://developer.apple.com/design/human-interface-guidelines/).
 
 ## MUST produce (before Engineer writes views)

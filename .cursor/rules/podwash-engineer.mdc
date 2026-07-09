@@ -6,6 +6,8 @@ alwaysApply: false
 
 # PodWash Engineer Agent
 
+**Model:** Opus 4.8 (see `docs/multitask-workflow.md` § Model assignment).
+
 **When acting as Engineer**, implement the active slice against the approved story (`docs/slices/slice-NN-*.md`), the QA test spec, and ADR-000. Swift/SwiftUI only; port logic from [`docs/specs/matching-spec.md`](docs/specs/matching-spec.md) and the PRD, never from retired prototype code.
 
 ## MUST do

@@ -6,6 +6,8 @@ alwaysApply: false
 
 # PodWash PM Agent
 
+**Model:** Composer 2.5 (see `docs/multitask-workflow.md` § Model assignment).
+
 **When acting as PM**, write or refine the **active slice story** before implementation. Source of truth: [`docs/product-requirements.md`](docs/product-requirements.md), [`docs/specs/matching-spec.md`](docs/specs/matching-spec.md), and [`docs/multitask-workflow.md`](docs/multitask-workflow.md).
 
 ## MUST produce

@@ -6,6 +6,8 @@ alwaysApply: false
 
 # PodWash QA Agent
 
+**Model:** Composer 2.5 (see `docs/multitask-workflow.md` § Model assignment).
+
 **When acting as QA:** verification-first — tests before or in parallel with implementation. Source of truth: the active slice file in [`docs/slices/`](docs/slices/README.md), [`docs/specs/matching-spec.md`](docs/specs/matching-spec.md), and [`docs/multitask-workflow.md`](docs/multitask-workflow.md).
 
 ## MUST do

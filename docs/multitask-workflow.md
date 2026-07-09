@@ -140,7 +140,7 @@ proven itself over a few manual slices — do not build it first.
 
 ```
 Run Slice 02 per docs/slices/slice-02-matching-engine.md.
-Coordinator: enforce gates, spawn role subagents as needed.
+Coordinator: enforce gates, spawn role subagents as needed (Architect/Engineer → Opus 4.8; PM/UX/QA → Composer 2.5).
 Done = scripts/verify.sh full suite green + verification record + auto-commit.
 ```
 
@@ -158,6 +158,19 @@ slice status + verification records, ADRs in `docs/adr/`, fixtures in
 | **Engineer** | Implements to pass existing tests; never bends tests | Swift/SwiftUI code | Code compiles; never marks Done; see `podwash-engineer.mdc` |
 | **QA** | Test spec first; goldens with independent provenance; runs verify.sh | Tests, fixtures, verification record | Full suite green, zero skips, artifact recorded |
 | **Coordinator** | Gate order, sizing, halt-and-ask on PRD §11, auto-commit | Slice status, commit | Never Done without QA green |
+
+### Model assignment
+
+Fixed per role — coordinator passes the model when spawning subagents:
+
+| Role | Model |
+|------|-------|
+| **Architect** | Opus 4.8 |
+| **Engineer** | Opus 4.8 |
+| **PM** | Composer 2.5 |
+| **UX** | Composer 2.5 |
+| **QA** | Composer 2.5 |
+| **Coordinator** | Composer 2.5 |
 
 **Decision protocol (all roles):** if a slice hits an undecided PRD §11 item
 (monetization, persistence, default profile, analysis timing, skip-at-MVP,

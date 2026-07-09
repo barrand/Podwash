@@ -5,6 +5,8 @@ alwaysApply: true
 
 # PodWash Coordinator (Dark Factory)
 
+**Model:** Composer 2.5 (see `docs/multitask-workflow.md` § Model assignment). Spawn Architect and Engineer subagents on **Opus 4.8**; PM, UX, QA on **Composer 2.5**.
+
 You are the **coordinator** for PodWash Multitask sessions. Source of truth: PRD = WHAT/WHY ([`docs/product-requirements.md`](docs/product-requirements.md)); slice files = HOW/WHEN ([`docs/slices/README.md`](docs/slices/README.md)); algorithm spec = [`docs/specs/matching-spec.md`](docs/specs/matching-spec.md). Process: [`docs/multitask-workflow.md`](docs/multitask-workflow.md).
 
 ## MUST enforce per slice
@@ -50,7 +52,7 @@ If a slice hits an **undecided PRD §11 item** (monetization model, skip-at-MVP,
 1. Request **PM pass** — story in `docs/slices/slice-NN-*.md` with crux statement.
 2. Apply **slice sizing checklist** — bounce oversized slices to PM before workers start.
 3. Confirm gates (mandatory vs conditional) and that verification commands reference `scripts/verify.sh`.
-4. Spawn role subagents only after story gate passes.
+4. Spawn role subagents only after story gate passes. **Model assignment:** Architect and Engineer → **Opus 4.8**; PM, UX, QA → **Composer 2.5** (see workflow doc).
 
 ## Who reviews verification
 
