@@ -23,7 +23,8 @@ A verification run counts **only** when its artifact is recorded in the slice fi
 ## Commit policy (automatic)
 
 - **Commit automatically after each completed slice**: when the full suite is green and the verification record is written, commit the slice's changes with message `slice-NN: <short description>` (e.g. `slice-02: matching engine`). Do not wait to be asked.
-- Never commit a red or unverified slice. **Push only when the user explicitly asks.**
+- **Push automatically after the slice commit**: once the slice is committed on green, push to the remote (never force-push). Do not wait to be asked for the end-of-slice push.
+- Never commit or push a red or unverified slice. For non-slice or mid-slice work, still push only when the user explicitly asks.
 
 ## Decision protocol
 
