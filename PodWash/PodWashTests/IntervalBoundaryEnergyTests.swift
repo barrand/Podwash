@@ -20,6 +20,7 @@ import AVFoundation
 import XCTest
 @testable import PodWash
 
+@MainActor
 final class IntervalBoundaryEnergyTests: XCTestCase {
 
     // MARK: - Fixture / interval constants (ADR-002 §7/§8)
