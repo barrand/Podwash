@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+     xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
+     xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>PodWash Fixture Feed</title>
+    <link>https://fixture.podwash.tests/sample-feed</link>
+    <description>Synthetic RSS fixture for Slice 06 golden tests. Hand-authored by QA.</description>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 15 Jan 2026 08:00:00 +0000</lastBuildDate>
+    <itunes:author>PodWash QA</itunes:author>
+    <itunes:summary>Synthetic RSS fixture for Slice 06 golden tests.</itunes:summary>
+    <itunes:image href="file:///fixtures/feeds/channel-art.png"/>
+    <image>
+      <url>file:///fixtures/feeds/channel-art.png</url>
+      <title>PodWash Fixture Feed</title>
+      <link>https://fixture.podwash.tests/sample-feed</link>
+    </image>
+
+    <item>
+      <title>Alpha Signal — Pilot Launch</title>
+      <link>https://fixture.podwash.tests/episodes/alpha</link>
+      <guid isPermaLink="false">fixture-ep-001</guid>
+      <pubDate>Wed, 15 Jan 2026 08:00:00 +0000</pubDate>
+      <itunes:image href="file:///fixtures/feeds/episode-0-art.png"/>
+      <content:encoded><![CDATA[<p>Welcome to the pilot. This episode covers launch logistics and the golden-parse contract.</p>]]></content:encoded>
+      <enclosure url="https://fixture.podwash.tests/audio/alpha.m4a" length="12345" type="audio/mp4"/>
+    </item>
+
+    <item>
+      <title>Beta Notes — Listener Mail</title>
+      <link>https://fixture.podwash.tests/episodes/beta</link>
+      <guid isPermaLink="false">fixture-ep-002</guid>
+      <pubDate>Tue, 14 Jan 2026 12:30:00 +0000</pubDate>
+      <description>We read three letters about feed parsing and accessibility identifiers.</description>
+      <enclosure url="https://fixture.podwash.tests/audio/beta.m4a" length="23456" type="audio/mp4"/>
+    </item>
+
+    <item>
+      <title>Gamma Graph — Data Deep Dive</title>
+      <link>https://fixture.podwash.tests/episodes/gamma</link>
+      <guid isPermaLink="false">fixture-ep-003</guid>
+      <pubDate>Mon, 13 Jan 2026 18:45:00 +0000</pubDate>
+      <itunes:image href="file:///fixtures/feeds/episode-2-art.png"/>
+      <enclosure url="https://fixture.podwash.tests/audio/gamma.m4a" length="34567" type="audio/mp4"/>
+    </item>
+
+    <item>
+      <title>Delta Draft — Work in Progress</title>
+      <link>https://fixture.podwash.tests/episodes/delta</link>
+      <guid isPermaLink="false">fixture-ep-004</guid>
+      <pubDate>Sun, 12 Jan 2026 09:15:00 +0000</pubDate>
+      <description>A short outline of upcoming slice work; no artwork attached.</description>
+      <enclosure url="https://fixture.podwash.tests/audio/delta.m4a" length="45678" type="audio/mp4"/>
+    </item>
+
+    <item>
+      <title>Epsilon Empty — Placeholder</title>
+      <link>https://fixture.podwash.tests/episodes/epsilon</link>
+      <guid isPermaLink="false">fixture-ep-005</guid>
+      <pubDate>Sat, 11 Jan 2026 06:00:00 +0000</pubDate>
+      <enclosure url="https://fixture.podwash.tests/audio/epsilon.m4a" length="56789" type="audio/mp4"/>
+    </item>
+  </channel>
+</rss>

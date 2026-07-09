@@ -1,0 +1,37 @@
+{
+  "title": "PodWash Fixture Feed",
+  "artworkURL": "file:///fixtures/feeds/channel-art.png",
+  "description": "Synthetic RSS fixture for Slice 06 golden tests. Hand-authored by QA.",
+  "episodes": [
+    {
+      "title": "Alpha Signal — Pilot Launch",
+      "pubDate": "2026-01-15T08:00:00Z",
+      "artworkURL": "file:///fixtures/feeds/episode-0-art.png",
+      "showNotes": "<p>Welcome to the pilot. This episode covers launch logistics and the golden-parse contract.</p>"
+    },
+    {
+      "title": "Beta Notes — Listener Mail",
+      "pubDate": "2026-01-14T12:30:00Z",
+      "artworkURL": null,
+      "showNotes": "We read three letters about feed parsing and accessibility identifiers."
+    },
+    {
+      "title": "Gamma Graph — Data Deep Dive",
+      "pubDate": "2026-01-13T18:45:00Z",
+      "artworkURL": "file:///fixtures/feeds/episode-2-art.png",
+      "showNotes": null
+    },
+    {
+      "title": "Delta Draft — Work in Progress",
+      "pubDate": "2026-01-12T09:15:00Z",
+      "artworkURL": null,
+      "showNotes": "A short outline of upcoming slice work; no artwork attached."
+    },
+    {
+      "title": "Epsilon Empty — Placeholder",
+      "pubDate": "2026-01-11T06:00:00Z",
+      "artworkURL": null,
+      "showNotes": null
+    }
+  ]
+}
