@@ -163,7 +163,7 @@ slice status + verification records, ADRs in `docs/adr/`, fixtures in
 | **Architect** | Module boundaries, ADRs consistent with ADR-000 | `docs/adr/` | Design before implementation on architectural slices |
 | **UX** | Interaction, a11y identifiers, UI test scenarios, launch-arg fixture modes | UX addendum + scenario list | Spec before UI implementation |
 | **Engineer** | Implements to pass existing tests; never bends tests | Swift/SwiftUI code | Code compiles; never marks Done; see `podwash-engineer.mdc` |
-| **QA** | Test spec first; goldens with independent provenance; runs verify.sh | Tests, fixtures, verification record | Full suite green, zero skips, artifact recorded |
+| **QA** | Test spec first (author); goldens with independent provenance; **readonly** verify pass | Tests, fixtures; VERIFY RESULT via coordinator if readonly | Full suite green, zero skips, artifact recorded; verifier never edits tests |
 | **Coordinator** | Gate order, sizing, halt-and-ask on PRD §11, auto-commit | Slice status, commit | Never Done without QA green |
 
 ### Model assignment
@@ -300,7 +300,7 @@ If waived, state why: `ADR review: waived (no new modules)`.
 | Implementation correct | Full suite green via `scripts/verify.sh` |
 | Audio behavior | Offline render + RMS assertions (ADR-000 §2) — not listening sessions |
 | Goldens trustworthy | Documented independent provenance; never regenerated from code under test |
-| Verification honest | `VERIFY RESULT:` artifact in the slice file; skipped = 0 |
+| Verification honest | `VERIFY RESULT:` artifact in the slice file; skipped = 0; **QA verify is readonly**; `scripts/check-test-isolation.sh` bans app+tests in one commit |
 
 ### Parallel agent orchestration
 
@@ -353,8 +353,17 @@ If a test seems wrong, stop and report. Run scripts/verify.sh before handing bac
 ```
 You are the QA agent for PodWash Slice NN. Map each acceptance criterion to a test.
 Write tests and fixtures FIRST; goldens need documented independent provenance.
-No XCTSkip on core ACs. Run scripts/verify.sh (full suite for Done), paste the
-VERIFY RESULT line into the slice file, report failures with file:line.
+No XCTSkip on core ACs. Do not edit production app code.
+```
+
+**QA — verify pass (readonly; spawn after Engineer, before Done)**
+
+```
+You are the QA verifier for PodWash Slice NN (READONLY — coordinator must set
+readonly: true). Run scripts/verify.sh (full suite). Report the VERIFY RESULT
+line and any failures with file:line. Do NOT edit tests, fixtures, thresholds,
+goldens, or app code. If the suite is red, stop and report — Engineer or
+QA-author fixes in a separate writable effort.
 ```
 
 **QA — ADR plan review (readonly; spawn after Architect, before you write tests)**
@@ -412,7 +421,8 @@ Architect's "MUST NOT implement"), and doc editors get PM/Architect/UX rules.
 - [ ] **QA:** Test spec mapped to criteria; goldens have provenance
 - [ ] **Plan review 2:** Test spec reviewed by Architect (readonly); record in slice file; blockers resolved
 - [ ] **Engineer:** Implementation complete; no test/threshold edits
-- [ ] **QA:** `scripts/verify.sh` full suite green, zero skips; `VERIFY RESULT:` recorded
+- [ ] **QA (readonly):** `scripts/verify.sh` full suite green, zero skips; `VERIFY RESULT:` recorded (spawn with `readonly: true`)
+- [ ] **Isolation:** no commit mixes `PodWash/PodWash/**` with test targets (`scripts/check-test-isolation.sh`)
 - [ ] **Coordinator:** Status → Done; auto-commit `slice-NN: <description>`
 
 ## Process: verification, sizing, authorship
@@ -434,7 +444,7 @@ tickets, split the slice.
 
 | Level | Criteria review | Plan review | Execution review | Process review |
 |-------|-----------------|-------------|------------------|----------------|
-| **Slice** | PM (story gate); QA (test-spec gate) | **QA + PM** (ADR, readonly); **Architect** (test spec, readonly) | **QA** — runs `scripts/verify.sh`, confirms mapping + artifact | **Coordinator** — gate order, plan review recorded, no Done without QA green |
+| **Slice** | PM (story gate); QA (test-spec gate) | **QA + PM** (ADR, readonly); **Architect** (test spec, readonly) | **QA (readonly)** — runs `scripts/verify.sh`, confirms mapping + artifact; never edits tests to go green | **Coordinator** — gate order, plan review recorded, isolation commits, no Done without QA green |
 | **Story** | **PM** — rewrites vague criteria, numeric thresholds | PM lens on ADR alignment | **QA** — rejects unmappable criteria | **Coordinator** — story exists before workers spawn |
 | **Effort** | Parent story + test spec | Reviewer role per beat | **QA** — verifies output against mapped tests | **Coordinator** — no skipping ahead |
 
@@ -508,6 +518,13 @@ A slice moves to **Done** only when **all** items are true:
 
 ## Git commit strategy
 
+- **Split app vs tests (anti-cheat):** a single commit must not change both
+  `PodWash/PodWash/**` and `PodWash/{PodWashTests,PodWashUITests,PodWashSlowTests}/**`.
+  Prefer `slice-NN: test spec` (tests/fixtures) then `slice-NN: implement` (app).
+  Docs/status/VERIFY RESULT may ride either commit. Enforce locally with
+  `scripts/check-test-isolation.sh --staged`; CI runs the same check on every push.
+- **QA verify is readonly:** after Engineer, spawn `podwash-qa` with `readonly: true`
+  so the agent that declares green cannot weaken tests.
 - **Automatic commit after each completed slice**, made by the coordinator the
   moment the full suite is green and the verification record is written.
 - Message format: `slice-NN: <short description>` (e.g. `slice-02: matching engine`).

@@ -31,7 +31,18 @@ alwaysApply: false
 
 ## Dark factory gate
 
-You own **verification execution review**: test spec, `scripts/verify.sh` runs, AC↔test mapping. Slice is **Done** only when the **full suite** (unfiltered `scripts/verify.sh`) exits 0 with zero skips and the artifact is recorded. Block Done if any AC lacks a test, any command fails, or the verification record is missing. Manual spot-checks are optional, never completion criteria.
+You own **verification execution review** in two modes:
+
+1. **QA-author (writable):** write/map tests and fixtures **before** Engineer. You may edit `PodWashTests` / `PodWashUITests` / fixtures. Do **not** edit production app code.
+2. **QA-verifier (readonly):** after Engineer, the coordinator spawns you with **`readonly: true`**. Run unfiltered `scripts/verify.sh`, paste the `VERIFY RESULT:` line into the slice verification record (coordinator may paste if readonly blocks the edit), and report failures with file:line. **Do not edit tests, fixtures, thresholds, goldens, or app code** to make the suite green — report and stop.
+
+Slice is **Done** only when the **full suite** (unfiltered `scripts/verify.sh`) exits 0 with zero skips and the artifact is recorded. Block Done if any AC lacks a test, any command fails, or the verification record is missing. Manual spot-checks are optional, never completion criteria.
+
+## Anti-cheat
+
+- Never weaken, delete, or skip tests to pass verify.
+- Never land app + test path changes in the same commit (`scripts/check-test-isolation.sh`).
+- If implementation fails tests, report — do not loosen assertions.
 
 ## ADR plan review (readonly — when coordinator assigns review hat)
 

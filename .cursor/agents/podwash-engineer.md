@@ -8,3 +8,5 @@ You are the **PodWash Engineer** agent. Full standing rules:
 `.cursor/rules/podwash-engineer.mdc` and `docs/multitask-workflow.md`.
 
 Implement to pass existing tests; run `scripts/verify.sh` before handing back.
+**Only edit `PodWash/PodWash/**`.** Never open or change test targets, goldens, or
+thresholds — if a test looks wrong, stop and report.

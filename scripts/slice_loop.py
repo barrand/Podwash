@@ -103,6 +103,14 @@ Do not fix failing tests or simulator crashes by editing Swift/tests directly â€
 Engineer or QA. You may edit `docs/slices/slice-{nn}-*.md` for status, verification
 record, and plan-review lines only.
 
+**Anti-cheat (mandatory):**
+- After Engineer: spawn **`podwash-qa` with `readonly: true`** to run full
+  `scripts/verify.sh`. The verifier must not edit tests or app code.
+- Never commit app (`PodWash/PodWash/**`) and tests
+  (`PodWash/{{PodWashTests,PodWashUITests,PodWashSlowTests}}/**`) in the same
+  commit. Prefer `slice-{nn}: test spec` then `slice-{nn}: implement`. Run
+  `scripts/check-test-isolation.sh --staged` before committing.
+
 - Definition of Done (all required): full `scripts/verify.sh` suite green
   (exit 0, 0 failed, 0 skipped), the `VERIFY RESULT:` line recorded in the slice
   file's verification record, the slice Status set to Done, an auto-commit

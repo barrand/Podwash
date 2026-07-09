@@ -209,6 +209,8 @@ Project subagents (model pinned in frontmatter): [`.cursor/agents/`](../.cursor/
 | Start slice 07 before 05 Done | Run `scripts/next-slice.sh --status` |
 | XCTSkip on core ACs | Test must **fail**, not skip |
 | Regenerate goldens from code under test | Goldens need **independent provenance** |
+| Edit tests during verify to go green | Spawn QA with **`readonly: true`**; fix in a separate writable effort |
+| Commit app + tests together | Split commits; `scripts/check-test-isolation.sh` fails mixed changes |
 | One mega-chat for slices 1–19 | One chat per slice (or resume one slice only) |
 | Guess PRD §11 (persistence, monetization, …) | **Halt and ask** the user |
 
@@ -227,8 +229,13 @@ scripts/verify.sh -only-testing:PodWashTests/SomeTests
 # Only run that counts for Done
 scripts/verify.sh
 
+# Anti-cheat: fail if app + tests changed together
+scripts/check-test-isolation.sh --staged
+scripts/check-test-isolation.sh HEAD
+
 # Runner tests (no Xcode)
 scripts/test-next-slice.sh
+scripts/test-check-test-isolation.sh
 ```
 
 ## Related files

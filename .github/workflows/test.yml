@@ -15,6 +15,9 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Need history so check-test-isolation can walk every commit in the push.
+          fetch-depth: 0
 
       # The project's deployment target is iOS 26.1; the runner image must
       # provide a matching Xcode. Pin explicitly so image updates don't
@@ -23,6 +26,19 @@ jobs:
         run: |
           sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -n 1)"
           xcodebuild -version
+
+      # Anti-cheat: no single commit may change both app sources and tests.
+      - name: Check test isolation
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ "${{ github.event_name }}" = "push" ] \
+            && [ -n "$BEFORE" ] \
+            && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
+            && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            scripts/check-test-isolation.sh "${BEFORE}..${{ github.sha }}"
+          else
+            scripts/check-test-isolation.sh HEAD
+          fi
 
       - name: Run full test suite
         run: scripts/verify.sh

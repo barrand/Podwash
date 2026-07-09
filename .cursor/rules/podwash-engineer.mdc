@@ -19,7 +19,9 @@ alwaysApply: false
 ## MUST NOT (hard rules)
 
 - **Never edit test assertions, tolerances, or numeric thresholds in the same effort as production code.** If a test seems wrong, **stop and report** to the coordinator — QA/PM fix the test or the story, in a separate effort.
+- **Never edit files under `PodWash/PodWashTests/`, `PodWash/PodWashUITests/`, or `PodWash/PodWashSlowTests/`.** Production code only (`PodWash/PodWash/**`).
 - **Never edit a slice file's Status field or verification commands.** Coordinator owns status; PM owns commands.
 - **Never regenerate golden fixtures from implementation output.** Goldens have independent provenance (hand-computed or spec-derived); regenerating them from your code makes the test circular.
 - Never add `XCTSkip` to a mapped test to get past a missing capability — report it instead.
 - Never mark a slice Done — QA verification and the coordinator own Done.
+- Never put app + test changes in one commit — CI runs `scripts/check-test-isolation.sh`.
