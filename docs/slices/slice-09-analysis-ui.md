@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 09 |
 | **Title** | Analysis progress UI + cleaning toggles |
-| **Status** | Draft |
+| **Status** | Verify |
 | **Crux** | Per-channel and per-episode cleaning toggles plus an analysis progress indicator are drivable and assertable through accessibility identifiers with a stubbed (instant) pipeline. |
 
 ## PRD / spec references
@@ -17,9 +17,11 @@ Give the analyze-and-clean flow a visible, testable UI surface.
 
 ## Deliverables
 
-- Toggle UI on podcast (channel) and episode views; state badges per PRD §3
-- Analysis progress indicator bound to pipeline progress
-- Stub pipeline injection for UI tests (launch argument, instant completion)
+- `AnalysisUIState` enum + `AnalysisUIViewModel` with four states and legal transitions
+- `InMemoryCleaningToggleStore` for channel + per-episode toggle persistence (Slice 11 migrates to SwiftData)
+- Toggle UI on podcast (channel) header and episode rows; state badges per PRD §3
+- Analysis progress indicator bound to pipeline analyzing state
+- `FixtureAnalysis` launch argument for stubbed instant pipeline in UI tests
 - `AnalysisUIStateTests` (view model), `AnalysisProgressUITests`
 
 ## Depends on
@@ -32,24 +34,26 @@ Give the analyze-and-clean flow a visible, testable UI surface.
 
 - Settings screen (Slice 13); word-list management UI (Slice 13)
 - Real long-running analysis in UI tests (stub only)
+- Unrelated-content toggle (future slice)
+- Playback action choice (mute vs skip) UI — Slice 08 backend only
 
 ## Acceptance criteria
 
-- [ ] 1. Unit test: view model exposes exactly four states (`off`, `channelOn`, `episodeOn`, `analyzing`) and legal transitions between them.
-- [ ] 2. UI test: toggling episode cleaning sets badge identifier `cleaningBadge_episodeOn`; channel toggle sets `cleaningBadge_channelOn`.
-- [ ] 3. UI test (stubbed pipeline): starting analysis shows `analysisProgress` element; on completion it disappears and the on-badge appears.
-- [ ] 4. Unit test: toggle state persists across view model reload (in-memory store).
-- [ ] 5. Full suite green via `scripts/verify.sh`.
+- [ ] 1. Unit test: view model exposes exactly four states (`off`, `channelOn`, `episodeOn`, `analyzing`) and legal transitions between them; illegal transitions are rejected (state unchanged).
+- [ ] 2. UI test: toggling episode cleaning on episode row 0 sets badge identifier `cleaningBadge_episodeOn`; channel toggle sets `cleaningBadge_channelOn`.
+- [ ] 3. UI test (stubbed pipeline): starting analysis shows `analysisProgress` element; on completion (≤ 5 s) it disappears and `cleaningBadge_episodeOn` appears.
+- [ ] 4. Unit test: toggle state persists across view model reload via `InMemoryCleaningToggleStore` (channel on + episode 0 on survive reload).
+- [ ] 5. Full suite green via `scripts/verify.sh` (exit 0, 0 failed, 0 skipped).
 
 ## Verification mapping
 
 | AC# | Test file | Test method | Notes |
 |-----|-----------|-------------|-------|
-| 1 | `PodWash/PodWashTests/AnalysisUIStateTests.swift` | `testStateMachineTransitions` | TBD |
-| 2 | `PodWash/PodWashUITests/AnalysisProgressUITests.swift` | `testToggleBadges` | TBD |
-| 3 | `PodWash/PodWashUITests/AnalysisProgressUITests.swift` | `testProgressIndicatorLifecycle` | Stubbed pipeline |
-| 4 | `PodWash/PodWashTests/AnalysisUIStateTests.swift` | `testTogglePersistence` | TBD |
-| 5 | — | — | Command-level |
+| 1 | `PodWash/PodWashTests/AnalysisUIStateTests.swift` | `testStateMachineTransitions` | Asserts 4 states + legal/illegal transitions |
+| 2 | `PodWash/PodWashUITests/AnalysisProgressUITests.swift` | `testToggleBadges` | Fixture feed + toggle taps |
+| 3 | `PodWash/PodWashUITests/AnalysisProgressUITests.swift` | `testProgressIndicatorLifecycle` | `-UITestFixtureAnalysis` instant stub |
+| 4 | `PodWash/PodWashTests/AnalysisUIStateTests.swift` | `testTogglePersistence` | In-memory store reload |
+| 5 | — | — | `scripts/verify.sh` full suite |
 
 ## Verification commands
 
@@ -64,6 +68,12 @@ scripts/verify.sh    # Done gate
 VERIFY RESULT: (pending)
 ```
 
+## Plan review record
+
+ADR review: waived (Architect gate waived — no new shared APIs; extends existing `PodcastDetailView` / `EpisodeListView`).
+
+Test spec review (2026-07-09): Architect cleared on resume — tests map to ADR-000 + slice-09-ux identifiers; `InstantEpisodeAnalyzer` stub matches fixture contract; no blockers.
+
 ## Done gate
 
 - [ ] Every AC mapped to a test; all rows filled
@@ -76,4 +86,6 @@ VERIFY RESULT: (pending)
 | Role | Gate | Artifact path |
 |------|------|---------------|
 | Architect | Waived (no new shared APIs) | — |
-| UX | Required | `docs/slices/slice-09-ux.md` (TBD) |
+| UX | Required | `docs/slices/slice-09-ux.md` |
+| QA | Test spec | `PodWash/PodWashTests/AnalysisUIStateTests.swift`, `PodWash/PodWashUITests/AnalysisProgressUITests.swift` |
+| Engineer | Implement | `AnalysisUIState.swift`, `AnalysisUIViewModel.swift`, `InMemoryCleaningToggleStore.swift`, `FixtureAnalysis.swift`, `InstantEpisodeAnalyzer.swift`, view wiring |
