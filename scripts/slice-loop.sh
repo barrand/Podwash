@@ -12,6 +12,9 @@
 #
 # Auth (non-dry-run): export CURSOR_API_KEY=cursor_...
 #
+# Requires Python 3.10+ for cursor-sdk (macOS /usr/bin/python3 is often 3.9).
+# Override: PODWASH_PYTHON=python3.12 scripts/slice-loop.sh
+#
 # The venv lives under build/ (gitignored). --dry-run needs neither the SDK nor
 # a network connection, so it skips the venv entirely.
 
@@ -24,19 +27,54 @@ LOOP_PY="$REPO_ROOT/scripts/slice_loop.py"
 REQS="$REPO_ROOT/scripts/slice-loop-requirements.txt"
 VENV="$REPO_ROOT/build/.slice-loop-venv"
 
-# --dry-run imports no SDK — run it directly with system python3 for speed.
+# Pick a Python >= 3.10 (cursor-sdk has no wheels for 3.9).
+find_python310() {
+    if [ -n "${PODWASH_PYTHON:-}" ]; then
+        if "$PODWASH_PYTHON" -c 'import sys; exit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; then
+            printf '%s' "$PODWASH_PYTHON"
+            return 0
+        fi
+        echo "slice-loop.sh: PODWASH_PYTHON=$PODWASH_PYTHON is not Python 3.10+" >&2
+        return 1
+    fi
+    for candidate in python3.13 python3.12 python3.11 python3.10 python3; do
+        if command -v "$candidate" >/dev/null 2>&1 \
+            && "$candidate" -c 'import sys; exit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; then
+            printf '%s' "$candidate"
+            return 0
+        fi
+    done
+    echo "slice-loop.sh: cursor-sdk requires Python 3.10+." >&2
+    echo "  macOS /usr/bin/python3 is often 3.9 — install Python 3.12+ (brew install python@3.12)" >&2
+    echo "  or set PODWASH_PYTHON=python3.12" >&2
+    return 1
+}
+
+# --dry-run imports no SDK — any python3 is fine.
 for arg in "$@"; do
     if [ "$arg" = "--dry-run" ]; then
         exec python3 "$LOOP_PY" "$@"
     fi
 done
 
-if [ ! -d "$VENV" ]; then
-    echo "slice-loop.sh: creating venv at $VENV"
-    python3 -m venv "$VENV"
-fi
+PYTHON=$(find_python310) || exit 1
 
-# Install/refresh deps (quiet; fast when already satisfied).
-"$VENV/bin/pip" install -q --disable-pip-version-check -r "$REQS"
+venv_ok() {
+    [ -x "$VENV/bin/python" ] \
+        && "$VENV/bin/python" -c 'import sys; exit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null \
+        && "$VENV/bin/python" -c 'import cursor_sdk' 2>/dev/null
+}
+
+if ! venv_ok; then
+    if [ -d "$VENV" ]; then
+        echo "slice-loop.sh: recreating venv ($PYTHON required; old venv unusable)"
+        rm -rf "$VENV"
+    else
+        echo "slice-loop.sh: creating venv at $VENV ($PYTHON)"
+    fi
+    "$PYTHON" -m venv "$VENV"
+    "$VENV/bin/pip" install -q --disable-pip-version-check --upgrade pip
+    "$VENV/bin/pip" install -q --disable-pip-version-check -r "$REQS"
+fi
 
 exec "$VENV/bin/python" "$LOOP_PY" "$@"

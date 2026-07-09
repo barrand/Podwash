@@ -189,6 +189,15 @@ green `VERIFY RESULT`. It never trusts the agent's self-report, and a no-progres
 guard stops it from re-running the same slice twice. Halt-and-ask and verify
 failures stop the loop with a clear message rather than guessing.
 
+### Prerequisites
+
+- **Python 3.10+** for `cursor-sdk`. On macOS, `/usr/bin/python3` is often **3.9**
+  (from Xcode) and cannot install the SDK. `slice-loop.sh` auto-selects
+  `python3.13` / `python3.12` / … if present (e.g. `brew install python@3.12`).
+  Override: `PODWASH_PYTHON=python3.12 scripts/slice-loop.sh`
+- **`CURSOR_API_KEY`** — create at [Cursor Dashboard → Integrations](https://cursor.com/dashboard/integrations)
+  (user API key or team service-account key; starts with `cursor_...`).
+
 ### Usage
 
 ```bash

@@ -1,3 +1,4 @@
 # Python dependencies for scripts/slice_loop.py (Phase 2 slice runner).
 # Installed into a local venv by scripts/slice-loop.sh.
-cursor-sdk
+# Requires Python 3.10+ (cursor-sdk has no 3.9 wheels).
+cursor-sdk>=0.1.9
