@@ -92,7 +92,7 @@ Plan-mode `QA review` worker when class is `unknown`, first UITest attempt, or `
 
 | Class | Lever 1 | Lever 2 (same signature) |
 |-------|---------|---------------------------|
-| `ui_race` | Engineer: hold analyzing / defer completion | Halt for PM/UX AC clarity unless diagnose `fix_scope=tests` + AC requires transient |
+| `ui_race` | Engineer: hold analyzing / defer completion | Engineer: alternate app lever (defer completion / main-actor publish). Halt only after **two** Engineer attempts (or `--max-fix-attempts` exhaustion) unless diagnose `fix_scope=tests` + AC requires transient |
 | `flake` | Cold re-verify once (no budget burn) | Then normal levers for reclassified class |
 | `unknown` | Diagnose then minimal Engineer | Halt with stuck card |
 

@@ -39,10 +39,22 @@ _BUILD_HINT_RE = re.compile(
     re.IGNORECASE,
 )
 _UI_RACE_RE = re.compile(
-    r"(appear|disappear|timeout|progress|wait|exist|hittable|transient)",
+    r"(appear|disappear|timeout|progress|wait|exist|hittable|transient|"
+    r"asynchronous wait|unfulfilled expectation)",
     re.IGNORECASE,
 )
 _POST_SUCCESS_IDS = ("cleaningBadge", "episodeOn", "ready", "complete", "done")
+_IDLE_FLAKE_RE = re.compile(r"failed to become idle", re.IGNORECASE)
+_WAIT_FAILURE_RE = re.compile(
+    r"(asynchronous wait failed|unfulfilled expectation|exceeded timeout)",
+    re.IGNORECASE,
+)
+# When NSPredicate waits attach only "Target Application" query chains, infer
+# the identifier the UITest is waiting for from the test id / assertion text.
+_INFER_QUERY_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"progress|analyz", re.IGNORECASE), "analysisProgress"),
+    (re.compile(r"cleaningBadge|badge", re.IGNORECASE), "cleaningBadge_episodeOn"),
+)
 
 
 @dataclass
@@ -300,6 +312,12 @@ def parse_attachment_texts(attach_dir: str) -> tuple[str, list[str], str]:
                 qid = m.group(1)
                 if qid not in queries and "identifier" in text.lower():
                     queries.append(qid)
+            # NSPredicate / Target Application-only chains still count as query
+            # evidence (empty id list) so callers know attachments existed.
+            if "query chain" in text.lower() and "target application" in text.lower():
+                if "_nspredicate_app_query" not in queries:
+                    # sentinel stripped later — marks sparse predicate wait
+                    pass
         if is_hierarchy:
             hierarchy_parts.append(text)
             ids = _IDENTIFIER_RE.findall(text)
@@ -361,28 +379,70 @@ def classify_failure(packet: FailurePacket) -> str:
                 return "missing_identifier"
             if _UI_RACE_RE.search(blob) or post:
                 return "ui_race"
+        # XCTWaiter / NSPredicate timeout on a progress/appear test → ui_race
+        # even when attachments have no hierarchy (common for BLOCKPREDICATE).
+        if _WAIT_FAILURE_RE.search(blob) and (
+            _UI_RACE_RE.search(blob)
+            or any("progress" in t.lower() or "analyz" in t.lower() for t in packet.test_ids)
+        ):
+            return "ui_race"
         if _UI_RACE_RE.search(blob):
             return "ui_race"
     if "xctassert" in low and not packet.hierarchy_excerpt and not uitest:
         return "assertion"
     if packet.test_ids and "xctassert" in low and not uitest:
         return "assertion"
-    if "failed to become idle" in low or (
-        "timeout" in low and not packet.hierarchy_excerpt and uitest
-    ):
+    if _IDLE_FLAKE_RE.search(blob):
         return "flake"
     return "unknown"
 
 
 def is_flake_signal(packet: FailurePacket) -> bool:
-    blob = "\n".join(packet.assertions + packet.raw_failures).lower()
-    if "failed to become idle" in blob:
+    """True only for likely infrastructure flakes — not XCTWaiter/UI race timeouts.
+
+    XCTWaiter "Asynchronous wait failed / Exceeded timeout" with a named test is a
+    real product failure (often ui_race). Do not burn a cold re-verify on those.
+    """
+    blob = "\n".join(packet.assertions + packet.raw_failures)
+    if _IDLE_FLAKE_RE.search(blob):
         return True
-    if packet.failure_class == "flake":
+    if packet.failure_class == "flake" and not _WAIT_FAILURE_RE.search(blob):
         return True
-    if "timeout" in blob and not packet.hierarchy_excerpt and not packet.failed_queries:
+    # Explicit wait/expectation failures are not flakes even if attachments are sparse.
+    if _WAIT_FAILURE_RE.search(blob):
+        return False
+    if packet.failure_class in (
+        "ui_race",
+        "missing_identifier",
+        "assertion",
+        "crash",
+        "build_error",
+        "wrong_state",
+    ):
+        return False
+    # Last-resort flake: timeout language, no test id, no hierarchy, no queries.
+    if (
+        "timeout" in blob.lower()
+        and not packet.test_ids
+        and not packet.hierarchy_excerpt
+        and not packet.failed_queries
+    ):
         return True
     return False
+
+
+def infer_failed_queries(
+    test_ids: list[str],
+    assertions: list[str],
+    existing: list[str] | None = None,
+) -> list[str]:
+    """Infer accessibility ids when attachments lack IN-identifiers query chains."""
+    out = list(existing or [])
+    blob = " ".join(test_ids + assertions)
+    for cre, qid in _INFER_QUERY_PATTERNS:
+        if cre.search(blob) and qid not in out:
+            out.append(qid)
+    return out
 
 
 def build_failure_packet(
@@ -461,6 +521,19 @@ def build_failure_packet(
     if got_clue and got_clue not in assertions:
         # Keep as separate clue via hierarchy; assertions stay XCTAssert text
         pass
+
+    # NSPredicate waits often export only "Target Application" query chains with
+    # no hierarchy dump — infer the id the UITest is waiting for from the name.
+    if not queries:
+        queries = infer_failed_queries(test_ids, assertions)
+    elif not any(q for q in queries if not q.startswith("_")):
+        queries = infer_failed_queries(test_ids, assertions, queries)
+
+    if not got_clue and queries and _WAIT_FAILURE_RE.search("\n".join(assertions)):
+        got_clue = (
+            f"wait timed out for {', '.join(queries)}; "
+            "attachments lack hierarchy (NSPredicate expectation)"
+        )
 
     sig = packet_signature(test_ids, crash_list)
     if not sig and raw:

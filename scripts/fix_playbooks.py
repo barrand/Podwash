@@ -71,10 +71,32 @@ PLAYBOOKS: dict[str, FailurePlaybook] = {
                 ),
             ),
             PlaybookLever(
+                role="Engineer",
+                instruction=(
+                    "Same ui_race after attempt 1 — try a different app lever: "
+                    "defer InstantEpisodeAnalyzer completion, hold AnalysisUIState "
+                    ".analyzing for ≥ UITest observable window (2s+), or ensure "
+                    "analysisProgress is published on the main actor before finish. "
+                    "Do not weaken or delete the progress assertion."
+                ),
+                suggested_files=(
+                    "PodWash/PodWash/EpisodeListView.swift",
+                    "PodWash/PodWash/AnalysisUIViewModel.swift",
+                    "PodWash/PodWash/InstantEpisodeAnalyzer.swift",
+                    "PodWash/PodWash/AnalysisUIState.swift",
+                ),
+                forbid=(
+                    "weaken XCTAssert",
+                    "delete progress assertion",
+                    "edit goldens",
+                    "edit UITests",
+                ),
+            ),
+            PlaybookLever(
                 role="halt",
                 instruction=(
-                    "Same ui_race after Engineer attempt. Do NOT soften the UITest "
-                    "unless AC explicitly requires observing the transient AND "
+                    "Same ui_race after two Engineer attempts. Do NOT soften the "
+                    "UITest unless AC explicitly requires observing the transient AND "
                     "diagnose fix_scope=tests. Otherwise halt for PM/UX AC clarity."
                 ),
                 forbid=("weaken XCTAssert", "remove wait for progress"),
@@ -240,27 +262,32 @@ def select_lever(
             return pb.levers[min(1, len(pb.levers) - 1)]
 
     if failure_class == "ui_race" and lever_index >= 1:
-        if allow_uitest_wait_fix and fix_scope == "tests":
+        # Lever 1 = second Engineer attempt; halt only at lever_index >= 2
+        # (or when playbook lever role is already halt).
+        if lever_index >= 2 or lever.role == "halt":
+            if allow_uitest_wait_fix and fix_scope == "tests":
+                return PlaybookLever(
+                    role="QA",
+                    instruction=(
+                        "AC requires observing the transient and diagnose says tests — "
+                        "improve wait/expectation without removing the AC or progress "
+                        "assertion."
+                    ),
+                    forbid=(
+                        "delete progress assertion",
+                        "weaken XCTAssert beyond wait timing",
+                    ),
+                )
             return PlaybookLever(
-                role="QA",
+                role="halt",
                 instruction=(
-                    "AC requires observing the transient and diagnose says tests — "
-                    "improve wait/expectation without removing the AC or progress "
-                    "assertion."
+                    "Same ui_race after two Engineer attempts — needs PM/UX AC clarity. "
+                    "Do not soften the UITest."
                 ),
-                forbid=(
-                    "delete progress assertion",
-                    "weaken XCTAssert beyond wait timing",
-                ),
+                forbid=("weaken XCTAssert", "remove wait for progress"),
             )
-        return PlaybookLever(
-            role="halt",
-            instruction=(
-                "Same ui_race after Engineer — needs PM/UX AC clarity. Do not soften "
-                "the UITest."
-            ),
-            forbid=("weaken XCTAssert", "remove wait for progress"),
-        )
+        # lever_index == 1 → return the second Engineer lever as-is
+        return lever
 
     if failure_class == "build_error" and fix_scope == "tests":
         return get_playbook("build_error").levers[

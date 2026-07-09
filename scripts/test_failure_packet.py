@@ -97,6 +97,50 @@ class AttachmentParseTests(unittest.TestCase):
             self.assertTrue(got)
 
 
+class FlakeSignalTests(unittest.TestCase):
+    def test_xctwaiter_timeout_is_not_flake(self):
+        from failure_packet import is_flake_signal
+
+        packet = FailurePacket(
+            test_ids=[
+                "PodWashUITests/AnalysisProgressUITests/testProgressIndicatorLifecycle()"
+            ],
+            assertions=[
+                "Asynchronous wait failed: Exceeded timeout of 2 seconds, with "
+                "unfulfilled expectations: Expect predicate BLOCKPREDICATE"
+            ],
+            failure_class="ui_race",
+            raw_failures=[
+                "PodWashUITests/AnalysisProgressUITests/testProgressIndicatorLifecycle() "
+                "— Asynchronous wait failed: Exceeded timeout of 2 seconds"
+            ],
+        )
+        self.assertFalse(is_flake_signal(packet))
+        self.assertEqual(classify_failure(packet), "ui_race")
+
+    def test_idle_is_flake(self):
+        from failure_packet import is_flake_signal
+
+        packet = FailurePacket(
+            test_ids=["PodWashUITests/T/testA()"],
+            assertions=["Failed to become idle"],
+            raw_failures=["Failed to become idle"],
+            failure_class="flake",
+        )
+        self.assertTrue(is_flake_signal(packet))
+
+
+class InferQueryTests(unittest.TestCase):
+    def test_infer_analysis_progress(self):
+        from failure_packet import infer_failed_queries
+
+        qs = infer_failed_queries(
+            ["PodWashUITests/AnalysisProgressUITests/testProgressIndicatorLifecycle()"],
+            ["Asynchronous wait failed: Exceeded timeout of 2 seconds"],
+        )
+        self.assertIn("analysisProgress", qs)
+
+
 class PacketBuilderTests(unittest.TestCase):
     def test_sparse_shell_rich_summary(self):
         with mock.patch(
@@ -120,30 +164,91 @@ class PacketBuilderTests(unittest.TestCase):
         self.assertIn("testProgressIndicatorLifecycle", card)
         self.assertIn("STUCK — Slice 09", card)
 
-    def test_ui_race_class_from_attachments(self):
+    def test_wait_timeout_infers_query_without_hierarchy(self):
+        summary = {
+            "testFailures": [
+                {
+                    "failureText": (
+                        "Asynchronous wait failed: Exceeded timeout of 2 seconds, "
+                        "with unfulfilled expectations: "
+                        '"Expect predicate `BLOCKPREDICATE` for object '
+                        "Target Application 'com.barrandfarm.PodWash'\"."
+                    ),
+                    "targetName": "PodWashUITests",
+                    "testIdentifierString": (
+                        "AnalysisProgressUITests/testProgressIndicatorLifecycle()"
+                    ),
+                    "testName": "testProgressIndicatorLifecycle()",
+                }
+            ]
+        }
         with tempfile.TemporaryDirectory() as tmp:
-            hier = "Other, identifier: 'cleaningBadge_episodeOn'\n"
-            query = '"analysisProgress" IN identifiers\n'
-            open(os.path.join(tmp, "h.txt"), "w").write(hier)
-            open(os.path.join(tmp, "q.txt"), "w").write(query)
-            open(os.path.join(tmp, "manifest.json"), "w").write(
+            # Sparse NSPredicate attachments — Target Application only
+            open(os.path.join(tmp, "q.txt"), "w", encoding="utf-8").write(
+                "Query chain:\n →Find: Target Application 'com.barrandfarm.PodWash'\n"
+            )
+            open(os.path.join(tmp, "manifest.json"), "w", encoding="utf-8").write(
                 json.dumps(
                     [
                         {
                             "attachments": [
                                 {
-                                    "exportedFileName": "h.txt",
-                                    "suggestedHumanReadableName": "App UI hierarchy",
-                                },
-                                {
                                     "exportedFileName": "q.txt",
-                                    "suggestedHumanReadableName": "Debug description",
-                                },
+                                    "suggestedHumanReadableName": (
+                                        "Debug description for Target Application"
+                                    ),
+                                }
                             ]
                         }
                     ]
                 )
             )
+            with mock.patch(
+                "failure_packet.read_xcresult_summary", return_value=summary
+            ), mock.patch(
+                "failure_packet.export_attachments_for_test", return_value=tmp
+            ):
+                packet = build_failure_packet(
+                    failures=["xcodebuild — TEST FAILED"],
+                    crashes=[],
+                    bundle="/fake.xcresult",
+                    export_attachments=True,
+                )
+        self.assertEqual(packet.failure_class, "ui_race")
+        self.assertIn("analysisProgress", packet.failed_queries)
+        from failure_packet import is_flake_signal
+
+        self.assertFalse(is_flake_signal(packet))
+        card = format_stuck_card(packet, slice_file="docs/slices/slice-09.md")
+        self.assertIn("analysisProgress", card)
+
+    def test_ui_race_class_from_attachments(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            hier = "Other, identifier: 'cleaningBadge_episodeOn'\n"
+            query = '"analysisProgress" IN identifiers\n'
+            with open(os.path.join(tmp, "h.txt"), "w", encoding="utf-8") as fh:
+                fh.write(hier)
+            with open(os.path.join(tmp, "q.txt"), "w", encoding="utf-8") as fh:
+                fh.write(query)
+            with open(os.path.join(tmp, "manifest.json"), "w", encoding="utf-8") as fh:
+                fh.write(
+                    json.dumps(
+                        [
+                            {
+                                "attachments": [
+                                    {
+                                        "exportedFileName": "h.txt",
+                                        "suggestedHumanReadableName": "App UI hierarchy",
+                                    },
+                                    {
+                                        "exportedFileName": "q.txt",
+                                        "suggestedHumanReadableName": "Debug description",
+                                    },
+                                ]
+                            }
+                        ]
+                    )
+                )
             with mock.patch(
                 "failure_packet.read_xcresult_summary", return_value=SAMPLE_SUMMARY
             ), mock.patch(
@@ -249,14 +354,19 @@ class DiagnoseMergeTests(unittest.TestCase):
 
 
 class PlaybookTests(unittest.TestCase):
-    def test_ui_race_lever2_halts_by_default(self):
+    def test_ui_race_lever1_is_second_engineer(self):
         lever = select_lever("ui_race", lever_index=1, fix_scope="app")
+        self.assertEqual(lever.role, "Engineer")
+        self.assertIn("attempt 1", lever.instruction.lower())
+
+    def test_ui_race_lever2_halts_by_default(self):
+        lever = select_lever("ui_race", lever_index=2, fix_scope="app")
         self.assertEqual(lever.role, "halt")
 
     def test_ui_race_lever2_qa_when_allowed(self):
         lever = select_lever(
             "ui_race",
-            lever_index=1,
+            lever_index=2,
             fix_scope="tests",
             allow_uitest_wait_fix=True,
         )

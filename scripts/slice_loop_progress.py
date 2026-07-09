@@ -1161,6 +1161,15 @@ class RunProgress:
     def set_assistant_text(self, text: str) -> None:
         self.assistant_text = text or ""
 
+    def append_assistant_text(self, text: str) -> None:
+        t = (text or "").strip()
+        if not t:
+            return
+        if self.assistant_text:
+            self.assistant_text = self.assistant_text + "\n" + t
+        else:
+            self.assistant_text = t
+
     def refresh_gates(self) -> dict[str, Any]:
         return assess_slice_gates(self.slice_file, self.repo_root)
 
@@ -1560,8 +1569,11 @@ class RunProgress:
                 self._task(message.get("status", ""), message.get("text", ""))
             elif mtype == "status":
                 self._status(message.get("message") or message.get("status", ""))
-            elif mtype == "assistant" and self.verbose:
-                self._assistant_dict(message)
+            elif mtype == "assistant":
+                # Always accumulate diagnose/fix assistant text (not only verbose).
+                self._capture_assistant_dict(message)
+                if self.verbose:
+                    self._assistant_dict(message)
             return
 
         mtype = getattr(message, "type", None)
@@ -1577,8 +1589,32 @@ class RunProgress:
             self._task(getattr(message, "status", ""), getattr(message, "text", ""))
         elif mtype == "status":
             self._status(getattr(message, "message", "") or getattr(message, "status", ""))
-        elif mtype == "assistant" and self.verbose:
-            self._assistant_typed(message)
+        elif mtype == "assistant":
+            self._capture_assistant_typed(message)
+            if self.verbose:
+                self._assistant_typed(message)
+
+    def _capture_assistant_typed(self, message) -> None:
+        for block in getattr(getattr(message, "message", None), "content", []) or []:
+            if getattr(block, "type", None) == "text":
+                text = getattr(block, "text", "") or ""
+                if text:
+                    self.append_assistant_text(str(text))
+        direct = getattr(message, "text", None)
+        if isinstance(direct, str) and direct.strip():
+            self.append_assistant_text(direct)
+
+    def _capture_assistant_dict(self, message: dict) -> None:
+        msg = message.get("message") or {}
+        if isinstance(msg, dict):
+            for block in msg.get("content") or []:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    text = block.get("text") or ""
+                    if text:
+                        self.append_assistant_text(str(text))
+        direct = message.get("text")
+        if isinstance(direct, str) and direct.strip():
+            self.append_assistant_text(direct)
 
     def _warn_delegate_violation(self, norm: str, args: Any) -> None:
         if norm not in ("edit", "strreplace", "write", "delete"):

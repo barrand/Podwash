@@ -783,6 +783,48 @@ Read the slice file and only the artifacts needed for this gate. End your turn w
 """
 
 
+def _assistant_text_from_message(message: Any) -> str:
+    """Extract plain text from SDK assistant stream messages (dict or typed)."""
+    if message is None:
+        return ""
+    if isinstance(message, dict):
+        if message.get("type") not in (None, "assistant"):
+            # Still try if nested
+            pass
+        direct = message.get("text") or message.get("content")
+        if isinstance(direct, str) and direct.strip():
+            return direct
+        msg = message.get("message") or {}
+        if isinstance(msg, dict):
+            parts: list[str] = []
+            for block in msg.get("content") or []:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    t = block.get("text") or ""
+                    if t:
+                        parts.append(str(t))
+                elif isinstance(block, str):
+                    parts.append(block)
+            if parts:
+                return "\n".join(parts)
+            if isinstance(msg.get("text"), str):
+                return msg["text"]
+        return ""
+    mtype = getattr(message, "type", None)
+    if mtype and mtype != "assistant":
+        return ""
+    direct = getattr(message, "text", None) or getattr(message, "content", None)
+    if isinstance(direct, str) and direct.strip():
+        return direct
+    inner = getattr(message, "message", None)
+    parts = []
+    for block in getattr(inner, "content", None) or []:
+        if getattr(block, "type", None) == "text":
+            t = getattr(block, "text", "") or ""
+            if t:
+                parts.append(str(t))
+    return "\n".join(parts)
+
+
 def run_worker(
     client: Any,
     *,
@@ -824,27 +866,13 @@ def run_worker(
             for message in run.messages():
                 if progress is not None:
                     progress.handle(message)
-                # Collect assistant text for diagnose parse
-                text = ""
-                if isinstance(message, dict) and message.get("type") == "assistant":
-                    text = str(
-                        message.get("text")
-                        or message.get("content")
-                        or message.get("message")
-                        or ""
-                    )
-                else:
-                    mtype = getattr(message, "type", None)
-                    if mtype == "assistant":
-                        text = str(
-                            getattr(message, "text", "")
-                            or getattr(message, "content", "")
-                            or ""
-                        )
+                text = _assistant_text_from_message(message)
                 if text:
                     assistant_bits.append(text)
                     if on_assistant_text:
                         on_assistant_text(text)
+                    if progress is not None and hasattr(progress, "append_assistant_text"):
+                        progress.append_assistant_text(text)
             result = run.wait()
         finally:
             if progress is not None:
@@ -857,11 +885,13 @@ def run_worker(
             _log("WORKER VIOLATION: verify owned by loop (attempt burned)")
             return False, "verify_violation"
         _log(f"worker finished: role={role} status={status}")
-        if on_assistant_text is None and assistant_bits and hasattr(run, "_podwash_assistant"):
-            pass
-        # Stash for callers that want diagnose text via progress
         if progress is not None and hasattr(progress, "set_assistant_text"):
-            progress.set_assistant_text("\n".join(assistant_bits))
+            # Prefer accumulated stream; fall back to joined bits
+            existing = getattr(progress, "assistant_text", "") or ""
+            if not existing.strip() and assistant_bits:
+                progress.set_assistant_text("\n".join(assistant_bits))
+            elif assistant_bits and len("\n".join(assistant_bits)) > len(existing):
+                progress.set_assistant_text("\n".join(assistant_bits))
         return status == "finished", str(status)
 
 
