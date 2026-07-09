@@ -1,0 +1,63 @@
+{
+  "audioSeconds" : 4.56,
+  "computeUnits" : "cpuOnly",
+  "device" : "iPhone18,1 \/ Version 26.1 (Build 23B86)",
+  "driftMaxMs" : 134,
+  "driftMeanMs" : 54,
+  "engine" : "WhisperKit",
+  "engineVersion" : "1.0.0",
+  "loadSeconds" : 0,
+  "model" : "openai_whisper-tiny.en",
+  "modelRevision" : "97a5bf9bbc74c7d9c12c755d04dea59e672e3808",
+  "realTimeFactor" : 1.445,
+  "transcriptionSeconds" : 6.594,
+  "wordCount" : 9,
+  "wordErrorCount" : 1,
+  "words" : [
+    {
+      "end" : 0.56,
+      "start" : 0.2,
+      "word" : " The"
+    },
+    {
+      "end" : 1.06,
+      "start" : 0.56,
+      "word" : " \"Quick"
+    },
+    {
+      "end" : 1.44,
+      "start" : 1.06,
+      "word" : " Brown\""
+    },
+    {
+      "end" : 1.94,
+      "start" : 1.62,
+      "word" : " Fock"
+    },
+    {
+      "end" : 2.54,
+      "start" : 1.94,
+      "word" : " Jumps"
+    },
+    {
+      "end" : 2.98,
+      "start" : 2.54,
+      "word" : " (over)"
+    },
+    {
+      "end" : 3.4,
+      "start" : 3.1,
+      "word" : " The"
+    },
+    {
+      "end" : 3.94,
+      "start" : 3.4,
+      "word" : " \"Lazy\""
+    },
+    {
+      "end" : 4.52,
+      "start" : 4.04,
+      "word" : " Dog"
+    }
+  ]
+}

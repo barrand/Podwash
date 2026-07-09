@@ -13,7 +13,7 @@ import Foundation
 /// A single ASR-produced token with its start/end offset (seconds from episode
 /// start). Matches the Codable JSON schema in ADR-000 §4 exactly:
 /// `{ "word": String, "start": Double, "end": Double }`.
-struct TimedWord: Codable, Equatable {
+nonisolated struct TimedWord: Codable, Equatable {
     let word: String
     let start: Double
     let end: Double

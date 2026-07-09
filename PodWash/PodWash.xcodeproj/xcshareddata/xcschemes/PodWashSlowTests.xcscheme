@@ -34,30 +34,6 @@
             useTestSelectionWhitelist = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "E3E16DE02FFF1BCE00E398A5"
-               BuildableName = "PodWashTests.xctest"
-               BlueprintName = "PodWashTests"
-               ReferencedContainer = "container:PodWash.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "NO"
-            useTestSelectionWhitelist = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "E3E16DEA2FFF1BCE00E398A5"
-               BuildableName = "PodWashUITests.xctest"
-               BlueprintName = "PodWashUITests"
-               ReferencedContainer = "container:PodWash.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "YES"
-            parallelizable = "NO"
-            useTestSelectionWhitelist = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
                BlueprintIdentifier = "AC0500000000000000000005"
                BuildableName = "PodWashSlowTests.xctest"
                BlueprintName = "PodWashSlowTests"
@@ -93,16 +69,6 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "E3E16DCF2FFF1BCC00E398A5"
-            BuildableName = "PodWash.app"
-            BlueprintName = "PodWash"
-            ReferencedContainer = "container:PodWash.xcodeproj">
-         </BuildableReference>
-      </BuildableProductRunnable>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">

@@ -30,7 +30,11 @@ REPO_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$REPO_ROOT"
 
 PROJECT="PodWash/PodWash.xcodeproj"
-SCHEME="PodWash"
+# Default scheme is the full app+fast-tests scheme (the slice Done gate). The nightly slow
+# ASR benchmark job overrides this with PODWASH_SCHEME=PodWashSlowTests to run the
+# otherwise-scheme-disabled slow target (a skipped="YES" TestableReference cannot be forced
+# to run via -only-testing:, so the slow target has its own dedicated scheme).
+SCHEME=${PODWASH_SCHEME:-PodWash}
 BUILD_DIR="build"
 RESULTS_DIR="$BUILD_DIR/test-results"
 LOCK_DIR="$BUILD_DIR/.verify.lock"

@@ -174,11 +174,16 @@ Server-side is considered but discouraged (see costs and legal below).
   WhisperKit / whisper.cpp run faster than real-time (a ~60-min episode in a few
   minutes), so this one-time step is cheap and enables instant, reliable, offline
   playback afterward.
-- On-device speech-to-text with word-level timestamps is viable in 2026:
-  - **Primary (TBD spike):** `SpeechAnalyzer` / `SpeechTranscriber` (iOS 26+,
-    on-device, word-level timing via `attributeOptions: [.audioTimeRange]`).
-  - **Fallback / broader coverage:** **WhisperKit** (Core ML) for older iOS
-    versions and word timestamps on a wider device range.
+- On-device speech-to-text with word-level timestamps is viable in 2026.
+  **Decided (ADR-003, Slice 05):** the on-device ASR stack is **WhisperKit** (Core ML),
+  model `openai_whisper-tiny.en`, run CPU-only. The deciding factor is dark-factory
+  **verifiability**: Apple's `SpeechAnalyzer` / `SpeechTranscriber` (iOS 26+) has **no
+  provisioned speech assets in the iOS Simulator** (`supportedLocales` is empty), so it
+  cannot be verified in the simulator-only automated pipeline; it is deferred to a future
+  real-device evaluation, not deleted. WhisperKit runs in the simulator and produces
+  word-level timestamps (via `DecodingOptions(wordTimestamps:)`). Larger WhisperKit models
+  (`base.en`+) render empty on the CPU-only simulator, so `tiny.en` is the pinned simulator
+  model; larger models are a real-device concern.
 
 ### Act at playback (dynamic, no re-encoding)
 
@@ -223,7 +228,7 @@ reasons (see Section 8) and should not be built without legal review.
 | UI | SwiftUI |
 | Playback | AVFoundation (`AVPlayer`, `AVPlayerItem`, `AVMutableAudioMix`) |
 | Background / lock screen / CarPlay | `MPNowPlayingInfoCenter`, `MPRemoteCommandCenter`; CarPlay framework when ready |
-| On-device ASR | **TBD spike:** `SpeechAnalyzer` (iOS 26+) vs WhisperKit (Core ML) |
+| On-device ASR | **WhisperKit (Core ML), `tiny.en`** — decided in ADR-003 (SpeechAnalyzer unverifiable in simulator; deferred to real-device) |
 | Local storage | SwiftData or Core Data (TBD) |
 | RSS / feeds | `URLSession` + XML parsing (TBD library) |
 | Purchases | StoreKit 2 |
@@ -356,10 +361,15 @@ slice files, not deferred into vagueness.
 Open decisions (agents must **halt and ask** rather than assume — see the
 coordinator decision protocol in [`multitask-workflow.md`](multitask-workflow.md)):
 
-- **On-device ASR choice:** `SpeechAnalyzer` (iOS 26+) vs WhisperKit — spike
-  required (slice 05); drives minimum iOS version. Current floor: iOS 26.1
-  (the created Xcode project); raising for ASR is tolerated, lowering is a
-  product decision.
+- **On-device ASR choice:** ✅ **RESOLVED (ADR-003, Slice 05):** WhisperKit (Core ML),
+  `openai_whisper-tiny.en`, CPU-only. `SpeechAnalyzer` (iOS 26+) has no provisioned speech
+  assets in the iOS Simulator, so it is unverifiable in the dark-factory pipeline and is
+  deferred to a future real-device evaluation (not deleted). Empirical spike numbers
+  (iPhone 17 Pro Simulator / iOS 26.1): word count 9/9, word error 1, max boundary drift
+  134 ms, mean 54 ms (all within ±200 ms), model load ≈4 s, transcription RTF ≈0.26–0.52.
+  **Minimum iOS version:** unchanged at **26.1** — WhisperKit supports iOS 16+, so a future
+  floor *lowering* to widen device support is possible but remains a product decision
+  (halt-and-ask), not made here.
 - **Local persistence:** SwiftData vs Core Data for subscriptions, positions, and
   cached interval lists (surfaces at slice 11).
 - **Default action per feature** (mute vs skip) and which overlays to ship (beep/quack)

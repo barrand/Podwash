@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		90184D50562F5B7749D2C408 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5AA73DA2CC666D68641E9C37 /* WhisperKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		E3E16DE22FFF1BCE00E398A5 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,16 +25,24 @@
 			remoteGlobalIDString = E3E16DCF2FFF1BCC00E398A5;
 			remoteInfo = PodWash;
 		};
+		AC0500000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E3E16DC82FFF1BCC00E398A5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E3E16DCF2FFF1BCC00E398A5;
+			remoteInfo = PodWash;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		E3E16DD02FFF1BCC00E398A5 /* PodWash.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PodWash.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E3E16DE12FFF1BCE00E398A5 /* PodWashTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PodWashTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E3E16DEB2FFF1BCE00E398A5 /* PodWashUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PodWashUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC0500000000000000000002 /* PodWashSlowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PodWashSlowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		E3E16DF32FFF1BCE00E398A5 /* Exceptions for "PodWash" folder in "PodWash" target */ = {
+		E3E16DF32FFF1BCE00E398A5 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -43,7 +55,7 @@
 		E3E16DD22FFF1BCC00E398A5 /* PodWash */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				E3E16DF32FFF1BCE00E398A5 /* Exceptions for "PodWash" folder in "PodWash" target */,
+				E3E16DF32FFF1BCE00E398A5 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
 			);
 			path = PodWash;
 			sourceTree = "<group>";
@@ -58,6 +70,11 @@
 			path = PodWashUITests;
 			sourceTree = "<group>";
 		};
+		AC0500000000000000000003 /* PodWashSlowTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PodWashSlowTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -65,6 +82,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				90184D50562F5B7749D2C408 /* WhisperKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -82,6 +100,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AC0500000000000000000004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -91,6 +116,7 @@
 				E3E16DD22FFF1BCC00E398A5 /* PodWash */,
 				E3E16DE42FFF1BCE00E398A5 /* PodWashTests */,
 				E3E16DEE2FFF1BCE00E398A5 /* PodWashUITests */,
+				AC0500000000000000000003 /* PodWashSlowTests */,
 				E3E16DD12FFF1BCC00E398A5 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -101,6 +127,7 @@
 				E3E16DD02FFF1BCC00E398A5 /* PodWash.app */,
 				E3E16DE12FFF1BCE00E398A5 /* PodWashTests.xctest */,
 				E3E16DEB2FFF1BCE00E398A5 /* PodWashUITests.xctest */,
+				AC0500000000000000000002 /* PodWashSlowTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -125,6 +152,7 @@
 			);
 			name = PodWash;
 			packageProductDependencies = (
+				5AA73DA2CC666D68641E9C37 /* WhisperKit */,
 			);
 			productName = PodWash;
 			productReference = E3E16DD02FFF1BCC00E398A5 /* PodWash.app */;
@@ -176,6 +204,29 @@
 			productReference = E3E16DEB2FFF1BCE00E398A5 /* PodWashUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		AC0500000000000000000005 /* PodWashSlowTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AC0500000000000000000009 /* Build configuration list for PBXNativeTarget "PodWashSlowTests" */;
+			buildPhases = (
+				AC0500000000000000000007 /* Sources */,
+				AC0500000000000000000004 /* Frameworks */,
+				AC0500000000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AC0500000000000000000008 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				AC0500000000000000000003 /* PodWashSlowTests */,
+			);
+			name = PodWashSlowTests;
+			packageProductDependencies = (
+			);
+			productName = PodWashSlowTests;
+			productReference = AC0500000000000000000002 /* PodWashSlowTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -197,6 +248,10 @@
 						CreatedOnToolsVersion = 26.1.1;
 						TestTargetID = E3E16DCF2FFF1BCC00E398A5;
 					};
+					AC0500000000000000000005 = {
+						CreatedOnToolsVersion = 26.1.1;
+						TestTargetID = E3E16DCF2FFF1BCC00E398A5;
+					};
 				};
 			};
 			buildConfigurationList = E3E16DCB2FFF1BCC00E398A5 /* Build configuration list for PBXProject "PodWash" */;
@@ -208,6 +263,9 @@
 			);
 			mainGroup = E3E16DC72FFF1BCC00E398A5;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				2497113C66B2A000B4EE4808 /* XCRemoteSwiftPackageReference "WhisperKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E3E16DD12FFF1BCC00E398A5 /* Products */;
 			projectDirPath = "";
@@ -216,6 +274,7 @@
 				E3E16DCF2FFF1BCC00E398A5 /* PodWash */,
 				E3E16DE02FFF1BCE00E398A5 /* PodWashTests */,
 				E3E16DEA2FFF1BCE00E398A5 /* PodWashUITests */,
+				AC0500000000000000000005 /* PodWashSlowTests */,
 			);
 		};
 /* End PBXProject section */
@@ -236,6 +295,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		E3E16DE92FFF1BCE00E398A5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AC0500000000000000000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -266,6 +332,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AC0500000000000000000007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -278,6 +351,11 @@
 			isa = PBXTargetDependency;
 			target = E3E16DCF2FFF1BCC00E398A5 /* PodWash */;
 			targetProxy = E3E16DEC2FFF1BCE00E398A5 /* PBXContainerItemProxy */;
+		};
+		AC0500000000000000000008 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E3E16DCF2FFF1BCC00E398A5 /* PodWash */;
+			targetProxy = AC0500000000000000000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -547,6 +625,48 @@
 			};
 			name = Release;
 		};
+		AC050000000000000000000A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.barrandfarm.PodWashSlowTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PodWash.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PodWash";
+			};
+			name = Debug;
+		};
+		AC050000000000000000000B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.barrandfarm.PodWashSlowTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PodWash.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PodWash";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -586,7 +706,35 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		AC0500000000000000000009 /* Build configuration list for PBXNativeTarget "PodWashSlowTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AC050000000000000000000A /* Debug */,
+				AC050000000000000000000B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		2497113C66B2A000B4EE4808 /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/argmaxinc/WhisperKit";
+			requirement = {
+				kind = exactVersion;
+				version = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5AA73DA2CC666D68641E9C37 /* WhisperKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2497113C66B2A000B4EE4808 /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = WhisperKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E3E16DC82FFF1BCC00E398A5 /* Project object */;
 }
