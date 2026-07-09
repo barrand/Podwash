@@ -2,7 +2,7 @@
 //  RootView.swift
 //  PodWash
 //
-//  Slice 03/06 — Routes fixture-mode UI tests to player or episode-list shells.
+//  Slice 03/06/09 — Routes fixture-mode UI tests to player or episode-list shells.
 //
 
 import SwiftUI
@@ -10,6 +10,7 @@ import SwiftUI
 struct RootView: View {
     @State private var fixtureEngine: PlaybackEngine?
     @State private var fixtureFeedViewModel: EpisodeListViewModel?
+    @State private var fixtureAnalysisViewModel: AnalysisUIViewModel?
 
     var body: some View {
         Group {
@@ -20,9 +21,12 @@ struct RootView: View {
                     ProgressView()
                         .accessibilityIdentifier("playback.loading")
                 }
-            } else if FixtureFeed.isEnabled {
-                if let fixtureFeedViewModel {
-                    PodcastDetailView(viewModel: fixtureFeedViewModel)
+            } else if FixtureFeed.isEnabled || FixtureAnalysis.isEnabled {
+                if let fixtureFeedViewModel, let fixtureAnalysisViewModel {
+                    PodcastDetailView(
+                        viewModel: fixtureFeedViewModel,
+                        analysisViewModel: fixtureAnalysisViewModel
+                    )
                 } else {
                     ProgressView()
                         .accessibilityIdentifier("feed.loading")
@@ -48,11 +52,22 @@ struct RootView: View {
     }
 
     private func loadFixtureFeedIfNeeded() async {
-        guard FixtureFeed.isEnabled, fixtureFeedViewModel == nil else { return }
+        guard FixtureFeed.isEnabled || FixtureAnalysis.isEnabled else { return }
+        guard fixtureFeedViewModel == nil else { return }
+
         let store = InMemoryPodcastStore()
-        let viewModel = EpisodeListViewModel(parser: RSSParser(), store: store)
-        fixtureFeedViewModel = viewModel
+        let feedViewModel = EpisodeListViewModel(parser: RSSParser(), store: store)
+        let cleaningStore = InMemoryCleaningToggleStore()
+        let analysisViewModel = AnalysisUIViewModel(
+            store: cleaningStore,
+            analyzer: InstantEpisodeAnalyzer(),
+            autoAnalyzeOnEpisodeEnable: FixtureAnalysis.isEnabled
+        )
+
+        fixtureFeedViewModel = feedViewModel
+        fixtureAnalysisViewModel = analysisViewModel
+
         guard let data = FixtureFeed.bundledData() else { return }
-        await viewModel.load(data: data)
+        await feedViewModel.load(data: data)
     }
 }

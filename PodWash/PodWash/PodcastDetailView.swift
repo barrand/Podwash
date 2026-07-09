@@ -9,9 +9,10 @@ import SwiftUI
 
 struct PodcastDetailView: View {
     @Bindable var viewModel: EpisodeListViewModel
+    @Bindable var analysisViewModel: AnalysisUIViewModel
 
     var body: some View {
-        Group {
+        return Group {
             switch viewModel.phase {
             case .idle, .loading:
                 loadingView
@@ -42,7 +43,7 @@ struct PodcastDetailView: View {
     private func loadedView(_ feed: PodcastFeed) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             podcastHeader(feed)
-            EpisodeListView(feed: feed)
+            EpisodeListView(feed: feed, analysisViewModel: analysisViewModel)
         }
     }
 
@@ -102,8 +103,38 @@ struct PodcastDetailView: View {
             .accessibilityValue(feed.title)
 
             Spacer(minLength: 0)
+
+            VStack(alignment: .trailing, spacing: 6) {
+                Toggle(isOn: channelCleaningBinding) {
+                    Text("Clean channel")
+                        .font(.caption)
+                }
+                .labelsHidden()
+                .accessibilityIdentifier("channelCleaningToggle")
+                .accessibilityLabel("Channel cleaning")
+                .accessibilityValue(analysisViewModel.isChannelCleaningEnabled ? "on" : "off")
+
+                if analysisViewModel.isChannelCleaningEnabled {
+                    Text("Channel on")
+                        .font(.caption2)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.accentColor.opacity(0.15))
+                        .clipShape(Capsule())
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityIdentifier("cleaningBadge_channelOn")
+                        .accessibilityLabel("Channel cleaning on")
+                }
+            }
         }
         .padding()
+    }
+
+    private var channelCleaningBinding: Binding<Bool> {
+        Binding(
+            get: { analysisViewModel.isChannelCleaningEnabled },
+            set: { analysisViewModel.setChannelCleaning($0) }
+        )
     }
 
     @ViewBuilder
