@@ -22,3 +22,4 @@ from the relevant slice file's Role artifacts table.
 | [003](003-asr-stack-choice.md) | On-device ASR stack choice: WhisperKit (Core ML) tiny.en | Accepted |
 | [004](004-rss-parser.md) | RSS parser, episode list, and fixture-feed mode | Accepted |
 | [005](005-analysis-pipeline.md) | Analyze-episode pipeline: ASR → matcher → cache | Accepted |
+| [006](006-playback-integration.md) | Playback integration: cache → scheduler → engine | Accepted |
