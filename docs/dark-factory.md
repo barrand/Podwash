@@ -79,19 +79,33 @@ scripts/slice-loop.sh --max 1      # one slice then stop (good first try)
 scripts/slice-loop.sh              # run until halt / done / failure
 ```
 
-Options: `--verbose` (full coordinator text), `--heartbeat 60` (idle ping every N seconds).
+Options: `--verbose` (full coordinator text), `--heartbeat 60` (idle ping every N seconds),
+`--max-red-verifies 2` (halt after N red verify/xcodebuild outcomes; default 2).
 
 **Progress output (default):** one-line updates tagged with **`[slice NN][Role]`**
 (e.g. `[slice 07][QA] verify.sh (full suite) — GREEN — 48/48 passed…`). Subagent
-spawns show as `[Coordinator] spawn QA: …`; completions show `[QA] finished — …`.
-Idle heartbeat every N seconds (default 90). A **done banner** prints when
+spawns show as `[Coordinator] spawn QA: …` plus `allowed edits: …`; completions show
+`[QA] finished — …`. Wrong-role spawns (e.g. UX asked to fix a UI test) log
+`⚠ WRONG ROLE`. Idle heartbeat every N seconds (default 90) includes the known
+failing test when present (`❌ testName ×N`). A **done banner** prints when
 `next-slice.sh` confirms the slice reached Done with green verify, followed by
 epic summit ASCII art.
+
+**Anti-thrash:** after 2 red verify/xcodebuild outcomes in one run, the loop prints
+`🛑 HALT` (what failed, why it stopped, next steps) and exits code **5**. Disk work
+is preserved — fix with Engineer/QA, then re-run. Do not spawn UX to fix app/tests.
 
 **Known failure:** `Bridge request timed out: ReadTimeout` — the SDK lost contact
 during a long subagent stretch; slice is usually still **In Progress**. Re-run
 `scripts/slice-loop.sh --max 1` or resume manually (below). `retryable=True` means
-safe to retry.
+safe to retry. On re-run the loop injects a **RESUME** block when status is not
+Ready/Draft: audit `git status` + slice artifacts, skip completed gates, continue
+from the first incomplete step (usually Engineer/verify).
+
+**Progress label quirk (fixed):** if Architect review and Engineer were spawned
+together, older loop builds kept showing `[Architect review]` in heartbeats after
+Architect finished while Engineer was still working. Current builds prefer
+Engineer/QA when parallel and print `still running: Engineer` when a review ends.
 
 Requires **Python 3.10+** (`cursor-sdk`). macOS `/usr/bin/python3` is often 3.9;
 the wrapper auto-picks `python3.13` / `python3.12` if installed.
@@ -213,6 +227,8 @@ Project subagents (model pinned in frontmatter): [`.cursor/agents/`](../.cursor/
 | Commit app + tests together | Split commits; `scripts/check-test-isolation.sh` fails mixed changes |
 | One mega-chat for slices 1–19 | One chat per slice (or resume one slice only) |
 | Guess PRD §11 (persistence, monetization, …) | **Halt and ask** the user |
+| Spawn UX to "fix" a red UI test | UX is spec-only — spawn **Engineer** (app) or **QA** (tests) |
+| Grind the same filtered verify for hours | Loop **halts after 2 red verifies**; fix once, then re-run |
 
 ## Quick commands
 

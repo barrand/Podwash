@@ -18,6 +18,76 @@ SLICE_HEADING_RE = re.compile(
     re.MULTILINE,
 )
 
+# XCTest / xcodebuild crash lines, e.g.:
+#   Crash: PodWash at AnalysisUIStateTests.testStateMachineTransitions()
+#   PodWash crashed in testTogglePersistence
+CRASH_LINE_RE = re.compile(
+    r"(?:Crash:\s*(?:PodWash\s+)?at\s+([^\n]+))"
+    r"|(?:PodWash\s+crashed[^\n]*)"
+    r"|(?:Test Case\s+'.+?'\s+crashed[^\n]*)",
+    re.IGNORECASE,
+)
+
+# XCTest / xcodebuild failure lines for slice-loop logging.
+TEST_CASE_FAILED_RE = re.compile(
+    r"Test Case '-\[(?P<cls>\S+)\s+(?P<method>\w+)\]' failed",
+    re.IGNORECASE,
+)
+XCTASSERT_FAILED_RE = re.compile(
+    r"(?P<detail>XCTAssert\w+ failed(?:\s*-\s*.+)?)",
+    re.IGNORECASE,
+)
+TEST_EXEC_SUMMARY_RE = re.compile(
+    r"Executed\s+(?P<total>\d+)\s+tests?,\s+with\s+(?P<failed>\d+)\s+failures?",
+    re.IGNORECASE,
+)
+
+DIAGNOSTIC_REPORTS_DIR = os.path.expanduser("~/Library/Logs/DiagnosticReports")
+PODWASH_IPS_GLOB = "PodWash-*.ips"
+
+# After this many red verify/xcodebuild outcomes in one coordinator run, halt.
+DEFAULT_MAX_RED_VERIFIES = 2
+
+# Roles that must never be spawned to fix app/test failures.
+_FIX_FORBIDDEN_ROLES = frozenset(
+    {
+        "UX",
+        "PM",
+        "PM review",
+        "Architect",
+        "Architect review",
+    }
+)
+_FIX_INTENT_RE = re.compile(
+    r"\b("
+    r"fix|repair|debug|investigate|crash|failing|failure|red\s+test|"
+    r"test\s+fail|ui\s+test|xctest|verify|implement|progress\s+ui|"
+    r"accessibility\s+fix|make\s+green"
+    r")\b",
+    re.IGNORECASE,
+)
+
+ROLE_EDIT_PATHS: dict[str, str] = {
+    "Engineer": "PodWash/PodWash/** only (no tests)",
+    "QA": "PodWash/{PodWashTests,PodWashUITests,PodWashSlowTests}/** + slice docs",
+    "QA review": "readonly — no edits",
+    "UX": "docs/slices/** (+ UITest scenarios); MUST NOT edit app Swift",
+    "Architect": "docs/adr/** (+ design notes)",
+    "Architect review": "readonly — no edits",
+    "PM": "docs/slices/** story/AC only",
+    "PM review": "readonly — no edits",
+    "Coordinator": "docs/slices status/VERIFY/plan-review lines only",
+    "Subagent": "(unknown role — prefer named podwash-* subagents)",
+}
+
+
+class ThrashHalt(Exception):
+    """Raised when the loop should stop grinding the same red verify."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
+
 
 def normalize_tool_name(name: str) -> str:
     return (name or "").strip().lower()
@@ -75,6 +145,52 @@ def delegate_violation(path: str) -> tuple[str, str] | None:
     return None
 
 
+def role_edit_paths(role: str) -> str:
+    """Human-readable paths this role is allowed to edit."""
+    return ROLE_EDIT_PATHS.get(role, ROLE_EDIT_PATHS["Subagent"])
+
+
+def detect_wrong_role_spawn(role: str, description: str) -> str | None:
+    """If a spawn asks a non-implementer to fix tests/app, return a warning.
+
+    UX/PM/Architect must not be used for 'fix UI test' / crash / verify work —
+    that is Engineer (app) or QA (tests).
+    """
+    role = (role or "").strip()
+    desc = (description or "").strip()
+    if not role or not desc:
+        return None
+    if role not in _FIX_FORBIDDEN_ROLES:
+        return None
+    if not _FIX_INTENT_RE.search(desc):
+        return None
+    return (
+        f"{role} cannot fix app/tests — spawn podwash-engineer (app Swift) "
+        f"or podwash-qa (test/fixture edits). Desc was: {desc[:80]}"
+    )
+
+
+def failure_signature(failures: list[str]) -> str:
+    """Stable key for 'same failure ×N' tracking (prefer Class/method)."""
+    if not failures:
+        return ""
+    first = re.sub(r"\s+", " ", failures[0].strip())
+    # AnalysisProgressUITests/testProgressIndicatorLifecycle — …
+    m = re.search(
+        r"((?:PodWash\w*Tests|\w+Tests)/\w+|test\w+)",
+        first,
+        re.IGNORECASE,
+    )
+    if m:
+        return m.group(1)
+    # XCTAssertTrue failed → keep short
+    if first.upper().startswith("CRASH"):
+        return first[:80]
+    if "XCTAssert" in first:
+        return first[:80]
+    return first[:80]
+
+
 def infer_role(args: Any) -> str:
     if not isinstance(args, dict):
         return "Subagent"
@@ -120,6 +236,8 @@ def infer_role(args: Any) -> str:
         return "Engineer"
     if "ux " in desc_l or "ui test" in desc_l:
         return "UX"
+    if "accessibility" in desc_l or "a11y" in desc_l:
+        return "UX"
 
     return "Subagent"
 
@@ -155,6 +273,241 @@ def verify_is_green(v: dict[str, str] | None) -> bool:
     return v.get("exit") == "0" and v.get("failed") == "0" and v.get("skipped") == "0"
 
 
+def _result_blob(result: Any) -> str:
+    if isinstance(result, str):
+        return result
+    if isinstance(result, dict):
+        return json.dumps(result)
+    return str(result or "")
+
+
+def detect_simulator_crashes(text: str, *, limit: int = 5) -> list[str]:
+    """Extract distinct crash descriptors from verify/xcodebuild output."""
+    if not text:
+        return []
+    found: list[str] = []
+    seen: set[str] = set()
+    for m in CRASH_LINE_RE.finditer(text):
+        detail = (m.group(1) or m.group(0) or "").strip()
+        detail = re.sub(r"\s+", " ", detail)
+        if len(detail) > 96:
+            detail = detail[:93] + "…"
+        key = detail.lower()
+        if not detail or key in seen:
+            continue
+        seen.add(key)
+        found.append(detail)
+        if len(found) >= limit:
+            break
+    return found
+
+
+def detect_test_failures(text: str, *, limit: int = 8) -> list[str]:
+    """Extract human-readable test failure lines from verify/xcodebuild output."""
+    if not text:
+        return []
+    found: list[str] = []
+    seen: set[str] = set()
+
+    def add(item: str) -> None:
+        item = re.sub(r"\s+", " ", item.strip())
+        if len(item) > 140:
+            item = item[:137] + "…"
+        key = item.lower()
+        if not item or key in seen:
+            return
+        seen.add(key)
+        found.append(item)
+
+    for m in CRASH_LINE_RE.finditer(text):
+        target = (m.group(1) or m.group(0) or "").strip()
+        if target:
+            add(f"CRASH — {target}")
+
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        m = TEST_CASE_FAILED_RE.search(line)
+        if m:
+            test_id = f"{m.group('cls')}/{m.group('method')}"
+            detail = ""
+            for follow in lines[i + 1 : i + 6]:
+                xm = XCTASSERT_FAILED_RE.search(follow)
+                if xm:
+                    detail = xm.group("detail").strip()
+                    break
+                if follow.strip().startswith("error:"):
+                    detail = follow.strip()[:100]
+                    break
+            add(f"{test_id} — {detail}" if detail else test_id)
+            if len(found) >= limit:
+                return found
+
+        xm = XCTASSERT_FAILED_RE.search(line)
+        if xm and "Test Case" not in line:
+            add(xm.group("detail").strip())
+
+    for m in TEST_EXEC_SUMMARY_RE.finditer(text):
+        failed = int(m.group("failed"))
+        if failed > 0:
+            add(f"summary — {failed} failure(s) in run")
+
+    if len(found) < limit and "** TEST FAILED **" in text:
+        add("xcodebuild — TEST FAILED")
+
+    return found[:limit]
+
+
+def latest_xcresult_path(repo_root: str) -> str | None:
+    """Newest verify-*.xcresult under build/test-results/."""
+    import glob
+
+    pattern = os.path.join(repo_root, "build", "test-results", "verify-*.xcresult")
+    paths = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+    return paths[0] if paths else None
+
+
+def read_failures_from_xcresult(xcresult_path: str, *, limit: int = 8) -> list[str]:
+    """Parse testFailures from an .xcresult summary (when shell output is sparse)."""
+    import subprocess
+
+    if not xcresult_path or not os.path.isdir(xcresult_path):
+        return []
+    try:
+        proc = subprocess.run(
+            [
+                "xcrun",
+                "xcresulttool",
+                "get",
+                "test-results",
+                "summary",
+                "--path",
+                xcresult_path,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        if proc.returncode != 0 or not proc.stdout.strip():
+            return []
+        data = json.loads(proc.stdout)
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError, ValueError):
+        return []
+
+    out: list[str] = []
+    for item in data.get("testFailures") or []:
+        if not isinstance(item, dict):
+            continue
+        target = str(item.get("targetName") or "")
+        name = str(item.get("testName") or item.get("testIdentifierString") or "")
+        detail = str(item.get("failureText") or "").strip()
+        detail = re.sub(r"\s+", " ", detail)
+        if len(detail) > 100:
+            detail = detail[:97] + "…"
+        test_id = f"{target}/{name}" if target and name else (name or target or "unknown")
+        line = f"{test_id} — {detail}" if detail else test_id
+        out.append(line)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def summarize_ips_crash(path: str) -> str:
+    """Best-effort one-line summary from a PodWash .ips crash report."""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            raw = fh.read(120_000)
+    except OSError:
+        return os.path.basename(path)
+
+    # IPS format: optional first-line metadata JSON, then the crash JSON body.
+    # Prefer the object that carries threads/exception (usually line 2+).
+    data = _parse_ips_payload(raw)
+    if not data:
+        return os.path.basename(path)
+
+    exc = data.get("exception") or {}
+    exc_type = exc.get("type") or "CRASH"
+    signal = exc.get("signal") or ""
+    images = data.get("usedImages") or []
+    triggered = data.get("faultingThread", 0)
+    threads = data.get("threads") or []
+    frames: list[Any] = []
+    if isinstance(triggered, int) and 0 <= triggered < len(threads):
+        frames = threads[triggered].get("frames") or []
+
+    podwash_syms: list[str] = []
+    for fr in frames[:24]:
+        if not isinstance(fr, dict):
+            continue
+        idx = fr.get("imageIndex", -1)
+        img = images[idx] if isinstance(idx, int) and 0 <= idx < len(images) else {}
+        name = str(img.get("name") or img.get("path") or "")
+        if "PodWash" not in name:
+            continue
+        sym = str(fr.get("symbol") or "").strip()
+        if sym:
+            podwash_syms.append(sym.split("(")[0].strip())
+        if len(podwash_syms) >= 2:
+            break
+
+    where = " → ".join(podwash_syms) if podwash_syms else os.path.basename(path)
+    sig = f"{exc_type}/{signal}" if signal else str(exc_type)
+    return f"{sig} in {where}"
+
+
+def _parse_ips_payload(raw: str) -> dict[str, Any] | None:
+    """Parse IPS text into the crash JSON object (skip metadata preamble)."""
+    decoder = json.JSONDecoder()
+    candidates: list[dict[str, Any]] = []
+
+    # Try whole-file and each newline-delimited JSON object.
+    chunks = [raw]
+    lines = raw.splitlines()
+    if len(lines) > 1:
+        chunks.append("\n".join(lines[1:]))
+    for line in lines[:4]:
+        if line.strip().startswith("{"):
+            chunks.append(line)
+
+    for chunk in chunks:
+        text = chunk.lstrip()
+        if not text.startswith("{"):
+            continue
+        try:
+            obj, _ = decoder.raw_decode(text)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if isinstance(obj, dict):
+            candidates.append(obj)
+
+    if not candidates:
+        return None
+    for obj in candidates:
+        if obj.get("threads") or obj.get("exception"):
+            return obj
+    return candidates[-1]
+
+
+def list_new_podwash_ips(since_mtime: float, *, reports_dir: str | None = None) -> list[str]:
+    """Return PodWash .ips paths modified after ``since_mtime``, oldest first."""
+    import glob
+
+    root = reports_dir or DIAGNOSTIC_REPORTS_DIR
+    paths = sorted(
+        glob.glob(os.path.join(root, PODWASH_IPS_GLOB)),
+        key=lambda p: os.path.getmtime(p),
+    )
+    out: list[str] = []
+    for path in paths:
+        try:
+            if os.path.getmtime(path) > since_mtime:
+                out.append(path)
+        except OSError:
+            continue
+    return out
+
+
 def shell_result_note(args: Any, result: Any) -> str:
     if not isinstance(args, dict):
         return ""
@@ -166,20 +519,30 @@ def shell_result_note(args: Any, result: Any) -> str:
             return "pushed"
         return ""
 
-    blob = ""
-    if isinstance(result, str):
-        blob = result
-    elif isinstance(result, dict):
-        blob = json.dumps(result)
-    else:
-        blob = str(result or "")
-
+    blob = _result_blob(result)
+    crashes = detect_simulator_crashes(blob)
+    failures = detect_test_failures(blob)
+    crash_failures = [f for f in failures if f.upper().startswith("CRASH")]
+    test_failures = [f for f in failures if not f.upper().startswith("CRASH")]
     v = parse_verify_result(blob)
-    if not v:
-        return ""
-    if verify_is_green(v):
-        return f"GREEN — {v['passed']}/{v['total']} passed, 0 failed, 0 skipped"
-    return f"RED — failed={v['failed']} skipped={v['skipped']}"
+    if v:
+        if verify_is_green(v):
+            return f"GREEN — {v['passed']}/{v['total']} passed, 0 failed, 0 skipped"
+        note = f"RED — failed={v['failed']} skipped={v['skipped']}"
+        if test_failures:
+            note += f" · FAIL ×{len(test_failures)}"
+        if crashes or crash_failures:
+            note += f" · CRASH ×{max(len(crashes), len(crash_failures))}"
+        return note
+    if test_failures:
+        return f"FAIL ×{len(test_failures)} — {test_failures[0]}"
+    if crashes or crash_failures:
+        n = max(len(crashes), len(crash_failures))
+        sample = crashes[0] if crashes else crash_failures[0]
+        return f"CRASH ×{n} — {sample}"
+    if "** TEST FAILED **" in blob or "TEST FAILED" in blob:
+        return "RED — TEST FAILED"
+    return ""
 
 
 def summarize_tool(name: str, args: Any, result: Any = None) -> str:
@@ -222,6 +585,16 @@ def summarize_tool(name: str, args: Any, result: Any = None) -> str:
             note = shell_result_note(args, result)
             base = f"verify.sh ({filtered})"
             return f"{base} — {note}" if note else base
+        if "xcodebuild" in line and "test" in line:
+            note = shell_result_note(args, result) if "verify.sh" in cmd else ""
+            failures = detect_test_failures(_result_blob(result))
+            if failures:
+                return f"xcodebuild test — FAIL ×{len(failures)}: {failures[0][:60]}"
+            if "** TEST SUCCEEDED **" in _result_blob(result):
+                return "xcodebuild test — GREEN"
+            if "** TEST FAILED **" in _result_blob(result):
+                return "xcodebuild test — RED"
+            return "xcodebuild test"
         if line.startswith("git commit"):
             return "git commit (slice)"
         if line.startswith("git push"):
@@ -278,6 +651,277 @@ def read_verify_from_slice(slice_file: str, repo_root: str) -> dict[str, str] | 
         return None
 
 
+def _read_slice_text(slice_file: str, repo_root: str) -> str:
+    path = slice_file if os.path.isabs(slice_file) else os.path.join(repo_root, slice_file)
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+    except OSError:
+        return ""
+
+
+def _status_from_text(text: str) -> str:
+    for line in text.splitlines():
+        if "| **Status** |" in line or "| **Status**|" in line:
+            parts = [p.strip() for p in line.strip().strip("|").split("|")]
+            if len(parts) >= 2:
+                return parts[1]
+    return ""
+
+
+def _section_body(text: str, heading: str) -> str:
+    """Return markdown body under ``## heading`` until the next ``## ``."""
+    pat = re.compile(
+        rf"^##\s+{re.escape(heading)}\s*$",
+        re.MULTILINE | re.IGNORECASE,
+    )
+    m = pat.search(text)
+    if not m:
+        return ""
+    rest = text[m.end() :]
+    nxt = re.search(r"^##\s+", rest, re.MULTILINE)
+    return rest[: nxt.start()] if nxt else rest
+
+
+def _role_artifact_rows(text: str) -> list[dict[str, str]]:
+    body = _section_body(text, "Role artifacts")
+    rows: list[dict[str, str]] = []
+    for line in body.splitlines():
+        if not line.strip().startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 3:
+            continue
+        if cells[0].lower() in ("role", "----", "---") or set(cells[0]) <= {"-", " "}:
+            continue
+        rows.append({"role": cells[0], "gate": cells[1], "path": cells[2]})
+    return rows
+
+
+def _plan_review_line(text: str, prefix: str) -> str:
+    for line in text.splitlines():
+        if line.lower().startswith(prefix.lower()):
+            return line.split(":", 1)[-1].strip() if ":" in line else line
+    return ""
+
+
+def _review_cleared(value: str) -> bool:
+    v = (value or "").strip().lower()
+    if not v or v in ("(pending)", "pending"):
+        return False
+    return any(
+        tok in v
+        for tok in ("waived", "cleared", "no blockers", "approved", "pass", "ok —", "ok -")
+    )
+
+
+def _path_exists(repo_root: str, raw: str) -> bool:
+    raw = (raw or "").strip().strip("`")
+    if not raw or raw in ("—", "-", "n/a", "N/A"):
+        return False
+    # Take first path-like token (tables sometimes add notes after em-dash).
+    token = re.split(r"\s+[—–-]\s+", raw, maxsplit=1)[0].strip().strip("`")
+    token = token.split()[0] if token.split() else token
+    if not token.endswith((".md", ".swift", ".json", ".txt", ".yml", ".yaml")):
+        # ADR paths without extension notes still ok if they look like docs/
+        if not token.startswith("docs/") and "/" not in token:
+            return False
+    path = token if os.path.isabs(token) else os.path.join(repo_root, token)
+    return os.path.isfile(path)
+
+
+def _extract_backtick_paths(text: str) -> list[str]:
+    return re.findall(r"`([^`]+)`", text or "")
+
+
+def _verification_mapping_filled(text: str) -> bool:
+    body = _section_body(text, "Verification mapping")
+    for line in body.splitlines():
+        if not line.strip().startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 3:
+            continue
+        if cells[0].lower() in ("ac#", "ac") or set(cells[0]) <= {"-", " "}:
+            continue
+        method = cells[2] if len(cells) > 2 else ""
+        test_file = cells[1] if len(cells) > 1 else ""
+        if method and method not in ("—", "-", "(pending)", "TBD", "…", "..."):
+            if "test" in method.lower() or method.endswith("()") or "`" in line:
+                return True
+        if test_file.endswith(".swift") and "Test" in test_file:
+            return True
+    return False
+
+
+def _mapped_test_files_exist(text: str, repo_root: str) -> bool:
+    body = _section_body(text, "Verification mapping")
+    found_any = False
+    for line in body.splitlines():
+        if not line.strip().startswith("|"):
+            continue
+        cells = [c.strip().strip("`") for c in line.strip().strip("|").split("|")]
+        if len(cells) < 2:
+            continue
+        tf = cells[1]
+        if not tf.endswith(".swift"):
+            continue
+        found_any = True
+        if not _path_exists(repo_root, tf):
+            return False
+    return found_any
+
+
+def _implement_artifacts_exist(text: str, repo_root: str) -> bool:
+    """True when at least one app deliverable path is on disk."""
+    deliverables = _section_body(text, "Deliverables")
+    candidates = _extract_backtick_paths(deliverables)
+    # Bare Foo.swift mentions in deliverables bullets.
+    candidates += re.findall(
+        r"\b([A-Za-z][A-Za-z0-9]+(?:View|ViewModel|Store|State|Engine|Pipeline|Analyzer|Fixture)[A-Za-z0-9]*\.swift)\b",
+        deliverables,
+    )
+    # Type names without .swift (common in deliverables): `AnalysisUIViewModel`
+    candidates += re.findall(
+        r"\b([A-Za-z][A-Za-z0-9]*(?:ViewModel|View|Store|Pipeline|Analyzer|Fixture|Engine|State))\b",
+        deliverables,
+    )
+
+    def looks_like_app(path: str) -> bool:
+        norm = path.replace("\\", "/")
+        if any(x in norm for x in ("Tests/", "UITests/", "SlowTests/", "PodWashTests")):
+            return False
+        return True
+
+    for c in candidates:
+        c = c.strip().strip("`")
+        if not c:
+            continue
+        if not c.endswith(".swift"):
+            c = f"{c}.swift"
+        if not looks_like_app(c):
+            continue
+        if "/" not in c:
+            c = f"PodWash/PodWash/{c}"
+        if _path_exists(repo_root, c):
+            return True
+
+    for c in _extract_backtick_paths(text):
+        norm = c.replace("\\", "/")
+        if (
+            "PodWash/PodWash/" in norm
+            and norm.endswith(".swift")
+            and looks_like_app(norm)
+            and _path_exists(repo_root, c)
+        ):
+            return True
+    return False
+
+
+def assess_slice_gates(slice_file: str, repo_root: str) -> dict[str, Any]:
+    """Heuristic gate checklist for progress logs (not a Done authority).
+
+    Returns dict with keys: gates (list), done, total, next, summary.
+    Waived gates count as done. Skipped (N/A) gates are omitted from total.
+    """
+    text = _read_slice_text(slice_file, repo_root)
+    status = _status_from_text(text)
+    status_l = status.lower()
+    verify = parse_verify_result(text)
+    green = verify_is_green(verify)
+
+    rows = _role_artifact_rows(text)
+    arch_row = next((r for r in rows if "architect" in r["role"].lower()), None)
+    ux_row = next(
+        (r for r in rows if r["role"].strip().lower() == "ux"),
+        None,
+    )
+
+    def role_done(row: dict[str, str] | None) -> tuple[bool, bool]:
+        """Return (done, applicable). Missing row ⇒ not applicable."""
+        if row is None:
+            return True, False
+        gate = row["gate"].lower()
+        if "waiv" in gate:
+            return True, True
+        path = row["path"]
+        if _path_exists(repo_root, path):
+            return True, True
+        if "accepted" in gate or "(done)" in gate or "done)" in path.lower():
+            return True, True
+        return False, True
+
+    arch_done, arch_on = role_done(arch_row)
+    ux_done, ux_on = role_done(ux_row)
+
+    adr_line = _plan_review_line(text, "ADR review")
+    # Architect waived ⇒ ADR review auto-cleared / still shown as done.
+    if arch_row and "waiv" in arch_row["gate"].lower():
+        adr_done, adr_on = True, True
+    elif not arch_on:
+        adr_done, adr_on = True, False
+    else:
+        adr_done = _review_cleared(adr_line) or "waiv" in (adr_line or "").lower()
+        adr_on = True
+
+    test_spec_done = _verification_mapping_filled(text) or _mapped_test_files_exist(
+        text, repo_root
+    )
+    tsr_line = _plan_review_line(text, "Test spec review")
+    test_review_done = _review_cleared(tsr_line)
+
+    story_done = status_l in ("ready", "in progress", "verify", "done") or bool(
+        re.search(r"^\| \*\*Crux\*\* \|.+\|", text, re.MULTILINE)
+    )
+    implement_done = _implement_artifacts_exist(text, repo_root) or status_l in (
+        "verify",
+        "done",
+    )
+    verify_done = green
+    commit_done = status_l == "done" and green
+
+    gates: list[dict[str, Any]] = []
+
+    def add(gid: str, label: str, done: bool, applicable: bool = True) -> None:
+        if not applicable:
+            return
+        gates.append({"id": gid, "label": label, "done": bool(done)})
+
+    add("story", "story", story_done)
+    add("architect", "architect", arch_done, arch_on)
+    add("ux", "ux", ux_done, ux_on)
+    add("adr_review", "ADR review", adr_done, adr_on)
+    add("test_spec", "test spec", test_spec_done)
+    add("test_review", "test-spec review", test_review_done)
+    add("implement", "implement", implement_done)
+    add("verify", "verify", verify_done)
+    add("commit", "commit", commit_done)
+
+    done_n = sum(1 for g in gates if g["done"])
+    total = len(gates)
+    nxt = next((g["label"] for g in gates if not g["done"]), "done")
+    bar_done = "█" * done_n
+    bar_todo = "░" * (total - done_n)
+    summary = f"gates {done_n}/{total} {bar_done}{bar_todo} · next: {nxt}"
+    return {
+        "gates": gates,
+        "done": done_n,
+        "total": total,
+        "next": nxt,
+        "summary": summary,
+        "status": status,
+    }
+
+
+def format_gate_detail(progress: dict[str, Any]) -> str:
+    """Compact checklist: story✓ ux✓ test_spec✓ implement· verify· …"""
+    parts: list[str] = []
+    for g in progress.get("gates") or []:
+        mark = "✓" if g.get("done") else "·"
+        parts.append(f"{g['label']}{mark}")
+    return " ".join(parts)
+
+
 def format_elapsed(seconds: int) -> str:
     if seconds < 60:
         return f"{seconds}s"
@@ -286,6 +930,59 @@ def format_elapsed(seconds: int) -> str:
         return f"{mins}m {secs}s"
     hours, mins = divmod(mins, 60)
     return f"{hours}h {mins}m {secs}s"
+
+
+def sniff_background_build() -> str | None:
+    """Best-effort: is xcodebuild/verify.sh running for PodWash right now?"""
+    import subprocess
+
+    try:
+        proc = subprocess.run(
+            ["ps", "aux"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    for line in proc.stdout.splitlines():
+        if "PodWash" not in line:
+            continue
+        if "verify.sh" in line and "grep" not in line:
+            filtered = "filtered" if "-only-testing:" in line else "full suite"
+            return f"verify.sh ({filtered})"
+        if "xcodebuild" in line and "test" in line:
+            m = re.search(r"-only-testing:([^\s]+)", line)
+            if m:
+                target = m.group(1).split("/")[-1][:48]
+                return f"xcodebuild ({target})"
+            return "xcodebuild (tests)"
+    return None
+
+
+def format_active_tasks(
+    tasks: list[dict[str, Any]], *, now: float | None = None
+) -> str:
+    """Human-readable summary of in-flight subagent Tasks."""
+    import time
+
+    now = now if now is not None else time.time()
+    if not tasks:
+        return ""
+    parts: list[str] = []
+    # Longest-running first so the heartbeat highlights the slow one.
+    ordered = sorted(
+        tasks,
+        key=lambda t: float(t.get("started_at") or 0),
+    )
+    for t in ordered:
+        role = str(t.get("role") or "Subagent")
+        desc = str(t.get("desc") or "working")[:52]
+        started = float(t.get("started_at") or now)
+        elapsed = format_elapsed(max(0, int(now - started)))
+        parts.append(f"{role}: {desc} ({elapsed})")
+    return " · ".join(parts)
 
 
 def slice_start_banner(slice_id: int, title: str, slice_file: str) -> str:
@@ -381,6 +1078,8 @@ class RunProgress:
         log_fn,
         verbose: bool = False,
         heartbeat_secs: int = 90,
+        repo_root: str | None = None,
+        max_red_verifies: int = DEFAULT_MAX_RED_VERIFIES,
     ):
         self.slice_id = slice_id
         self.slice_title = slice_title
@@ -388,29 +1087,166 @@ class RunProgress:
         self.log = log_fn
         self.verbose = verbose
         self.heartbeat_secs = heartbeat_secs
+        self.repo_root = repo_root or os.getcwd()
+        self.max_red_verifies = max(1, int(max_red_verifies))
         self.last_activity = 0.0
         self.last_label = "coordinator starting"
         self._seen_starts: set[str] = set()
-        self._active_tasks: dict[str, dict[str, str]] = {}
-        self.role_stack: list[str] = ["Coordinator"]
+        # call_id → {role, desc, started_at} — source of truth for active role
+        # (LIFO stack breaks when Architect+Engineer run in parallel).
+        self._active_tasks: dict[str, dict[str, Any]] = {}
         self._stop = None
         self._thread = None
         self._last_verify: dict[str, str] | None = None
+        self._run_started_at = 0.0
+        self._announced_ips: set[str] = set()
+        self._announced_crash_keys: set[str] = set()
+        self._announced_failure_keys: set[str] = set()
+        self._crash_watch_enabled = True
+        self._last_long_idle_warn = 0.0
+        self._last_gate_summary: str | None = None
+        self._gate_log_counter = 0
+        # call_id → {label, started_at} for coordinator shell/edit tools still running
+        self._active_shell: dict[str, dict[str, Any]] = {}
+        # Anti-thrash: same red verify signature ×N → halt
+        self._red_verify_count = 0
+        self._last_failure_sig = ""
+        self._same_failure_streak = 0
+        self._known_failing_test = ""
+        self._halt_reason: str | None = None
+        self._wrong_role_warned: set[str] = set()
+        self.halted = False
+    def refresh_gates(self) -> dict[str, Any]:
+        return assess_slice_gates(self.slice_file, self.repo_root)
+
+    def log_gate_progress(self, *, force: bool = False, detail: bool = False) -> None:
+        """Print ``gates N/M … · next: …`` when the checklist changes (or forced)."""
+        try:
+            info = self.refresh_gates()
+        except OSError:
+            return
+        summary = str(info.get("summary") or "")
+        if not force and summary == self._last_gate_summary:
+            return
+        self._last_gate_summary = summary
+        self.log(f"📋 [{self.slice_tag()}] {summary}")
+        if detail:
+            self.log(f"   [{self.slice_tag()}] {format_gate_detail(info)}")
 
     def slice_tag(self) -> str:
         return f"slice {self.slice_id:02d}"
 
     def active_role(self) -> str:
-        return self.role_stack[-1] if self.role_stack else "Coordinator"
+        """Role shown in progress lines — prefers long-running workers when parallel."""
+        if not self._active_tasks:
+            return "Coordinator"
+        roles = [str(t.get("role") or "Subagent") for t in self._active_tasks.values()]
+        # Prefer implement/verify over short readonly reviews when both are open.
+        for preferred in (
+            "Engineer",
+            "QA",
+            "QA review",
+            "Architect",
+            "Architect review",
+            "PM",
+            "PM review",
+            "UX",
+            "Subagent",
+        ):
+            if preferred in roles:
+                return preferred
+        # Fall back to most recently started.
+        newest = max(
+            self._active_tasks.values(),
+            key=lambda t: float(t.get("started_at") or 0),
+        )
+        return str(newest.get("role") or "Subagent")
+
+    def active_roles_label(self) -> str:
+        """Heartbeat label when multiple subagents are in flight."""
+        if not self._active_tasks:
+            return "Coordinator"
+        roles = [str(t.get("role") or "Subagent") for t in self._active_tasks.values()]
+        primary = self.active_role()
+        others = [r for r in roles if r != primary]
+        if not others:
+            return primary
+        return f"{primary} (+{len(others)} parallel)"
 
     def prefix(self) -> str:
         return f"[{self.slice_tag()}][{self.active_role()}]"
 
+    def _primary_active_task(self) -> dict[str, Any] | None:
+        if not self._active_tasks:
+            return None
+        preferred = self.active_role()
+        for t in self._active_tasks.values():
+            if t.get("role") == preferred:
+                return t
+        return max(
+            self._active_tasks.values(),
+            key=lambda t: float(t.get("started_at") or 0),
+        )
+
+    def format_work_status(self) -> str:
+        """One-line status for heartbeats: what's running now."""
+        import time
+
+        now = time.time()
+        bits: list[str] = []
+
+        bg = sniff_background_build()
+        if bg:
+            bits.append(f"🧪 {bg}")
+
+        shell_bits: list[str] = []
+        for t in sorted(
+            self._active_shell.values(),
+            key=lambda x: float(x.get("started_at") or 0),
+        ):
+            label = str(t.get("label") or "shell")
+            elapsed = format_elapsed(max(0, int(now - float(t.get("started_at") or now))))
+            shell_bits.append(f"{label} ({elapsed})")
+        if shell_bits:
+            bits.append("⚙ " + " · ".join(shell_bits[:2]))
+
+        task_line = format_active_tasks(list(self._active_tasks.values()), now=now)
+        if task_line:
+            bits.append(f"▶ {task_line}")
+
+        if bits:
+            status = " · ".join(bits)
+            if self._known_failing_test:
+                streak = (
+                    f" ×{self._same_failure_streak}"
+                    if self._same_failure_streak > 1
+                    else ""
+                )
+                status += f" · ❌ {self._known_failing_test}{streak}"
+            return status
+
+        quiet = int(now - self.last_activity)
+        fail_bit = ""
+        if self._known_failing_test:
+            streak = (
+                f" ×{self._same_failure_streak}"
+                if self._same_failure_streak > 1
+                else ""
+            )
+            fail_bit = f" · ❌ {self._known_failing_test}{streak}"
+        if quiet < 30:
+            return f"last: {self.last_label}{fail_bit}"
+        return (
+            f"coordinator quiet {format_elapsed(quiet)} · "
+            f"last: {self.last_label}{fail_bit}"
+        )
     def start(self):
         import threading
         import time
 
         self.last_activity = time.time()
+        self._run_started_at = self.last_activity
+        self.log_gate_progress(force=True, detail=True)
         if self.heartbeat_secs > 0:
             self._stop = threading.Event()
             self._thread = threading.Thread(target=self._heartbeat, daemon=True)
@@ -419,15 +1255,203 @@ class RunProgress:
     def stop(self):
         if self._stop:
             self._stop.set()
+        self.log_gate_progress(force=True)
 
     def _heartbeat(self):
         import time
 
         while not self._stop.wait(self.heartbeat_secs):
-            idle = int(time.time() - self.last_activity)
+            self._scan_diagnostic_reports()
+            self._gate_log_counter += 1
+            if self._gate_log_counter % 2 == 0:
+                self.log_gate_progress()
+            role_label = self.active_roles_label()
+            work = self.format_work_status()
+            gates = self._last_gate_summary or ""
+            gate_bit = f" · {gates}" if gates else ""
+            has_workers = bool(self._active_tasks or self._active_shell or sniff_background_build())
+            if has_workers:
+                self.log(
+                    f"⏳ [{self.slice_tag()}][{role_label}] {work}{gate_bit}"
+                )
+            else:
+                quiet = int(time.time() - self.last_activity)
+                self.log(
+                    f"still running ({quiet}s quiet) — "
+                    f"[{self.slice_tag()}][{role_label}] {work}{gate_bit}"
+                )
+            now = time.time()
+            # Warn when a single subagent has been quiet a very long time.
+            primary = self._primary_active_task()
+            if primary:
+                running_for = int(now - float(primary.get("started_at") or now))
+                if running_for >= 600 and (now - self._last_long_idle_warn) >= 600:
+                    self._last_long_idle_warn = now
+                    role = primary.get("role", "Subagent")
+                    desc = primary.get("desc", "working")
+                    self.log(
+                        f"⏳ [{self.slice_tag()}] long subagent run ({format_elapsed(running_for)}) — "
+                        f"{role}: {desc}. Normal for verify/Engineer/UX; bridge timeout is disabled."
+                    )
+            elif not has_workers:
+                quiet = int(now - self.last_activity)
+                if quiet >= 600 and (now - self._last_long_idle_warn) >= 600:
+                    self._last_long_idle_warn = now
+                    self.log(
+                        f"⏳ [{self.slice_tag()}] coordinator quiet {format_elapsed(quiet)} — "
+                        f"no subagent Task open. Last: {self.last_label}"
+                    )
+
+    def _announce_crashes(self, crashes: list[str], *, source: str) -> None:
+        """Log that a simulator crash was observed and is being investigated."""
+        if not crashes:
+            return
+        fresh = [c for c in crashes if c.lower() not in self._announced_crash_keys]
+        if not fresh:
+            return
+        for c in fresh:
+            self._announced_crash_keys.add(c.lower())
+        sample = fresh[0]
+        extra = f" (+{len(fresh) - 1} more)" if len(fresh) > 1 else ""
+        self.log(
+            f"💥 {self.prefix()} SIMULATOR CRASH detected ({source}): {sample}{extra}"
+        )
+        self.log(
+            f"🔎 {self.prefix()} investigating crash — "
+            f"spawn podwash-engineer if not already fixing "
+            f"(do not ignore; parse stack / DiagnosticReports)"
+        )
+        self.note(f"💥 crash: {sample[:60]}")
+
+    def _announce_test_failures(self, failures: list[str], *, source: str) -> None:
+        """Log XCTest failures so red verify runs are visible in slice-loop output."""
+        if not failures:
+            return
+        sig = failure_signature(failures)
+        if sig:
+            if sig == self._last_failure_sig:
+                self._same_failure_streak += 1
+            else:
+                self._last_failure_sig = sig
+                self._same_failure_streak = 1
+            self._known_failing_test = sig
+
+        fresh = [f for f in failures if f.lower() not in self._announced_failure_keys]
+        if fresh:
+            for f in fresh:
+                self._announced_failure_keys.add(f.lower())
             self.log(
-                f"still running ({idle}s idle) — {self.prefix()} last: {self.last_label}"
+                f"❌ {self.prefix()} TEST FAIL ({source}) — {fresh[0]}"
+                + (f" (+{len(fresh) - 1} more)" if len(fresh) > 1 else "")
             )
+            for extra in fresh[1:3]:
+                self.log(f"   {self.prefix()} ↳ {extra}")
+            self.note(f"❌ fail: {fresh[0][:60]}")
+        elif self._same_failure_streak > 1 and sig:
+            self.log(
+                f"🔁 {self.prefix()} same failure ×{self._same_failure_streak} — {sig}"
+            )
+            self.note(f"🔁 same fail ×{self._same_failure_streak}: {sig[:50]}")
+
+    def _clear_failure_streak(self) -> None:
+        self._red_verify_count = 0
+        self._same_failure_streak = 0
+        self._last_failure_sig = ""
+        self._known_failing_test = ""
+
+    def _record_red_verify(
+        self, failures: list[str], *, cmd: str, blob: str, verify: dict[str, str] | None
+    ) -> None:
+        """Count red verify/xcodebuild outcomes; halt after max_red_verifies."""
+        is_verifyish = "verify.sh" in cmd or (
+            "xcodebuild" in cmd and "test" in cmd
+        )
+        if not is_verifyish:
+            return
+
+        if verify and verify_is_green(verify):
+            self._clear_failure_streak()
+            return
+
+        red = bool(failures) or (
+            verify is not None and not verify_is_green(verify)
+        ) or ("** TEST FAILED **" in blob) or (
+            "TEST FAILED" in blob and "TEST SUCCEEDED" not in blob
+        )
+        if not red:
+            return
+
+        self._red_verify_count += 1
+        sig = (
+            self._known_failing_test
+            or failure_signature(failures)
+            or "unknown failure"
+        )
+        if not self._known_failing_test and sig != "unknown failure":
+            self._known_failing_test = sig
+        self.log(
+            f"📉 {self.prefix()} red verify {self._red_verify_count}/"
+            f"{self.max_red_verifies} — {sig}"
+        )
+        if self._red_verify_count < self.max_red_verifies:
+            remaining = self.max_red_verifies - self._red_verify_count
+            self.log(
+                f"   {self.prefix()} {remaining} retry left — spawn podwash-engineer "
+                f"(app) or podwash-qa (tests); do NOT spawn UX/PM to fix"
+            )
+            return
+
+        self._halt_for_thrash(
+            "HALT: red verify limit reached "
+            f"({self._red_verify_count}/{self.max_red_verifies}). "
+            f"Stuck on: {sig}. "
+            "What happened: the same (or successive) verify/xcodebuild runs stayed "
+            "RED without reaching Done. The loop stops so agents cannot grind "
+            "filtered UI tests for hours. "
+            "Next: kill any leftover xcodebuild, inspect the failing test, spawn "
+            "podwash-engineer (app Swift) or podwash-qa (test edits) in a fresh "
+            "session, then re-run scripts/slice-loop.sh."
+        )
+    def _halt_for_thrash(self, reason: str) -> None:
+        """Log a clear halt explanation and raise ThrashHalt for the driver."""
+        if self.halted:
+            raise ThrashHalt(self._halt_reason or reason)
+        self.halted = True
+        self._halt_reason = reason
+        self.log(f"🛑 [{self.slice_tag()}] {reason}")
+        self.log(
+            f"🛑 [{self.slice_tag()}] loop stopping — disk work is preserved; "
+            "restart after a real fix (Engineer/QA), not another blind verify."
+        )
+        self.note("🛑 thrash halt")
+        raise ThrashHalt(reason)
+
+    def _collect_test_failures(self, blob: str, cmd: str) -> list[str]:
+        failures = detect_test_failures(blob)
+        if failures:
+            return failures
+        redish = (
+            "verify.sh" in cmd
+            or "xcodebuild" in cmd
+            or "** TEST FAILED **" in blob
+            or "TEST FAILED" in blob
+        )
+        if not redish:
+            return []
+        xc = latest_xcresult_path(self.repo_root)
+        if xc:
+            return read_failures_from_xcresult(xc)
+        return []
+    def _scan_diagnostic_reports(self) -> None:
+        if not self._crash_watch_enabled or not self._run_started_at:
+            return
+        new_paths = list_new_podwash_ips(self._run_started_at)
+        for path in new_paths:
+            if path in self._announced_ips:
+                continue
+            self._announced_ips.add(path)
+            summary = summarize_ips_crash(path)
+            self._announce_crashes([summary], source=os.path.basename(path))
 
     def note(self, label: str):
         import time
@@ -498,34 +1522,111 @@ class RunProgress:
             self._seen_starts.add(call_id)
             self._warn_delegate_violation(norm, args)
             self.log(f"→ {self.prefix()} {label}")
+            import time
+
+            self._active_shell[call_id] = {
+                "label": label,
+                "started_at": time.time(),
+            }
             self.note(label)
         elif status in ("completed", "error"):
+            self._active_shell.pop(call_id, None)
             mark = "✓" if status == "completed" else "✗"
             self.log(f"{mark} {self.prefix()} {label}")
             self.note(f"{mark} {label}")
-            if norm == "shell" and "verify.sh" in arg_shell_command(args if isinstance(args, dict) else {}):
-                v = parse_verify_result(str(result or ""))
+            cmd = arg_shell_command(args if isinstance(args, dict) else {})
+            blob = _result_blob(result)
+            if norm == "shell" and (
+                "verify.sh" in cmd or "xcodebuild" in cmd or "Crash:" in blob
+            ):
+                crashes = detect_simulator_crashes(blob)
+                if crashes:
+                    self._announce_crashes(crashes, source="verify/xcodebuild")
+                failures = self._collect_test_failures(blob, cmd)
+                v = parse_verify_result(blob) if "verify.sh" in cmd else None
+                if failures:
+                    self._announce_test_failures(failures, source="verify/xcodebuild")
+                elif "verify.sh" in cmd and v and not verify_is_green(v):
+                    self.log(
+                        f"❌ {self.prefix()} verify RED — "
+                        f"failed={v.get('failed')} skipped={v.get('skipped')} "
+                        f"(no per-test detail in output; check build/test-results/)"
+                    )
                 if v and verify_is_green(v):
                     self._last_verify = v
+                    self._clear_failure_streak()
+                elif (
+                    not failures
+                    and ("** TEST SUCCEEDED **" in blob or "TEST SUCCEEDED" in blob)
+                    and "TEST FAILED" not in blob
+                ):
+                    self._clear_failure_streak()
+                else:
+                    self._record_red_verify(
+                        failures, cmd=cmd, blob=blob, verify=v
+                    )
+            # Always peek DiagnosticReports after a shell tool finishes —
+            # crashes often land as .ips slightly after verify returns.
+            self._scan_diagnostic_reports()
+            if norm in ("shell", "edit", "strreplace", "write"):
+                self.log_gate_progress()
 
     def _handle_task_tool(self, call_id, status, args):
+        import time
+
         if status == "running" and call_id not in self._seen_starts:
             self._seen_starts.add(call_id)
             role = infer_role(args)
             desc = task_description(args)
-            self._active_tasks[call_id] = {"role": role, "desc": desc}
-            self.log(f"→ [{self.slice_tag()}][Coordinator] spawn {role}: {desc}")
-            self.role_stack.append(role)
-            self.note(f"spawn {role}")
+            self._active_tasks[call_id] = {
+                "role": role,
+                "desc": desc,
+                "started_at": time.time(),
+            }
+            parallel = len(self._active_tasks)
+            extra = f" ({parallel} in flight)" if parallel > 1 else ""
+            paths = role_edit_paths(role)
+            self.log(f"→ [{self.slice_tag()}][Coordinator] spawn {role}: {desc}{extra}")
+            self.log(f"   [{self.slice_tag()}] allowed edits: {paths}")
+            wrong = detect_wrong_role_spawn(role, desc)
+            if wrong:
+                key = f"{role}:{desc[:40]}".lower()
+                if key not in self._wrong_role_warned:
+                    self._wrong_role_warned.add(key)
+                    self.log(f"⚠ [{self.slice_tag()}] WRONG ROLE — {wrong}")
+                    self.log(
+                        f"   [{self.slice_tag()}] abort this subagent mentally; "
+                        "spawn podwash-engineer for app fixes"
+                    )
+            self.note(f"{role}: {desc}")
         elif status in ("completed", "error"):
             info = self._active_tasks.pop(call_id, None)
-            if self.role_stack and self.role_stack[-1] != "Coordinator":
-                self.role_stack.pop()
             mark = "✓" if status == "completed" else "✗"
-            role = info["role"] if info else self.active_role()
-            desc = info["desc"] if info else "subagent"
-            self.log(f"{mark} [{self.slice_tag()}][{role}] finished — {desc}")
-            self.note(f"{mark} {role} done")
+            role = info["role"] if info else infer_role(args if isinstance(args, dict) else {})
+            desc = info["desc"] if info else task_description(args if isinstance(args, dict) else {})
+            remaining = len(self._active_tasks)
+            still = (
+                f" — still running: {self.active_roles_label()}"
+                if remaining
+                else ""
+            )
+            self.log(f"{mark} [{self.slice_tag()}][{role}] finished — {desc}{still}")
+            if remaining:
+                primary = self._primary_active_task()
+                if primary:
+                    import time
+
+                    elapsed = format_elapsed(
+                        max(0, int(time.time() - float(primary.get("started_at") or time.time())))
+                    )
+                    self.note(
+                        f"{primary.get('role')}: {primary.get('desc', 'working')} ({elapsed})"
+                    )
+            else:
+                self.note(f"{mark} {role} done")
+            # Subagent may have left new crash reports / artifacts while we were idle.
+            self._scan_diagnostic_reports()
+            self.log_gate_progress()
 
     def _task(self, status, text):
         text = (text or "").strip()
@@ -534,6 +1635,9 @@ class RunProgress:
         line = text.split("\n", 1)[0][:72]
         self.log(f"… {self.prefix()} {line}")
         self.note(line)
+        crashes = detect_simulator_crashes(text)
+        if crashes:
+            self._announce_crashes(crashes, source="agent note")
 
     def _status(self, text):
         text = (text or "").strip()

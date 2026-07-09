@@ -209,6 +209,7 @@ scripts/slice-loop.sh                    # run the queue until it stops
 scripts/slice-loop.sh --dry-run          # show the next decision; spawns no agent, no key needed
 scripts/slice-loop.sh --max 3            # cap slices run this session (default 6)
 scripts/slice-loop.sh --model auto       # let the server pick the coordinator model
+scripts/slice-loop.sh --stream-timeout 0 # disable bridge stream idle cap (default; SDK is 600s)
 ```
 
 The wrapper creates an isolated venv under `build/` (gitignored) and installs
@@ -217,6 +218,12 @@ The wrapper creates an isolated venv under `build/` (gitignored) and installs
 subagents by name per the workflow's model assignment (`.cursor/agents/`; never
 `composer-2.5-fast` or `grok-4.5-fast-xhigh`). The SDK accepts plain model ids
 only — not bracket parameter syntax like `composer-2.5[fast=false]`.
+
+**Bridge stream timeout:** the SDK defaults to a **600s** stream read timeout.
+Quiet Engineer/`verify.sh` stretches longer than that look like
+`Bridge request timed out: ReadTimeout` even while work continues. The loop
+disables that cap by default (`--stream-timeout 0`) and retries retryable
+bridge errors (`--bridge-retries`, default 3).
 
 ### Exit codes
 
@@ -238,6 +245,35 @@ only — not bracket parameter syntax like `composer-2.5[fast=false]`.
   not by the loop itself.
 - **`--dry-run` needs no key or SDK** — it just prints the next decision, so it is
   safe to run anytime (and is what the smoke test uses).
+- **Simulator crashes are logged.** When verify/xcodebuild output contains
+  `Crash: PodWash at …`, or a new `~/Library/Logs/DiagnosticReports/PodWash-*.ips`
+  appears during the run, the loop prints `SIMULATOR CRASH detected` plus an
+  `investigating crash` line so you can see the agent is acting on it.
+- **Test failures are logged.** When verify/xcodebuild fails, the loop prints
+  `TEST FAIL (verify/xcodebuild) — Class/method — XCTAssert… failed` (parsed from
+  shell output, or from the newest `build/test-results/verify-*.xcresult` when
+  output is sparse). Shell completion lines show `FAIL ×N` alongside `RED`.
+- **Same-failure streak.** Repeating the same failing test logs
+  `🔁 same failure ×N — Class/method` and heartbeats include `❌ testName ×N`.
+- **Wrong-role spawn warning.** Spawning UX/PM/Architect to "fix" a test logs
+  `⚠ WRONG ROLE` plus `allowed edits:` for that role (UX cannot edit app Swift).
+- **Anti-thrash halt.** After **2** red verify/xcodebuild outcomes in one run
+  (configurable `--max-red-verifies`), the loop prints a `🛑 HALT` explanation
+  (what failed, why it stopped, what to do next) and exits code **5**. Disk work
+  is preserved; restart only after a real Engineer/QA fix.
+- **In Progress resume.** If the slice Status is already mid-flight, the
+  coordinator prompt includes a RESUME block: audit disk first, skip completed
+  gates, continue from Engineer/verify instead of re-running PM→UX→review.
+  Red tests must go to Engineer/QA — never UX.
+- **Parallel subagents.** Heartbeats show the preferred active role (Engineer
+  over Architect review when both are open). A finished review logs
+  `still running: Engineer` so long quiet stretches aren't misread as a stuck review.
+- **Gate progress.** The loop prints `gates N/M ████░░ · next: implement` from
+  slice-file + on-disk artifacts (story/UX/reviews/tests/implement/verify/commit).
+  Heuristic only — Done still requires green `VERIFY RESULT`.
+- **Active work heartbeats.** While a subagent Task is open, heartbeats show
+  `▶ UX: Fix UI test accessibility (18m 22s)` instead of stale `last: ✓ Subagent done`.
+  Background `verify.sh` / `xcodebuild` is sniffed via `ps` when present.
 
 ### Alternative (not built): Cursor Automation notifier
 

@@ -17,15 +17,24 @@ Stop conditions (never guessed around):
   - wait : every remaining slice is blocked on an unfinished dependency.
   - done : the queue is complete.
   - a slice failed to reach Done (agent error or verify red) → stop, no spin.
+  - thrash: 2 red verify/xcodebuild outcomes in one run → exit 5 with explanation.
 
 Usage:
   scripts/slice-loop.sh                 # run the queue until it stops
   scripts/slice-loop.sh --dry-run       # show what WOULD run; spawns no agents
   scripts/slice-loop.sh --max 3         # run at most 3 slices this session
   scripts/slice-loop.sh --model auto    # let the server pick the coordinator model
+  scripts/slice-loop.sh --stream-timeout 0   # disable bridge stream idle cap (default)
 
 Auth (non-dry-run): export CURSOR_API_KEY=cursor_...
+
+Bridge timeouts: the Cursor SDK defaults to a 600s stream read timeout. Quiet
+Engineer/verify stretches exceed that and surface as
+`Bridge request timed out: ReadTimeout` even while work continues. This driver
+disables that cap by default and retries retryable bridge errors.
 """
+
+from __future__ import annotations
 
 import argparse
 import json
@@ -35,7 +44,9 @@ import sys
 import time
 
 from slice_loop_progress import (
+    DEFAULT_MAX_RED_VERIFIES,
     RunProgress,
+    ThrashHalt,
     read_slice_meta,
     read_verify_from_slice,
     slice_done_banner,
@@ -51,7 +62,13 @@ EXIT_STARTUP = 1       # agent never started (auth/config/network)
 EXIT_RUN_FAILED = 2    # agent ran but slice did not reach Done (or no progress)
 EXIT_WAIT = 3          # blocked on an unfinished dependency
 EXIT_HALT = 4          # halt-and-ask gate needs a user decision
+EXIT_THRASH = 5        # red-verify retry budget exhausted (anti-thrash)
 
+# SDK default stream timeout is 600s — too short for quiet verify/Engineer turns.
+DEFAULT_STREAM_TIMEOUT = 0.0   # 0 / None => disable (httpx timeout=None)
+DEFAULT_UNARY_TIMEOUT = 120.0
+DEFAULT_BRIDGE_RETRIES = 3
+DEFAULT_RETRY_BACKOFF_SECS = 5.0
 
 def log(msg):
     print(f"[slice-loop] {msg}", flush=True)
@@ -76,16 +93,58 @@ def query_next():
         raise RuntimeError(f"could not parse next-slice.sh output: {out!r}") from exc
 
 
+def slice_status(slice_file: str, repo_root: str) -> str:
+    """Return the Status cell value from a slice markdown table (or '')."""
+    path = slice_file if os.path.isabs(slice_file) else os.path.join(repo_root, slice_file)
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                if "| **Status** |" in line or "| **Status**|" in line:
+                    parts = [p.strip() for p in line.strip().strip("|").split("|")]
+                    if len(parts) >= 2:
+                        return parts[1]
+    except OSError:
+        pass
+    return ""
+
+
 def build_prompt(slice_id, slice_file):
     """The coordinator kickoff prompt for one slice, run unattended."""
     nn = f"{slice_id:02d}"
+    status = slice_status(slice_file, REPO_ROOT)
+    resume_block = ""
+    if status and status.lower() not in ("draft", "ready", ""):
+        # In Progress / Verify / anything mid-flight — audit disk, don't restart gates.
+        resume_block = f"""
+**RESUME (status is `{status}` — do NOT restart from scratch):**
+1. Immediately run `git status` and skim the slice file (Plan review record,
+   VERIFY RESULT, Role artifacts, AC checkboxes) plus any `docs/slices/slice-{nn}-ux.md`
+   / ADR already on disk.
+2. Emit a short status note listing what is **already done** vs **remaining**, then
+   continue from the first incomplete gate only.
+3. **Skip completed gates** — do not re-spawn PM/UX/Architect/QA-author if their
+   artifacts already exist and match the slice deliverables. Re-run a plan review
+   only when the Plan review record is still `(pending)` *and* no prior review
+   outcome is recorded; if tests/ADR/UX already landed, prefer recording the review
+   outcome (or a one-line "cleared on resume — artifacts present") over a full
+   re-review.
+4. Prefer jumping to Engineer (fix red / crashes) or readonly QA verify when
+   implementation already exists. Never rewrite green tests or wipe working app code
+   to "start clean."
+5. **Red UI/unit tests → Engineer (app) or QA (tests) only.** Never spawn UX/PM/
+   Architect to "fix" a failing test — UX is spec-only and cannot edit app Swift.
+6. After a red verify, spawn **one** Engineer (or QA) with the failing test name;
+   do not re-run full/filtered verify in a loop yourself. The slice-loop **halts
+   after 2 red verify/xcodebuild outcomes** in one run — treat that as a hard stop.
+"""
+
     return f"""You are the PodWash Multitask COORDINATOR, running unattended via the slice loop.
 
 First, load the process and gates by reading:
 - .cursor/rules/podwash-coordinator.mdc
 - docs/multitask-workflow.md
 - {slice_file}
-
+{resume_block}
 Then run Slice {nn} to completion per that slice file:
 - Enforce every gate: PM story, Architect/UX design (if the slice adds modules or UI),
   QA test spec, Engineer implementation, QA verification.
@@ -102,6 +161,23 @@ Then run Slice {nn} to completion per that slice file:
 Do not fix failing tests or simulator crashes by editing Swift/tests directly — spawn
 Engineer or QA. You may edit `docs/slices/slice-{nn}-*.md` for status, verification
 record, and plan-review lines only.
+
+**Anti-thrash (mandatory):**
+- Red verify / failing UI test → spawn **`podwash-engineer`** (app) or **`podwash-qa`**
+  (tests). **Never** spawn UX/PM/Architect to fix failures (UX cannot edit app Swift).
+- Do not grind the same filtered `verify.sh` / `xcodebuild` yourself. One diagnose
+  pass, then one Engineer/QA spawn with the failing test name.
+- The outer slice-loop **halts after 2 red verify outcomes** in a run. Prefer fixing
+  once over rediscovering the same `XCTAssert` failure.
+
+**Simulator crashes (mandatory visibility):**
+- When `scripts/verify.sh` / UI tests show `Crash: PodWash at …`, or new
+  `~/Library/Logs/DiagnosticReports/PodWash-*.ips` appear, treat that as a
+  **blocking defect**, not noise.
+- Immediately emit a short status/task note the loop can surface, e.g.
+  `SIMULATOR CRASH: <test or symbol> — investigating; spawning podwash-engineer`.
+- Spawn **`podwash-engineer`** to parse the stack / `.ips` and fix app code.
+  Do not sit idle through repeated crash heartbeats.
 
 **Anti-cheat (mandatory):**
 - After Engineer: spawn **`podwash-qa` with `readonly: true`** to run full
@@ -124,54 +200,154 @@ STOP CONDITIONS — do not guess your way past these:
 Work ONLY on Slice {nn}. When it is Done, committed, and pushed, end your turn."""
 
 
-def run_slice(slice_id, slice_file, model, api_key, verbose=False, heartbeat_secs=90):
+def resolve_stream_timeout(secs: float | None) -> float | None:
+    """Map CLI/env seconds to an httpx timeout value.
+
+    ``0`` or ``None`` disables the stream idle cap (required for long quiet
+    verify/Engineer stretches). Positive values are seconds.
+    """
+    if secs is None or secs <= 0:
+        return None
+    return float(secs)
+
+
+def should_retry_bridge_error(err: BaseException, attempt: int, max_retries: int) -> bool:
+    """True when a CursorAgentError is marked retryable and attempts remain."""
+    if attempt >= max_retries:
+        return False
+    return bool(getattr(err, "is_retryable", False))
+
+
+def retry_sleep_secs(err: BaseException, attempt: int, default: float = DEFAULT_RETRY_BACKOFF_SECS) -> float:
+    """Honor ``retry_after`` when present; otherwise exponential backoff."""
+    raw = getattr(err, "retry_after", None)
+    if raw is not None:
+        try:
+            return max(0.0, float(raw))
+        except (TypeError, ValueError):
+            pass
+    return default * (2 ** max(0, attempt - 1))
+
+
+def run_slice(
+    slice_id,
+    slice_file,
+    model,
+    api_key,
+    verbose=False,
+    heartbeat_secs=90,
+    stream_timeout=DEFAULT_STREAM_TIMEOUT,
+    unary_timeout=DEFAULT_UNARY_TIMEOUT,
+    bridge_retries=DEFAULT_BRIDGE_RETRIES,
+    max_red_verifies=DEFAULT_MAX_RED_VERIFIES,
+):
     """Run one slice via a local Cursor SDK agent.
 
     Returns (finished: bool, elapsed_secs: int, last_verify: dict|None).
-    Raises SystemExit on startup failure.
+    Raises SystemExit on unrecoverable bridge/agent failure or thrash halt.
     """
     # Import lazily so --dry-run works without the SDK installed.
-    from cursor_sdk import Agent, CursorAgentError, LocalAgentOptions, AgentOptions
+    from cursor_sdk import (
+        AgentOptions,
+        CursorAgentError,
+        CursorClient,
+        LocalAgentOptions,
+    )
 
     title, _rel = read_slice_meta(slice_file, REPO_ROOT)
     print(slice_start_banner(slice_id, title, slice_file), flush=True)
 
     prompt = build_prompt(slice_id, slice_file)
+    stream_to = resolve_stream_timeout(stream_timeout)
     log(f"coordinator run (model={model})")
+    log(
+        "bridge timeouts: "
+        f"stream={'disabled' if stream_to is None else f'{stream_to:.0f}s'} "
+        f"unary={unary_timeout:.0f}s retries={bridge_retries}"
+    )
+    log(
+        f"anti-thrash: halt after {max_red_verifies} red verify/xcodebuild "
+        "outcomes in this run"
+    )
     log("progress lines: [slice NN][Role] action — use --verbose for full agent text")
 
     progress = RunProgress(
-        slice_id, title, slice_file, log, verbose=verbose, heartbeat_secs=heartbeat_secs
+        slice_id,
+        title,
+        slice_file,
+        log,
+        verbose=verbose,
+        heartbeat_secs=heartbeat_secs,
+        repo_root=REPO_ROOT,
+        max_red_verifies=max_red_verifies,
     )
     t0 = time.time()
+    attempt = 0
 
-    try:
-        with Agent.create(
-            AgentOptions(
-                api_key=api_key,
-                model=model,
-                local=LocalAgentOptions(cwd=REPO_ROOT),
-            )
-        ) as agent:
-            run = agent.send(prompt)
-            log(f"agent_id={getattr(agent, 'agent_id', '?')} run_id={getattr(run, 'id', '?')}")
-            progress.start()
-            for message in run.messages():
-                progress.handle(message)
-            result = run.wait()
+    while True:
+        attempt += 1
+        try:
+            # Own the bridge client so we can raise stream_timeout above the
+            # SDK's 600s default (quiet verify/Engineer turns exceed that).
+            with CursorClient.launch_bridge(workspace=REPO_ROOT) as bridge_client:
+                client = bridge_client.with_options(
+                    stream_timeout=stream_to,
+                    unary_timeout=unary_timeout,
+                )
+                with client.create_agent(
+                    AgentOptions(
+                        api_key=api_key,
+                        model=model,
+                        local=LocalAgentOptions(cwd=REPO_ROOT),
+                    )
+                ) as agent:
+                    run = agent.send(prompt)
+                    log(
+                        f"agent_id={getattr(agent, 'agent_id', '?')} "
+                        f"run_id={getattr(run, 'id', '?')} attempt={attempt}"
+                    )
+                    progress.start()
+                    try:
+                        for message in run.messages():
+                            progress.handle(message)
+                        result = run.wait()
+                    except ThrashHalt as thrash:
+                        progress.stop()
+                        log(f"THRASH HALT: {thrash.reason}")
+                        raise SystemExit(EXIT_THRASH) from thrash
+                    progress.stop()
+                    if verbose:
+                        print()
+                    elapsed = int(time.time() - t0)
+                    status = getattr(result, "status", "unknown")
+                    log(f"coordinator finished: status={status} elapsed={elapsed}s")
+                    return status == "finished", elapsed, progress.last_verify
+        except SystemExit:
+            raise
+        except CursorAgentError as err:
             progress.stop()
-            if verbose:
-                print()
-            elapsed = int(time.time() - t0)
-            status = getattr(result, "status", "unknown")
-            log(f"coordinator finished: status={status} elapsed={elapsed}s")
-            return status == "finished", elapsed, progress.last_verify
-    except CursorAgentError as err:
-        progress.stop()
-        log(
-            f"STARTUP FAILURE: {err} (retryable={getattr(err, 'is_retryable', '?')})"
-        )
-        raise SystemExit(EXIT_STARTUP)
+            retryable = should_retry_bridge_error(err, attempt, bridge_retries)
+            log(
+                f"BRIDGE FAILURE: {err} "
+                f"(retryable={getattr(err, 'is_retryable', '?')} "
+                f"attempt={attempt}/{bridge_retries})"
+            )
+            if not retryable:
+                raise SystemExit(EXIT_STARTUP)
+            sleep_for = retry_sleep_secs(err, attempt)
+            log(f"retrying slice {slice_id:02d} in {sleep_for:.0f}s (disk state preserved)")
+            time.sleep(sleep_for)
+            # Fresh RunProgress labels for the next attempt.
+            progress = RunProgress(
+                slice_id,
+                title,
+                slice_file,
+                log,
+                verbose=verbose,
+                heartbeat_secs=heartbeat_secs,
+                repo_root=REPO_ROOT,
+                max_red_verifies=max_red_verifies,
+            )
 
 
 def describe(decision):
@@ -199,8 +375,38 @@ def main():
                         help="also stream the coordinator's full assistant text (noisy)")
     parser.add_argument("--heartbeat", type=int, default=90, metavar="SECS",
                         help="idle heartbeat interval in seconds (0 to disable; default 90)")
+    parser.add_argument(
+        "--stream-timeout",
+        type=float,
+        default=DEFAULT_STREAM_TIMEOUT,
+        metavar="SECS",
+        help="bridge stream idle timeout in seconds (0=disable, default 0; SDK default is 600)",
+    )
+    parser.add_argument(
+        "--unary-timeout",
+        type=float,
+        default=DEFAULT_UNARY_TIMEOUT,
+        metavar="SECS",
+        help=f"bridge unary RPC timeout in seconds (default {DEFAULT_UNARY_TIMEOUT:.0f})",
+    )
+    parser.add_argument(
+        "--bridge-retries",
+        type=int,
+        default=DEFAULT_BRIDGE_RETRIES,
+        metavar="N",
+        help=f"retry attempts on retryable bridge errors (default {DEFAULT_BRIDGE_RETRIES})",
+    )
+    parser.add_argument(
+        "--max-red-verifies",
+        type=int,
+        default=DEFAULT_MAX_RED_VERIFIES,
+        metavar="N",
+        help=(
+            "halt the slice run after N red verify/xcodebuild outcomes "
+            f"(default {DEFAULT_MAX_RED_VERIFIES}; anti-thrash)"
+        ),
+    )
     args = parser.parse_args()
-
     if args.dry_run:
         decision = query_next()
         log(f"dry-run: next action -> {describe(decision)}")
@@ -243,8 +449,16 @@ def main():
         last_started = slice_id
 
         finished, elapsed, last_verify = run_slice(
-            slice_id, slice_file, args.model, api_key,
-            verbose=args.verbose, heartbeat_secs=args.heartbeat,
+            slice_id,
+            slice_file,
+            args.model,
+            api_key,
+            verbose=args.verbose,
+            heartbeat_secs=args.heartbeat,
+            stream_timeout=args.stream_timeout,
+            unary_timeout=args.unary_timeout,
+            bridge_retries=args.bridge_retries,
+            max_red_verifies=args.max_red_verifies,
         )
         if not finished:
             log(f"slice {slice_id:02d} run did not finish cleanly — stopping.")

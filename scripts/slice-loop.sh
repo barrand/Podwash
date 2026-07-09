@@ -10,6 +10,8 @@
 #   scripts/slice-loop.sh --max 3         # run at most 3 slices this session
 #   scripts/slice-loop.sh --verbose       # also stream full coordinator text
 #   scripts/slice-loop.sh --heartbeat 60  # idle ping every 60s (0 to disable)
+#   scripts/slice-loop.sh --stream-timeout 0  # disable bridge stream idle cap (default)
+#   scripts/slice-loop.sh --max-red-verifies 2  # halt after N red verifies (default 2)
 #
 # Auth (non-dry-run): export CURSOR_API_KEY=cursor_...
 #

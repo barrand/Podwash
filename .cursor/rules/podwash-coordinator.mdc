@@ -41,6 +41,8 @@ You **orchestrate**; role subagents **author**. If you need a change under these
 
 **Never** implement to fix a red verify yourself — spawn **`podwash-engineer`** (or **`podwash-qa`** if tests/fixtures are wrong). Simulator crashes and UI bugs are Engineer work.
 
+**Anti-thrash:** Red UI/unit tests → **Engineer** (app) or **QA** (tests) only. Never spawn UX/PM/Architect to "fix" failures (UX is spec-only). Do not grind the same filtered verify; the slice-loop **halts after 2 red verify/xcodebuild outcomes** (exit 5) with a logged explanation.
+
 ## Verification evidence (mandatory)
 
 A verification run counts **only** when its artifact is recorded in the slice file's verification record: the `VERIFY RESULT:` line from `scripts/verify.sh` (exit code, executed/failed/skipped counts, `.xcresult` path). No recorded artifact = slice is not verified, regardless of what an agent claims. Skipped count must be **0** for the fast suite.
