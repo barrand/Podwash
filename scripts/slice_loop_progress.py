@@ -48,6 +48,33 @@ def short_path(path: str, max_len: int = 52) -> str:
     return "…" + path[-(max_len - 1) :]
 
 
+def raw_path(args: Any) -> str:
+    if not isinstance(args, dict):
+        return ""
+    for key in ("path", "file", "file_path", "target_file"):
+        val = args.get(key)
+        if val:
+            return str(val)
+    return ""
+
+
+def delegate_violation(path: str) -> tuple[str, str] | None:
+    """If the coordinator must not edit path, return (role, subagent_id)."""
+    if not path:
+        return None
+    p = path.replace("\\", "/")
+    rules = (
+        ("/PodWash/PodWash/", "Engineer", "podwash-engineer"),
+        ("/PodWash/PodWashTests/", "QA", "podwash-qa"),
+        ("/PodWash/PodWashUITests/", "QA", "podwash-qa"),
+        ("/docs/adr/", "Architect", "podwash-architect"),
+    )
+    for marker, role, subagent in rules:
+        if marker in p:
+            return role, subagent
+    return None
+
+
 def infer_role(args: Any) -> str:
     if not isinstance(args, dict):
         return "Subagent"
@@ -61,7 +88,7 @@ def infer_role(args: Any) -> str:
         return "UX"
     if "podwash-architect" in sub:
         return "Architect"
-    if "podwash-engineer" in sub:
+    if "podwash-engineer" in sub or sub == "podwash-engineer":
         return "Engineer"
 
     desc = str(args.get("description") or "")
@@ -443,6 +470,21 @@ class RunProgress:
         elif mtype == "assistant" and self.verbose:
             self._assistant_typed(message)
 
+    def _warn_delegate_violation(self, norm: str, args: Any) -> None:
+        if norm not in ("edit", "strreplace", "write", "delete"):
+            return
+        if self.active_role() != "Coordinator":
+            return
+        path = raw_path(args)
+        hit = delegate_violation(path)
+        if not hit:
+            return
+        role, subagent = hit
+        self.log(
+            f"⚠ {self.prefix()} delegate violation — spawn {subagent} ({role}), "
+            f"coordinator must not edit {short_path(path)}"
+        )
+
     def _tool(self, call_id, name, status, args, result=None):
         norm = normalize_tool_name(name)
 
@@ -454,6 +496,7 @@ class RunProgress:
 
         if status == "running" and call_id not in self._seen_starts:
             self._seen_starts.add(call_id)
+            self._warn_delegate_violation(norm, args)
             self.log(f"→ {self.prefix()} {label}")
             self.note(label)
         elif status in ("completed", "error"):

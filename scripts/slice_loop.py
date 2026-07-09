@@ -89,11 +89,20 @@ First, load the process and gates by reading:
 Then run Slice {nn} to completion per that slice file:
 - Enforce every gate: PM story, Architect/UX design (if the slice adds modules or UI),
   QA test spec, Engineer implementation, QA verification.
-- Spawn role subagents as needed. **Delegate by name:** `podwash-pm`, `podwash-ux`,
-  `podwash-qa`, `podwash-architect`, `podwash-engineer` (models pinned in
-  `.cursor/agents/`). If using Task `model`: PM/UX/QA → `composer-2.5`;
-  Architect/Engineer → `grok-4.5` or subagent names. Never `composer-2.5-fast`
-  or `grok-4.5-fast-xhigh`.
+- You are the **orchestrator only**. **Spawn subagents for all authoring work** — delegate
+  by name: `podwash-pm`, `podwash-ux`, `podwash-qa`, `podwash-architect`, `podwash-engineer`
+  (models pinned in `.cursor/agents/`). If using Task `model`: PM/UX/QA → `composer-2.5`;
+  Architect/Engineer → `grok-4.5` or subagent names. Never `composer-2.5-fast` or
+  `grok-4.5-fast-xhigh`.
+
+**MUST NOT edit yourself (spawn the subagent instead):**
+- `PodWash/PodWash/**` → `podwash-engineer`
+- `PodWash/PodWashTests/**` or `PodWash/PodWashUITests/**` → `podwash-qa`
+- `docs/adr/**` → `podwash-architect`
+Do not fix failing tests or simulator crashes by editing Swift/tests directly — spawn
+Engineer or QA. You may edit `docs/slices/slice-{nn}-*.md` for status, verification
+record, and plan-review lines only.
+
 - Definition of Done (all required): full `scripts/verify.sh` suite green
   (exit 0, 0 failed, 0 skipped), the `VERIFY RESULT:` line recorded in the slice
   file's verification record, the slice Status set to Done, an auto-commit

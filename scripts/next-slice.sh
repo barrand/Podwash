@@ -194,7 +194,7 @@ deps_desc() {
 }
 
 coordinator_prompt_oneline() {
-    printf 'Run Slice %02d per %s. Coordinator: enforce gates, spawn role subagents by name (podwash-pm, podwash-ux, podwash-qa, podwash-architect, podwash-engineer). Never composer-2.5-fast or grok-4.5-fast-xhigh. Done = scripts/verify.sh full suite green + verification record + auto-commit. If this slice hits a halt-and-ask item, stop and ask before implementation.' "$1" "$2"
+    printf 'Run Slice %02d per %s. Coordinator: enforce gates, spawn role subagents by name (podwash-pm, podwash-ux, podwash-qa, podwash-architect, podwash-engineer). Coordinator must NOT edit PodWash/PodWash or test sources — delegate to engineer/qa. Never composer-2.5-fast or grok-4.5-fast-xhigh. Done = scripts/verify.sh full suite green + verification record + auto-commit. If this slice hits a halt-and-ask item, stop and ask before implementation.' "$1" "$2"
 }
 
 coordinator_prompt_block() {
@@ -202,6 +202,7 @@ coordinator_prompt_block() {
 Run Slice $(printf '%02d' "$1") per $2.
 Coordinator: enforce gates, spawn role subagents by name
 (podwash-pm, podwash-ux, podwash-qa, podwash-architect, podwash-engineer).
+Coordinator must NOT edit PodWash/PodWash/** or test sources — delegate to engineer/qa.
 Never composer-2.5-fast or grok-4.5-fast-xhigh.
 Done = scripts/verify.sh full suite green + verification record + auto-commit.
 If this slice hits a halt-and-ask item, stop and ask before implementation.

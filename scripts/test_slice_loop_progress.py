@@ -9,6 +9,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPT_DIR)
 
 from slice_loop_progress import (  # noqa: E402
+    delegate_violation,
     infer_role,
     parse_verify_result,
     read_slice_meta,
@@ -82,6 +83,13 @@ class ProgressFormattingTests(unittest.TestCase):
         title, rel = read_slice_meta("docs/slices/slice-06-rss-episode-list.md", repo)
         self.assertEqual(rel, "docs/slices/slice-06-rss-episode-list.md")
         self.assertIn("RSS", title)
+
+    def test_delegate_violation_engineer_path(self):
+        hit = delegate_violation("/Users/me/PodWash/PodWash/PodcastDetailView.swift")
+        self.assertEqual(hit, ("Engineer", "podwash-engineer"))
+
+    def test_delegate_violation_slice_doc_ok(self):
+        self.assertIsNone(delegate_violation("docs/slices/slice-09-analysis-ui.md"))
 
     def test_done_banner_includes_ascii_art_when_green(self):
         from slice_loop_progress import slice_done_banner

@@ -21,8 +21,24 @@ You are the **coordinator** for PodWash Multitask sessions. Source of truth: PRD
 4. **UX spec** — interaction + a11y + UI test scenarios before new/changed SwiftUI screens (waive for non-UI slices).
 5. **Test spec (QA)** — tests named and mapped to criteria before or alongside implementation.
 6. **Test spec plan review (Architect, readonly)** — after QA lands tests, spawn Architect reviewer before Engineer. Record in **Plan review record**. **Never waive** — if Architect gate was waived, you perform the checklist against ADR-000 + slice deliverables.
-7. **Implement** — Swift/SwiftUI only; iOS greenfield; port logic from `docs/specs/matching-spec.md` and the PRD, never from retired Python/PWA code.
-8. **Verify** — run `scripts/verify.sh`. **Done requires the FULL suite green** (unfiltered run), not just the slice's `-only-testing:` filter.
+7. **Implement** — spawn **`podwash-engineer`** (Grok 4.5 High). The coordinator **does not** write production Swift.
+8. **Verify** — run `scripts/verify.sh` (you may run it; QA subagent owns interpretation). **Done requires the FULL suite green** (unfiltered run), not just the slice's `-only-testing:` filter.
+
+## MUST NOT edit (coordinator hands off — no exceptions)
+
+You **orchestrate**; role subagents **author**. If you need a change under these paths, **spawn the subagent** — do not use Write/StrReplace/edit yourself.
+
+| Path | Delegate to |
+|------|-------------|
+| `PodWash/PodWash/**` (app Swift/SwiftUI) | **`podwash-engineer`** |
+| `PodWash/PodWashTests/**` | **`podwash-qa`** (test spec / fixtures) |
+| `PodWash/PodWashUITests/**` | **`podwash-qa`** |
+| `docs/adr/**` | **`podwash-architect`** |
+| `docs/slices/*-ux.md` and UX-only spec addenda | **`podwash-ux`** |
+
+**You may edit:** `docs/slices/slice-NN-*.md` (status, verification record, plan review lines only — not story/AC rewrites; use **`podwash-pm`** for story), and process docs when explicitly in scope.
+
+**Never** implement to fix a red verify yourself — spawn **`podwash-engineer`** (or **`podwash-qa`** if tests/fixtures are wrong). Simulator crashes and UI bugs are Engineer work.
 
 ## Verification evidence (mandatory)
 
@@ -44,6 +60,7 @@ If a slice hits an **undecided PRD §11 item** (monetization model, skip-at-MVP,
 - Audio assertions use the offline-render mechanism from ADR-000 (never realtime tapping).
 - Subagents cannot skip gates unless you explicitly waive for a trivial slice (document why).
 - Serialize merges when parallel agents touch the same file; never two agents edit one Swift file at once.
+- **Coordinator never authors app/tests/ADR code** — delegation only (see MUST NOT edit above).
 - **No XCTSkip on core ACs** — a mapped test that cannot run must fail, not skip.
 
 ## Session strategy
