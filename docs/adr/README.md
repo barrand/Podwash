@@ -21,3 +21,4 @@ from the relevant slice file's Role artifacts table.
 | [002](002-interval-scheduler.md) | Interval scheduler: mute mix + skip | Accepted |
 | [003](003-asr-stack-choice.md) | On-device ASR stack choice: WhisperKit (Core ML) tiny.en | Accepted |
 | [004](004-rss-parser.md) | RSS parser, episode list, and fixture-feed mode | Accepted |
+| [005](005-analysis-pipeline.md) | Analyze-episode pipeline: ASR → matcher → cache | Accepted |
