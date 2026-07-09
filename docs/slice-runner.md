@@ -145,22 +145,90 @@ simulator and can run in CI.
 scripts/test-next-slice.sh
 ```
 
-## Phase 2 (deferred, not built)
+## Phase 2 — the auto-run loop (built)
 
-Once the script is trusted, either of these can call `--json` to close the loop —
-both reuse the script unchanged, so there is no rework:
+[`scripts/slice-loop.sh`](../scripts/slice-loop.sh) (driver:
+[`scripts/slice_loop.py`](../scripts/slice_loop.py)) closes the loop: it runs
+eligible slices to Done, one after another, unattended, on your Mac.
 
-- **Cursor Automation (cheapest).** A **local**-runtime automation triggered on
-  git push of `slice-NN:` commits runs `scripts/next-slice.sh --json` and acts on
-  `action`: on `start`, become the coordinator for `file`; on `wait`/`done`, do
-  nothing; on `halt`, stop and notify the user. Local runtime is required because
-  `scripts/verify.sh` needs Xcode + the iOS Simulator, which cloud agents lack.
-  Note the trigger is on **push**, so a slice's auto-commit must be pushed for the
-  next one to fire.
-- **Cursor SDK loop.** A local script (`Agent.prompt(...)`) that reads `--json`,
-  starts the slice, waits for the Done signal (status + green `VERIFY RESULT`),
-  then repeats. Choose this if you later want parallel fan-out of independent
-  slices (e.g. 05 and 06) or Slack notifications on halt.
+### Why local (and not a Cursor Automation)
 
-Neither is implemented yet. The script alone already removes the error-prone part
-(picking a valid next slice); wiring a trigger is an independent, low-risk add.
+The Done gate is `scripts/verify.sh`, which needs **Xcode + the iOS Simulator**.
+Those exist only on your machine, not on Cursor's cloud infrastructure — and
+Cursor Automations run as cloud agents. So a cloud automation could *detect* that
+the next slice is eligible but could never *verify* an iOS slice. The loop
+therefore runs a **local** Cursor SDK agent (`local.cwd = repo root`), where
+`verify.sh` works for real.
+
+### How it works
+
+```mermaid
+flowchart TD
+  q["next-slice.sh --json"]
+  a{action}
+  runslice["Local SDK coordinator agent runs the slice"]
+  recheck["next-slice.sh --json again"]
+  advanced{"slice flipped to Done?"}
+  stop["stop + report"]
+  loop["loop"]
+
+  q --> a
+  a -->|start| runslice
+  a -->|halt| stop
+  a -->|wait| stop
+  a -->|done| stop
+  runslice --> recheck --> advanced
+  advanced -->|yes| loop
+  advanced -->|no| stop
+  loop --> q
+```
+
+**Verification honesty:** the loop advances only when `next-slice.sh` re-confirms
+the slice is no longer the `start` target — i.e. its status flipped to Done with a
+green `VERIFY RESULT`. It never trusts the agent's self-report, and a no-progress
+guard stops it from re-running the same slice twice. Halt-and-ask and verify
+failures stop the loop with a clear message rather than guessing.
+
+### Usage
+
+```bash
+export CURSOR_API_KEY=cursor_...        # user or team service-account key
+
+scripts/slice-loop.sh                    # run the queue until it stops
+scripts/slice-loop.sh --dry-run          # show the next decision; spawns no agent, no key needed
+scripts/slice-loop.sh --max 3            # cap slices run this session (default 6)
+scripts/slice-loop.sh --model auto       # let the server pick the coordinator model
+```
+
+The wrapper creates an isolated venv under `build/` (gitignored) and installs
+[`scripts/slice-loop-requirements.txt`](../scripts/slice-loop-requirements.txt)
+(`cursor-sdk`). The coordinator agent runs on `composer-2.5` and spawns role
+subagents per the workflow's model assignment (Architect/Engineer on Opus 4.8).
+
+### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Queue complete, or `--max` reached cleanly |
+| 1 | Agent never started (auth/config/network) |
+| 2 | A slice ran but did not reach Done (agent error, red verify, or no progress) |
+| 3 | `wait` — blocked on an unfinished dependency |
+| 4 | `halt` — a halt-and-ask gate needs a user decision |
+
+### Notes and limits
+
+- **Sequential.** One slice at a time (lowest eligible), matching the runner's
+  policy. Parallel fan-out of independent slices (e.g. 06 ‖ 07) is not done here;
+  run a second loop or a manual chat if you want concurrency.
+- **Machine must stay awake.** It runs locally, so sleep/close ends the session.
+- **Pushes happen inside each slice** via the coordinator's auto-commit + push,
+  not by the loop itself.
+- **`--dry-run` needs no key or SDK** — it just prints the next decision, so it is
+  safe to run anytime (and is what the smoke test uses).
+
+### Alternative (not built): Cursor Automation notifier
+
+A **cloud** Automation on `slice-NN:` push could run `next-slice.sh --json` and
+Slack/notify you which slice is next (or that the loop halted on a decision gate).
+It cannot run `verify.sh`, so it is a notifier only — complementary to, not a
+replacement for, the local loop.
