@@ -24,7 +24,7 @@ depends on manual test cards, listening sessions, or subjective checklists.
 | **Manual testing** | Optional spot-checks; never a completion criterion |
 | **Audio quality** | Offline render + numeric RMS/energy assertions on synthetic fixtures (ADR-000 §2); subjective ear tests are post-MVP automation targets |
 | **CI** | Delivered in Slice 1 (`.github/workflows/test.yml`); every slice's tests run in CI from then on |
-| **Commits** | **Automatic commit after each completed slice** on green (`slice-NN: <description>`); push only when the user asks |
+| **Commits** | **Automatic commit after each completed slice** on green (`slice-NN: <description>`). Interactive: push when the user asks. Unattended `slice-loop.sh`: auto-push on green (`--no-push` to disable) |
 | **Skips** | XCTSkip is not allowed on core ACs; `verify.sh` fails the fast suite when skipped > 0 |
 
 ## Principles
@@ -228,7 +228,7 @@ flowchart LR
 | **Test spec before implement (QA)** | **Yes** | Never |
 | **Test spec plan review (Architect, readonly)** | **Yes** | Never — even when Architect gate was waived |
 | **Full suite green + artifact (QA)** | **Yes** | Never — this is Done |
-| **Auto-commit on green (Coordinator)** | **Yes** | Never (push remains user-initiated) |
+| **Auto-commit on green (Coordinator)** | **Yes** | Interactive: push when asked. Unattended loop: auto-push (`--no-push` to disable) |
 
 ### Plan review gates (upstream quality)
 
@@ -514,7 +514,7 @@ A slice moves to **Done** only when **all** items are true:
 - [ ] No criterion requires manual listening, visual inspection, or "try on device."
 - [ ] Fixtures committed (small, with provenance) or documented (large/gitignored).
 - [ ] PRD open decisions updated if the slice resolves a TBD.
-- [ ] **Auto-commit made:** `slice-NN: <short description>` (push only when the user asks).
+- [ ] **Auto-commit made:** `slice-NN: <short description>` (interactive: push when asked; unattended loop: auto-push unless `--no-push`).
 
 ## Git commit strategy
 

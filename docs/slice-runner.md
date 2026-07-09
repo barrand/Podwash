@@ -205,25 +205,34 @@ failures stop the loop with a clear message rather than guessing.
 ```bash
 export CURSOR_API_KEY=cursor_...        # user or team service-account key
 
-scripts/slice-loop.sh                    # run the queue until it stops
+scripts/slice-loop.sh                    # coordinator mode (default) until it stops
 scripts/slice-loop.sh --dry-run          # show the next decision; spawns no agent, no key needed
 scripts/slice-loop.sh --max 3            # cap slices run this session (default 6)
 scripts/slice-loop.sh --model auto       # let the server pick the coordinator model
 scripts/slice-loop.sh --stream-timeout 0 # disable bridge stream idle cap (default; SDK is 600s)
+scripts/slice-loop.sh --orchestrator pipeline   # Python gate FSM (see slice-pipeline.md)
+scripts/slice-loop.sh --max-fix-attempts 2      # loop-owned Engineer|QA budget (default 2)
 ```
 
 The wrapper creates an isolated venv under `build/` (gitignored) and installs
 [`scripts/slice-loop-requirements.txt`](../scripts/slice-loop-requirements.txt)
-(`cursor-sdk`). The coordinator agent runs on `composer-2.5` and spawns role
-subagents by name per the workflow's model assignment (`.cursor/agents/`; never
-`composer-2.5-fast` or `grok-4.5-fast-xhigh`). The SDK accepts plain model ids
-only — not bracket parameter syntax like `composer-2.5[fast=false]`.
+(`cursor-sdk`). Design: [`slice-pipeline.md`](slice-pipeline.md).
+
+**Orchestrator modes**
+
+| Mode | Behavior |
+|------|----------|
+| `coordinator` (default) | One authoring LLM; **must not** run `verify.sh`. Loop owns verify + visible fix workers, then writes `VERIFY RESULT` + Status Done. |
+| `pipeline` | Python `GateState` FSM + one SDK worker per gate; loop owns verify, record, split commits, push. |
+
+Model ids are plain (`composer-2.5`, `grok-4.5`) — never Fast variants or bracket syntax.
 
 **Bridge stream timeout:** the SDK defaults to a **600s** stream read timeout.
 Quiet Engineer/`verify.sh` stretches longer than that look like
 `Bridge request timed out: ReadTimeout` even while work continues. The loop
 disables that cap by default (`--stream-timeout 0`) and retries retryable
-bridge errors (`--bridge-retries`, default 3).
+bridge errors (`--bridge-retries`, default 3). Fix-attempt budget **persists**
+across those retries.
 
 ### Exit codes
 
@@ -234,6 +243,7 @@ bridge errors (`--bridge-retries`, default 3).
 | 2 | A slice ran but did not reach Done (agent error, red verify, or no progress) |
 | 3 | `wait` — blocked on an unfinished dependency |
 | 4 | `halt` — a halt-and-ask gate needs a user decision |
+| 5 | `thrash` — loop-owned fix/verify budget exhausted |
 
 ### Notes and limits
 
@@ -241,10 +251,12 @@ bridge errors (`--bridge-retries`, default 3).
   policy. Parallel fan-out of independent slices (e.g. 06 ‖ 07) is not done here;
   run a second loop or a manual chat if you want concurrency.
 - **Machine must stay awake.** It runs locally, so sleep/close ends the session.
-- **Pushes happen inside each slice** via the coordinator's auto-commit + push,
-  not by the loop itself.
-- **`--dry-run` needs no key or SDK** — it just prints the next decision, so it is
-  safe to run anytime (and is what the smoke test uses).
+- **Loop owns verify.** After authoring (or in pipeline mode), the driver runs
+  `scripts/verify.sh` itself, routes red to Engineer|QA workers, and records
+  Done artifacts. Pipeline mode also owns split commits + push (`--no-commit` /
+  `--no-push` to disable).
+- **`--dry-run` needs no key or SDK** — it just prints the next decision +
+  orchestrator mode, so it is safe to run anytime (and is what the smoke test uses).
 - **Simulator crashes are logged.** When verify/xcodebuild output contains
   `Crash: PodWash at …`, or a new `~/Library/Logs/DiagnosticReports/PodWash-*.ips`
   appears during the run, the loop prints `SIMULATOR CRASH detected` plus an
@@ -257,23 +269,22 @@ bridge errors (`--bridge-retries`, default 3).
   `🔁 same failure ×N — Class/method` and heartbeats include `❌ testName ×N`.
 - **Wrong-role spawn warning.** Spawning UX/PM/Architect to "fix" a test logs
   `⚠ WRONG ROLE` plus `allowed edits:` for that role (UX cannot edit app Swift).
-- **Anti-thrash halt.** After **2** red verify/xcodebuild outcomes in one run
-  (configurable `--max-red-verifies`), the loop prints a `🛑 HALT` explanation
-  (what failed, why it stopped, what to do next) and exits code **5**. Disk work
-  is preserved; restart only after a real Engineer/QA fix.
-- **In Progress resume.** If the slice Status is already mid-flight, the
-  coordinator prompt includes a RESUME block: audit disk first, skip completed
-  gates, continue from Engineer/verify instead of re-running PM→UX→review.
-  Red tests must go to Engineer/QA — never UX.
+  Prefer pipeline mode so the loop picks the role instead of guessing.
+- **Anti-thrash halt.** After **`--max-fix-attempts`** (default 2) loop-owned
+  fix attempts on red verify, the loop exits code **5**. Legacy coordinator shell
+  thrash still uses `--max-red-verifies`. Disk work is preserved.
+- **In Progress resume.** Coordinator prompt includes a RESUME + **handoff
+  contract**: audit disk, skip completed authoring gates, **do not** run
+  `verify.sh` — end when implement is ready so the loop can verify.
 - **Parallel subagents.** Heartbeats show the preferred active role (Engineer
   over Architect review when both are open). A finished review logs
   `still running: Engineer` so long quiet stretches aren't misread as a stuck review.
 - **Gate progress.** The loop prints `gates N/M ████░░ · next: implement` from
-  slice-file + on-disk artifacts (story/UX/reviews/tests/implement/verify/commit).
-  Heuristic only — Done still requires green `VERIFY RESULT`.
+  slice-file + on-disk artifacts. Heuristic display (`assess_slice_gates`) vs
+  pipeline FSM (`assess_gate_state`) — Done still requires green `VERIFY RESULT`.
 - **Active work heartbeats.** While a subagent Task is open, heartbeats show
-  `▶ UX: Fix UI test accessibility (18m 22s)` instead of stale `last: ✓ Subagent done`.
-  Background `verify.sh` / `xcodebuild` is sniffed via `ps` when present.
+  `▶ UX: … (18m 22s)` instead of stale `last: ✓ Subagent done`.
+  Background `verify.sh` / `xcodebuild` is sniffed via `ps` on the legacy path.
 
 ### Alternative (not built): Cursor Automation notifier
 

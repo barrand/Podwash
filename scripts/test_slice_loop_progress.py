@@ -20,6 +20,7 @@ from slice_loop_progress import (  # noqa: E402
     format_active_tasks,
     format_gate_detail,
     infer_role,
+    is_verify_run,
     list_new_podwash_ips,
     parse_verify_result,
     read_slice_meta,
@@ -199,6 +200,62 @@ class ProgressFormattingTests(unittest.TestCase):
         self.assertIn("HALT", str(ctx.exception))
         halt_logs = [l for l in lines if "🛑" in l or "HALT" in l]
         self.assertTrue(any("What happened" in l or "HALT" in l for l in halt_logs))
+
+    def test_xcresulttool_does_not_count_as_red_verify(self):
+        lines: list[str] = []
+        progress = RunProgress(
+            9,
+            "Analysis UI",
+            "docs/slices/slice-09.md",
+            lines.append,
+            max_red_verifies=2,
+        )
+        red_blob = (
+            "Test Case '-[AnalysisProgressUITests testProgressIndicatorLifecycle]' failed.\n"
+            "VERIFY RESULT: exit=1 total=4 passed=3 failed=1 skipped=0 filtered=1\n"
+            "** TEST FAILED **\n"
+        )
+        progress._tool(
+            "c1",
+            "shell",
+            "completed",
+            {"command": "scripts/verify.sh -only-testing:PodWashUITests"},
+            red_blob,
+        )
+        self.assertEqual(progress._red_verify_count, 1)
+        # Inspecting the bundle must refine the failure name without burning a retry.
+        progress._tool(
+            "c2",
+            "shell",
+            "completed",
+            {
+                "command": (
+                    "xcrun xcresulttool get test-results --path "
+                    "build/test-results/verify-20260709.xcresult"
+                )
+            },
+            (
+                "PodWashUITests/testProgressIndicatorLifecycle() — "
+                "XCTAssertTrue failed\n"
+            ),
+        )
+        self.assertEqual(progress._red_verify_count, 1)
+        self.assertFalse(progress.halted)
+        self.assertTrue(any("TEST FAIL" in l and "xcresulttool" in l for l in lines))
+
+    def test_is_verify_run_excludes_xcresulttool(self):
+        self.assertTrue(is_verify_run("scripts/verify.sh"))
+        self.assertTrue(
+            is_verify_run(
+                "xcodebuild test -scheme PodWash -only-testing:PodWashUITests"
+            )
+        )
+        self.assertFalse(
+            is_verify_run(
+                "xcrun xcresulttool get test-results --path build/test-results/verify.xcresult"
+            )
+        )
+        self.assertFalse(is_verify_run("grep TEST FAILED build/log.txt"))
 
     def test_spawn_logs_wrong_role_and_allowed_paths(self):
         lines: list[str] = []

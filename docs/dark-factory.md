@@ -7,6 +7,7 @@
 > Deeper references (read only when needed):
 > - [`multitask-workflow.md`](multitask-workflow.md) — full process, roles, gates
 > - [`slice-runner.md`](slice-runner.md) — `next-slice.sh` / `slice-loop.sh` mechanics
+> - [`slice-pipeline.md`](slice-pipeline.md) — loop-as-orchestrator / `--orchestrator=pipeline`
 > - [`.cursor/rules/podwash-coordinator.mdc`](../.cursor/rules/podwash-coordinator.mdc) — standing coordinator rules (also always-on in Cursor)
 
 ## What “dark factory” means
@@ -25,7 +26,7 @@ Backlog → In Progress → Verify (full scripts/verify.sh green) → Done (+ au
 2. Unfiltered `scripts/verify.sh` exits **0**, **failed 0**, **skipped 0**.
 3. The slice file’s verification record contains the `VERIFY RESULT:` line from that run.
 4. Slice `Status` is **Done**.
-5. Auto-commit: `slice-NN: <short description>` (push when the user asks).
+5. Auto-commit: `slice-NN: <short description>`. Interactive sessions: push when the user asks. Unattended `slice-loop.sh`: auto-push on green (disable with `--no-push`).
 
 Humans review strategy and PRs; **no slice completion gate** depends on manual QA.
 
@@ -76,8 +77,13 @@ export CURSOR_API_KEY=cursor_...   # Dashboard → Integrations
 
 scripts/slice-loop.sh --dry-run    # next decision only; no agent, no key
 scripts/slice-loop.sh --max 1      # one slice then stop (good first try)
-scripts/slice-loop.sh              # run until halt / done / failure
+scripts/slice-loop.sh              # coordinator mode (default): authoring LLM + loop-owned verify
+scripts/slice-loop.sh --orchestrator pipeline   # Python gate FSM (see slice-pipeline.md)
 ```
+
+The loop owns `scripts/verify.sh` as truth and routes red results to visible
+Engineer|QA fix workers (`--max-fix-attempts`, default 2 → exit 5). See
+[`slice-pipeline.md`](slice-pipeline.md).
 
 Options: `--verbose` (full coordinator text), `--heartbeat 60` (idle ping every N seconds),
 `--max-red-verifies 2` (halt after N red verify/xcodebuild outcomes; default 2).

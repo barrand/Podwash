@@ -9,7 +9,9 @@ from typing import Any
 
 VERIFY_RESULT_RE = re.compile(
     r"VERIFY RESULT:\s*exit=(\d+)\s+total=([^\s]+)\s+passed=([^\s]+)\s+"
-    r"failed=([^\s]+)\s+skipped=([^\s]+)",
+    r"failed=([^\s]+)\s+skipped=([^\s]+)"
+    r"(?:\s+filtered=([^\s]+))?"
+    r"(?:\s+bundle=([^\s]+))?",
     re.IGNORECASE,
 )
 
@@ -145,6 +147,22 @@ def delegate_violation(path: str) -> tuple[str, str] | None:
     return None
 
 
+def is_verify_run(cmd: str) -> bool:
+    """True only for real test runners — not xcresulttool / grep inspection."""
+    if not cmd:
+        return False
+    c = cmd.strip()
+    # Never treat result inspection as a verify attempt.
+    if "xcresulttool" in c:
+        return False
+    if "verify.sh" in c:
+        return True
+    # xcodebuild … test (action), not merely a path containing "test".
+    if "xcodebuild" in c and re.search(r"(?:^|[\s;|&])test(?:\s|$)", c):
+        return True
+    return False
+
+
 def role_edit_paths(role: str) -> str:
     """Human-readable paths this role is allowed to edit."""
     return ROLE_EDIT_PATHS.get(role, ROLE_EDIT_PATHS["Subagent"])
@@ -258,13 +276,18 @@ def parse_verify_result(text: str) -> dict[str, str] | None:
     m = VERIFY_RESULT_RE.search(text)
     if not m:
         return None
-    return {
+    out = {
         "exit": m.group(1),
         "total": m.group(2),
         "passed": m.group(3),
         "failed": m.group(4),
         "skipped": m.group(5),
     }
+    if m.group(6) is not None:
+        out["filtered"] = m.group(6)
+    if m.group(7) is not None:
+        out["bundle"] = m.group(7)
+    return out
 
 
 def verify_is_green(v: dict[str, str] | None) -> bool:
@@ -1363,10 +1386,7 @@ class RunProgress:
         self, failures: list[str], *, cmd: str, blob: str, verify: dict[str, str] | None
     ) -> None:
         """Count red verify/xcodebuild outcomes; halt after max_red_verifies."""
-        is_verifyish = "verify.sh" in cmd or (
-            "xcodebuild" in cmd and "test" in cmd
-        )
-        if not is_verifyish:
+        if not is_verify_run(cmd):
             return
 
         if verify and verify_is_green(verify):
@@ -1431,8 +1451,8 @@ class RunProgress:
         if failures:
             return failures
         redish = (
-            "verify.sh" in cmd
-            or "xcodebuild" in cmd
+            is_verify_run(cmd)
+            or "xcresulttool" in cmd
             or "** TEST FAILED **" in blob
             or "TEST FAILED" in blob
         )
@@ -1536,8 +1556,11 @@ class RunProgress:
             self.note(f"{mark} {label}")
             cmd = arg_shell_command(args if isinstance(args, dict) else {})
             blob = _result_blob(result)
+            # Real test runs OR inspection of results (xcresulttool) / crash text.
             if norm == "shell" and (
-                "verify.sh" in cmd or "xcodebuild" in cmd or "Crash:" in blob
+                is_verify_run(cmd)
+                or "xcresulttool" in cmd
+                or "Crash:" in blob
             ):
                 crashes = detect_simulator_crashes(blob)
                 if crashes:
@@ -1545,26 +1568,34 @@ class RunProgress:
                 failures = self._collect_test_failures(blob, cmd)
                 v = parse_verify_result(blob) if "verify.sh" in cmd else None
                 if failures:
-                    self._announce_test_failures(failures, source="verify/xcodebuild")
-                elif "verify.sh" in cmd and v and not verify_is_green(v):
+                    # Inspection (xcresulttool) may refine the failure name without
+                    # counting as another red verify attempt.
+                    source = (
+                        "verify/xcodebuild"
+                        if is_verify_run(cmd)
+                        else "xcresulttool"
+                    )
+                    self._announce_test_failures(failures, source=source)
+                elif is_verify_run(cmd) and v and not verify_is_green(v):
                     self.log(
                         f"❌ {self.prefix()} verify RED — "
                         f"failed={v.get('failed')} skipped={v.get('skipped')} "
                         f"(no per-test detail in output; check build/test-results/)"
                     )
-                if v and verify_is_green(v):
-                    self._last_verify = v
-                    self._clear_failure_streak()
-                elif (
-                    not failures
-                    and ("** TEST SUCCEEDED **" in blob or "TEST SUCCEEDED" in blob)
-                    and "TEST FAILED" not in blob
-                ):
-                    self._clear_failure_streak()
-                else:
-                    self._record_red_verify(
-                        failures, cmd=cmd, blob=blob, verify=v
-                    )
+                if is_verify_run(cmd):
+                    if v and verify_is_green(v):
+                        self._last_verify = v
+                        self._clear_failure_streak()
+                    elif (
+                        not failures
+                        and ("** TEST SUCCEEDED **" in blob or "TEST SUCCEEDED" in blob)
+                        and "TEST FAILED" not in blob
+                    ):
+                        self._clear_failure_streak()
+                    else:
+                        self._record_red_verify(
+                            failures, cmd=cmd, blob=blob, verify=v
+                        )
             # Always peek DiagnosticReports after a shell tool finishes —
             # crashes often land as .ips slightly after verify returns.
             self._scan_diagnostic_reports()

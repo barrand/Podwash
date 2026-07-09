@@ -3,10 +3,13 @@
 
 Runs eligible slices to Done, one after another, on the LOCAL machine (so
 `scripts/verify.sh` has real Xcode + the iOS Simulator). It is a thin driver
-around two trusted pieces:
+around:
 
   1. `scripts/next-slice.sh --json`  — the dependency-aware "what's next?" brain.
-  2. A local Cursor SDK agent        — runs the coordinator for one slice.
+  2. Orchestrator modes:
+       - coordinator (legacy): one SDK coordinator for authoring; loop owns verify
+         + bounded Engineer|QA fix workers (Phase 1).
+       - pipeline: Python gate FSM + one visible SDK worker per gate (Phase 2+).
 
 Verification honesty: the loop only advances when `next-slice.sh` confirms the
 slice's status actually flipped to Done (with a green VERIFY RESULT). It never
@@ -17,13 +20,14 @@ Stop conditions (never guessed around):
   - wait : every remaining slice is blocked on an unfinished dependency.
   - done : the queue is complete.
   - a slice failed to reach Done (agent error or verify red) → stop, no spin.
-  - thrash: 2 red verify/xcodebuild outcomes in one run → exit 5 with explanation.
+  - thrash: fix/verify budget exhausted → exit 5 with explanation.
 
 Usage:
   scripts/slice-loop.sh                 # run the queue until it stops
   scripts/slice-loop.sh --dry-run       # show what WOULD run; spawns no agents
   scripts/slice-loop.sh --max 3         # run at most 3 slices this session
   scripts/slice-loop.sh --model auto    # let the server pick the coordinator model
+  scripts/slice-loop.sh --orchestrator pipeline
   scripts/slice-loop.sh --stream-timeout 0   # disable bridge stream idle cap (default)
 
 Auth (non-dry-run): export CURSOR_API_KEY=cursor_...
@@ -52,6 +56,14 @@ from slice_loop_progress import (
     slice_done_banner,
     slice_start_banner,
 )
+from slice_pipeline import (
+    DEFAULT_MAX_FIX_ATTEMPTS,
+    FixBudget,
+    record_green_verify,
+    run_pipeline_slice,
+    run_post_coordinator_verify,
+    should_loop_own_verify,
+)
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 NEXT_SLICE = os.path.join(REPO_ROOT, "scripts", "next-slice.sh")
@@ -62,13 +74,14 @@ EXIT_STARTUP = 1       # agent never started (auth/config/network)
 EXIT_RUN_FAILED = 2    # agent ran but slice did not reach Done (or no progress)
 EXIT_WAIT = 3          # blocked on an unfinished dependency
 EXIT_HALT = 4          # halt-and-ask gate needs a user decision
-EXIT_THRASH = 5        # red-verify retry budget exhausted (anti-thrash)
+EXIT_THRASH = 5        # red-verify / fix retry budget exhausted (anti-thrash)
 
 # SDK default stream timeout is 600s — too short for quiet verify/Engineer turns.
 DEFAULT_STREAM_TIMEOUT = 0.0   # 0 / None => disable (httpx timeout=None)
 DEFAULT_UNARY_TIMEOUT = 120.0
 DEFAULT_BRIDGE_RETRIES = 3
 DEFAULT_RETRY_BACKOFF_SECS = 5.0
+
 
 def log(msg):
     print(f"[slice-loop] {msg}", flush=True)
@@ -109,7 +122,11 @@ def slice_status(slice_file: str, repo_root: str) -> str:
 
 
 def build_prompt(slice_id, slice_file):
-    """The coordinator kickoff prompt for one slice, run unattended."""
+    """The coordinator kickoff prompt for one slice, run unattended.
+
+    Phase 1c handoff: coordinator authors gates only — must NOT run verify.sh
+    or grind fixes. The outer loop owns verification + fix workers.
+    """
     nn = f"{slice_id:02d}"
     status = slice_status(slice_file, REPO_ROOT)
     resume_block = ""
@@ -121,21 +138,17 @@ def build_prompt(slice_id, slice_file):
    VERIFY RESULT, Role artifacts, AC checkboxes) plus any `docs/slices/slice-{nn}-ux.md`
    / ADR already on disk.
 2. Emit a short status note listing what is **already done** vs **remaining**, then
-   continue from the first incomplete gate only.
+   continue from the first incomplete **authoring** gate only.
 3. **Skip completed gates** — do not re-spawn PM/UX/Architect/QA-author if their
    artifacts already exist and match the slice deliverables. Re-run a plan review
    only when the Plan review record is still `(pending)` *and* no prior review
    outcome is recorded; if tests/ADR/UX already landed, prefer recording the review
    outcome (or a one-line "cleared on resume — artifacts present") over a full
    re-review.
-4. Prefer jumping to Engineer (fix red / crashes) or readonly QA verify when
-   implementation already exists. Never rewrite green tests or wipe working app code
-   to "start clean."
-5. **Red UI/unit tests → Engineer (app) or QA (tests) only.** Never spawn UX/PM/
-   Architect to "fix" a failing test — UX is spec-only and cannot edit app Swift.
-6. After a red verify, spawn **one** Engineer (or QA) with the failing test name;
-   do not re-run full/filtered verify in a loop yourself. The slice-loop **halts
-   after 2 red verify/xcodebuild outcomes** in one run — treat that as a hard stop.
+4. Prefer jumping to Engineer for remaining implement work when tests already exist.
+   Never rewrite green tests or wipe working app code to "start clean."
+5. **Do NOT run verify.sh / xcodebuild test.** The outer slice-loop owns verify
+   and will spawn visible Engineer/QA fix workers on red.
 """
 
     return f"""You are the PodWash Multitask COORDINATOR, running unattended via the slice loop.
@@ -145,9 +158,9 @@ First, load the process and gates by reading:
 - docs/multitask-workflow.md
 - {slice_file}
 {resume_block}
-Then run Slice {nn} to completion per that slice file:
-- Enforce every gate: PM story, Architect/UX design (if the slice adds modules or UI),
-  QA test spec, Engineer implementation, QA verification.
+Then run Slice {nn} **authoring gates only** per that slice file:
+- Enforce: PM story, Architect/UX design (if the slice adds modules or UI),
+  plan reviews, QA test spec, Engineer implementation.
 - You are the **orchestrator only**. **Spawn subagents for all authoring work** — delegate
   by name: `podwash-pm`, `podwash-ux`, `podwash-qa`, `podwash-architect`, `podwash-engineer`
   (models pinned in `.cursor/agents/`). If using Task `model`: PM/UX/QA → `composer-2.5`;
@@ -162,42 +175,28 @@ Do not fix failing tests or simulator crashes by editing Swift/tests directly �
 Engineer or QA. You may edit `docs/slices/slice-{nn}-*.md` for status, verification
 record, and plan-review lines only.
 
-**Anti-thrash (mandatory):**
-- Red verify / failing UI test → spawn **`podwash-engineer`** (app) or **`podwash-qa`**
-  (tests). **Never** spawn UX/PM/Architect to fix failures (UX cannot edit app Swift).
-- Do not grind the same filtered `verify.sh` / `xcodebuild` yourself. One diagnose
-  pass, then one Engineer/QA spawn with the failing test name.
-- The outer slice-loop **halts after 2 red verify outcomes** in a run. Prefer fixing
-  once over rediscovering the same `XCTAssert` failure.
-
-**Simulator crashes (mandatory visibility):**
-- When `scripts/verify.sh` / UI tests show `Crash: PodWash at …`, or new
-  `~/Library/Logs/DiagnosticReports/PodWash-*.ips` appear, treat that as a
-  **blocking defect**, not noise.
-- Immediately emit a short status/task note the loop can surface, e.g.
-  `SIMULATOR CRASH: <test or symbol> — investigating; spawning podwash-engineer`.
-- Spawn **`podwash-engineer`** to parse the stack / `.ips` and fix app code.
-  Do not sit idle through repeated crash heartbeats.
+**HANDOFF CONTRACT (mandatory — Phase 1c):**
+- **Do NOT run** `scripts/verify.sh` or `xcodebuild … test`. The outer loop owns
+  verification as the source of truth.
+- **Do NOT grind fixes** after implement. When implement artifacts exist (or status
+  is Verify), **end your turn**. The loop will run verify and spawn visible
+  Engineer/QA fix workers with a bounded retry budget.
+- **Never** spawn UX/PM/Architect to fix test failures (UX is spec-only).
 
 **Anti-cheat (mandatory):**
-- After Engineer: spawn **`podwash-qa` with `readonly: true`** to run full
-  `scripts/verify.sh`. The verifier must not edit tests or app code.
 - Never commit app (`PodWash/PodWash/**`) and tests
   (`PodWash/{{PodWashTests,PodWashUITests,PodWashSlowTests}}/**`) in the same
-  commit. Prefer `slice-{nn}: test spec` then `slice-{nn}: implement`. Run
-  `scripts/check-test-isolation.sh --staged` before committing.
+  commit. Prefer `slice-{nn}: test spec` then `slice-{nn}: implement`. The outer
+  loop may own final commits after green verify.
 
-- Definition of Done (all required): full `scripts/verify.sh` suite green
-  (exit 0, 0 failed, 0 skipped), the `VERIFY RESULT:` line recorded in the slice
-  file's verification record, the slice Status set to Done, an auto-commit
-  `slice-{nn}: <short description>` made, then pushed to the remote.
+- When authoring is complete (implement on disk), set Status to **Verify** if you
+  touch status, then **end your turn** so the loop can verify.
 
 STOP CONDITIONS — do not guess your way past these:
 - If the slice hits a halt-and-ask / undecided PRD §11 item, STOP and report the
   exact decision needed. Never pick a default silently.
-- If verification cannot be made green, STOP and report the failure with file:line.
 
-Work ONLY on Slice {nn}. When it is Done, committed, and pushed, end your turn."""
+Work ONLY on Slice {nn}. When authoring gates are done, end your turn."""
 
 
 def resolve_stream_timeout(secs: float | None) -> float | None:
@@ -229,7 +228,7 @@ def retry_sleep_secs(err: BaseException, attempt: int, default: float = DEFAULT_
     return default * (2 ** max(0, attempt - 1))
 
 
-def run_slice(
+def run_slice_coordinator(
     slice_id,
     slice_file,
     model,
@@ -240,13 +239,15 @@ def run_slice(
     unary_timeout=DEFAULT_UNARY_TIMEOUT,
     bridge_retries=DEFAULT_BRIDGE_RETRIES,
     max_red_verifies=DEFAULT_MAX_RED_VERIFIES,
+    max_fix_attempts=DEFAULT_MAX_FIX_ATTEMPTS,
+    spawn_fix_workers=True,
+    record_on_green=True,
 ):
-    """Run one slice via a local Cursor SDK agent.
+    """Legacy coordinator path + loop-owned verify/fix (Phase 1).
 
     Returns (finished: bool, elapsed_secs: int, last_verify: dict|None).
     Raises SystemExit on unrecoverable bridge/agent failure or thrash halt.
     """
-    # Import lazily so --dry-run works without the SDK installed.
     from cursor_sdk import (
         AgentOptions,
         CursorAgentError,
@@ -259,6 +260,9 @@ def run_slice(
 
     prompt = build_prompt(slice_id, slice_file)
     stream_to = resolve_stream_timeout(stream_timeout)
+    # Budget persists across bridge retries (Phase 1b).
+    fix_budget = FixBudget(max_attempts=max_fix_attempts)
+
     log(f"coordinator run (model={model})")
     log(
         "bridge timeouts: "
@@ -266,10 +270,11 @@ def run_slice(
         f"unary={unary_timeout:.0f}s retries={bridge_retries}"
     )
     log(
-        f"anti-thrash: halt after {max_red_verifies} red verify/xcodebuild "
-        "outcomes in this run"
+        f"anti-thrash: loop-owned verify; halt after {max_fix_attempts} fix "
+        f"attempts (legacy shell red budget={max_red_verifies})"
     )
     log("progress lines: [slice NN][Role] action — use --verbose for full agent text")
+    log("handoff: coordinator must NOT run verify.sh — loop owns verify + fix workers")
 
     progress = RunProgress(
         slice_id,
@@ -283,12 +288,11 @@ def run_slice(
     )
     t0 = time.time()
     attempt = 0
+    last_verify = None
 
     while True:
         attempt += 1
         try:
-            # Own the bridge client so we can raise stream_timeout above the
-            # SDK's 600s default (quiet verify/Engineer turns exceed that).
             with CursorClient.launch_bridge(workspace=REPO_ROOT) as bridge_client:
                 client = bridge_client.with_options(
                     stream_timeout=stream_to,
@@ -318,10 +322,52 @@ def run_slice(
                     progress.stop()
                     if verbose:
                         print()
-                    elapsed = int(time.time() - t0)
                     status = getattr(result, "status", "unknown")
-                    log(f"coordinator finished: status={status} elapsed={elapsed}s")
-                    return status == "finished", elapsed, progress.last_verify
+                    log(f"coordinator finished: status={status}")
+
+                # Phase 1: loop owns verify (+ fix workers) AFTER coordinator agent
+                # is disposed — sequential only; never parallel with authoring verify.
+                if should_loop_own_verify(slice_file, REPO_ROOT):
+                    def progress_factory(role: str):
+                        return RunProgress(
+                            slice_id,
+                            title,
+                            slice_file,
+                            log,
+                            verbose=verbose,
+                            heartbeat_secs=heartbeat_secs,
+                            repo_root=REPO_ROOT,
+                            max_red_verifies=max_red_verifies,
+                        )
+
+                    try:
+                        outcome = run_post_coordinator_verify(
+                            client,
+                            slice_file=slice_file,
+                            repo_root=REPO_ROOT,
+                            api_key=api_key,
+                            budget=fix_budget,
+                            log=log,
+                            progress_factory=progress_factory,
+                            spawn_workers=spawn_fix_workers,
+                        )
+                    except ThrashHalt as thrash:
+                        log(f"THRASH HALT: {thrash.reason}")
+                        raise SystemExit(EXIT_THRASH) from thrash
+                    last_verify = outcome.result
+                    if outcome.green and outcome.result and record_on_green:
+                        record_green_verify(slice_file, REPO_ROOT, outcome.result)
+                        log("recorded VERIFY RESULT + Status Done (loop-owned)")
+                else:
+                    last_verify = progress.last_verify
+                    log(
+                        "skip loop-owned verify — implement not ready; "
+                        "coordinator may still be mid-authoring"
+                    )
+
+                elapsed = int(time.time() - t0)
+                log(f"slice attempt done: elapsed={elapsed}s")
+                return status == "finished", elapsed, last_verify
         except SystemExit:
             raise
         except CursorAgentError as err:
@@ -335,9 +381,9 @@ def run_slice(
             if not retryable:
                 raise SystemExit(EXIT_STARTUP)
             sleep_for = retry_sleep_secs(err, attempt)
-            log(f"retrying slice {slice_id:02d} in {sleep_for:.0f}s (disk state preserved)")
+            log(f"retrying slice {slice_id:02d} in {sleep_for:.0f}s (fix budget preserved)")
             time.sleep(sleep_for)
-            # Fresh RunProgress labels for the next attempt.
+            # Fresh RunProgress labels; FixBudget intentionally NOT reset.
             progress = RunProgress(
                 slice_id,
                 title,
@@ -348,6 +394,60 @@ def run_slice(
                 repo_root=REPO_ROOT,
                 max_red_verifies=max_red_verifies,
             )
+
+
+def run_slice(
+    slice_id,
+    slice_file,
+    model,
+    api_key,
+    verbose=False,
+    heartbeat_secs=90,
+    stream_timeout=DEFAULT_STREAM_TIMEOUT,
+    unary_timeout=DEFAULT_UNARY_TIMEOUT,
+    bridge_retries=DEFAULT_BRIDGE_RETRIES,
+    max_red_verifies=DEFAULT_MAX_RED_VERIFIES,
+    max_fix_attempts=DEFAULT_MAX_FIX_ATTEMPTS,
+    orchestrator="coordinator",
+    do_commit=True,
+    do_push=True,
+):
+    """Run one slice via the selected orchestrator."""
+    if orchestrator == "pipeline":
+        log(f"orchestrator=pipeline (gate FSM)")
+        try:
+            return run_pipeline_slice(
+                slice_id,
+                slice_file,
+                api_key=api_key,
+                repo_root=REPO_ROOT,
+                log=log,
+                verbose=verbose,
+                heartbeat_secs=heartbeat_secs,
+                stream_timeout=stream_timeout,
+                unary_timeout=unary_timeout,
+                max_fix_attempts=max_fix_attempts,
+                do_commit=do_commit,
+                do_push=do_push,
+                progress_cls=RunProgress,
+            )
+        except ThrashHalt as thrash:
+            log(f"THRASH HALT: {thrash.reason}")
+            raise SystemExit(EXIT_THRASH) from thrash
+
+    return run_slice_coordinator(
+        slice_id,
+        slice_file,
+        model,
+        api_key,
+        verbose=verbose,
+        heartbeat_secs=heartbeat_secs,
+        stream_timeout=stream_timeout,
+        unary_timeout=unary_timeout,
+        bridge_retries=bridge_retries,
+        max_red_verifies=max_red_verifies,
+        max_fix_attempts=max_fix_attempts,
+    )
 
 
 def describe(decision):
@@ -402,14 +502,44 @@ def main():
         default=DEFAULT_MAX_RED_VERIFIES,
         metavar="N",
         help=(
-            "halt the slice run after N red verify/xcodebuild outcomes "
-            f"(default {DEFAULT_MAX_RED_VERIFIES}; anti-thrash)"
+            "legacy: halt coordinator shell thrash after N red verify/xcodebuild "
+            f"outcomes (default {DEFAULT_MAX_RED_VERIFIES})"
         ),
+    )
+    parser.add_argument(
+        "--max-fix-attempts",
+        type=int,
+        default=DEFAULT_MAX_FIX_ATTEMPTS,
+        metavar="N",
+        help=(
+            "loop-owned Engineer|QA fix budget after red verify "
+            f"(default {DEFAULT_MAX_FIX_ATTEMPTS})"
+        ),
+    )
+    parser.add_argument(
+        "--orchestrator",
+        choices=("coordinator", "pipeline"),
+        default="coordinator",
+        help=(
+            "coordinator = legacy authoring LLM + loop-owned verify (default); "
+            "pipeline = Python gate FSM + one SDK worker per gate"
+        ),
+    )
+    parser.add_argument(
+        "--no-commit",
+        action="store_true",
+        help="pipeline mode: skip split commits + push after green verify",
+    )
+    parser.add_argument(
+        "--no-push",
+        action="store_true",
+        help="pipeline mode: commit but do not push",
     )
     args = parser.parse_args()
     if args.dry_run:
         decision = query_next()
         log(f"dry-run: next action -> {describe(decision)}")
+        log(f"dry-run: orchestrator={args.orchestrator}")
         return EXIT_OK
 
     api_key = os.environ.get("CURSOR_API_KEY")
@@ -459,6 +589,10 @@ def main():
             unary_timeout=args.unary_timeout,
             bridge_retries=args.bridge_retries,
             max_red_verifies=args.max_red_verifies,
+            max_fix_attempts=args.max_fix_attempts,
+            orchestrator=args.orchestrator,
+            do_commit=not args.no_commit,
+            do_push=not args.no_push,
         )
         if not finished:
             log(f"slice {slice_id:02d} run did not finish cleanly — stopping.")

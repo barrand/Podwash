@@ -68,16 +68,18 @@ class BridgeTimeoutHelpersTests(unittest.TestCase):
             self.assertIn("RESUME", prompt)
             self.assertIn("do NOT restart from scratch", prompt)
             self.assertIn("Skip completed gates", prompt)
-            self.assertIn("Anti-thrash", prompt)
-            self.assertIn("Never spawn UX", prompt)
-            self.assertIn("halts after 2 red", prompt)
+            self.assertIn("HANDOFF CONTRACT", prompt)
+            self.assertIn("Do NOT run", prompt)
+            self.assertIn("verify.sh", prompt)
+            self.assertIn("authoring gates only", prompt)
 
             ready = os.path.join(tmp, "slice-10.md")
             with open(ready, "w", encoding="utf-8") as fh:
                 fh.write("| **Status** | Ready |\n")
             self.assertNotIn("RESUME", build_prompt(10, ready))
             ready_prompt = build_prompt(10, ready)
-            self.assertIn("Anti-thrash", ready_prompt)
+            self.assertIn("HANDOFF CONTRACT", ready_prompt)
+            self.assertIn("Do NOT run", ready_prompt)
 
 
 if __name__ == "__main__":
