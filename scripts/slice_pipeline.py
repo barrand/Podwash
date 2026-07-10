@@ -25,6 +25,20 @@ from failure_packet import (
     is_flake_signal,
     slice_id_from_path,
 )
+from factory_events import EventLog, parse_summary_line
+from factory_narrator import (
+    NameAssigner,
+    narrate_crash,
+    narrate_exoneration,
+    narrate_flake_confirmed,
+    narrate_ledger_block,
+    narrate_referee,
+    narrate_spawn,
+    narrate_thrash_halt,
+    narrate_verify_green,
+    narrate_verify_red,
+    narrate_worker_done,
+)
 from hypothesis_ledger import (
     append_ledger,
     format_ledger_for_prompt,
@@ -39,6 +53,15 @@ from referee import (
     build_referee_prompt,
     parse_referee_reply,
 )
+from sim_hygiene import (
+    CrashWatchdog,
+    classify_infra_failure,
+    default_ips_roots,
+    ensure_sim_booted,
+    resolve_sim_udid,
+    should_stress_run,
+    stress_run_count,
+)
 from slice_loop_progress import (
     ThrashHalt,
     _implement_artifacts_exist,
@@ -48,6 +71,7 @@ from slice_loop_progress import (
     _read_slice_text,
     _review_cleared,
     _role_artifact_rows,
+    _section_body,
     _status_from_text,
     _verification_mapping_filled,
     detect_simulator_crashes,
@@ -64,6 +88,11 @@ CHECK_ISOLATION = os.path.join(REPO_ROOT_DEFAULT, "scripts", "check-test-isolati
 AGENTS_DIR = os.path.join(REPO_ROOT_DEFAULT, ".cursor", "agents")
 
 DEFAULT_MAX_FIX_ATTEMPTS = 2
+DEFAULT_MAX_IMPLEMENT_VERIFY_RUNS = 3
+
+# Exit codes owned by the loop (slice_loop.py mirrors these).
+EXIT_THRASH = 5
+EXIT_INFRA = 6
 
 # Plain SDK model ids — never scrape frontmatter bracket syntax.
 ROLE_MODELS: dict[str, str] = {
@@ -295,6 +324,78 @@ def verify_env_for_tier(
     return env
 
 
+def extract_mapped_test_ids(slice_text: str) -> list[str]:
+    """Build -only-testing: ids from the slice Verification mapping table.
+
+    Prefers ``Target/Class/testMethod()`` when the test file path encodes the
+    target; otherwise ``ClassName/testMethod()``.
+    """
+    body = _section_body(slice_text or "", "Verification mapping")
+    ids: list[str] = []
+    for line in body.splitlines():
+        if not line.strip().startswith("|"):
+            continue
+        cells = [c.strip().strip("`") for c in line.strip().strip("|").split("|")]
+        if len(cells) < 3:
+            continue
+        if cells[0].lower() in ("ac#", "ac") or set(cells[0]) <= {"-", " "}:
+            continue
+        test_file = cells[1]
+        method = cells[2]
+        if not method or method in ("—", "-", "(pending)", "TBD", "…", "..."):
+            continue
+        if method.lower() in ("—", "command-level", "n/a"):
+            continue
+        method = method.strip("`")
+        if not method.endswith("()") and method.startswith("test"):
+            method = method + "()"
+        class_name = ""
+        if test_file.endswith(".swift"):
+            class_name = os.path.splitext(os.path.basename(test_file))[0]
+        target = ""
+        norm = test_file.replace("\\", "/")
+        for tname in ("PodWashUITests", "PodWashSlowTests", "PodWashTests"):
+            if tname in norm:
+                target = tname
+                break
+        if class_name and method.startswith("test"):
+            tid = f"{target}/{class_name}/{method}" if target else f"{class_name}/{method}"
+            if tid not in ids:
+                ids.append(tid)
+        elif "/" in method and method not in ids:
+            ids.append(method)
+    return ids
+
+
+def tier2_marker_path(repo_root: str, slice_id: int | None) -> str:
+    name = (
+        f"tier2-slice-{slice_id:02d}.ok"
+        if slice_id is not None
+        else "tier2-slice.ok"
+    )
+    return os.path.join(repo_root, "build", "test-results", name)
+
+
+def write_tier2_marker(repo_root: str, slice_id: int | None) -> str:
+    path = tier2_marker_path(repo_root, slice_id)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("ok\n")
+    return path
+
+
+def tier2_marker_ok(repo_root: str, slice_id: int | None) -> bool:
+    return os.path.isfile(tier2_marker_path(repo_root, slice_id))
+
+
+class InfraHalt(Exception):
+    """Retry-safe infrastructure failure (exit 6) — attempt not burned if no edits."""
+
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+
 # ---------------------------------------------------------------------------
 # GateState assessment
 # ---------------------------------------------------------------------------
@@ -433,6 +534,16 @@ def assess_gate_state(slice_file: str, repo_root: str) -> GateState:
     record_ok = green and bool(verify)  # VERIFY RESULT present and green
     commit_ok = status_l == "done" and green
 
+    # P1: implement exit gate prefers tier-2 marker. Done/green slices stay
+    # satisfied without a marker (backward compatible).
+    sid = slice_id_from_path(slice_file)
+    artifacts = _implement_artifacts_exist(text, repo_root)
+    implement_ok = artifacts and (
+        tier2_marker_ok(repo_root, sid)
+        or status_l in ("done", "verify")
+        or green
+    )
+
     statuses: dict[GateId, tuple[GateStatus, bool]] = {
         "story": ("done" if _story_done(text) else "pending", True),
         "architect": (arch_st, arch_on),
@@ -441,10 +552,7 @@ def assess_gate_state(slice_file: str, repo_root: str) -> GateState:
         "adr_review_pm": (adr_pm_st, adr_pm_on),
         "test_spec": ("done" if test_spec_ok else "pending", True),
         "test_review": ("done" if test_review_ok else "pending", True),
-        "implement": (
-            "done" if _implement_artifacts_exist(text, repo_root) else "pending",
-            True,
-        ),
+        "implement": ("done" if implement_ok else "pending", True),
         "verify": ("done" if green else "pending", True),
         # record = VERIFY RESULT line present + green (Status may still be In Progress)
         "record": ("done" if record_ok else "pending", True),
@@ -806,6 +914,7 @@ Simulator crashes:
 xcresult bundle: {bundle_line}
 
 Diagnose, make the minimal fix in scope, then end your turn. Do not verify.
+End with: SUMMARY: <one line of what you changed>
 """
 
 
@@ -930,7 +1039,8 @@ def build_gate_prompt(gate_id: GateId, slice_file: str, repo_root: str) -> str:
         ),
         "implement": (
             "Implement app code under PodWash/PodWash/** to pass existing tests. "
-            "Do NOT edit tests. Do NOT run verify.sh."
+            "Do NOT edit tests. Do NOT run verify.sh. "
+            "End with a single line: SUMMARY: <≤25 words of what you changed>."
         ),
     }
     task = tasks.get(gate_id, f"Complete the {gate_id} gate for this slice.")
@@ -944,6 +1054,7 @@ Repo: {repo_root}
 {task}
 
 Read the slice file and only the artifacts needed for this gate. End your turn when done.
+Always end with: SUMMARY: <one line>
 """
 
 
@@ -1303,34 +1414,78 @@ def run_fix_loop(
     progress_factory: Callable[[str], Any] | None = None,
     verify_fn: Callable[..., VerifyOutcome] | None = None,
     referee_fn: Callable[..., RefereeVerdict] | None = None,
+    event_log: EventLog | None = None,
+    names: NameAssigner | None = None,
 ) -> VerifyOutcome:
     """Loop-owned verify + LLM referee + bounded Engineer|QA fix workers.
 
     Re-verify order after a fix: **tier 1 (failed tests) → tier 3 (full)**.
     Raises ThrashHalt when budget is exhausted, referee is low-confidence, or
     the hypothesis ledger rejects a repeat hypothesis on the same signature.
+    Raises InfraHalt on retry-safe infra failures with no actionable test ids.
     """
     _log = log or (lambda m: None)
+    _names = names or NameAssigner()
+    _events = event_log
     _verify = verify_fn or (
         lambda **kw: run_verify(repo_root, log=_log, slice_file=slice_file, **kw)
     )
+    roots = []
+    for r in default_ips_roots()[:2]:
+        roots.append(r if os.path.isabs(r) else os.path.join(repo_root, r))
+    watchdog = CrashWatchdog(roots=roots)
+    watchdog.arm()
 
     def _do_verify(**kwargs: Any) -> VerifyOutcome:
-        # Default tier 3 (full Done gate) when caller omits tier.
         if "tier" not in kwargs:
             kwargs = {**kwargs, "tier": 3}
         try:
             return _verify(slice_file=slice_file, **kwargs)
         except TypeError:
-            # Test doubles that ignore kwargs
             try:
                 return _verify(**kwargs)
             except TypeError:
                 return _verify()
 
+    if _events:
+        _events.record(
+            "FULL-VERIFY", "loop", "verify_start",
+            timeline=True, mission="full suite",
+        )
     outcome = _do_verify(tier=3)
     if outcome.green:
+        if _events:
+            _events.record(
+                "FULL-VERIFY", "loop", "verify_end",
+                detail={"tier": 3, "exit": 0, "failed": 0},
+            )
+        narrate_verify_green(
+            "Quinn",
+            passed=(outcome.result or {}).get("passed", "?"),
+            total=(outcome.result or {}).get("total", "?"),
+            log=_log,
+        )
         return outcome
+
+    fresh_ips = watchdog.new_crashes()
+    if fresh_ips:
+        narrate_crash(log=_log)
+        if _events:
+            _events.record(
+                "FULL-VERIFY", "loop", "crash", detail={"ips": fresh_ips[:3]}
+            )
+
+    if classify_infra_failure(
+        output=outcome.output,
+        exit_code=(outcome.result or {}).get("exit"),
+        files_changed=False,
+    ) and not (outcome.packet and outcome.packet.test_ids):
+        from factory_narrator import narrate_infra_halt
+        narrate_infra_halt(log=_log)
+        raise InfraHalt(
+            f"infra failure on verify (no test ids): "
+            f"{(outcome.failures or ['unknown'])[:2]}"
+        )
 
     slice_text = ""
     try:
@@ -1361,9 +1516,9 @@ def run_fix_loop(
             )
             persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
             _log(card)
+            narrate_thrash_halt(log=_log)
             raise ThrashHalt(packet.halt_reason or "no actionable evidence")
 
-        # Flake: one cold re-verify without burning fix budget
         if (
             (is_flake_signal(packet) or packet.failure_class == "flake")
             and not budget.flake_cold_retried
@@ -1372,6 +1527,7 @@ def run_fix_loop(
             _log("flake signal — cold re-verify (does not burn fix budget)")
             outcome = _do_verify(tier=3)
             if outcome.green:
+                narrate_flake_confirmed(log=_log)
                 return outcome
             continue
 
@@ -1386,7 +1542,13 @@ def run_fix_loop(
         )
         persist_stuck_card(card0, repo_root=repo_root, slice_file=slice_file)
 
-        # LLM referee (replaces classify_failure + playbook routing)
+        rhea = _names.assign("Referee")
+        if _events:
+            _events.record(
+                "REFEREE", "Referee", "spawn",
+                agent_name=rhea, timeline=True, mission="route primary failure",
+            )
+
         try:
             if referee_fn is not None:
                 verdict = referee_fn(
@@ -1419,9 +1581,9 @@ def run_fix_loop(
             )
             persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
             _log(card)
+            narrate_thrash_halt(log=_log)
             raise ThrashHalt(f"referee halt: {exc.reason}") from exc
 
-        # Ledger gate: reject repeat hypothesis on same signature
         if hypothesis_seen(ledger, verdict.hypothesis, sig):
             reason = (
                 "no new hypothesis — ledger already has this hypothesis "
@@ -1438,6 +1600,7 @@ def run_fix_loop(
             )
             persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
             _log(card)
+            narrate_ledger_block(rhea, log=_log)
             append_ledger(
                 make_entry(
                     slice_id=slice_id,
@@ -1466,13 +1629,28 @@ def run_fix_loop(
         )
         packet = packet.with_updates(suggested_files=suggested)
         role = verdict.role if verdict.role in ("Engineer", "QA") else "Engineer"
-        # Enforce fix_scope ↔ role consistency
         if verdict.fix_scope == "tests":
             role = "QA"
         elif verdict.fix_scope == "app":
             role = "Engineer"
 
         attempt = budget.attempts_used + 1
+        agent = _names.assign(role, slot=f"{role}-{attempt}")
+        narrate_referee(
+            rhea,
+            primary=verdict.primary_failure,
+            next_name=agent,
+            next_role=role,
+            narration=verdict.narration,
+            log=_log,
+        )
+        narrate_exoneration(
+            cause=verdict.hypothesis or verdict.instruction,
+            owner=agent,
+            log=_log,
+        )
+        narrate_spawn(agent, role, verdict.instruction, log=_log)
+
         bundle = (outcome.result or {}).get("bundle") or latest_xcresult_path(repo_root)
         card = format_stuck_card(
             packet,
@@ -1506,11 +1684,18 @@ def run_fix_loop(
         )
         _log(
             f"fix attempt {attempt}/{budget.max_attempts}: role={role} "
-            f"confidence={verdict.confidence} hyp={verdict.hypothesis[:80]} "
+            f"agent={agent} confidence={verdict.confidence} "
+            f"hyp={verdict.hypothesis[:80]} "
             f"failures={(outcome.failures or packet.raw_failures)[:3]}"
         )
         if client is None:
             raise ThrashHalt("no SDK client for fix worker")
+        if _events:
+            _events.record(
+                f"FIX-{attempt}", role, "spawn",
+                agent_name=agent, timeline=True,
+                mission=verdict.instruction[:80],
+            )
         progress = progress_factory(role) if progress_factory else None
         ok, status = run_worker(
             client,
@@ -1521,9 +1706,15 @@ def run_fix_loop(
             log=_log,
             progress=progress,
         )
+        summary = ""
+        if progress is not None and hasattr(progress, "assistant_text"):
+            summary = parse_summary_line(progress.assistant_text or "") or ""
+        if summary:
+            narrate_worker_done(agent, summary, log=_log)
+            _log(f"SUMMARY: {summary}")
         note = (
-            f"attempt {attempt}: role={role} hyp={verdict.hypothesis[:60] or 'n/a'} "
-            f"status={status}"
+            f"attempt {attempt}: role={role} agent={agent} "
+            f"hyp={verdict.hypothesis[:60] or 'n/a'} status={status}"
         )
         budget.record(role, sig, note=note)
         budget.last_packet = packet
@@ -1535,17 +1726,33 @@ def run_fix_loop(
         if not ok:
             _log(f"fix worker did not finish cleanly (status={status})")
 
-        # Tier 1: previously failing tests only
         if failed_ids:
             _log(f"tier-1 re-verify ({len(failed_ids)} failed tests)")
+            if _events:
+                _events.record(
+                    f"FIX-{attempt}", role, "verify_start",
+                    agent_name=agent, detail={"tier": 1},
+                    timeline=True, mission="failed tests only",
+                )
             outcome = _do_verify(tier=1, failed_tests=failed_ids)
         else:
             _log("tier-1 skipped (no test ids) — full suite")
             outcome = _do_verify(tier=3)
 
+        if outcome.green and should_stress_run(failed_ids, just_fixed=True):
+            n = stress_run_count(failed_ids, just_fixed=True)
+            _log(f"stress-run policy: {n} consecutive tier-1 runs for UITest fix")
+            for i in range(1, n):
+                again = _do_verify(tier=1, failed_tests=failed_ids)
+                if not again.green:
+                    outcome = again
+                    _log(f"stress-run {i + 1}/{n} red — continuing fix loop")
+                    break
+            else:
+                _log(f"stress-run {n}/{n} green")
+
         tier1_green = outcome.green
         if tier1_green:
-            # Promote to full suite (Done gate)
             _log("tier-1 green — promoting to tier-3 full suite")
             outcome = _do_verify(tier=3)
 
@@ -1561,13 +1768,36 @@ def run_fix_loop(
             outcome=entry_outcome,
             primary_failure=verdict.primary_failure,
             instruction=verdict.instruction,
+            agent_name=agent,
         )
         append_ledger(entry, repo_root=repo_root, slice_id=slice_id)
         ledger.append(entry)
+        if _events:
+            _events.record(
+                f"FIX-{attempt}", role, "verify_end",
+                agent_name=agent,
+                detail={
+                    "tier": 3 if tier1_green else 1,
+                    "exit": (outcome.result or {}).get("exit"),
+                    "failed": (outcome.result or {}).get("failed"),
+                },
+            )
 
         if outcome.green:
+            narrate_verify_green(
+                agent,
+                passed=(outcome.result or {}).get("passed", "?"),
+                total=(outcome.result or {}).get("total", "?"),
+                log=_log,
+            )
             return outcome
-        # Refresh packet for next loop
+
+        narrate_verify_red(
+            agent,
+            passed=(outcome.result or {}).get("passed", "?"),
+            total=(outcome.result or {}).get("total", "?"),
+            log=_log,
+        )
         if outcome.packet is None:
             outcome.packet = build_failure_packet(
                 failures=outcome.failures,
@@ -1589,6 +1819,7 @@ def run_fix_loop(
     )
     persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
     _log(card)
+    narrate_thrash_halt(log=_log)
     reason = (
         f"fix budget exhausted ({budget.max_attempts} attempts); "
         f"still red: {outcome.failures[:3] or outcome.crashes[:2]}"
@@ -1599,6 +1830,120 @@ def run_fix_loop(
 # ---------------------------------------------------------------------------
 # Pipeline runner (Phase 2.2)
 # ---------------------------------------------------------------------------
+
+
+
+def run_tier2_implement_gate(
+    client: Any,
+    *,
+    slice_file: str,
+    repo_root: str,
+    api_key: str,
+    log: LogFn | None = None,
+    progress_factory: Callable[[str], Any] | None = None,
+    verify_fn: Callable[..., VerifyOutcome] | None = None,
+    max_runs: int = DEFAULT_MAX_IMPLEMENT_VERIFY_RUNS,
+    event_log: EventLog | None = None,
+    names: NameAssigner | None = None,
+) -> VerifyOutcome:
+    """After implement artifacts exist: loop-owned tier-2 until green or cap.
+
+    On red within budget, re-spawns Engineer (same gate) to continue fixing.
+    Writes tier2 marker on green.
+    """
+    _log = log or (lambda m: None)
+    _names = names or NameAssigner()
+    _events = event_log
+    slice_id = slice_id_from_path(slice_file)
+    slice_text = _read_slice_text(slice_file, repo_root)
+    slice_tests = extract_mapped_test_ids(slice_text)
+    if not slice_tests:
+        _log("tier-2: no mapped test ids — treating artifacts-only as gate pass")
+        write_tier2_marker(repo_root, slice_id)
+        return VerifyOutcome(
+            result={"exit": "0", "total": "0", "passed": "0", "failed": "0", "skipped": "0", "tier": "2"},
+            green=True,
+            tier=2,
+        )
+
+    _verify = verify_fn or (
+        lambda **kw: run_verify(repo_root, log=_log, slice_file=slice_file, **kw)
+    )
+
+    def _tier2() -> VerifyOutcome:
+        try:
+            return _verify(tier=2, slice_tests=slice_tests, slice_file=slice_file)
+        except TypeError:
+            try:
+                return _verify(tier=2, slice_tests=slice_tests)
+            except TypeError:
+                return _verify()
+
+    agent = _names.assign("Engineer", slot="implement")
+    for run_i in range(1, max_runs + 1):
+        if _events:
+            _events.record(
+                "TIER2-GATE", "Engineer", "verify_start",
+                agent_name=agent, detail={"tier": 2, "run": run_i},
+                timeline=True, mission=f"slice tests run {run_i}/{max_runs}",
+            )
+        _log(f"tier-2 implement gate run {run_i}/{max_runs} ({len(slice_tests)} tests)")
+        outcome = _tier2()
+        if outcome.green:
+            write_tier2_marker(repo_root, slice_id)
+            narrate_verify_green(
+                agent,
+                passed=(outcome.result or {}).get("passed", "?"),
+                total=(outcome.result or {}).get("total", "?"),
+                log=_log,
+            )
+            if _events:
+                _events.record(
+                    "TIER2-GATE", "Engineer", "verify_end",
+                    agent_name=agent,
+                    detail={"tier": 2, "exit": 0, "failed": 0, "run": run_i},
+                )
+            return outcome
+        narrate_verify_red(
+            agent,
+            passed=(outcome.result or {}).get("passed", "?"),
+            total=(outcome.result or {}).get("total", "?"),
+            log=_log,
+        )
+        if run_i >= max_runs or client is None:
+            break
+        # Same worker continues — fresh spawn with narrow mission
+        narrate_spawn(
+            agent, "Engineer",
+            f"tier-2 still red — fix slice tests then SUMMARY",
+            log=_log,
+        )
+        prompt = build_gate_prompt("implement", slice_file, repo_root)
+        prompt += (
+            "\n\nTier-2 slice tests are still red. Fix app code only. "
+            f"Failing: {(outcome.failures or [])[:5]}\n"
+        )
+        progress = progress_factory("Engineer") if progress_factory else None
+        ok, status = run_worker(
+            client,
+            role="Engineer",
+            prompt=prompt,
+            api_key=api_key,
+            repo_root=repo_root,
+            log=_log,
+            progress=progress,
+        )
+        if progress is not None and hasattr(progress, "assistant_text"):
+            summary = parse_summary_line(progress.assistant_text or "")
+            if summary:
+                narrate_worker_done(agent, summary, log=_log)
+        if not ok:
+            _log(f"implement continue worker status={status}")
+
+    raise ThrashHalt(
+        f"implement tier-2 gate failed after {max_runs} runs; "
+        f"still red: {(outcome.failures or [])[:3]}"
+    )
 
 
 def run_pipeline_slice(
@@ -1613,9 +1958,11 @@ def run_pipeline_slice(
     stream_timeout: float | None = 0.0,
     unary_timeout: float = 120.0,
     max_fix_attempts: int = DEFAULT_MAX_FIX_ATTEMPTS,
+    max_implement_verify_runs: int = DEFAULT_MAX_IMPLEMENT_VERIFY_RUNS,
     do_commit: bool = True,
     do_push: bool = True,
     progress_cls: Any | None = None,
+    preboot_sim: bool = True,
 ) -> tuple[bool, int, dict[str, str] | None]:
     """Drive one slice via the gate FSM. Returns (ok, elapsed, last_verify)."""
     from cursor_sdk import CursorClient
@@ -1635,6 +1982,18 @@ def run_pipeline_slice(
     stream_to = _resolve_stream_timeout(stream_timeout)
     t0 = time.time()
     last_verify: dict[str, str] | None = None
+    names = NameAssigner()
+    events = EventLog(repo_root, slice_id, log=_log)
+
+    if preboot_sim:
+        udid = resolve_sim_udid(log=_log)
+        if udid:
+            os.environ.setdefault("PODWASH_SIM_UDID", udid)
+            ensure_sim_booted(udid, log=_log)
+            events.record(
+                "IMPLEMENT", "loop", "sim_boot",
+                detail={"udid": udid}, timeline=True, mission="pre-boot simulator",
+            )
 
     with CursorClient.launch_bridge(workspace=repo_root) as bridge_client:
         client = bridge_client.with_options(
@@ -1642,7 +2001,7 @@ def run_pipeline_slice(
             unary_timeout=unary_timeout,
         )
 
-        # Authoring gates until implement is satisfied
+        # Authoring gates until implement artifacts exist (tier-2 is separate)
         while True:
             state = assess_gate_state(slice_file, repo_root)
             _log(state.summary)
@@ -1651,8 +2010,13 @@ def run_pipeline_slice(
                 break
             if gid in ("verify", "record", "commit"):
                 break
+            # If implement is pending only for missing tier-2 marker but artifacts
+            # exist, leave the authoring loop and run the tier-2 gate.
+            if gid == "implement":
+                text = _read_slice_text(slice_file, repo_root)
+                if _implement_artifacts_exist(text, repo_root):
+                    break
             if gid in ("adr_review_qa", "adr_review_pm"):
-                # Run all ready parallel review gates
                 ready = [
                     g
                     for g in gates_ready_for_parallel(state)
@@ -1660,6 +2024,8 @@ def run_pipeline_slice(
                 ]
                 for rg in ready or [gid]:
                     role = GATE_ROLE[rg]
+                    agent = names.assign(role, slot=rg)
+                    narrate_spawn(agent, role, f"gate {rg}", log=_log)
                     prompt = build_gate_prompt(rg, slice_file, repo_root)
                     prog = None
                     if progress_cls:
@@ -1668,11 +2034,14 @@ def run_pipeline_slice(
                             verbose=verbose, heartbeat_secs=heartbeat_secs,
                             repo_root=repo_root,
                         )
+                    events.record(
+                        "IMPLEMENT", role, "spawn",
+                        agent_name=agent, timeline=True, mission=f"gate {rg}",
+                    )
                     ok, _ = run_worker(
                         client, role=role, prompt=prompt, api_key=api_key,
                         repo_root=repo_root, log=_log, progress=prog,
                     )
-                    # Best-effort: record a cleared line if worker finished
                     if ok:
                         kind = "ADR review"
                         who = "QA" if rg == "adr_review_qa" else "PM"
@@ -1687,6 +2056,8 @@ def run_pipeline_slice(
             if not role:
                 _log(f"no worker for gate {gid} — stopping")
                 break
+            agent = names.assign(role, slot=gid)
+            narrate_spawn(agent, role, f"gate {gid}", log=_log)
             prompt = build_gate_prompt(gid, slice_file, repo_root)
             prog = None
             if progress_cls:
@@ -1695,10 +2066,20 @@ def run_pipeline_slice(
                     verbose=verbose, heartbeat_secs=heartbeat_secs,
                     repo_root=repo_root,
                 )
+            events.record(
+                "IMPLEMENT" if gid == "implement" else gid.upper(),
+                role, "spawn",
+                agent_name=agent, timeline=True, mission=f"gate {gid}",
+            )
             ok, status = run_worker(
                 client, role=role, prompt=prompt, api_key=api_key,
                 repo_root=repo_root, log=_log, progress=prog,
             )
+            if prog is not None and hasattr(prog, "assistant_text"):
+                summary = parse_summary_line(prog.assistant_text or "")
+                if summary:
+                    narrate_worker_done(agent, summary, log=_log)
+                    _log(f"SUMMARY: {summary}")
             if gid == "test_review" and ok:
                 append_plan_review_outcome(
                     slice_file, repo_root,
@@ -1710,18 +2091,23 @@ def run_pipeline_slice(
                 elapsed = int(time.time() - t0)
                 return False, elapsed, last_verify
 
-            # Re-assess; if gate still pending after worker, stop (no infinite loop)
             after = assess_gate_state(slice_file, repo_root)
             if after.gate(gid).applicable and not after.gate(gid).satisfied:
                 if gid in ("adr_review_qa", "adr_review_pm", "test_review"):
-                    # Reviews may need manual record — already appended above
                     pass
+                elif gid == "implement":
+                    # Artifacts may exist now — tier-2 gate handles the rest
+                    text = _read_slice_text(slice_file, repo_root)
+                    if _implement_artifacts_exist(text, repo_root):
+                        break
+                    _log(f"gate {gid} still pending after worker — stopping")
+                    elapsed = int(time.time() - t0)
+                    return False, elapsed, last_verify
                 else:
                     _log(f"gate {gid} still pending after worker — stopping")
                     elapsed = int(time.time() - t0)
                     return False, elapsed, last_verify
 
-        # Verify + fix loop
         def progress_factory(role: str) -> Any:
             if not progress_cls:
                 return None
@@ -1733,6 +2119,27 @@ def run_pipeline_slice(
                 fix_worker=role in ("Engineer", "QA"),
             )
 
+        # P1: implement exit = tier-2 green
+        text = _read_slice_text(slice_file, repo_root)
+        if _implement_artifacts_exist(text, repo_root) and not tier2_marker_ok(
+            repo_root, slice_id
+        ):
+            try:
+                run_tier2_implement_gate(
+                    client,
+                    slice_file=slice_file,
+                    repo_root=repo_root,
+                    api_key=api_key,
+                    log=_log,
+                    progress_factory=progress_factory,
+                    max_runs=max_implement_verify_runs,
+                    event_log=events,
+                    names=names,
+                )
+            except ThrashHalt as thrash:
+                _log(f"TIER2 HALT: {thrash.reason}")
+                raise
+
         try:
             outcome = run_fix_loop(
                 client,
@@ -1742,7 +2149,12 @@ def run_pipeline_slice(
                 budget=budget,
                 log=_log,
                 progress_factory=progress_factory,
+                event_log=events,
+                names=names,
             )
+        except InfraHalt as infra:
+            _log(f"INFRA HALT: {infra.reason}")
+            raise
         except ThrashHalt as thrash:
             _log(f"THRASH HALT: {thrash.reason}")
             raise
@@ -1752,11 +2164,12 @@ def run_pipeline_slice(
             elapsed = int(time.time() - t0)
             return False, elapsed, last_verify
 
-        # Record Done artifacts
+        events.record("RECORD", "loop", "record_start", timeline=True, mission="VERIFY RESULT")
         record_green_verify(slice_file, repo_root, outcome.result)
         _log("recorded VERIFY RESULT + Status Done")
 
         if do_commit:
+            events.record("COMMIT", "loop", "commit_start", timeline=True, mission="split commits")
             if not commit_slice_changes(
                 slice_id, repo_root, log=_log, push=do_push
             ):

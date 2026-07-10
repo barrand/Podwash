@@ -16,25 +16,25 @@ todos:
     status: completed
   - id: visibility-event-log
     content: "P1: JSONL event log + Cursor-like role/phase timeline; SUMMARY line contract for workers"
-    status: pending
+    status: completed
   - id: narrator
     content: "P1: Shift-floor narrator — named agents (E/Q/A/P/U initials), template narration from events, referee-written handoff lines, Murphy the failure-mascot monkey with mandatory exoneration beat"
-    status: pending
+    status: completed
   - id: pipeline-only
     content: "P1: Pipeline mode only for unattended; implement gate = tier-2 green; cap implement verify runs; exit 6 for infra"
-    status: pending
+    status: completed
   - id: sim-hygiene
     content: "P1: Dedicated pre-booted simulator UDID, crash watchdog on .ips, stress-run policy for just-fixed flaky tests"
-    status: pending
+    status: completed
   - id: confidence-replay
-    content: "P2: Replay a Slice-10-shaped multi-failure red as the confidence gate before the next unattended slice"
-    status: pending
+    content: "P2 CANCELLED — skip Slice-10 replay; P1 green is enough to try factory on slice 11"
+    status: cancelled
 isProject: true
 ---
 
 # Factory v2: LLM referee in a Python-enforced harness
 
-> **For the implementing agent:** This is **factory-only** work — Python/shell under `scripts/` plus docs. Do **not** touch app Swift (`PodWash/PodWash/**`) or test targets. Land in mergeable phases: **P0 → P1 → P2**, each with unit tests for the loop code (pattern: `scripts/test_*.py` / `scripts/test-*.sh`) and a `docs/slice-pipeline.md` update. Do not run `scripts/slice-loop.sh` unattended until the P2 confidence gate passes.
+> **For the implementing agent:** This is **factory-only** work — Python/shell under `scripts/` plus docs. Do **not** touch app Swift (`PodWash/PodWash/**`) or test targets. Land in mergeable phases: **P0 → P1** (P2 confidence replay **cancelled** — try the factory on the next real slice instead of replaying Slice 10). Each phase needs unit tests (`scripts/test_*.py` / `scripts/test-*.sh`) and a `docs/slice-pipeline.md` update.
 
 ## The verdict, honestly
 
@@ -192,9 +192,9 @@ The factory has one resident villain: **Murphy** 🐒, an evil monkey the whole 
 
 ## Workplan
 
-- **P0** (before any unattended run): verify tiers in `verify.sh` + `run_fix_loop` re-verify order; LLM referee (prompt, JSON schema, parse, halt-on-low-confidence); hypothesis ledger + spawn gate + fresh-context retry.
-- **P1**: JSONL event log + timeline + SUMMARY contract; **shift-floor narrator** (name pools, template narration from events, referee `narration` field); pipeline-only unattended with implement tier-2 gate and `max_implement_verify_runs`; exit 6 infra vs 5 thrash with attempt-preservation; sim pre-boot + crash watchdog + stress-run policy.
-- **P2 confidence gate**: replay a Slice-10-shaped multi-failure red (or synthetic: one unit assertion + one UITest wait + one collateral) and require: referee picks the unit failure as primary, ledger blocks a repeat hypothesis, tier-1 re-verify used, timeline readable end-to-end. **No new unattended slice until this passes.**
+- **P0** ✅: verify tiers in `verify.sh` + `run_fix_loop` re-verify order; LLM referee (prompt, JSON schema, parse, halt-on-low-confidence); hypothesis ledger + spawn gate + fresh-context retry.
+- **P1**: JSONL event log + timeline + SUMMARY contract; **shift-floor narrator** (name pools, template narration from events, referee `narration` field); pipeline-only unattended with implement tier-2 gate and `max_implement_verify_runs`; exit 6 infra vs 5 thrash with attempt-preservation; sim pre-boot + crash watchdog + stress-run policy. **P1 green = try factory on slice 11.**
+- **P2** ❌ **CANCELLED** — do not replay Slice 10 (wasted tokens on a finished slice). Confidence comes from the next real unattended run (slice 11+), not a synthetic re-do.
 
 ## Technical appendix
 

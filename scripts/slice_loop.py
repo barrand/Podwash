@@ -21,13 +21,15 @@ Stop conditions (never guessed around):
   - done : the queue is complete.
   - a slice failed to reach Done (agent error or verify red) → stop, no spin.
   - thrash: fix/verify budget exhausted → exit 5 with explanation.
+  - infra: bridge/DNS/sim death with no code change → exit 6 (retry-safe).
 
 Usage:
-  scripts/slice-loop.sh                 # run the queue until it stops
+  scripts/slice-loop.sh                 # run the queue until it stops (pipeline mode)
   scripts/slice-loop.sh --dry-run       # show what WOULD run; spawns no agents
   scripts/slice-loop.sh --max 3         # run at most 3 slices this session
   scripts/slice-loop.sh --model auto    # let the server pick the coordinator model
-  scripts/slice-loop.sh --orchestrator pipeline
+  scripts/slice-loop.sh --orchestrator coordinator  # legacy attended authoring LLM
+  scripts/slice-loop.sh --orchestrator pipeline     # default — Python gate FSM
   scripts/slice-loop.sh --stream-timeout 0   # disable bridge stream idle cap (default)
 
 Auth (non-dry-run): export CURSOR_API_KEY=cursor_...
@@ -59,6 +61,7 @@ from slice_loop_progress import (
 from slice_pipeline import (
     DEFAULT_MAX_FIX_ATTEMPTS,
     FixBudget,
+    InfraHalt,
     record_green_verify,
     run_pipeline_slice,
     run_post_coordinator_verify,
@@ -75,6 +78,7 @@ EXIT_RUN_FAILED = 2    # agent ran but slice did not reach Done (or no progress)
 EXIT_WAIT = 3          # blocked on an unfinished dependency
 EXIT_HALT = 4          # halt-and-ask gate needs a user decision
 EXIT_THRASH = 5        # red-verify / fix retry budget exhausted (anti-thrash)
+EXIT_INFRA = 6         # bridge/DNS/sim death — retry-safe, attempt not burned
 
 # SDK default stream timeout is 600s — too short for quiet verify/Engineer turns.
 DEFAULT_STREAM_TIMEOUT = 0.0   # 0 / None => disable (httpx timeout=None)
@@ -410,7 +414,7 @@ def run_slice(
     bridge_retries=DEFAULT_BRIDGE_RETRIES,
     max_red_verifies=DEFAULT_MAX_RED_VERIFIES,
     max_fix_attempts=DEFAULT_MAX_FIX_ATTEMPTS,
-    orchestrator="coordinator",
+    orchestrator="pipeline",
     do_commit=True,
     do_push=True,
 ):
@@ -433,6 +437,9 @@ def run_slice(
                 do_push=do_push,
                 progress_cls=RunProgress,
             )
+        except InfraHalt as infra:
+            log(f"INFRA HALT (exit={EXIT_INFRA}): {infra.reason}")
+            raise SystemExit(EXIT_INFRA) from infra
         except ThrashHalt as thrash:
             log(f"THRASH HALT: {thrash.reason}")
             raise SystemExit(EXIT_THRASH) from thrash
@@ -521,10 +528,10 @@ def main():
     parser.add_argument(
         "--orchestrator",
         choices=("coordinator", "pipeline"),
-        default="coordinator",
+        default="pipeline",
         help=(
-            "coordinator = legacy authoring LLM + loop-owned verify (default); "
-            "pipeline = Python gate FSM + one SDK worker per gate"
+            "pipeline = Python gate FSM + one SDK worker per gate (default, unattended); "
+            "coordinator = legacy authoring LLM + loop-owned verify (attended)"
         ),
     )
     parser.add_argument(

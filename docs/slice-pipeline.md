@@ -2,7 +2,7 @@
 
 > Design reference for `scripts/slice_pipeline.py` and `--orchestrator=pipeline`.
 > Plan: [`plans/loop-as-orchestrator-refactor.md`](plans/loop-as-orchestrator-refactor.md).
-> Factory v2: [`plans/factory-v2.md`](plans/factory-v2.md) (**P0 landed** — tiers, referee, ledger).
+> Factory v2: [`plans/factory-v2.md`](plans/factory-v2.md) (**P0 + P1 landed**; P2 cancelled).
 > Fix confidence: [`plans/factory-fix-confidence.md`](plans/factory-fix-confidence.md).
 > Runner mechanics: [`slice-runner.md`](slice-runner.md).
 
@@ -15,7 +15,10 @@
 | Red → FailurePacket + stuck card | `failure_packet.py` (evidence formats) |
 | Red → **LLM referee** → fix | `referee.py` (strict JSON) + Engineer\|QA |
 | Hypothesis ledger (anti-thrash) | `hypothesis_ledger.py` — reject repeat hyp+signature |
-| Red → fix budget | `--max-fix-attempts` (default 2); flake cold-retry is free |
+| Event log + timeline + SUMMARY | `factory_events.py` |
+| Shift-floor narrator + Murphy | `factory_narrator.py` (rendering only) |
+| Sim pre-boot / crash watch / stress | `sim_hygiene.py` |
+| Red → fix budget | `--max-fix-attempts` (default 2); flake cold-retry is free; exit 5 thrash / 6 infra |
 | `VERIFY RESULT` + Status Done | Deterministic doc writer |
 | Split commits + isolation + push | Loop (pipeline mode) |
 | Story / UX / ADR / tests / app / reviews | One visible SDK worker per gate |
@@ -156,13 +159,19 @@ Referee calls do **not** burn budget (routing only).
 2. Loop always owns verify when implement is done **or** status ∈ `{In Progress, Verify}`.
 3. Sequential only — never parallel loop verify with a coordinator-owned verify.
 
-## P0 unit tests
+## Unit tests (P0 + P1)
 
 ```bash
-python3 -m unittest scripts.test_referee scripts.test_hypothesis_ledger \
-  scripts.test_slice_pipeline scripts.test_failure_packet -q
+python3 -m unittest scripts.test_factory_p1 scripts.test_referee \
+  scripts.test_hypothesis_ledger scripts.test_slice_pipeline \
+  scripts.test_failure_packet -q
 ./scripts/test-verify-tiers.sh
+scripts/slice-loop.sh --orchestrator pipeline --max 1   # unattended default
 ```
 
-P1 (not yet): JSONL event log, narrator, pipeline-only unattended, implement=tier-2 gate, exit 6 infra, sim hygiene.
-P2: Slice-10-shaped confidence replay before the next unattended slice.
+**P1 landed:** JSONL event log (`events-slice-NN.jsonl`), phase timeline, `SUMMARY:`
+contract, shift-floor narrator (names + Murphy), pipeline default, implement exit =
+tier-2 green (`tier2-slice-NN.ok`, `max_implement_verify_runs=3`), exit **6** infra vs
+**5** thrash, sim pre-boot (`PODWASH_SIM_UDID`), crash watchdog, UITest stress-run (5×).
+
+**P2 cancelled** — no Slice-10 replay; try the factory on slice 11+.
