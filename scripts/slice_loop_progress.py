@@ -31,6 +31,10 @@ _COMPILE_ERROR_RE = re.compile(
     r"(?:^|\n)(?:[^\n]*?:\d+:\d+:\s*)?error:\s*(.+)",
     re.IGNORECASE,
 )
+_XCODEBUILD_ERROR_RE = re.compile(
+    r"xcodebuild:\s*error:\s*(.+)",
+    re.IGNORECASE,
+)
 
 # Pre-implement pipeline gates — TDD compile-red is expected.
 AUTHORING_GATE_IDS = frozenset(
@@ -324,6 +328,13 @@ def parse_verify_result(text: str) -> dict[str, str] | None:
     return out
 
 
+def _truncate_build_detail(detail: str, *, limit: int = 100) -> str:
+    detail = re.sub(r"\s+", " ", (detail or "").strip())
+    if len(detail) > limit:
+        return detail[: limit - 1].rstrip() + "…"
+    return detail
+
+
 def extract_build_error(text: str) -> str | None:
     """Return ``build_error: <detail>`` when output looks like a compile/build fail."""
     if not text:
@@ -333,9 +344,11 @@ def extract_build_error(text: str) -> str | None:
         # Skip XCTest assertion noise that also uses "error:"
         if not detail or detail.lower().startswith("xctassert"):
             continue
-        if len(detail) > 100:
-            detail = detail[:97] + "…"
-        return f"build_error: {detail}"
+        return f"build_error: {_truncate_build_detail(detail)}"
+    for m in _XCODEBUILD_ERROR_RE.finditer(text):
+        detail = (m.group(1) or "").strip()
+        if detail:
+            return f"build_error: {_truncate_build_detail(detail)}"
     if (
         "** BUILD FAILED **" in text
         or "Testing cancelled because the build failed" in text
@@ -370,6 +383,23 @@ def looks_like_build_failure(
         except ValueError:
             pass
     return extract_build_error(text) is not None
+
+
+def enrich_build_failures(
+    failures: list[str],
+    output: str,
+    verify: dict[str, str] | None = None,
+) -> list[str]:
+    """Ensure compile/scheme-red verify runs surface a ``build_error:`` line."""
+    if any((f or "").startswith("build_error:") for f in failures):
+        return list(failures)
+    if not looks_like_build_failure(output, verify):
+        return list(failures)
+    detail = extract_build_error(output)
+    if not detail:
+        exit_code = (verify or {}).get("exit") or "?"
+        detail = f"build_error: exit={exit_code} (0 tests executed)"
+    return [detail, *failures]
 
 
 def verify_is_green(v: dict[str, str] | None) -> bool:

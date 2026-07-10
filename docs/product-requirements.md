@@ -38,7 +38,8 @@ once to produce a list of time ranges, then the player applies the chosen action
 copied, or re-hosted.
 
 **Target audience:** a public but targeted, faith/family-friendly listenership.
-Monetization is expected (subscription and/or one-time purchase).
+Monetization is planned post-MVP (StoreKit 2); the **initial release is free**
+with all cleaning features unlocked — see PRD §11.
 
 **Design principle:** feel like a normal, polished podcast app first. These
 features are opt-in enhancements layered on top of table-stakes podcast behavior -
@@ -355,11 +356,10 @@ episode with cleaning enabled is downloaded (or fully cached) before cleaned
 playback starts. Streaming remains available for uncleaned playback. See
 [`adr/000-foundations.md`](adr/000-foundations.md) §3.
 
-**Differentiator 2 placement:** unrelated-content handling (§4) remains core to
-the vision but is scheduled as a **post-MVP track** (slices 18–19: segmentation
-spike, then integration) — it depends on the full analyze/playback pipeline, its
-own detection R&D, and the attorney question below. It is planned with concrete
-slice files, not deferred into vagueness.
+**Differentiator 2 placement:** ✅ **RESOLVED (user, 2026-07-10):** unrelated-content
+handling (§4) ships **at MVP** via slices 18–19 (segmentation spike, then integration).
+Attorney review of content-curation framing remains required before App Store launch
+(PRD §8) but does not block factory work.
 
 Open decisions (agents must **halt and ask** rather than assume — see the
 coordinator decision protocol in [`multitask-workflow.md`](multitask-workflow.md)):
@@ -395,15 +395,26 @@ coordinator decision protocol in [`multitask-workflow.md`](multitask-workflow.md
   opts in. Fully adjustable in Settings. Seeded lists remain per
   [`specs/matching-spec.md`](specs/matching-spec.md) §7; defaults are a profile over
   those categories, not a separate word list.
-- **Monetization model** (subscription vs one-time vs freemium) via StoreKit 2
-  (optionally RevenueCat) — hard halt-and-ask gate at slice 17.
-- **Whether the skip feature ships at MVP** or as a fast follow (pending attorney
-  review).
-- **CarPlay timing:** ship with MVP or fast follow after core playback is solid
-  (surfaces at slice 15).
+- **Monetization model:** ✅ **RESOLVED (user, 2026-07-10, Slice 17 gate):** **free
+  at MVP** — no StoreKit paywall or entitlement gating in the initial release; all
+  cleaning features unlocked. Revisit **Slice 17** post-MVP when ready to choose
+  subscription vs one-time vs freemium, price points, and feature gates (record
+  in PRD + ADR before implementation resumes).
+- **Unrelated-content skip at MVP (Differentiator 2):** ✅ **RESOLVED (user,
+  2026-07-10):** ad/superfluous-content skip ships at MVP (slices 18–19); feature
+  **off by default**; content-curation framing per PRD §4/§8. Attorney sign-off
+  still required before App Store submission.
+- **Profanity skip action at MVP:** mute remains default; skip-as-cleaning-action
+  stays user-selectable in Settings (Slice 13). Ship policy for profanity skip
+  follows the same attorney review before launch — not a factory blocker.
+- **CarPlay timing:** ✅ **RESOLVED (user, 2026-07-10, Slice 15 gate):** ship
+  **with MVP** — CarPlay templates and automated tests are in scope for the
+  initial release (see [`slices/slice-15-carplay.md`](slices/slice-15-carplay.md)
+  § Product decisions).
 
 Decided-and-deferred (not open, just late): beep/quack overlay sync mechanism is
-its own hard slice (16) per ADR-000 §7.
+its own hard slice (16) per ADR-000 §7; **StoreKit monetization** is Slice 17
+(post-MVP — free at launch per user decision 2026-07-10).
 
 ## 12. Out of scope (for this document)
 

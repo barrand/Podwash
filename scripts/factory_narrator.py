@@ -128,16 +128,10 @@ ROLE_REPORT_LINES: tuple[str, ...] = (
     "from {name} on the floor: {detail}",
 )
 
-COORDINATOR_SHIFT_GREETING_LINES: tuple[str, ...] = (
-    "Hi — Coordinator {name} here. I'm opening the Forge shift for slice {slice_id}: {title}.",
-    "Hello — Coordinator {name} checking in for slice {slice_id}: {title}.",
-    "Coordinator {name} on the floor — slice {slice_id}, {title}.",
-)
-
-COORDINATOR_SHIFT_GOAL_LINES: tuple[str, ...] = (
-    "Today's goal: {mission}",
-    "What we're after today: {mission}",
-    "The shift target: {mission}",
+COORDINATOR_SHIFT_OPEN_LINES: tuple[str, ...] = (
+    "Coordinator {name} on shift — I'll keep the gates moving.",
+    "{name} here — running the floor today.",
+    "Floor lead {name} — shift is open.",
 )
 
 GATE_STUCK_LINES: tuple[str, ...] = (
@@ -708,27 +702,17 @@ def narrate_coordinator_shift_prose(
     log: LogFn | None = None,
     voice: StoryVoice | None = None,
 ) -> str:
-    """Template coordinator check-in below the banner (no Murphy — pre-failure)."""
+    """One-line coordinator check-in below the banner (banner owns slice + mission)."""
+    del slice_id, title, mission  # banner already printed; prose must not repeat.
     v = voice or _default_voice
     name = (coordinator_name or "Coordinator").strip() or "Coordinator"
-    goal = (mission or "").strip() or "advance the product"
-    if len(goal) > 240:
-        goal = goal[:237].rstrip() + "…"
-    greeting = v.format(
-        "coord_shift_greeting",
-        COORDINATOR_SHIFT_GREETING_LINES,
+    line = v.format(
+        "coord_shift_open",
+        COORDINATOR_SHIFT_OPEN_LINES,
         name=name,
-        slice_id=str(slice_id),
-        title=title,
     )
-    goal_line = v.format(
-        "coord_shift_goal",
-        COORDINATOR_SHIFT_GOAL_LINES,
-        mission=goal,
-    )
-    for part in (greeting, goal_line):
-        _emit(part, log)
-    return "\n".join((greeting, goal_line))
+    _emit(line, log)
+    return line
 
 
 def narrate_coordinator_shift_open(
@@ -758,9 +742,14 @@ def narrate_coordinator_shift_open(
     )
 
 
+def normalize_floor_speech(text: str) -> str:
+    """Collapse streaming whitespace/newlines into readable prose."""
+    return re.sub(r"\s+", " ", (text or "").strip())
+
+
 def parse_shift_narration_lines(text: str, *, max_lines: int = 3) -> list[str]:
     """Split LLM shift copy into console lines."""
-    raw = (text or "").strip()
+    raw = normalize_floor_speech(text)
     if not raw:
         return []
     chunks = re.split(r"(?<=[.!?])\s+", raw)
@@ -773,9 +762,16 @@ def narrate_coordinator_shift_llm(
     *,
     log: LogFn | None = None,
 ) -> str:
+    # Guard: accidental per-token fragments (streaming chunks treated as lines).
+    if len(lines) > 3 and sum(1 for ln in lines if len(ln.split()) <= 1) >= len(lines) - 1:
+        lines = parse_shift_narration_lines("".join(lines), max_lines=3)
+    out: list[str] = []
     for line in lines:
-        _emit(line.strip(), log)
-    return "\n".join(lines)
+        clean = normalize_floor_speech(line)
+        if clean:
+            out.append(clean)
+            _emit(clean, log)
+    return "\n".join(out)
 
 
 def narrate_slice_mission(

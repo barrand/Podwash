@@ -54,6 +54,7 @@ Forge-fix progress:
 - [ ] Evidence ladder
 - [ ] Classify lane
 - [ ] Diagnosis report (no edits yet)
+- [ ] Plain-English summary (what broke / slice plan / forge harden plan)
 - [ ] User approved hardening
 - [ ] Land factory patches + unit tests
 - [ ] Run factory unit tests
@@ -110,6 +111,44 @@ Pick **one** primary lane:
 **Regression test:** which unittest asserts the new behavior
 ```
 
+### 4b. Plain-English summary (required — show the user)
+
+After the technical post-mortem, always add a short section the user can read
+without knowing factory internals. Use everyday language; avoid script names
+unless helpful. Three parts, in order:
+
+```markdown
+## In simple terms
+
+### What broke
+One short paragraph: what the factory was trying to do, what actually failed,
+and whether the app/tests are the problem or the factory pipeline is.
+
+### Plan to fix the slice (if anything)
+What the slice team should do next — or explicitly “nothing in app code; re-run
+the loop after forge hardening.” Do not volunteer to fix the slice here.
+
+### Plan to harden the forge
+Numbered list (2–4 items): what we will change in `scripts/` so this class of
+break is prevented or much clearer next time. Each item = one behavior change
+in plain English, not a file diff.
+```
+
+**Tone:** direct, no jargon (“tier-2 gate” → “the factory’s slice-test check”).
+**Honesty:** if the halt message lied or wasted Engineer attempts, say so plainly.
+
+### Nightly-only tests (plain language)
+
+When explaining halts or hardening, readers should know:
+
+- **Fast tests** prove the slice on every run (Done gate, tier-2).
+- **Nightly / slow tests** (`PodWashSlowTests`) are for heavy work (live ASR,
+  benchmarks). They are **not** prerequisites for the next slice.
+- Mapping tables may list slow tests for documentation; the factory must **not**
+  schedule them on the default scheme during tier-2.
+
+See `docs/slice-pipeline.md` § Fast vs nightly and ADR-003.
+
 ### 5. Harden the Forge
 
 After user approval:
@@ -131,6 +170,8 @@ Also run any other `scripts/test_*.py` modules you touched.
 ## Success criteria
 
 - Post-mortem names a factory root cause and a concrete `scripts/` hardening
+- Plain-English summary answers what broke, slice next steps, and forge hardening
+  in language a non-pipeline reader can follow
 - No proposed or landed edits under `PodWash/PodWash/**` or test targets
 - Console upgrade is specific (exact line shape), not “better logs”
 - A regression test would fail before the hardening and pass after

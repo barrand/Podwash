@@ -85,13 +85,30 @@ D3="$WORK/case3"; mkdir -p "$D3"
 make_slice "$D3" 7 Draft 0 "Pipeline" "Slices 05, 02"
 assert_json "wait: 07 blocked by missing 05 and 02" "$D3" '"action":"wait"' '"id":7' '"blocked_by":[5,2]'
 
-# ---- case 4: halt (halt-gated slice is next) -------------------------------
+# ---- case 4: start (slice 15 gate resolved — deps met -> start) ------------
 D4="$WORK/case4"; mkdir -p "$D4"
 make_slice "$D4" 2  Done  1 "Matching" "Slice 01"
 make_slice "$D4" 11 Done  1 "Queue"    "Slices 03, 06"
 make_slice "$D4" 14 Done  1 "Background" "Slices 03, 11"
 make_slice "$D4" 15 Draft 0 "CarPlay" "Slices 11, 14"
-assert_json "halt: slice 15 deps met but halt-gated" "$D4" '"action":"halt"' '"id":15'
+assert_json "start: slice 15 deps met (gate resolved)" "$D4" '"action":"start"' '"id":15'
+
+# ---- case 4b: skip deferred (slice 17 post-MVP; next eligible is 16) --------
+D4B="$WORK/case4b"; mkdir -p "$D4B"
+make_slice "$D4B" 8  Done  1 "Playback" "Slice 07"
+make_slice "$D4B" 13 Done  1 "Settings" "Slice 12"
+make_slice "$D4B" 16 Draft 0 "Beep" "Slice 08"
+{
+    make_slice "$D4B" 17 Draft 0 "StoreKit" "Slice 13"
+    # Override status to match deferred post-MVP slices in the real repo.
+    sed -i '' 's/| \*\*Status\*\* | Draft |/| **Status** | Deferred — **post-MVP** |/' \
+        "$D4B/slice-17-fixture.md"
+} 2>/dev/null || {
+    make_slice "$D4B" 17 Draft 0 "StoreKit" "Slice 13"
+    sed -i 's/| \*\*Status\*\* | Draft |/| **Status** | Deferred — **post-MVP** |/' \
+        "$D4B/slice-17-fixture.md"
+}
+assert_json "skip: deferred slice 17 -> start 16" "$D4B" '"action":"start"' '"id":16'
 
 # ---- case 5: done (everything complete) ------------------------------------
 D5="$WORK/case5"; mkdir -p "$D5"
@@ -108,7 +125,9 @@ make_slice "$D6" 2 Draft 0 "Matching"   "Slice 01"
 assert_json "guard: Done-without-green does not advance to 02" "$D6" '"action":"start"' '"id":1'
 
 # ---- case 7: smoke test against the real repo ------------------------------
-assert_json "smoke: real repo -> start slice 13" "$REPO_ROOT/docs/slices" '"action":"start"' '"id":13'
+# After shell insert: 15/16/20/21 wait on 22–23; lowest eligible is 18 (segmentation)
+# or 22 if 18 were blocked. Assert start + id 18.
+assert_json "smoke: real repo -> start slice 18" "$REPO_ROOT/docs/slices" '"action":"start"' '"id":18'
 
 # ---- summary ---------------------------------------------------------------
 echo ""

@@ -4,14 +4,22 @@
 |-------|-------|
 | **ID** | 19 |
 | **Title** | Segmentation integration |
-| **Status** | Draft — **post-MVP track**; blocked on Slice 18 + attorney review framing (PRD §8, §11) |
+| **Status** | Draft |
 | **Crux** | Segment intervals from the Slice 18 approach flow through the existing pipeline (cache → scheduler → playback) with the skip-override affordance, off by default. |
+
+## Product decisions (user, 2026-07-10 — unblocks this slice)
+
+| Decision | Choice |
+|----------|--------|
+| Ad / unrelated-content skip at MVP | **Yes** — ship Differentiator 2 at MVP (after Slice 18 spike) |
+| Default state | **Off by default**; per-channel + settings toggles |
+| Legal framing | Content curation per PRD §4/§8; attorney review before App Store launch |
 
 ## PRD / spec references
 
 - PRD §4 — Skip/mute segments; visible + overridable skips ("skipped ~30 s — tap to play"); off by default
 - PRD §8 — Content-curation framing; attorney review before ship
-- PRD §11 — ⚠️ Whether skip ships at MVP is open — coordinator confirms framing/ship decision with the user before this slice starts.
+- PRD §11 — ✅ **Resolved 2026-07-10** (see § Product decisions above)
 
 ## Goal
 

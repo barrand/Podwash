@@ -64,6 +64,7 @@ from hypothesis_ledger import (
     normalize_signature,
 )
 from session_bundle import write_session_bundle
+from sdk_models import format_sdk_model, sdk_model_for_role, sdk_model_from_id
 from referee import (
     RefereeError,
     RefereeVerdict,
@@ -100,6 +101,8 @@ from slice_loop_progress import (
     artifact_cell_satisfied,
     detect_simulator_crashes,
     detect_test_failures,
+    enrich_build_failures,
+    extract_build_error,
     latest_xcresult_path,
     looks_like_build_failure,
     summarize_ips_crash,
@@ -128,6 +131,7 @@ EXIT_THRASH = 5
 EXIT_INFRA = 6
 
 # Plain SDK model ids — never scrape frontmatter bracket syntax.
+# SDK path uses sdk_models.sdk_model_for_role() → ModelSelection(fast=false).
 ROLE_MODELS: dict[str, str] = {
     "PM": "composer-2.5",
     "UX": "composer-2.5",
@@ -373,11 +377,35 @@ def verify_env_for_tier(
     return env
 
 
-def extract_mapped_test_ids(slice_text: str) -> list[str]:
+_NIGHTLY_TIER2_EXCLUDE_RE = re.compile(
+    r"nightly|not\s+(?:a\s+)?done\s+gate|not\s+the\s+done\s+gate",
+    re.IGNORECASE,
+)
+
+
+def mapping_row_excluded_from_tier2(ac: str, notes: str) -> bool:
+    """True when a mapping row is nightly/manual-only — not the tier-2 gate.
+
+    Slow targets use ``PODWASH_SCHEME=PodWashSlowTests``; they cannot run on the
+    default ``PodWash`` scheme via ``-only-testing:`` (see ADR-003 / verify.sh).
+    """
+    ac_l = (ac or "").strip().lower()
+    notes_l = (notes or "").strip().lower()
+    if ac_l.startswith("—") or ac_l.startswith("-") or "(live)" in ac_l:
+        return True
+    if _NIGHTLY_TIER2_EXCLUDE_RE.search(notes_l):
+        return True
+    return False
+
+
+def extract_mapped_test_ids(slice_text: str, *, tier2: bool = False) -> list[str]:
     """Build -only-testing: ids from the slice Verification mapping table.
 
     Prefers ``Target/Class/testMethod()`` when the test file path encodes the
     target; otherwise ``ClassName/testMethod()``.
+
+    When ``tier2=True``, skip rows marked nightly-only / not a Done gate so the
+    implement gate never schedules ``PodWashSlowTests`` on the default scheme.
     """
     body = _section_body(slice_text or "", "Verification mapping")
     ids: list[str] = []
@@ -388,6 +416,9 @@ def extract_mapped_test_ids(slice_text: str) -> list[str]:
         if len(cells) < 3:
             continue
         if cells[0].lower() in ("ac#", "ac") or set(cells[0]) <= {"-", " "}:
+            continue
+        notes = cells[3] if len(cells) > 3 else ""
+        if tier2 and mapping_row_excluded_from_tier2(cells[0], notes):
             continue
         test_file = cells[1]
         method = cells[2]
@@ -874,6 +905,7 @@ def run_verify(
     bundle = (result or {}).get("bundle") or latest_xcresult_path(repo_root)
     if bundle and not failures:
         failures = read_failures_from_xcresult(bundle)
+    failures = enrich_build_failures(failures, output, result)
     if result and bundle and "bundle" not in result:
         result = dict(result)
         result["bundle"] = bundle
@@ -1760,11 +1792,12 @@ def run_worker(
     from cursor_sdk import AgentOptions, LocalAgentOptions
 
     _log = log or (lambda m: None)
-    model = model_for_role(role)
+    model_id = model_for_role(role)
+    model = sdk_model_for_role(model_id)
     mode = mode_for_role(role)
     # Mechanical start/finish lines are verbose-only — chapter beats carry the story.
     if progress is not None and getattr(progress, "verbose", False):
-        _log(f"worker start: role={role} model={model} mode={mode}")
+        _log(f"worker start: role={role} model={format_sdk_model(model)} mode={mode}")
 
     options = AgentOptions(
         api_key=api_key,
@@ -1814,7 +1847,7 @@ def run_worker(
             # Always prefer the clean stream join when present — never keep a
             # longer corrupted buffer from dual-capture.
             if assistant_bits:
-                progress.set_assistant_text("\n".join(assistant_bits))
+                progress.set_assistant_text("".join(assistant_bits))
             elif not (getattr(progress, "assistant_text", "") or "").strip():
                 progress.set_assistant_text("")
         return status == "finished", str(status)
@@ -2508,7 +2541,7 @@ def run_fix_loop(
         if _events:
             _events.record(
                 f"FIX-{attempt}", role, "spawn",
-                agent_name=agent, timeline=True,
+                agent_name=agent, timeline=False,
                 mission=verdict.instruction[:80],
             )
         progress = progress_factory(role, agent) if progress_factory else None
@@ -2705,6 +2738,29 @@ def run_fix_loop(
 
 
 
+def format_tier2_halt_reason(outcome: VerifyOutcome, *, max_runs: int) -> str:
+    """Human halt line for tier-2 budget exhaustion — never bare ``still red: []``."""
+    fail_cls = outcome_failure_class(outcome)
+    detail: list[str] = list(outcome.failures or [])[:3]
+    if not detail and outcome.packet is not None:
+        detail = list(outcome.packet.raw_failures or [])[:3]
+    if not detail and outcome.output:
+        be = extract_build_error(outcome.output)
+        if be:
+            detail = [be]
+    if not detail:
+        detail = list(outcome.crashes or [])[:2]
+    if detail:
+        return (
+            f"implement tier-2 gate failed after {max_runs} runs; "
+            f"class={fail_cls}: {detail}"
+        )
+    return (
+        f"implement tier-2 gate failed after {max_runs} runs; "
+        f"class={fail_cls} (no per-test detail — see verify-output-latest.txt)"
+    )
+
+
 def run_tier2_implement_gate(
     client: Any,
     *,
@@ -2733,7 +2789,14 @@ def run_tier2_implement_gate(
     _voice = cast.voice if cast is not None else CastLog().voice
     slice_id = slice_id_from_path(slice_file)
     slice_text = _read_slice_text(slice_file, repo_root)
-    slice_tests = extract_mapped_test_ids(slice_text)
+    all_mapped = extract_mapped_test_ids(slice_text)
+    slice_tests = extract_mapped_test_ids(slice_text, tier2=True)
+    excluded = [tid for tid in all_mapped if tid not in set(slice_tests)]
+    if excluded:
+        _log(
+            f"tier-2: excluded {len(excluded)} nightly-only test(s) from gate: "
+            f"{', '.join(excluded)}"
+        )
     if not slice_tests:
         _log("tier-2: no mapped test ids — treating artifacts-only as gate pass")
         write_tier2_marker(repo_root, slice_id)
@@ -2986,7 +3049,7 @@ def run_tier2_implement_gate(
                     "escalate_expectation": escalate,
                     "transition_credits_used": transition_credits_used,
                 },
-                timeline=True,
+                timeline=False,
                 mission=f"tier-2 continue after fix attempt {fix_attempt}",
             )
         progress = progress_factory(role, agent) if progress_factory else None
@@ -3015,10 +3078,7 @@ def run_tier2_implement_gate(
             )
             pending_outcome = t0
 
-    reason = (
-        f"implement tier-2 gate failed after {max_runs} runs; "
-        f"still red: {(outcome.failures or [])[:3]}"
-    )
+    reason = format_tier2_halt_reason(outcome, max_runs=max_runs)
     card = ""
     if outcome.packet is not None:
         card = format_stuck_card(
@@ -3123,7 +3183,7 @@ def run_pipeline_slice(
             os.environ.setdefault("PODWASH_SIM_UDID", udid)
             ensure_sim_booted(udid, log=_log)
             events.record(
-                "IMPLEMENT", "loop", "sim_boot",
+                "SIM", "loop", "sim_boot",
                 detail={"udid": udid}, timeline=True, mission="pre-boot simulator",
             )
 
@@ -3215,7 +3275,7 @@ def run_pipeline_slice(
                         )
                     events.record(
                         "IMPLEMENT", role, "spawn",
-                        agent_name=agent, timeline=True, mission=f"gate {rg}",
+                        agent_name=agent, timeline=False, mission=f"gate {rg}",
                     )
                     t_gate = time.time()
                     ok, _ = run_worker(
@@ -3276,7 +3336,7 @@ def run_pipeline_slice(
             events.record(
                 "IMPLEMENT" if gid == "implement" else gid.upper(),
                 role, "spawn",
-                agent_name=agent, timeline=True, mission=f"gate {gid}",
+                agent_name=agent, timeline=False, mission=f"gate {gid}",
             )
             t_gate = time.time()
             ok, status = run_worker(

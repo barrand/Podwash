@@ -27,8 +27,9 @@ The classic "censored" beep, without breaking the no-re-encode architecture.
 ## Depends on
 
 - Slice 08
+- Slice 23 — MVP Library/player shell first (overlay settings + player chrome share the production shell)
 
-**Parallelizable:** Yes — with Slices 15, 17.
+**Parallelizable:** Yes — with Slices 15, 18–21 once Slice 23 is **Done**.
 
 ## Out-of-scope
 

@@ -15,6 +15,7 @@ from factory_narrator import (
     LogFn,
     _emit,
     narrate_coordinator_shift_llm,
+    normalize_floor_speech,
     parse_shift_narration_lines,
 )
 
@@ -71,7 +72,7 @@ def invoke_floor_narrator_llm(
     except Exception as exc:
         log(f"floor narration LLM failed: {exc}")
         return []
-    text = "\n".join(assistant_bits).strip()
+    text = normalize_floor_speech("".join(assistant_bits))
     lines = parse_shift_narration_lines(text, max_lines=max_lines)
     if ok and lines:
         return lines
@@ -88,13 +89,13 @@ def build_coordinator_shift_llm_prompt(
     mission: str,
 ) -> str:
     goal = (mission or "").strip() or "advance the product"
-    return f"""You are {coordinator_name}, the Forge floor coordinator, speaking to the project stakeholder at slice kickoff.
+    return f"""You are {coordinator_name}, the Forge floor coordinator, speaking to the project stakeholder immediately after they read the slice banner.
 
-Write exactly 2 short sentences in plain text:
-1. Check in by name and identify slice {slice_id}: {title}.
-2. State today's goal in your own words: {goal}
+The banner already shows slice {slice_id}, title "{title}", and today's goal. Do NOT repeat the slice number, title, goal, file path, or any bullet from the banner.
 
-Rules: conversational, unique wording each time, no markdown, no emoji, no monkey jokes, no Murphy references, no bullet points, no stock factory clichés."""
+Write exactly ONE short sentence (max 22 words): check in by your first name only, set a confident tone for the shift, and optionally hint at one non-obvious challenge or angle for today's work (draw only from: {goal}) without restating the goal.
+
+Rules: conversational, unique wording, plain text, no markdown, no emoji, no monkeys, no Murphy, no bullets, no "checking docs", no meta commentary about kickoff lines."""
 
 
 def build_verify_green_llm_prompt(
@@ -166,7 +167,7 @@ def narrate_verify_green_dynamic(
             max_lines=1,
         )
         if line:
-            _emit(line[0], log)
+            _emit(normalize_floor_speech(line[0]), log)
             return line[0]
     return narrate_verify_green_minimal(
         name, passed=passed, total=total, log=log
@@ -201,9 +202,9 @@ def try_coordinator_shift_llm(
         repo_root=repo_root,
         log=log,
         run_worker=run_worker,
-        max_lines=3,
+        max_lines=1,
     )
     if lines:
-        narrate_coordinator_shift_llm(lines, log=log)
+        narrate_coordinator_shift_llm(lines[:1], log=log)
         return True
     return False

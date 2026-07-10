@@ -49,6 +49,7 @@ from slice_pipeline import (  # noqa: E402
     VerifyOutcome,
     build_tier2_continue_prompt,
     extract_mapped_test_ids,
+    format_tier2_halt_reason,
     tier2_marker_ok,
     write_tier2_marker,
 )
@@ -178,10 +179,10 @@ class NarratorTests(unittest.TestCase):
             mission="Deliver variable speed and a sleep timer on the player.",
             log=lines.append,
         )
-        self.assertIn("Coordinator Kai", mission_line)
-        self.assertIn("slice 12", mission_line)
-        self.assertIn("variable speed", mission_line)
+        self.assertIn("Kai", mission_line)
         self.assertNotIn("Murphy", mission_line)
+        self.assertNotIn("variable speed", mission_line.lower())
+        self.assertNotIn("slice 12", mission_line.lower())
 
     def test_murphy_only_on_verify_failure(self):
         lines: list[str] = []
@@ -301,6 +302,51 @@ class MappedTestsAndTierTests(unittest.TestCase):
         ids = extract_mapped_test_ids(text)
         self.assertIn("PodWashTests/QueueTests/testQueueOperationsAndPersistence()", ids)
         self.assertIn("PodWashUITests/FooUITests/testSomething()", ids)
+
+    def test_extract_mapped_test_ids_excludes_nightly_tier2(self):
+        text = """
+## Verification mapping
+
+| AC# | Test file | Test method | Notes |
+|-----|-----------|-------------|-------|
+| 1 | `PodWash/PodWashTests/SegmentationSpikeTests.swift` | `testPrecisionRecallAgainstGolden` | fast |
+| — (live) | `PodWash/PodWashSlowTests/SegmentationBenchmarkTests.swift` | `testSegmentationBenchmarkAndRegenerateArtifact` | Nightly only (NOT a Done gate) |
+"""
+        all_ids = extract_mapped_test_ids(text)
+        tier2_ids = extract_mapped_test_ids(text, tier2=True)
+        self.assertEqual(len(all_ids), 2)
+        self.assertEqual(len(tier2_ids), 1)
+        self.assertIn(
+            "PodWashTests/SegmentationSpikeTests/testPrecisionRecallAgainstGolden()",
+            tier2_ids,
+        )
+        self.assertNotIn(
+            "PodWashSlowTests/SegmentationBenchmarkTests/"
+            "testSegmentationBenchmarkAndRegenerateArtifact()",
+            tier2_ids,
+        )
+
+    def test_format_tier2_halt_reason_includes_build_detail(self):
+        from slice_pipeline import VerifyOutcome
+
+        outcome = VerifyOutcome(
+            result={"exit": "70", "class": "build"},
+            green=False,
+            failures=[],
+            output=(
+                'xcodebuild: error: PodWashSlowTests isn\'t a member of the '
+                "specified test plan or scheme.\n"
+            ),
+            packet=FailurePacket(
+                raw_failures=[],
+                failure_class="build_error",
+            ),
+            tier=2,
+        )
+        reason = format_tier2_halt_reason(outcome, max_runs=3)
+        self.assertIn("class=build_error", reason)
+        self.assertIn("build_error:", reason)
+        self.assertNotIn("still red: []", reason)
 
     def test_tier2_marker(self):
         with tempfile.TemporaryDirectory() as tmp:

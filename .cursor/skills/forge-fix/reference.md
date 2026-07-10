@@ -67,6 +67,11 @@ All under `build/test-results/` (gitignored).
 | 2 | Slice-mapped tests | Implement exit gate |
 | 3 | Full unfiltered suite | Done gate |
 
+**Tier-2 test selection:** `extract_mapped_test_ids(..., tier2=True)` skips mapping
+rows whose Notes (or `— (live)` AC#) mark **nightly only** / **not a Done gate**.
+Slow tests live in `PodWashSlowTests` and run via
+`PODWASH_SCHEME=PodWashSlowTests` — not on the default scheme (slice 18 death-run).
+
 **Green contract:** `exit == 0` and `failed == 0` and `skipped == 0`.
 
 Tier 0: `exit == 0` counts green even with 0 tests.

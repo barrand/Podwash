@@ -31,9 +31,10 @@ Give users visible feedback during first-play analysis: which parts of the episo
 ## Depends on
 
 - Slices 07, 09 (pipeline + existing progress chrome)
-- PRD analysis timing: **first play with cleaning enabled** (Slice 13 gate decision)
+- Slice 13 — analysis timing: **first play with cleaning enabled**
+- Slice 23 — production episode-list chrome from Library navigation (serialize on shared list UI)
 
-**Parallelizable:** After Slice 13 settings exist; can run parallel with 14–16 if deps met.
+**Parallelizable:** After Slice 23; can run parallel with 15–16 if deps met.
 
 ## Out-of-scope
 

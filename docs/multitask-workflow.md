@@ -83,24 +83,24 @@ parallel groups:
                        ▼
 14 Lock screen / Control Center / background audio (needs 03, 08)
         │
-        ├──────────── parallel group C ───────────────┐
+        ▼
+**MVP app shell (user 2026-07-10 — before CarPlay; was "14a/14b"):**
+22 Discovery & subscribe (needs 06, 11) → 23 Library & player shell (needs 22, 03, 06, 08, 11, 13)
+        │
+        ├──────────── parallel group C (after 23) ────┐
         ▼                      ▼                      ▼
 15 CarPlay            16 Beep/quack overlay    17 StoreKit
- (needs 11, 14;        (needs 08; hard)         (needs 13; halt-and-ask
-  MVP timing = ask)                              on monetization)
+ (needs 11, 14, 22, 23) (needs 08; hard)       (Deferred — free at MVP)
 
-Post-MVP track (planned, not unowned):
-18 Segmentation spike (needs 07)  →  19 Segmentation integration (needs 08, 09, 13, 18)
-20 Analysis timeline (needs 07, 09, 13) — Skipper-style segment colors; parallel with 14–16 once deps met
-
-Native polish (chrome / brand — parallel once player + list exist):
-21 Visual identity & branding (needs 03, 06) — display name, App Icon, color tokens;
-   parallel with 14, 15, 16, 20 once 03 + 06 Done; serialize if same SwiftUI chrome files
+**MVP Differentiator 2 (user 2026-07-10):** 18 Segmentation spike (needs 07; parallel with 22–23) →
+19 Segmentation integration (needs 08, 09, 13, 18)
+20 Analysis timeline (needs 07, 09, 13) — parallel once deps met; serialize on shared list chrome with 23
+21 Visual identity (needs 03, 06) — parallel; serialize if same SwiftUI chrome as 23
 ```
 
-**Parallel groups:** A = slices 02/03/05/06 after 01; B = 10/11/12 after 08; C = 15/16/17
-after 14 (17 waits for the monetization decision). Slices **20** and **21** parallelize with
-group C and each other once their `Depends on` slices are Done (serialize on shared view files).
+**Parallel groups:** A = 02/03/05/06 after 01; B = 10/11/12 after 08; **shell = 22→23 after 14**
+(before CarPlay); C = 15/16 after **23** Done (17 deferred). Slices **18–21** may parallelize with
+22–23 once their own deps are met (serialize on shared `RootView` / list / player files with 23).
 Everything else is sequential per the arrows.
 
 ## Agent roles and quality gates
@@ -185,7 +185,7 @@ project subagents in `.cursor/agents/` where model is pinned in frontmatter):
 | **UX** | Composer 2.5 | `podwash-ux` (preferred) or `composer-2.5` |
 | **QA** | Composer 2.5 | `podwash-qa` (preferred) or `composer-2.5` |
 
-**Never** `composer-2.5-fast` or `grok-4.5-fast-xhigh`. The Cursor **SDK** (slice-loop) accepts plain model ids only — not `model[fast=false]` bracket syntax. Prefer **subagent name** delegation in the IDE.
+**Never** `composer-2.5-fast` or `grok-4.5-fast-xhigh`. The Cursor **SDK** (slice-loop) must pass `ModelSelection` with `fast=false` (see `scripts/sdk_models.py`) — bare `composer-2.5` / `grok-4.5` strings default to the fast billing variant. IDE subagents may use bracket syntax in frontmatter (`grok-4.5[effort=high,fast=false]`).
 
 **Decision protocol (all roles):** if a slice hits an undecided PRD §11 item
 (monetization, persistence, default profile, analysis timing, skip-at-MVP,

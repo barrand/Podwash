@@ -84,10 +84,11 @@ Establish a minimal, testable brand system (display name, App Icon, semantic col
 
 ## Depends on
 
-- Slice 03 — Player shell exists (`PlaybackControlsView`, playback fixture args)
+- Slice 03 — Player shell exists (`PlaybackControlsView`, fixture args)
 - Slice 06 — Episode list exists (`EpisodeListView`, `-UITestFixtureFeed` pattern)
+- Slice 23 — Production Library/player shell owns `RootView` / chrome first; brand tokens apply after shell lands
 
-**Parallelizable:** Yes — with Slices **14**, **15**, **16**, and **20** once Slice 03 + 06 are **Done** (no shared playback/lock-screen/CarPlay/timeline files required). Serialize with any slice that edits the same SwiftUI chrome files (`ContentView`, `RootView`, `PlaybackControlsView`, `EpisodeListView`).
+**Parallelizable:** Yes — with Slices **15**, **16**, and **20** once Slice **23** is **Done**. Serialize with any slice that edits the same SwiftUI chrome files (`ContentView`, `RootView`, `PlaybackControlsView`, `EpisodeListView`, `LibraryView`).
 
 ## Out-of-scope
 

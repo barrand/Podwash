@@ -67,8 +67,11 @@ are hardcoded in the script (`HALT_SLICES`), derived from
 | Slice | Decision |
 |-------|----------|
 | ~~13~~ | ~~default word/category profile, default action, analysis timing~~ **Resolved 2026-07-10** — see PRD §11 and `slice-13-settings.md` § Product decisions |
-| 15 | CarPlay at MVP vs fast-follow |
-| 17 | monetization model |
+| ~~15~~ | ~~CarPlay at MVP vs fast-follow~~ **Resolved 2026-07-10** — **MVP**; see PRD §11 and `slice-15-carplay.md` § Product decisions |
+| ~~17~~ | ~~monetization model~~ **Resolved 2026-07-10** — **free at MVP**; StoreKit deferred post-MVP — see PRD §11 and `slice-17-storekit.md` § Product decisions |
+
+`HALT_SLICES` is currently empty. Post-MVP / deferred slices (e.g. 17, 18, 19) are
+skipped automatically when status contains `Deferred` or `post-MVP`.
 
 Slice 11 persistence (Core Data) was resolved 2026-07-09 — see [ADR-007](adr/007-persistence-core-data.md).
 
@@ -119,9 +122,10 @@ Exactly one JSON object on stdout. Consumers should branch on `action`.
 {"action":"start","id":5,"file":"docs/slices/slice-05-asr-spike.md","prompt":"Run Slice 05 per ..."}
 ```
 
-**halt** — eligible but needs a user decision first:
+**halt** — eligible but needs a user decision first (no active gates as of 2026-07-10;
+example shape when `HALT_SLICES` is non-empty):
 ```json
-{"action":"halt","id":15,"file":"docs/slices/slice-15-carplay.md","reason":"Slice 15 (CarPlay) is a halt-and-ask gate — confirm MVP vs fast-follow before this slice starts."}
+{"action":"halt","id":17,"file":"docs/slices/slice-17-storekit.md","reason":"Slice 17 (StoreKit monetization) is a halt-and-ask gate — the user must make a product decision before this slice starts."}
 ```
 
 **wait** — every remaining slice is blocked on an unfinished dependency:

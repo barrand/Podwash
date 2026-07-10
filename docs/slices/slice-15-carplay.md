@@ -10,7 +10,13 @@
 ## PRD / spec references
 
 - PRD §2, §7 — CarPlay as native-controls requirement
-- PRD §11 — ⚠️ Open decision: CarPlay at MVP vs fast-follow. Coordinator confirms with the user before starting this slice.
+- PRD §11 — ✅ **Resolved 2026-07-10** (see § Product decisions below)
+
+## Product decisions (user, 2026-07-10 — unblocks this slice)
+
+| Decision | Choice |
+|----------|--------|
+| CarPlay timing | **MVP** — ship CarPlay browsing/playback templates with the initial release; physical head-unit checks remain documentation-only (not a Done gate) |
 
 ## Goal
 
@@ -24,9 +30,9 @@ CarPlay browsing and playback control through `CPListTemplate`/`CPNowPlayingTemp
 
 ## Depends on
 
-- Slices 11, 14
+- Slices 11, 14, **22, 23** — MVP app shell (Discover/subscribe + Library/player) must be **Done** before CarPlay; browsing templates need real subscription + navigation data sources
 
-**Parallelizable:** Yes — with Slices 16, 17.
+**Parallelizable:** Yes — with Slices 16, 17 (after 22–23 are Done).
 
 ## Out-of-scope
 

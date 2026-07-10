@@ -80,7 +80,8 @@ Authoring and fix loops emit **chapter beats** instead of stacking mechanical
 noise:
 
 - Chapter open: `── Slice 12 · 4/9 test spec · QA Quincy ──`
-- Shift open: `════ SLICE 13 ════` banner, then LLM coordinator check-in (or template fallback). `FORGE_LLM_NARRATION=0` disables all floor LLM beats.
+- Shift open: `════ SLICE 13 ════` banner (slice id, title, mission — printed once), then **one** coordinator line that does not repeat the banner (LLM or template fallback). `FORGE_LLM_NARRATION=0` disables floor LLM beats.
+- Gate spawn: chapter open only — no duplicate `══ IMPLEMENT ══` timeline line after the `── Slice N · … ──` beat. Sim pre-boot uses `══ SIM ══`, not IMPLEMENT.
 - Verify green: one creative LLM sentence from the agent who ran verify (e.g. Edison on 6/6) — no template pool; minimal `✓ … all green (6/6)` fallback if LLM is off.
 - Verify red / failure detail / thrash halt: Murphy + 🐒 only when tests we expected green go red.
 - Clear: `✓ Quincy cleared test spec (2m) — next: …`
@@ -110,6 +111,24 @@ failed predicates + an unblock hint when a gate stays pending after its worker.
 | 1 | `test` or `test-without-building` | `VERIFY_FAILED_TESTS` → `-only-testing:` | **after every fix attempt** |
 | 2 | `test` or `test-without-building` | slice-mapped + smoke (`VERIFY_SLICE_TESTS` / CLI) | implement exit gate (P1) |
 | 3 | `test` (unfiltered) | none | **Done gate** — `VERIFY RESULT:` contract unchanged (+ optional `tier=3`) |
+
+### Fast vs nightly (slow) tests
+
+| Lane | Target | Done / tier-2 gate | When to add |
+|------|--------|-------------------|-------------|
+| **Fast** | `PodWashTests`, `PodWashUITests` | Every `verify.sh`; **skipped must be 0** | Default for all slice ACs |
+| **Nightly / slow** | `PodWashSlowTests` | **Excluded** from tier-2 and Done | Live ML, long CPU, or regenerating committed benchmark JSON |
+
+**Pattern:** fast tests validate **committed artifacts** (e.g. `benchmark-results.json`);
+slow tests **regenerate** those artifacts when the heavy implementation changes.
+Slow targets sit in the `PodWash` scheme with `skipped="YES"` for structural ACs
+but run only via `PODWASH_SCHEME=PodWashSlowTests` (a skipped testable cannot
+be forced with `-only-testing:` on the default scheme — ADR-003).
+
+**Factory rule:** `extract_mapped_test_ids(..., tier2=True)` skips mapping rows
+marked **nightly only** / **not a Done gate** / `— (live)`. Do **not** run slow
+tests before other slices — they are optional regeneration / CI, not slice-queue
+prerequisites.
 
 Tiers 1–2 use `test-without-building` **only when** the built `*.xctestrun` is
 newer than every Swift source under `PodWash/{PodWash,PodWashTests,PodWashUITests,PodWashSlowTests}/`.
@@ -249,8 +268,7 @@ Referee calls (including one parse retry) do **not** burn budget (routing only).
 - Reuse one `launch_bridge`; dispose each agent after its gate.
 - If gate N fails after earlier gates produced artifacts: **leave artifacts on disk**,
   halt with gate id + attempt, **do not** auto-revert.
-- Model ids are pinned plain strings (`composer-2.5`, `grok-4.5`) — never scrape
-  agent-frontmatter bracket syntax.
+- Model ids are pinned in `ROLE_MODELS`; SDK spawns use `scripts/sdk_models.py` with `fast=false` — never bare ids (they bill as `*-fast`). IDE subagents may use frontmatter bracket syntax.
 
 ## Handoff contract (coordinator mode)
 

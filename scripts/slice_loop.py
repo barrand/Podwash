@@ -274,6 +274,7 @@ def run_slice_coordinator(
     from cursor_sdk.errors import CursorSDKError
 
     from cursor_bridge import launch_bridge as launch_cursor_bridge
+    from sdk_models import format_sdk_model, sdk_model_from_id
 
     title, _rel = read_slice_meta(slice_file, REPO_ROOT)
     mission = extract_slice_mission(slice_file, REPO_ROOT)
@@ -281,10 +282,11 @@ def run_slice_coordinator(
 
     prompt = build_prompt(slice_id, slice_file)
     stream_to = resolve_stream_timeout(stream_timeout)
+    sdk_model = sdk_model_from_id(model)
     # Budget persists across bridge retries (Phase 1b).
     fix_budget = FixBudget(max_attempts=max_fix_attempts)
 
-    log(f"coordinator run (model={model})")
+    log(f"coordinator run (model={format_sdk_model(sdk_model)})")
     log(
         "bridge timeouts: "
         f"stream={'disabled' if stream_to is None else f'{stream_to:.0f}s'} "
@@ -322,7 +324,7 @@ def run_slice_coordinator(
                 with client.create_agent(
                     AgentOptions(
                         api_key=api_key,
-                        model=model,
+                        model=sdk_model,
                         local=LocalAgentOptions(cwd=REPO_ROOT),
                     )
                 ) as agent:

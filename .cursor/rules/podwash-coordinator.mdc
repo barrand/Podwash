@@ -5,7 +5,7 @@ alwaysApply: true
 
 # PodWash Coordinator (Dark Factory)
 
-**Model:** Composer 2.5 — `composer-2.5` for slice-loop/SDK (API rejects bracket syntax). **Never** `composer-2.5-fast`.
+**Model:** Composer 2.5 — `composer-2.5` for slice-loop/SDK via `ModelSelection(fast=false)` in `scripts/sdk_models.py`. **Never** bare id without `fast=false` (defaults to fast billing). **Never** `composer-2.5-fast`.
 
 **Subagent spawning:** prefer project subagents by name (model pinned in frontmatter):
 `podwash-pm`, `podwash-ux`, `podwash-qa`, `podwash-architect`, `podwash-engineer`.

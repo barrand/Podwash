@@ -44,13 +44,20 @@ The dependency graph and parallel groups live in [`multitask-workflow.md`](../mu
 | 12 | `slice-12-speed-sleep.md` | Table stakes (parallel group B) |
 | 13 | `slice-13-settings.md` | Table stakes |
 | 14 | `slice-14-background-audio.md` | Native polish |
-| 15 | `slice-15-carplay.md` | Native polish (parallel group C; MVP-vs-later is a user call) |
+| 22 | `slice-22-discovery-subscribe.md` | **MVP app shell** (before CarPlay; was "14a") — iTunes Discover + multi-subscribe |
+| 23 | `slice-23-library-player-shell.md` | **MVP app shell** (before CarPlay; was "14b") — Library + production player navigation |
+| 15 | `slice-15-carplay.md` | Native polish (parallel group C; **blocked until 22–23 Done**; CarPlay MVP — resolved 2026-07-10) |
 | 16 | `slice-16-beep-overlay.md` | Hard deferred feature (parallel group C) |
-| 17 | `slice-17-storekit.md` | Ship (halt-and-ask on monetization) |
-| 18 | `slice-18-segmentation-spike.md` | Differentiator 2 (post-MVP track) |
-| 19 | `slice-19-segmentation-integration.md` | Differentiator 2 (post-MVP track) |
+| 17 | `slice-17-storekit.md` | Post-MVP (free at launch — deferred 2026-07-10) |
+| 18 | `slice-18-segmentation-spike.md` | Differentiator 2 — MVP (spike; parallel after 07) |
+| 19 | `slice-19-segmentation-integration.md` | Differentiator 2 — MVP (integration; needs 18) |
 | 20 | `slice-20-analysis-timeline.md` | Pipeline UI (Skipper-style timeline; post–Slice 13) |
 | 21 | `slice-21-visual-identity.md` | Native polish (brand tokens, icon, display name; needs 03 + 06) |
+
+**MVP app shell (Slices 22–23):** Inserted after lock-screen polish (14) and **before CarPlay (15)**.
+The factory built cleaning/playback engines but production `ContentView` was still a placeholder;
+22 ships Discover + subscribe (iTunes Search API, multi-sub `PodcastStore`), 23 ships Library +
+tap-to-play navigation. CarPlay and visual-identity polish depend on this shell being real.
 
 ## What goes in each slice file
 

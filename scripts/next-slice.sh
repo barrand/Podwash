@@ -37,7 +37,7 @@ SLICES_DIR=${PODWASH_SLICES_DIR:-docs/slices}
 # Slices that require a product decision (halt-and-ask) before an agent starts.
 # Hardcoded from docs/slices/README.md to avoid false positives on slices that
 # only mention halt-and-ask for a narrow sub-case (e.g. slice 05's iOS floor).
-HALT_SLICES="15 17"
+HALT_SLICES=""
 
 usage() {
     sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
@@ -129,6 +129,7 @@ BEGIN { split(HALT, hs, " "); for (i in hs) halt[hs[i]+0]=1 }
     title[id]=$5
     file[id]=$6
     done_[id] = ($2 == "Done" && $3+0 == 1) ? 1 : 0
+    skip_[id] = ($2 ~ /[Dd]eferred|[Pp]ost-MVP/) ? 1 : 0
 }
 END {
     n=0
@@ -143,7 +144,7 @@ END {
         ok=1
         m=split(deps[id], d, " ")
         for (k=1; k<=m; k++) if (!done_[d[k]+0]) ok=0
-        if (ok) { candidate=id; break }
+        if (ok && !skip_[id]) { candidate=id; break }
     }
 
     if (lowest_nondone < 0) { printf "done\t\t\t\t\n"; exit }

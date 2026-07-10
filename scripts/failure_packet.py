@@ -489,7 +489,11 @@ def build_failure_packet(
     export_attachments: bool = True,
 ) -> FailurePacket:
     """Build a FailurePacket from verify outcome pieces."""
+    from slice_loop_progress import enrich_build_failures
+
     raw = list(failures or [])
+    verify_hint = {"exit": str(exit_code)} if exit_code else None
+    raw = enrich_build_failures(raw, output, verify_hint)
     crash_list = list(crashes or [])
     test_ids: list[str] = []
     assertions: list[str] = []

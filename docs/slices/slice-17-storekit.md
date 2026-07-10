@@ -4,21 +4,26 @@
 |-------|-------|
 | **ID** | 17 |
 | **Title** | StoreKit monetization |
-| **Status** | Draft — **blocked on user decision** |
+| **Status** | Deferred — **post-MVP** (free at launch; user decision 2026-07-10) |
 | **Crux** | StoreKit 2 purchases gate cleaning features per the chosen monetization model, verified against a `.storekit` test configuration. |
 
-## ⚠️ Halt-and-ask gate (before any work)
+## Product decisions (user, 2026-07-10 — defers this slice)
 
-PRD §11 leaves the **monetization model open** (subscription vs one-time vs freemium). The coordinator MUST halt at slice start and get the user's decision on: model, price points, and which features are gated (all cleaning? unrelated-content only?). **No agent may assume a model.** Record the decision in the PRD and an ADR before PM finalizes ACs.
+| Decision | Choice |
+|----------|--------|
+| MVP monetization | **Free** — no paywall, no entitlement gating at initial release; all cleaning features unlocked |
+| StoreKit timing | **Post-MVP** — resume this slice when ready to choose model, price points, and feature gates |
+
+When this slice resumes, the coordinator must halt-and-ask again on: **subscription vs one-time vs freemium**, **price points**, and **which features are gated** (all cleaning vs unrelated-content only). Record the decision in PRD §11 and an ADR before PM finalizes ACs.
 
 ## PRD / spec references
 
-- PRD §1, §9 — Monetization expected; StoreKit 2, on-device verification
-- PRD §11 — Open decision: monetization model
+- PRD §1, §9 — StoreKit 2 planned post-MVP; MVP ships free
+- PRD §11 — ✅ **Resolved 2026-07-10** (see § Product decisions above)
 
 ## Goal
 
-Purchases and entitlement gating, ready for TestFlight.
+Purchases and entitlement gating, ready for TestFlight — **when monetization is turned on post-MVP**.
 
 ## Deliverables
 
@@ -29,16 +34,17 @@ Purchases and entitlement gating, ready for TestFlight.
 
 ## Depends on
 
-- Slice 13 (settings/features to gate); user decision above
+- Slice 13 (settings/features to gate)
 
-**Parallelizable:** Yes — with Slices 15, 16 once unblocked.
+**Parallelizable:** Yes — with Slices 15, 16 once unblocked (this slice is deferred until post-MVP).
 
 ## Out-of-scope
 
 - TestFlight upload / App Store review (ship milestones, not slice gates)
 - RevenueCat integration
+- MVP launch (free — no StoreKit work required for initial release)
 
-## Acceptance criteria (finalize after decision)
+## Acceptance criteria (finalize when slice resumes)
 
 - [ ] 1. Unit test: purchase in the `.storekit` test environment produces a verified transaction and sets the entitlement.
 - [ ] 2. Unit test: gated feature calls are refused without entitlement and allowed with it.
