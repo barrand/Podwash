@@ -99,13 +99,41 @@ for arg in "$@"; do
     esac
 done
 
+# True when any Swift source under PodWash/ is newer than the built xctestrun.
+# Tier 1/2 used to pick test-without-building whenever Products/ existed, which
+# silently re-ran stale binaries after Engineer/QA edits (slice 12 death-run).
+_sources_newer_than_products() {
+    products="$DERIVED_DATA/Build/Products"
+    [ -d "$products" ] || return 0
+    xctestrun=$(find "$products" -maxdepth 1 -name '*.xctestrun' -print 2>/dev/null | head -n 1)
+    if [ -z "$xctestrun" ] || [ ! -f "$xctestrun" ]; then
+        return 0
+    fi
+    # Any .swift under the Xcode project trees newer than the xctestrun.
+    newer=$(find PodWash/PodWash PodWash/PodWashTests PodWash/PodWashUITests PodWash/PodWashSlowTests \
+        -type f -name '*.swift' -newer "$xctestrun" -print 2>/dev/null | head -n 1)
+    [ -n "$newer" ]
+}
+
+_tier_action_with_staleness_check() {
+    # Prefer test-without-building only when products exist AND sources are not newer.
+    if [ -d "$DERIVED_DATA/Build/Products" ] && ! _sources_newer_than_products; then
+        echo "test-without-building"
+    else
+        if [ -d "$DERIVED_DATA/Build/Products" ]; then
+            echo "verify.sh: sources newer than xctestrun — rebuilding (action=test)" >&2
+        fi
+        echo "test"
+    fi
+}
+
 case "$VERIFY_TIER" in
     0)
         XCODE_ACTION="build-for-testing"
         FILTERED=0
         ;;
     1)
-        XCODE_ACTION="test-without-building"
+        XCODE_ACTION=$(_tier_action_with_staleness_check)
         if [ -z "${VERIFY_FAILED_TESTS:-}" ]; then
             echo "verify.sh: VERIFY_TIER=1 requires VERIFY_FAILED_TESTS" >&2
             exit 1
@@ -114,11 +142,7 @@ case "$VERIFY_TIER" in
         FILTERED=1
         ;;
     2)
-        if [ -d "$DERIVED_DATA/Build/Products" ]; then
-            XCODE_ACTION="test-without-building"
-        else
-            XCODE_ACTION="test"
-        fi
+        XCODE_ACTION=$(_tier_action_with_staleness_check)
         if [ -n "${VERIFY_SLICE_TESTS:-}" ]; then
             ENV_ONLY_TESTING=$VERIFY_SLICE_TESTS
             FILTERED=1
@@ -163,7 +187,7 @@ if [ "${VERIFY_DRY_RUN:-0}" = "1" ]; then
     else
         echo "verify.sh: DRY_RUN argv: xcodebuild $XCODE_ACTION -project $PROJECT -scheme $SCHEME -destination $DESTINATION -derivedDataPath $DERIVED_DATA -resultBundlePath $RESULT_BUNDLE -retry-tests-on-failure -test-iterations 2 -quiet $ONLY_FLAGS $*"
     fi
-    echo "VERIFY RESULT: exit=0 total=0 passed=0 failed=0 skipped=0 filtered=$FILTERED bundle=$RESULT_BUNDLE tier=$VERIFY_TIER"
+    echo "VERIFY RESULT: exit=0 total=0 passed=0 failed=0 skipped=0 filtered=$FILTERED bundle=$RESULT_BUNDLE tier=$VERIFY_TIER class=tests"
     exit 0
 fi
 
@@ -245,10 +269,26 @@ if [ -n "$SKIPPED" ] && [ "$SKIPPED" -gt 0 ]; then
     fi
 fi
 
+# Classify: build (exit!=0, 0 tests ran) vs tests (assertions / executed failures).
+VERIFY_CLASS="tests"
+if [ "$FINAL_EXIT" -ne 0 ]; then
+    TOTAL_N="${TOTAL:-0}"
+    FAILED_N="${FAILED:-0}"
+    case "$TOTAL_N" in
+        ""|"?") TOTAL_N=0 ;;
+    esac
+    case "$FAILED_N" in
+        ""|"?") FAILED_N=0 ;;
+    esac
+    if [ "$TOTAL_N" -eq 0 ] && [ "$FAILED_N" -eq 0 ]; then
+        VERIFY_CLASS="build"
+    fi
+fi
+
 if [ -n "${RESULT_BUNDLE:-}" ]; then
-    echo "VERIFY RESULT: exit=$FINAL_EXIT total=${TOTAL:-?} passed=${PASSED:-?} failed=${FAILED:-?} skipped=${SKIPPED:-?} filtered=$FILTERED bundle=$RESULT_BUNDLE tier=$VERIFY_TIER"
+    echo "VERIFY RESULT: exit=$FINAL_EXIT total=${TOTAL:-?} passed=${PASSED:-?} failed=${FAILED:-?} skipped=${SKIPPED:-?} filtered=$FILTERED bundle=$RESULT_BUNDLE tier=$VERIFY_TIER class=$VERIFY_CLASS"
 else
-    echo "VERIFY RESULT: exit=$FINAL_EXIT total=${TOTAL:-?} passed=${PASSED:-?} failed=${FAILED:-?} skipped=${SKIPPED:-?} filtered=$FILTERED tier=$VERIFY_TIER"
+    echo "VERIFY RESULT: exit=$FINAL_EXIT total=${TOTAL:-?} passed=${PASSED:-?} failed=${FAILED:-?} skipped=${SKIPPED:-?} filtered=$FILTERED tier=$VERIFY_TIER class=$VERIFY_CLASS"
 fi
 
 exit "$FINAL_EXIT"

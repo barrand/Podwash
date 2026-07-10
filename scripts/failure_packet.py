@@ -51,6 +51,19 @@ _WAIT_FAILURE_RE = re.compile(
     r"(asynchronous wait failed|unfulfilled expectation|exceeded timeout)",
     re.IGNORECASE,
 )
+# XCTestExpectation double-fulfill / API violation — almost always a test harness bug.
+_EXPECTATION_API_VIOLATION_RE = re.compile(
+    r"(api violation.*fulfill|multiple calls made to.*(?:xctestexpectation|fulfill)|"
+    r"nsinternalinconsistencyexception.*fulfill)",
+    re.IGNORECASE,
+)
+# Sim launch/bootstrap — infra, not missing @main packaging (see sim_hygiene).
+_SIM_LAUNCH_INFRA_RE = re.compile(
+    r"(failed to install or launch|sbmainworkspace|launchd job spawn failed|"
+    r"early unexpected exit|never finished bootstrapping|"
+    r"simulator device failed to launch|the process failed to launch)",
+    re.IGNORECASE,
+)
 # When NSPredicate waits attach only "Target Application" query chains, infer
 # the identifier the UITest is waiting for from the test id / assertion text.
 _INFER_QUERY_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
@@ -355,6 +368,11 @@ def parse_attachment_texts(attach_dir: str) -> tuple[str, list[str], str]:
     return hierarchy, queries, got
 
 
+def is_expectation_api_violation(text: str) -> bool:
+    """True when XCTestExpectation was fulfilled more than once (test harness)."""
+    return bool(_EXPECTATION_API_VIOLATION_RE.search(text or ""))
+
+
 def classify_failure(packet: FailurePacket) -> str:
     """Heuristic failure class (no LLM)."""
     blob = "\n".join(
@@ -365,16 +383,19 @@ def classify_failure(packet: FailurePacket) -> str:
         + [packet.hierarchy_excerpt[:500]]
     )
     low = blob.lower()
-    # Install/packaging failures before tests run — prefer build_error over crash/unknown
-    if any(
-        x in low
-        for x in (
-            "missing its bundle executable",
-            "unable to install",
-            "failed to install or launch",
-        )
-    ):
+    # XCTestExpectation double-fulfill is an assertion/harness bug, not a crash.
+    if is_expectation_api_violation(blob):
+        return "assertion"
+    # Real packaging defect only — SBMainWorkspace launch failures are infra/flake.
+    if "missing its bundle executable" in low:
         return "build_error"
+    # Sim launch/bootstrap: treat as flake even when xcresult invents a fake
+    # "PodWashTests/PodWash encountered an error" test id (slice 12 run 1–2).
+    if _SIM_LAUNCH_INFRA_RE.search(blob) and "xctassert" not in low:
+        return "flake"
+    if "unable to install" in low and "missing its bundle executable" not in low:
+        if "xctassert" not in low:
+            return "flake"
     if packet.crashes or "crash:" in low or ".ips" in low:
         return "crash"
     if _looks_buildish(packet.raw_failures, packet.exit_code, blob) and not packet.test_ids:
@@ -588,9 +609,17 @@ def build_failure_packet(
         packet.actionable = True
     else:
         packet.failure_class = classify_failure(packet)
-        if packet.failure_class in ("assertion",) and "test" in " ".join(test_ids).lower():
+        raw_blob = "\n".join(raw + assertions)
+        if is_expectation_api_violation(raw_blob):
+            # Double-fulfill / API violation lives in the test harness, not the app.
+            packet.fix_scope = "tests"
+            packet.hypothesis = (
+                packet.hypothesis
+                or "Test harness: live KVO across setRate double-fulfills expectation"
+            )
+        elif packet.failure_class in ("assertion",) and "test" in " ".join(test_ids).lower():
             # default scope; diagnose may override
-            packet.fix_scope = "tests" if "fixture" in "\n".join(raw).lower() else "app"
+            packet.fix_scope = "tests" if "fixture" in raw_blob.lower() else "app"
         packet.actionable = True
 
     # Stash got_clue into hierarchy header for stuck card

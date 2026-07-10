@@ -103,9 +103,15 @@ failed predicates + an unblock hint when a gate stays pending after its worker.
 | Tier | Action | Filters | When |
 |------|--------|---------|------|
 | 0 | `build-for-testing` | none | warm derived data after edits |
-| 1 | `test-without-building` | `VERIFY_FAILED_TESTS` → `-only-testing:` | **after every fix attempt** |
-| 2 | `test` / `test-without-building` | slice-mapped + smoke (`VERIFY_SLICE_TESTS` / CLI) | implement exit gate (P1) |
+| 1 | `test` or `test-without-building` | `VERIFY_FAILED_TESTS` → `-only-testing:` | **after every fix attempt** |
+| 2 | `test` or `test-without-building` | slice-mapped + smoke (`VERIFY_SLICE_TESTS` / CLI) | implement exit gate (P1) |
 | 3 | `test` (unfiltered) | none | **Done gate** — `VERIFY RESULT:` contract unchanged (+ optional `tier=3`) |
+
+Tiers 1–2 use `test-without-building` **only when** the built `*.xctestrun` is
+newer than every Swift source under `PodWash/{PodWash,PodWashTests,PodWashUITests,PodWashSlowTests}/`.
+If any source is newer (Engineer/QA just edited), they fall back to `test` so
+fixes are actually compiled. Slice 12’s third halt graded a stale binary for
+three verifies because products existed from a prior session.
 
 `VERIFY RESULT` includes `class=build|tests`: `build` when `exit!=0` and 0 tests
 ran (compile/link); `tests` otherwise. Consumers (`parse_verify_result`,
@@ -115,18 +121,21 @@ ran (compile/link); `tests` otherwise. Consumers (`parse_verify_result`,
 
 ## Authoring vs post-implement red policy
 
-The factory distinguishes three red states:
+The factory distinguishes four red states:
 
 | Phase | Policy |
 |-------|--------|
 | **TDD compile-red during authoring** (`story`…`test_review`) | Never counted toward thrash; `verify.sh` / `xcodebuild test` cancelled (ban, no budget burn) |
-| **Build-red after implement** | `class=build` / `build_error: …` signature → Engineer with compile text |
-| **Test-red after implement** | Assertion class → referee routes Engineer\|QA with fix budget |
+| **Sim install/launch/bootstrap (tier-2)** | Infra cold-retry + `ensure_sim_booted` — **does not** burn Engineer/QA fix budget (slice 12 death-run) |
+| **Build-red after implement** | `class=build` / missing bundle executable → Engineer; not SBMainWorkspace launch |
+| **Test-red after implement** | Assertion / harness → Engineer\|QA (`resolve_tier2_continue`: XCTestExpectation double-fulfill → QA; same hyp+sig escalates to predicate-wait lever) |
 
 Red-verify thrash (`max_red_verifies=2`) applies only to coordinator-monitored /
 post-implement grinding — **not** authoring-gate TDD compile-red. After
 `test_spec` + `test_review` clear, the pipeline auto-commits test paths as
 `slice-NN: test spec` so a later halt never orphans authored tests.
+
+See also [`plans/factory-tier2-infra-qa-routing.md`](plans/factory-tier2-infra-qa-routing.md).
 
 ## Fix path (FailurePacket → stuck card → referee → ledger → fix)
 

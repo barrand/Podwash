@@ -329,7 +329,7 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(classify_failure(p), "assertion")
 
     def test_missing_bundle_executable_is_build_error(self):
-        """Death-run runs 1–2: install failure must not look like a mystery crash."""
+        """Real packaging defect (missing executable) — not a mystery crash."""
         p = FailurePacket(
             test_ids=["PodWash encountered an error"],
             raw_failures=[
@@ -338,6 +338,42 @@ class ClassifyTests(unittest.TestCase):
             ],
         )
         self.assertEqual(classify_failure(p), "build_error")
+
+    def test_sim_launch_sbmainworkspace_is_flake_not_build(self):
+        """Slice 12 run 1: SBMainWorkspace launch must not look like packaging."""
+        p = FailurePacket(
+            test_ids=["PodWashTests/PodWash encountered an error"],
+            raw_failures=[
+                "PodWashTests/PodWash encountered an error — Failed to install "
+                "or launch the test runner. (Underlying Error: Simulator device "
+                "failed to launch com.barrandfarm.PodWash. SBMainWorkspace)"
+            ],
+        )
+        self.assertEqual(classify_failure(p), "flake")
+
+    def test_expectation_double_fulfill_is_assertion_tests_scope(self):
+        from failure_packet import build_failure_packet, is_expectation_api_violation
+
+        msg = (
+            "PodWashTests/PlaybackRateTests/testSupportedRatesMatchAVPlayer() — "
+            "API violation - multiple calls made to -[XCTestExpectation fulfill] "
+            "for timeControlStatus reaches playing. (NSInternalInconsistencyException)"
+        )
+        self.assertTrue(is_expectation_api_violation(msg))
+        p = FailurePacket(
+            test_ids=["PlaybackRateTests/testSupportedRatesMatchAVPlayer()"],
+            assertions=[msg],
+            raw_failures=[msg],
+        )
+        self.assertEqual(classify_failure(p), "assertion")
+        packet = build_failure_packet(
+            failures=[msg],
+            crashes=[],
+            bundle=None,
+            output=msg,
+        )
+        self.assertEqual(packet.failure_class, "assertion")
+        self.assertEqual(packet.fix_scope, "tests")
 
 
 class DiagnoseMergeTests(unittest.TestCase):

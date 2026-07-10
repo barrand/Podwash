@@ -557,9 +557,10 @@ def main():
         log("CURSOR_API_KEY is not set. Export it before running (see the SDK docs).")
         return EXIT_STARTUP
 
-    from factory_narrator import factory_session_banner
+    from factory_narrator import StoryVoice, factory_session_banner
 
-    print(factory_session_banner(), flush=True)
+    session_voice = StoryVoice()
+    print(factory_session_banner(voice=session_voice), flush=True)
 
     ran = 0
     last_started = None

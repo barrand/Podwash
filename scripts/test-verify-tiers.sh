@@ -35,11 +35,22 @@ out=$(VERIFY_DRY_RUN=1 VERIFY_TIER=0 "$VERIFY" 2>&1)
 assert_contains "$out" "action=build-for-testing" "tier 0 uses build-for-testing"
 assert_contains "$out" "derivedDataPath build/dd" "tier 0 shares derived data"
 assert_contains "$out" "tier=0" "tier 0 VERIFY RESULT"
+assert_contains "$out" "class=tests" "tier 0 class=tests (dry-run green)"
 
 out=$(VERIFY_DRY_RUN=1 VERIFY_TIER=1 \
     VERIFY_FAILED_TESTS='PodWashTests/Foo/testA() PodWashTests/Bar/testB()' \
     "$VERIFY" 2>&1)
-assert_contains "$out" "action=test-without-building" "tier 1 uses test-without-building"
+# Tier 1 may rebuild (action=test) when sources are newer than the xctestrun.
+assert_contains "$out" "action=" "tier 1 prints action"
+if printf '%s' "$out" | grep -qF 'action=test-without-building'; then
+    echo "ok — tier 1 uses test-without-building (products fresh)"
+elif printf '%s' "$out" | grep -qF 'action=test'; then
+    echo "ok — tier 1 uses test (sources newer than xctestrun — rebuild)"
+else
+    echo "FAIL — tier 1 unexpected action" >&2
+    echo "$out" >&2
+    FAIL=1
+fi
 assert_contains "$out" "-only-testing:PodWashTests/Foo/testA()" "tier 1 first failed test"
 assert_contains "$out" "-only-testing:PodWashTests/Bar/testB()" "tier 1 second failed test"
 assert_contains "$out" "filtered=1" "tier 1 filtered"
@@ -59,6 +70,32 @@ out=$(VERIFY_DRY_RUN=1 VERIFY_TIER=2 \
 assert_contains "$out" "-only-testing:PodWashUITests/AnalysisProgressUITests/testProgress()" \
     "tier 2 slice filter"
 assert_contains "$out" "tier=2" "tier 2 VERIFY RESULT"
+
+# Staleness: when sources are newer than a fake xctestrun, tier 2 must rebuild.
+STALE_TMP=$(mktemp -d)
+mkdir -p "$STALE_TMP/Build/Products"
+# Old xctestrun (epoch)
+touch -t 202001010000 "$STALE_TMP/Build/Products/fake.xctestrun"
+# Touch a real source so it is newer than the fake xctestrun
+touch PodWash/PodWashTests/PlaybackRateTests.swift
+out=$(VERIFY_DRY_RUN=1 VERIFY_TIER=2 VERIFY_DERIVED_DATA="$STALE_TMP" \
+    VERIFY_SLICE_TESTS='PodWashTests/PlaybackRateTests/testSupportedRatesMatchAVPlayer()' \
+    "$VERIFY" 2>&1)
+assert_contains "$out" "action=test" "tier 2 rebuilds when sources newer than xctestrun"
+assert_contains "$out" "sources newer than xctestrun" "tier 2 logs rebuild reason"
+rm -rf "$STALE_TMP"
+
+# Fresh products: xctestrun newer than sources → test-without-building
+FRESH_TMP=$(mktemp -d)
+mkdir -p "$FRESH_TMP/Build/Products"
+# Future-dated xctestrun so it is newer than all sources
+touch -t 209901010000 "$FRESH_TMP/Build/Products/fake.xctestrun"
+out=$(VERIFY_DRY_RUN=1 VERIFY_TIER=2 VERIFY_DERIVED_DATA="$FRESH_TMP" \
+    VERIFY_SLICE_TESTS='PodWashTests/PlaybackRateTests/testSupportedRatesMatchAVPlayer()' \
+    "$VERIFY" 2>&1)
+assert_contains "$out" "action=test-without-building" \
+    "tier 2 uses test-without-building when xctestrun is fresher"
+rm -rf "$FRESH_TMP"
 
 out=$(VERIFY_DRY_RUN=1 VERIFY_TIER=3 "$VERIFY" 2>&1)
 assert_contains "$out" "action=test" "tier 3 uses test"

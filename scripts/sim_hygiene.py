@@ -167,6 +167,21 @@ def stress_run_count(
     return default if should_stress_run(test_ids, just_fixed=just_fixed) else 1
 
 
+# Sim install/launch/bootstrap — not a missing @main / packaging bug.
+# Slice 12 burned 2/3 tier-2 Engineer budget on these before any test ran.
+_SIM_LAUNCH_INFRA_MARKERS = (
+    "failed to install or launch",
+    "simulator device failed to launch",
+    "sbmainworkspace",
+    "launchd job spawn failed",
+    "the process failed to launch",
+    "early unexpected exit",
+    "never finished bootstrapping",
+    "operation never finished bootstrapping",
+    "no restart will be attempted",
+)
+
+
 def classify_infra_failure(
     *,
     output: str = "",
@@ -175,7 +190,8 @@ def classify_infra_failure(
 ) -> bool:
     """True when red looks like infra (bridge/DNS/sim) and no code changed.
 
-    Attempt should not be burned when this returns True (exit 6 path).
+    Attempt should not be burned when this returns True (exit 6 path / tier-2
+    cold retry). Includes SBMainWorkspace install/launch and bootstrap exits.
     """
     if files_changed:
         return False
@@ -191,6 +207,7 @@ def classify_infra_failure(
         "unable to boot",
         "xcodebuild: error: unable to find a destination",
         "the device is not configured",
+        *_SIM_LAUNCH_INFRA_MARKERS,
     )
     if any(m in blob for m in markers):
         return True
@@ -199,6 +216,11 @@ def classify_infra_failure(
         if "verify.sh: another verify" in blob or "lock" in blob:
             return True
     return False
+
+
+def is_missing_bundle_executable(output: str = "") -> bool:
+    """True only for a real packaging defect (app target has no executable)."""
+    return "missing its bundle executable" in (output or "").lower()
 
 
 def wait_brief(secs: float = 0.0) -> None:

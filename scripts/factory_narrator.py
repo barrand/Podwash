@@ -14,6 +14,136 @@ LogFn = Callable[[str], None]
 
 FACTORY_NAME = "Forge"
 
+# Session taglines — one picked when the banner prints.
+SESSION_TAGLINES: tuple[str, ...] = (
+    "Murphy on the floor. Green or halt.",
+    "Named crew on shift. Murphy freelances.",
+    "Green sheet or halt card — pick one.",
+    "The line runs. The monkey watches.",
+)
+
+VERIFY_RED_TAILS: tuple[str, ...] = (
+    "Murphy's been at the station again.",
+    "Murphy got into the wrench drawer.",
+    "Someone left the cage open — Murphy was helping.",
+    "Murphy denies everything. The tests disagree.",
+    "Fresh paw prints on the console.",
+    "The floor was clean a minute ago.",
+)
+
+VERIFY_GREEN_LINES: tuple[str, ...] = (
+    "{name} signs the sheet: {passed}/{total}. Not a monkey in sight.",
+    "Green from {name} — {passed}/{total}. Murphy's off the clock.",
+    "{passed}/{total} on {name}'s tally. Floor's quiet.",
+    "{name} sends Murphy home early: {passed}/{total}.",
+    "All {total} accounted for. {name} locked the cage.",
+)
+
+GATE_CLEARED_LINES: tuple[str, ...] = (
+    "✓ {name} cleared {gate}{time}{next}",
+    "✓ {gate} lands for {name}{time}{next}",
+    "✓ {name} punched out on {gate}{time}{next}",
+    "✓ {gate} — {name} signs off{time}{next}",
+)
+
+CHAPTER_OPEN_LINES: tuple[str, ...] = (
+    "\n── Slice {slice_id} · {mid} · {who} ──",
+    "\n── Act {mid} · slice {slice_id} · {who} on deck ──",
+    "\n── Slice {slice_id} · {mid} · {who} takes the shift ──",
+)
+
+WORKER_DONE_LINES: tuple[str, ...] = (
+    "{name} wrapped: {note}",
+    "{name} clocks out — {note}",
+    "{name} hands off: {note}",
+)
+
+EXONERATION_LINES: tuple[str, ...] = (
+    "Turns out it wasn't Murphy — {cause}. {owner} owns it.",
+    "Murphy's off the hook: {cause}. {owner} takes it.",
+    "Not the monkey this time — {cause}. {owner}'s turn.",
+)
+
+FLAKE_LINES: tuple[str, ...] = (
+    "Murphy shrugged. Ran green untouched. Logging the flake.",
+    "Flake, not sabotage — Murphy wanders off. Logged.",
+    "Green on rerun. Murphy was bored, not broken.",
+)
+
+THRASH_HALT_LINES: tuple[str, ...] = (
+    "🐒 Murphy wins this round. Halting — logbook and stuck card on the desk. (exit=5)",
+    "🐒 Murphy takes the shift. Halting — stuck card's on the desk. (exit=5)",
+    "🐒 That's the budget. Murphy's grinning. Stuck card filed. (exit=5)",
+)
+
+INFRA_HALT_LINES: tuple[str, ...] = (
+    "🐒 Something knocked the line over (infra). Murphy denies everything. (exit=6)",
+    "🐒 Infra wobble — not code. Murphy blames the power strip. (exit=6)",
+    "🐒 The line tripped. Murphy was in the break room. (exit=6)",
+)
+
+CRASH_LINES: tuple[str, ...] = (
+    "🐒 Something knocked the simulator over. Murphy denies everything. Rhea pulls the crash log.",
+    "🐒 Simulator ate pavement. Murphy swears he wasn't on the keyboard. Rhea's on the log.",
+    "🐒 Crash on the floor. Murphy points at a loose cable. Rhea investigates.",
+)
+
+LEDGER_BLOCK_LINES: tuple[str, ...] = (
+    "{referee} checked the logbook — same theory as last time. Halting before we burn tokens.",
+    "{referee} found a repeat in the logbook. Fresh eyes needed elsewhere. Halting.",
+    "{referee} won't sign the same ticket twice. Halting.",
+)
+
+REFEREE_NARRATION_LINES: tuple[str, ...] = (
+    "⚖️ {referee} rules: {color}. {next} ({role}) gets the ticket.",
+    "⚖️ {referee} calls it: {color}. {next} ({role}) takes the shift.",
+    "⚖️ {referee} weighs in — {color}. Handing off to {next} ({role}).",
+)
+
+REFEREE_PRIMARY_LINES: tuple[str, ...] = (
+    "⚖️ {referee} rules: primary is {short} — {next} ({role}) gets the ticket, fresh eyes.",
+    "⚖️ {referee} pins it on {short}. {next} ({role}) clocks in with clean goggles.",
+    "⚖️ {referee} reads the failure: {short}. {next} ({role}) owns the next pass.",
+)
+
+GATE_STUCK_LINES: tuple[str, ...] = (
+    "✗ {gate} stuck — {body}",
+    "✗ {gate} won't budge — {body}",
+    "✗ Held up at {gate} — {body}",
+    "✗ {gate} hit a wall — {body}",
+)
+
+
+@dataclass
+class StoryVoice:
+    """Rotate narration templates without back-to-back repeats."""
+
+    _last: dict[str, int] = field(default_factory=dict)
+    _counts: dict[str, int] = field(default_factory=dict)
+
+    def pick(self, category: str, templates: tuple[str, ...]) -> str:
+        if not templates:
+            return ""
+        if len(templates) == 1:
+            return templates[0]
+        idx = self._counts.get(category, 0) % len(templates)
+        last = self._last.get(category, -1)
+        if idx == last:
+            idx = (idx + 1) % len(templates)
+        self._last[category] = idx
+        self._counts[category] = self._counts.get(category, 0) + 1
+        return templates[idx]
+
+    def format(self, category: str, templates: tuple[str, ...], **kwargs: str) -> str:
+        tpl = self.pick(category, templates)
+        try:
+            return tpl.format(**kwargs)
+        except KeyError:
+            return tpl
+
+
+_default_voice = StoryVoice()
+
 NAME_POOLS: dict[str, tuple[str, ...]] = {
     "Engineer": ("Edison", "Elena", "Ezra", "Esme", "Elliott"),
     "QA": ("Quinn", "Quincy", "Queenie", "Quill"),
@@ -70,10 +200,11 @@ def format_agent_label(role: str, name: str | None = None) -> str:
     return role or name or "loop"
 
 
-def factory_session_banner() -> str:
+def factory_session_banner(*, voice: StoryVoice | None = None) -> str:
     """Compact ASCII title printed once per slice-loop session."""
     name = FACTORY_NAME
-    tag = "Murphy on the floor. Green or halt."
+    v = voice or _default_voice
+    tag = v.pick("session_tag", SESSION_TAGLINES)
     # Keep ≤12 lines; no competition with the mountain summit done-art.
     inner = 42
     return (
@@ -119,9 +250,11 @@ def narrate_worker_done(
     summary: str,
     *,
     log: LogFn | None = None,
+    voice: StoryVoice | None = None,
 ) -> str:
+    v = voice or _default_voice
     note = summary.strip() or "wrapped the turn"
-    line = f"{name} wrapped: {note}"
+    line = v.format("worker_done", WORKER_DONE_LINES, name=name, note=note)
     _emit(line, log)
     return line
 
@@ -132,11 +265,19 @@ def narrate_verify_red(
     passed: str | int,
     total: str | int,
     log: LogFn | None = None,
+    voice: StoryVoice | None = None,
 ) -> str:
-    line = (
-        f"🐒 {name}'s report: {passed}/{total} — "
-        f"Murphy's been at the station again."
+    v = voice or _default_voice
+    tail = v.pick("verify_red", VERIFY_RED_TAILS)
+    opener = v.pick(
+        "verify_red_open",
+        (
+            "🐒 {name}'s report: {passed}/{total} — {tail}",
+            "🐒 {passed}/{total} from {name}. {tail}",
+            "🐒 {name} counted {passed}/{total}. {tail}",
+        ),
     )
+    line = opener.format(name=name, passed=passed, total=total, tail=tail)
     _emit(line, log)
     return line
 
@@ -147,10 +288,17 @@ def narrate_verify_green(
     passed: str | int,
     total: str | int,
     log: LogFn | None = None,
+    voice: StoryVoice | None = None,
 ) -> str:
-    line = f"Not a monkey in sight. {passed}/{total}."
-    if name:
-        line = f"{name} signs the sheet: {passed}/{total}. Not a monkey in sight."
+    v = voice or _default_voice
+    who = (name or "").strip() or "Forge"
+    line = v.format(
+        "verify_green",
+        VERIFY_GREEN_LINES,
+        name=who,
+        passed=str(passed),
+        total=str(total),
+    )
     _emit(line, log)
     return line
 
@@ -163,15 +311,28 @@ def narrate_referee(
     next_role: str,
     narration: str = "",
     log: LogFn | None = None,
+    voice: StoryVoice | None = None,
 ) -> str:
+    v = voice or _default_voice
     if narration.strip():
         color = narration.strip().rstrip(".")
-        line = f"⚖️ {referee_name} rules: {color}. {next_name} ({next_role}) gets the ticket."
+        line = v.format(
+            "referee_narration",
+            REFEREE_NARRATION_LINES,
+            referee=referee_name,
+            color=color,
+            next=next_name,
+            role=next_role,
+        )
     else:
         short = (primary or "primary failure")[:80]
-        line = (
-            f"⚖️ {referee_name} rules: primary is {short} — "
-            f"{next_name} ({next_role}) gets the ticket, fresh eyes."
+        line = v.format(
+            "referee_primary",
+            REFEREE_PRIMARY_LINES,
+            referee=referee_name,
+            short=short,
+            next=next_name,
+            role=next_role,
         )
     _emit(line, log)
     return line
@@ -182,17 +343,27 @@ def narrate_exoneration(
     cause: str,
     owner: str,
     log: LogFn | None = None,
+    voice: StoryVoice | None = None,
 ) -> str:
     """Mandatory when referee attributes a real cause (not flake)."""
-    line = (
-        f"Turns out it wasn't Murphy — {cause.rstrip('.')}. {owner} owns it."
+    v = voice or _default_voice
+    line = v.format(
+        "exoneration",
+        EXONERATION_LINES,
+        cause=cause.rstrip("."),
+        owner=owner,
     )
     _emit(line, log)
     return line
 
 
-def narrate_flake_confirmed(*, log: LogFn | None = None) -> str:
-    line = "Murphy confirmed. It ran green untouched. Logging the flake and moving on."
+def narrate_flake_confirmed(
+    *,
+    log: LogFn | None = None,
+    voice: StoryVoice | None = None,
+) -> str:
+    v = voice or _default_voice
+    line = v.pick("flake", FLAKE_LINES)
     _emit(line, log)
     return line
 
@@ -201,32 +372,47 @@ def narrate_ledger_block(
     referee_name: str,
     *,
     log: LogFn | None = None,
+    voice: StoryVoice | None = None,
 ) -> str:
-    line = (
-        f"{referee_name} checked the logbook — theory matches a failed attempt. "
-        f"Halting before we burn tokens on a rerun."
+    v = voice or _default_voice
+    line = v.format(
+        "ledger_block",
+        LEDGER_BLOCK_LINES,
+        referee=referee_name,
     )
     _emit(line, log)
     return line
 
 
-def narrate_thrash_halt(*, log: LogFn | None = None) -> str:
-    line = "🐒 Murphy wins this round. Halting — logbook and stuck card are on the desk. (exit=5)"
+def narrate_thrash_halt(
+    *,
+    log: LogFn | None = None,
+    voice: StoryVoice | None = None,
+) -> str:
+    v = voice or _default_voice
+    line = v.pick("thrash_halt", THRASH_HALT_LINES)
     _emit(line, log)
     return line
 
 
-def narrate_infra_halt(*, log: LogFn | None = None) -> str:
-    line = "🐒 Something knocked the line over (infra). Murphy denies everything. (exit=6)"
+def narrate_infra_halt(
+    *,
+    log: LogFn | None = None,
+    voice: StoryVoice | None = None,
+) -> str:
+    v = voice or _default_voice
+    line = v.pick("infra_halt", INFRA_HALT_LINES)
     _emit(line, log)
     return line
 
 
-def narrate_crash(*, log: LogFn | None = None) -> str:
-    line = (
-        "🐒 Something knocked the simulator over. Murphy denies everything. "
-        "Rhea is pulling the crash log."
-    )
+def narrate_crash(
+    *,
+    log: LogFn | None = None,
+    voice: StoryVoice | None = None,
+) -> str:
+    v = voice or _default_voice
+    line = v.pick("crash", CRASH_LINES)
     _emit(line, log)
     return line
 
@@ -258,6 +444,7 @@ class CastLog:
 
     entries: list[CastEntry] = field(default_factory=list)
     murphy_visits: int = 0
+    voice: StoryVoice = field(default_factory=StoryVoice)
 
     def add(
         self,
@@ -294,8 +481,10 @@ def narrate_chapter_open(
     fix_attempt: int | None = None,
     fix_max: int | None = None,
     log: LogFn | None = None,
+    voice: StoryVoice | None = None,
 ) -> str:
     """Chapter break before a gate or fix worker (replaces bare gates + clock-in)."""
+    v = voice or _default_voice
     who = format_agent_label(role, name)
     if fix_attempt is not None and fix_max is not None:
         mid = f"fix {fix_attempt}/{fix_max}"
@@ -303,7 +492,13 @@ def narrate_chapter_open(
         mid = f"{act}/{total} {gate_label}"
     else:
         mid = gate_label
-    line = f"\n── Slice {slice_id} · {mid} · {who} ──"
+    line = v.format(
+        "chapter_open",
+        CHAPTER_OPEN_LINES,
+        slice_id=str(slice_id),
+        mid=mid,
+        who=who,
+    )
     _emit(line, log)
     return line
 
@@ -316,13 +511,22 @@ def narrate_gate_cleared(
     next_name: str | None = None,
     elapsed_secs: float | None = None,
     log: LogFn | None = None,
+    voice: StoryVoice | None = None,
 ) -> str:
+    v = voice or _default_voice
     time_bit = f" ({_fmt_elapsed(elapsed_secs)})" if elapsed_secs is not None else ""
     next_bit = ""
     if next_label:
         who = f" · {next_name}" if next_name else ""
         next_bit = f" — next: {next_label}{who}"
-    line = f"✓ {name} cleared {gate_label}{time_bit}{next_bit}"
+    line = v.format(
+        "gate_cleared",
+        GATE_CLEARED_LINES,
+        name=name,
+        gate=gate_label,
+        time=time_bit,
+        next=next_bit,
+    )
     _emit(line, log)
     return line
 
@@ -332,17 +536,24 @@ def narrate_gate_stuck(
     explain_msg: str,
     *,
     log: LogFn | None = None,
+    voice: StoryVoice | None = None,
 ) -> str:
     """Story-shaped stuck line; ``explain_msg`` from explain_gate_pending."""
+    v = voice or _default_voice
     body = (explain_msg or "").strip()
     marker = " — stopping."
     if marker in body:
         body = body.split(marker, 1)[1].strip()
     body = body.lstrip(". ").strip()
-    if body.startswith("(") and "unblock:" in body.lower():
-        # "(Status=…) unblock: …" → keep readable
-        pass
-    line = f"✗ {gate_label} stuck — {body}" if body else f"✗ {gate_label} stuck"
+    if not body:
+        line = f"✗ {gate_label} stuck"
+    else:
+        line = v.format(
+            "gate_stuck",
+            GATE_STUCK_LINES,
+            gate=gate_label,
+            body=body,
+        )
     _emit(line, log)
     return line
 

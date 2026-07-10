@@ -31,6 +31,7 @@ from factory_narrator import (  # noqa: E402
     narrate_spawn,
     narrate_thrash_halt,
     narrate_verify_red,
+    StoryVoice,
     persist_story_recap,
 )
 from sim_hygiene import (  # noqa: E402
@@ -124,7 +125,9 @@ class NarratorTests(unittest.TestCase):
             elapsed_secs=120,
             log=lines.append,
         )
-        self.assertIn("✓ Quincy cleared test spec", clear)
+        self.assertIn("✓", clear)
+        self.assertIn("test spec", clear)
+        self.assertIn("Quincy", clear)
         self.assertIn("2m", clear)
         self.assertIn("Ada", clear)
 
@@ -172,12 +175,25 @@ class NarratorTests(unittest.TestCase):
         lines: list[str] = []
         narrate_verify_red("Quinn", passed=43, total=45, log=lines.append)
         self.assertIn("🐒", lines[0])
+        self.assertIn("Murphy", lines[0])
         narrate_exoneration(cause="cancel gate fires early", owner="Edison", log=lines.append)
-        self.assertIn("wasn't Murphy", lines[1])
+        self.assertIn("Murphy", lines[1])
+        self.assertIn("Edison", lines[1])
         narrate_thrash_halt(log=lines.append)
         self.assertIn("exit=5", lines[2])
         narrate_spawn("Edison", "Engineer", "fix DownloadManager", log=lines.append)
         self.assertIn("Edison", lines[3])
+
+    def test_story_voice_rotates_without_back_to_back_repeat(self):
+        voice = StoryVoice()
+        reds: list[str] = []
+        for _ in range(8):
+            lines: list[str] = []
+            narrate_verify_red("Quinn", passed=1, total=2, log=lines.append, voice=voice)
+            reds.append(lines[0])
+        self.assertGreater(len(set(reds)), 1, "verify_red should vary across calls")
+        for a, b in zip(reds, reds[1:]):
+            self.assertNotEqual(a, b, "consecutive verify_red lines should not repeat")
 
 
 class SimHygieneTests(unittest.TestCase):
@@ -209,6 +225,26 @@ class SimHygieneTests(unittest.TestCase):
             classify_infra_failure(
                 output="failed to launch bridge",
                 files_changed=True,
+            )
+        )
+        # Slice 12 death-run: SBMainWorkspace install/launch must be infra, not packaging.
+        self.assertTrue(
+            classify_infra_failure(
+                output=(
+                    "Failed to install or launch the test runner. "
+                    "(Underlying Error: Simulator device failed to launch "
+                    "com.barrandfarm.PodWash. SBMainWorkspace)"
+                ),
+                files_changed=False,
+            )
+        )
+        self.assertTrue(
+            classify_infra_failure(
+                output=(
+                    "Early unexpected exit, operation never finished bootstrapping "
+                    "- no restart will be attempted."
+                ),
+                files_changed=False,
             )
         )
 
@@ -346,9 +382,171 @@ class Tier2ContinuePromptTests(unittest.TestCase):
                 run_i=1,
                 max_runs=3,
             )
-            self.assertIn("Packaging/install", prompt)
+            self.assertIn("Packaging", prompt)
             self.assertIn("bundle executable", prompt.lower())
 
+    def test_expectation_api_violation_routes_to_qa(self):
+        from slice_pipeline import resolve_tier2_continue
 
-if __name__ == "__main__":
-    unittest.main()
+        with tempfile.TemporaryDirectory() as tmp:
+            slice_path = os.path.join(tmp, "docs", "slices", "slice-12-speed-sleep.md")
+            os.makedirs(os.path.dirname(slice_path), exist_ok=True)
+            open(slice_path, "w").write(
+                "Deliverables:\n"
+                "- `PodWash/PodWashTests/PlaybackRateTests.swift`\n"
+                "- `PodWash/PodWash/PlaybackEngine.swift`\n"
+            )
+            failures = [
+                "PodWashTests/PlaybackRateTests/testSupportedRatesMatchAVPlayer() — "
+                "API violation - multiple calls made to -[XCTestExpectation fulfill] "
+                "for timeControlStatus reaches playing. (NSInternalInconsistencyException)"
+            ]
+            packet = FailurePacket(
+                raw_failures=failures,
+                assertions=failures,
+                failure_class="assertion",
+                fix_scope="tests",
+                test_ids=["PlaybackRateTests/testSupportedRatesMatchAVPlayer()"],
+                signature="sig",
+            )
+            outcome = VerifyOutcome(
+                result={"exit": "65", "failed": "1", "bundle": "b.xcresult"},
+                green=False,
+                failures=failures,
+                packet=packet,
+                tier=2,
+            )
+            role, prompt = resolve_tier2_continue(
+                slice_file=slice_path,
+                repo_root=tmp,
+                outcome=outcome,
+                run_i=1,
+                max_runs=3,
+            )
+            self.assertEqual(role, "QA")
+            self.assertIn("XCTestExpectation", prompt)
+            self.assertIn("Do not edit app code", prompt)
+            self.assertIn("PlaybackRateTests", prompt)
+            self.assertIn("invalidate", prompt.lower())
+            self.assertIn("setRate", prompt)
+            self.assertNotIn("PersistenceController", prompt)
+            self.assertNotIn("QueueCoordinator", prompt)
+            self.assertNotIn("NSPredicate", prompt)
+
+            # Lever 1: escalate after same hyp failed
+            role2, prompt2 = resolve_tier2_continue(
+                slice_file=slice_path,
+                repo_root=tmp,
+                outcome=outcome,
+                run_i=2,
+                max_runs=3,
+                escalate_expectation=True,
+            )
+            self.assertEqual(role2, "QA")
+            self.assertIn("NSPredicate", prompt2)
+            self.assertIn("ledger-escalate:predicate-wait", prompt2)
+            self.assertIn("Do not edit app", prompt2)
+
+    def test_sim_launch_failure_is_infra_not_packaging(self):
+        from slice_pipeline import is_tier2_infra_failure
+
+        failures = [
+            "PodWashTests/PodWash encountered an error — Failed to install or launch "
+            "the test runner. (SBMainWorkspace)"
+        ]
+        packet = FailurePacket(
+            raw_failures=failures,
+            failure_class="flake",
+            test_ids=["PodWashTests/PodWash encountered an error"],
+        )
+        outcome = VerifyOutcome(
+            result={"exit": "65", "failed": "1"},
+            green=False,
+            failures=failures,
+            packet=packet,
+            output=failures[0],
+            tier=2,
+        )
+        self.assertTrue(is_tier2_infra_failure(outcome))
+        with tempfile.TemporaryDirectory() as tmp:
+            prompt = build_tier2_continue_prompt(
+                slice_file="docs/slices/slice-12-speed-sleep.md",
+                repo_root=tmp,
+                outcome=outcome,
+                run_i=1,
+                max_runs=3,
+            )
+            # If somehow spawned, must not steer toward Core Data packaging.
+            self.assertNotIn("Core Data queue/resume", prompt)
+
+
+class Tier2InfraColdRetryTests(unittest.TestCase):
+    def test_infra_does_not_burn_fix_budget(self):
+        from slice_loop_progress import ThrashHalt
+        from slice_pipeline import run_tier2_implement_gate
+
+        calls = {"n": 0}
+
+        def verify_fn(**_kw):
+            calls["n"] += 1
+            if calls["n"] <= 2:
+                failures = [
+                    "Failed to install or launch the test runner (SBMainWorkspace)"
+                ]
+                return VerifyOutcome(
+                    result={"exit": "65", "failed": "1", "tier": "2"},
+                    green=False,
+                    failures=failures,
+                    output=failures[0],
+                    packet=FailurePacket(
+                        raw_failures=failures,
+                        failure_class="flake",
+                    ),
+                    tier=2,
+                )
+            # Third verify: real assertion — still red, but only one fix burn if
+            # we halt without client (client=None stops after first real red ledger).
+            failures = [
+                "PodWashTests/PlaybackRateTests/testSupportedRatesMatchAVPlayer() — "
+                "API violation - multiple calls made to -[XCTestExpectation fulfill]"
+            ]
+            return VerifyOutcome(
+                result={"exit": "65", "failed": "1", "tier": "2"},
+                green=False,
+                failures=failures,
+                output=failures[0],
+                packet=FailurePacket(
+                    raw_failures=failures,
+                    assertions=failures,
+                    failure_class="assertion",
+                    fix_scope="tests",
+                    test_ids=["PlaybackRateTests/testSupportedRatesMatchAVPlayer()"],
+                ),
+                tier=2,
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            slice_path = os.path.join(tmp, "docs", "slices", "slice-12-speed-sleep.md")
+            os.makedirs(os.path.dirname(slice_path), exist_ok=True)
+            open(slice_path, "w").write(
+                "## Verification mapping\n\n"
+                "| AC# | Test file | Test method |\n"
+                "|-----|-----------|-------------|\n"
+                "| 1 | `PodWash/PodWashTests/PlaybackRateTests.swift` | "
+                "`testSupportedRatesMatchAVPlayer` |\n"
+            )
+            logs: list[str] = []
+            with self.assertRaises(ThrashHalt):
+                run_tier2_implement_gate(
+                    client=None,
+                    slice_file=slice_path,
+                    repo_root=tmp,
+                    api_key="x",
+                    log=logs.append,
+                    verify_fn=verify_fn,
+                    max_runs=1,
+                    max_infra_retries=2,
+                )
+            infra_logs = [l for l in logs if "infra cold retry" in l]
+            self.assertEqual(len(infra_logs), 2)
+            self.assertGreaterEqual(calls["n"], 3)
