@@ -1,0 +1,199 @@
+//
+//  DownloadManagerTests.swift
+//  PodWashTests
+//
+//  Slice 10 — Episode download unit tests (ADR-008). AC1–AC4.
+//
+//  Empirical validation checklist (ADR-008 § "Empirical validation"):
+//  Pending first green CI run with Engineer implementation — AC2/AC3 depend on
+//  StubDownloadURLProtocol async 4-chunk contract; anti-pattern control optional.
+//
+
+import XCTest
+@testable import PodWash
+
+@MainActor
+final class DownloadManagerTests: XCTestCase {
+
+    // Hand-transcribed from sample_feed.xml row 0 (independent of parser output).
+    private static let fixtureEpisodeID = "fixture-ep-001"
+    private static let fixtureRemoteURL = URL(string: "https://fixture.podwash.tests/audio/alpha.m4a")!
+    private static let fixtureRemoteURLString = "https://fixture.podwash.tests/audio/alpha.m4a"
+    private static let expectedByteCount = 1024
+
+    private var downloadsDirectory: URL!
+    private var stateStore: InMemoryDownloadStateStore!
+    private var manager: DownloadManager!
+
+    override func setUp() async throws {
+        downloadsDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("DownloadTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: downloadsDirectory, withIntermediateDirectories: true)
+
+        StubDownloadURLProtocol.reset()
+
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubDownloadURLProtocol.self]
+
+        stateStore = InMemoryDownloadStateStore()
+        manager = DownloadManager(
+            sessionConfiguration: config,
+            downloadsDirectory: downloadsDirectory,
+            stateStore: stateStore
+        )
+    }
+
+    override func tearDown() async throws {
+        manager = nil
+        stateStore = nil
+        StubDownloadURLProtocol.reset()
+        if let downloadsDirectory {
+            try? FileManager.default.removeItem(at: downloadsDirectory)
+        }
+        downloadsDirectory = nil
+    }
+
+    // MARK: - Helpers
+
+    private func expectedLocalFileURL() -> URL {
+        DownloadPaths.localFileURL(
+            episodeID: Self.fixtureEpisodeID,
+            downloadsDirectory: downloadsDirectory
+        )
+    }
+
+    private func fixtureEpisode() -> Episode {
+        Episode(
+            id: Self.fixtureEpisodeID,
+            title: "Alpha Signal — Pilot Launch",
+            pubDate: ISO8601DateFormatter().date(from: "2026-01-15T08:00:00Z")!,
+            artworkURL: URL(string: "file:///fixtures/feeds/episode-0-art.png"),
+            showNotes: "<p>Welcome to the pilot.</p>",
+            audioURL: Self.fixtureRemoteURL
+        )
+    }
+
+    private func waitUntilAtLeastTwoProgressSignals(
+        progressValues: [Double],
+        timeout: TimeInterval = 10
+    ) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if progressValues.count >= 2 || StubDownloadURLProtocol.chunksDelivered >= 2 {
+                return
+            }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        XCTFail(
+            "Timed out waiting for ≥ 2 progress callbacks or stub chunksDelivered ≥ 2 "
+                + "(callbacks=\(progressValues.count), chunks=\(StubDownloadURLProtocol.chunksDelivered))"
+        )
+    }
+
+    // MARK: - AC1: sandbox write + return URL
+
+    func testDownloadWritesToSandbox() async throws {
+        let localURL = expectedLocalFileURL()
+
+        let returnedURL = try await manager.download(
+            episodeID: Self.fixtureEpisodeID,
+            from: Self.fixtureRemoteURL
+        ) { _ in }
+
+        XCTAssertEqual(returnedURL.scheme, "file")
+        XCTAssertEqual(returnedURL.path, localURL.path)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: localURL.path))
+
+        let onDisk = try Data(contentsOf: localURL)
+        XCTAssertEqual(onDisk.count, Self.expectedByteCount)
+        XCTAssertTrue(localURL.path.hasSuffix("\(Self.fixtureEpisodeID).m4a"))
+    }
+
+    // MARK: - AC2: monotonic progress, 4 callbacks, final 1.0
+
+    func testProgressMonotonicEndsAtOne() async throws {
+        var progressValues: [Double] = []
+
+        _ = try await manager.download(
+            episodeID: Self.fixtureEpisodeID,
+            from: Self.fixtureRemoteURL
+        ) { progress in
+            progressValues.append(progress)
+        }
+
+        XCTAssertEqual(
+            progressValues.count,
+            4,
+            "Expected exactly 4 progress callbacks with normative 4-chunk stub"
+        )
+
+        for index in 1 ..< progressValues.count {
+            XCTAssertGreaterThanOrEqual(
+                progressValues[index],
+                progressValues[index - 1],
+                "Progress must be monotonic non-decreasing at index \(index)"
+            )
+        }
+
+        XCTAssertEqual(progressValues.last!, 1.0, accuracy: 0.0001)
+    }
+
+    // MARK: - AC3: cancel removes partial file, retains resume data
+
+    func testCancelRemovesPartialAndRetainsResumeData() async throws {
+        let localURL = expectedLocalFileURL()
+        var progressValues: [Double] = []
+
+        let downloadTask = Task { @MainActor in
+            try await manager.download(
+                episodeID: Self.fixtureEpisodeID,
+                from: Self.fixtureRemoteURL
+            ) { progress in
+                progressValues.append(progress)
+            }
+        }
+
+        try await waitUntilAtLeastTwoProgressSignals(progressValues: progressValues)
+
+        await manager.cancel(episodeID: Self.fixtureEpisodeID)
+        downloadTask.cancel()
+
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: localURL.path),
+            "Final .m4a must not exist after cancel"
+        )
+
+        let resume = manager.resumeData(for: Self.fixtureEpisodeID)
+        XCTAssertNotNil(resume, "Resume data must be retained after cancel following ≥ 2 callbacks")
+        XCTAssertGreaterThanOrEqual(resume!.count, 1)
+    }
+
+    // MARK: - AC4: PlaybackSourceResolver local vs remote + delete
+
+    func testSourceResolutionAndDelete() async throws {
+        let episode = fixtureEpisode()
+        let resolver = PlaybackSourceResolver(
+            downloadsDirectory: downloadsDirectory,
+            fileManager: .default
+        )
+
+        let remoteOnly = resolver.playbackURL(for: episode)
+        XCTAssertEqual(remoteOnly?.absoluteString, Self.fixtureRemoteURLString)
+
+        _ = try await manager.download(
+            episodeID: Self.fixtureEpisodeID,
+            from: Self.fixtureRemoteURL
+        ) { _ in }
+
+        let localURL = expectedLocalFileURL()
+        let localPlayback = resolver.playbackURL(for: episode)
+        XCTAssertEqual(localPlayback?.scheme, "file")
+        XCTAssertEqual(localPlayback?.path, localURL.path)
+
+        try manager.deleteDownload(episodeID: Self.fixtureEpisodeID)
+
+        let afterDelete = resolver.playbackURL(for: episode)
+        XCTAssertEqual(afterDelete?.absoluteString, Self.fixtureRemoteURLString)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: localURL.path))
+    }
+}
