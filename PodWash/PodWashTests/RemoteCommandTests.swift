@@ -258,15 +258,17 @@ final class RemoteCommandTests: XCTestCase {
 
         waitForDuration(engine, expected: fixtureDuration)
 
+        var playingObservation: NSKeyValueObservation?
         let playingExpectation = expectation(description: "playback starts")
-        let observation = engine.avPlayer.observe(\.timeControlStatus, options: [.new]) { player, _ in
-            if player.timeControlStatus == .playing {
-                playingExpectation.fulfill()
-            }
+        playingObservation = engine.avPlayer.observe(\.timeControlStatus, options: [.new]) { player, _ in
+            guard player.timeControlStatus == .playing else { return }
+            playingObservation?.invalidate()
+            playingObservation = nil
+            playingExpectation.fulfill()
         }
         addTeardownBlock { [engine] in
             engine.pause()
-            observation.invalidate()
+            playingObservation?.invalidate()
         }
 
         engine.play()

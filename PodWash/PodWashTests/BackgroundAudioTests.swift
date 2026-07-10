@@ -72,6 +72,10 @@ final class BackgroundAudioTests: XCTestCase {
         coordinator.activate()
         coordinator.bind(engine)
 
+        addTeardownBlock { [engine] in
+            engine.pause()
+        }
+
         engine.play()
 
         XCTAssertEqual(sessionSpy.recordedCategory, .playback, "Session category must be .playback")
