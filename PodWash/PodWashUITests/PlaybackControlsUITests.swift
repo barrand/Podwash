@@ -45,4 +45,48 @@ final class PlaybackControlsUITests: XCTestCase {
         )
         wait(for: [afterSeekExpectation], timeout: 5)
     }
+
+    // MARK: - Slice 12 — speed + sleep timer (AC4–AC5)
+
+    @MainActor
+    func testSpeedButtonCyclesRates() throws {
+        let app = XCUIApplication()
+        app.launchArguments.append("-UITestFixtureAudio")
+        app.launch()
+
+        let speedButton = app.buttons["speedButton"]
+        XCTAssertTrue(speedButton.waitForExistence(timeout: 10))
+        XCTAssertEqual(speedButton.value as? String, "1.0", "Default rate must be 1.0")
+
+        let expectedSequence = ["1.25", "1.5", "2.0", "3.0", "0.75", "1.0"]
+        for expected in expectedSequence {
+            speedButton.tap()
+            XCTAssertEqual(
+                speedButton.value as? String,
+                expected,
+                "speedButton must cycle to \(expected)"
+            )
+        }
+    }
+
+    @MainActor
+    func testSleepTimerButtonCyclesPresets() throws {
+        let app = XCUIApplication()
+        app.launchArguments.append("-UITestFixtureAudio")
+        app.launch()
+
+        let sleepTimerButton = app.buttons["sleepTimerButton"]
+        XCTAssertTrue(sleepTimerButton.waitForExistence(timeout: 10))
+        XCTAssertEqual(sleepTimerButton.value as? String, "off", "Sleep timer must start off")
+
+        let expectedSequence = ["900", "1800", "3600"]
+        for expected in expectedSequence {
+            sleepTimerButton.tap()
+            XCTAssertEqual(
+                sleepTimerButton.value as? String,
+                expected,
+                "sleepTimerButton must cycle to \(expected)"
+            )
+        }
+    }
 }
