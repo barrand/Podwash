@@ -11,6 +11,11 @@ import SwiftUI
 struct PlaybackControlsView: View {
     @Bindable var engine: PlaybackEngine
 
+    @State private var sleepClock = SystemMonotonicClock()
+    @State private var sleepTimer: SleepTimer?
+    /// Drives sleep-button accessibility; mirrors timer arm/cancel/fire.
+    @State private var sleepAccessibilityValue = "off"
+
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.25)) { _ in
             let _ = engine.uiRefreshToken
@@ -47,9 +52,52 @@ struct PlaybackControlsView: View {
                     .accessibilityIdentifier("playback.seekForward15")
                     .accessibilityLabel("Seek forward 15 seconds")
                 }
+
+                HStack(spacing: 24) {
+                    Button(action: { engine.cycleRate() }) {
+                        Text(engine.rateAccessibilityValue + "×")
+                            .font(.system(.body, design: .rounded))
+                            .frame(minWidth: 56)
+                    }
+                    .accessibilityIdentifier("speedButton")
+                    .accessibilityLabel("Playback speed")
+                    .accessibilityValue(engine.rateAccessibilityValue)
+
+                    Button(action: cycleSleepTimer) {
+                        Image(systemName: sleepAccessibilityValue == "off"
+                              ? "moon.zzz"
+                              : "moon.zzz.fill")
+                            .font(.title2)
+                    }
+                    .accessibilityIdentifier("sleepTimerButton")
+                    .accessibilityLabel("Sleep timer")
+                    .accessibilityValue(sleepAccessibilityValue)
+                }
             }
             .padding()
         }
+        .onAppear {
+            ensureSleepTimer()
+            sleepClock.startTicking()
+        }
+        .onDisappear {
+            sleepClock.stopTicking()
+        }
+    }
+
+    private func ensureSleepTimer() {
+        guard sleepTimer == nil else { return }
+        let timer = SleepTimer(engine: engine, clock: sleepClock)
+        timer.onFire = {
+            sleepAccessibilityValue = "off"
+        }
+        sleepTimer = timer
+    }
+
+    private func cycleSleepTimer() {
+        ensureSleepTimer()
+        sleepTimer?.cyclePreset()
+        sleepAccessibilityValue = sleepTimer?.accessibilityValue ?? "off"
     }
 
     private func togglePlayPause() {

@@ -7,9 +7,21 @@
 
 import SwiftUI
 
+/// App entry point — must remain `@main` so the PodWash.app bundle has a valid
+/// executable product for the simulator test host (install/launch).
+/// With `ENABLE_DEBUG_DYLIB`, the stub loads `PodWash.debug.dylib`; a partial
+/// build that links but skips CodeSign leaves that dylib unsigned and aborts at
+/// dyld (SBMainWorkspace / signal abrt before XCTest connects).
 @main
 struct PodWashApp: App {
-    private let persistence = PersistenceController.production()
+    /// Production Core Data stack (ADR-007). Constructed once at launch so the
+    /// installable binary always wires a real `PersistenceController` (queue +
+    /// resume types live in the same model).
+    private let persistence: PersistenceController
+
+    init() {
+        persistence = PersistenceController.production()
+    }
 
     var body: some Scene {
         WindowGroup {

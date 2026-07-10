@@ -18,15 +18,23 @@ enum AudioSessionConfigurator {
 
 @MainActor
 @Observable
-final class PlaybackEngine {
+final class PlaybackEngine: PlaybackPausing {
+    /// Discrete playback rates supported by the speed control (Slice 12).
+    static let supportedRates: [Float] = [0.75, 1.0, 1.25, 1.5, 2.0, 3.0]
+
     private(set) var currentTime: TimeInterval = 0
     private(set) var duration: TimeInterval = 0
     private(set) var uiRefreshToken = 0
 
+    /// Session-selected playback rate; re-applied on `play()` (not persisted across launches).
+    private(set) var selectedRate: Float = 1.0
+
     /// The currently attached censor schedule, or `nil` if none (ADR-002 §3).
     private(set) var activeSchedule: IntervalSchedule?
 
-    private let player: AVPlayer
+    /// `nonisolated(unsafe)`: immutable after init; `deinit` must remove observers
+    /// without a MainActor TaskLocal hop (test-host abort class).
+    private nonisolated(unsafe) let player: AVPlayer
     private let title: String
     private let artist: String
     private let nowPlayingUpdater: any NowPlayingInfoUpdating
@@ -43,6 +51,11 @@ final class PlaybackEngine {
         player.timeControlStatus == .playing
     }
 
+    /// Accessibility value for the speed control (`"0.75"` … `"3.0"`).
+    var rateAccessibilityValue: String {
+        Self.accessibilityValue(for: selectedRate)
+    }
+
     init(
         url: URL,
         title: String,
@@ -51,6 +64,9 @@ final class PlaybackEngine {
     ) {
         let item = AVPlayerItem(url: url)
         player = AVPlayer(playerItem: item)
+        // Prefer in-place rate changes without bouncing through
+        // `.waitingToPlayAtSpecifiedRate` (avoids spurious timeControlStatus KVO).
+        player.automaticallyWaitsToMinimizeStalling = false
         self.title = title
         self.artist = artist
         self.nowPlayingUpdater = nowPlayingUpdater ?? MPNowPlayingInfoCenterUpdater()
@@ -62,7 +78,7 @@ final class PlaybackEngine {
 
     func play() {
         AudioSessionConfigurator.activatePlaybackSession()
-        player.play()
+        player.playImmediately(atRate: selectedRate)
         refreshCurrentTime()
         touchUI()
         updateNowPlaying()
@@ -72,6 +88,47 @@ final class PlaybackEngine {
         player.pause()
         refreshCurrentTime()
         touchUI()
+    }
+
+    // MARK: - Playback rate (Slice 12)
+
+    /// Sets a discrete supported rate. While playing, applies to `AVPlayer.rate`
+    /// immediately; while paused, stores for the next `play()`.
+    func setRate(_ rate: Float) {
+        let resolved = Self.nearestSupportedRate(to: rate)
+        selectedRate = resolved
+        // Assign rate in place only — do not call play/pause/playImmediately here,
+        // which would re-enter `.playing` and double-fire live timeControlStatus KVO.
+        if player.timeControlStatus == .playing, abs(player.rate - resolved) > 0.0001 {
+            player.rate = resolved
+        }
+        touchUI()
+    }
+
+    /// Advances through `supportedRates`, wrapping after the last entry.
+    func cycleRate() {
+        let rates = Self.supportedRates
+        let index = rates.firstIndex(of: selectedRate) ?? rates.firstIndex(of: 1.0) ?? 0
+        let next = rates[(index + 1) % rates.count]
+        setRate(next)
+    }
+
+    static func accessibilityValue(for rate: Float) -> String {
+        switch rate {
+        case 0.75: return "0.75"
+        case 1.0: return "1.0"
+        case 1.25: return "1.25"
+        case 1.5: return "1.5"
+        case 2.0: return "2.0"
+        case 3.0: return "3.0"
+        default:
+            return String(format: "%g", rate)
+        }
+    }
+
+    private static func nearestSupportedRate(to rate: Float) -> Float {
+        if supportedRates.contains(rate) { return rate }
+        return supportedRates.min(by: { abs($0 - rate) < abs($1 - rate) }) ?? 1.0
     }
 
     func seek(to seconds: TimeInterval, completion: (() -> Void)? = nil) {
@@ -172,9 +229,11 @@ final class PlaybackEngine {
         }
     }
 
-    deinit {
+    // Avoid MainActor/TaskLocal deinit crash (same pattern as QueueCoordinator).
+    nonisolated deinit {
         if let token = skipObserverToken {
             player.removeTimeObserver(token)
+            skipObserverToken = nil
         }
     }
 

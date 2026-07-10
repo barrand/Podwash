@@ -20,45 +20,53 @@ nonisolated final class PersistenceController: @unchecked Sendable {
     }
 
     /// On-disk store under Application Support (`PodWash.sqlite`).
-    static func production() -> PersistenceController {
-        let container = NSPersistentContainer(name: "PodWash")
-        let storeURL = applicationSupportStoreURL()
-        let description = NSPersistentStoreDescription(url: storeURL)
-        description.type = NSSQLiteStoreType
-        description.shouldAddStoreAsynchronously = false
-        container.persistentStoreDescriptions = [description]
-        container.loadPersistentStores { _, error in
-            if let error {
-                fatalError("Unresolved Core Data error: \(error)")
-            }
-        }
-        container.viewContext.automaticallyMergesChangesFromParent = true
-        return PersistenceController(container: container)
+    /// `nonisolated`: app `@main` / test-host bootstrap may construct this before the
+    /// main-actor executor is fully established; keep it off the default MainActor.
+    nonisolated static func production() -> PersistenceController {
+        makeController(
+            storeURL: applicationSupportStoreURL(),
+            wal: false,
+            fatalPrefix: "Unresolved Core Data error"
+        )
     }
 
     /// Isolated store for unit tests.
     /// Temp-directory SQLite URL keyed by `identifier` so a second controller reloads
     /// the same durable state (ADR-009 §3 reload pattern — temp SQLite variant).
-    static func inMemory(identifier: String = UUID().uuidString) -> PersistenceController {
+    nonisolated static func inMemory(identifier: String = UUID().uuidString) -> PersistenceController {
+        let controller = makeController(
+            storeURL: temporaryStoreURL(identifier: identifier),
+            wal: true,
+            fatalPrefix: "Unresolved test Core Data error"
+        )
+        controller.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        return controller
+    }
+
+    /// Shared NSPersistentContainer wiring for production + test stores (queue/resume model).
+    nonisolated private static func makeController(
+        storeURL: URL,
+        wal: Bool,
+        fatalPrefix: String
+    ) -> PersistenceController {
         let container = NSPersistentContainer(name: "PodWash")
-        let storeURL = temporaryStoreURL(identifier: identifier)
         let description = NSPersistentStoreDescription(url: storeURL)
         description.type = NSSQLiteStoreType
         description.shouldAddStoreAsynchronously = false
-        // WAL lets a second controller open the same file while the first is still alive.
-        description.setOption(
-            ["journal_mode": "WAL"] as NSDictionary,
-            forKey: NSSQLitePragmasOption
-        )
+        if wal {
+            // WAL lets a second controller open the same file while the first is still alive.
+            description.setOption(
+                ["journal_mode": "WAL"] as NSDictionary,
+                forKey: NSSQLitePragmasOption
+            )
+        }
         container.persistentStoreDescriptions = [description]
         container.loadPersistentStores { _, error in
             if let error {
-                fatalError("Unresolved test Core Data error: \(error)")
+                fatalError("\(fatalPrefix): \(error)")
             }
         }
-        let context = container.viewContext
-        context.automaticallyMergesChangesFromParent = true
-        context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        container.viewContext.automaticallyMergesChangesFromParent = true
         return PersistenceController(container: container)
     }
 

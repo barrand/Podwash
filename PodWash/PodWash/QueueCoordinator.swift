@@ -16,6 +16,7 @@ final class QueueCoordinator {
     nonisolated(unsafe) private let resume: ResumePositionStore
     nonisolated(unsafe) private(set) var currentEpisodeID: String?
 
+    /// Wires queue + resume Core Data stores to an `EpisodePlaying` surface.
     init(queue: QueueStore, player: any EpisodePlaying, resume: ResumePositionStore) {
         self.queue = queue
         self.player = player
@@ -23,6 +24,7 @@ final class QueueCoordinator {
     }
 
     // Avoid MainActor/TaskLocal deinit crash (same pattern as AnalysisUIViewModel).
+    // Keep this nonisolated so the test-host executable does not abort on teardown.
     nonisolated deinit {}
 
     /// Sets current episode; restores saved position via `player.seek` then `play`
