@@ -13,6 +13,9 @@ import XCTest
 final class NowPlayingInfoRecorder: NowPlayingInfoUpdating {
     private(set) var lastTitle: String?
     private(set) var lastArtist: String?
+    private(set) var lastElapsed: TimeInterval = 0
+    private(set) var lastDuration: TimeInterval = 0
+    private(set) var updateCount = 0
 
     func updateNowPlayingInfo(
         title: String,
@@ -22,6 +25,27 @@ final class NowPlayingInfoRecorder: NowPlayingInfoUpdating {
     ) {
         lastTitle = title
         lastArtist = artist
+        lastElapsed = elapsed
+        lastDuration = duration
+        updateCount += 1
+    }
+
+    /// Slice 14 AC3 — elapsed/duration must track engine within ±0.25 s after each transport step.
+    func assertSynced(with engine: PlaybackEngine, expectedDuration: TimeInterval, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertLessThanOrEqual(
+            abs(lastElapsed - engine.currentTime),
+            0.25,
+            "Now Playing elapsed must track engine.currentTime",
+            file: file,
+            line: line
+        )
+        XCTAssertLessThanOrEqual(
+            abs(lastDuration - expectedDuration),
+            0.25,
+            "Now Playing duration must track fixture duration",
+            file: file,
+            line: line
+        )
     }
 }
 
