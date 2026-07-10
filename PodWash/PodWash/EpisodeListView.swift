@@ -12,6 +12,8 @@ struct EpisodeListView: View {
     let feed: PodcastFeed
     @Bindable var analysisViewModel: AnalysisUIViewModel
     var downloadManager: DownloadManager
+    var queueStore: QueueStore
+    var onQueueChanged: () -> Void
 
     var body: some View {
         // Observe generation so representable refreshes when analysis UI changes.
@@ -19,7 +21,9 @@ struct EpisodeListView: View {
         return EpisodeTableViewRepresentable(
             feed: feed,
             analysisViewModel: analysisViewModel,
-            downloadManager: downloadManager
+            downloadManager: downloadManager,
+            queueStore: queueStore,
+            onQueueChanged: onQueueChanged
         )
     }
 }
@@ -28,12 +32,16 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
     let feed: PodcastFeed
     var analysisViewModel: AnalysisUIViewModel
     var downloadManager: DownloadManager
+    var queueStore: QueueStore
+    var onQueueChanged: () -> Void
 
     func makeUIViewController(context: Context) -> EpisodeTableViewController {
         EpisodeTableViewController(
             feed: feed,
             analysisViewModel: analysisViewModel,
-            downloadManager: downloadManager
+            downloadManager: downloadManager,
+            queueStore: queueStore,
+            onQueueChanged: onQueueChanged
         )
     }
 
@@ -41,7 +49,9 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
         controller.update(
             feed: feed,
             analysisViewModel: analysisViewModel,
-            downloadManager: downloadManager
+            downloadManager: downloadManager,
+            queueStore: queueStore,
+            onQueueChanged: onQueueChanged
         )
     }
 }
@@ -50,15 +60,21 @@ private final class EpisodeTableViewController: UITableViewController {
     private var feed: PodcastFeed
     private var analysisViewModel: AnalysisUIViewModel
     private var downloadManager: DownloadManager
+    private var queueStore: QueueStore
+    private var onQueueChanged: () -> Void
 
     init(
         feed: PodcastFeed,
         analysisViewModel: AnalysisUIViewModel,
-        downloadManager: DownloadManager
+        downloadManager: DownloadManager,
+        queueStore: QueueStore,
+        onQueueChanged: @escaping () -> Void
     ) {
         self.feed = feed
         self.analysisViewModel = analysisViewModel
         self.downloadManager = downloadManager
+        self.queueStore = queueStore
+        self.onQueueChanged = onQueueChanged
         super.init(style: .plain)
         analysisViewModel.onAnalyzingEpisodeIDChanged = { [weak self] in
             guard let self else { return }
@@ -89,12 +105,16 @@ private final class EpisodeTableViewController: UITableViewController {
     func update(
         feed: PodcastFeed,
         analysisViewModel: AnalysisUIViewModel,
-        downloadManager: DownloadManager
+        downloadManager: DownloadManager,
+        queueStore: QueueStore,
+        onQueueChanged: @escaping () -> Void
     ) {
         let feedChanged = self.feed != feed
         self.feed = feed
         self.analysisViewModel = analysisViewModel
         self.downloadManager = downloadManager
+        self.queueStore = queueStore
+        self.onQueueChanged = onQueueChanged
         analysisViewModel.onAnalyzingEpisodeIDChanged = { [weak self] in
             guard let self else { return }
             self.refreshAnalysisDisplayOnVisibleRows()
@@ -112,6 +132,7 @@ private final class EpisodeTableViewController: UITableViewController {
             // analysis generation clobbers the transient `analysisProgress` AX
             // surface before XCTest goes idle.
             refreshAnalysisDisplayOnVisibleRows()
+            refreshQueueDisplayOnVisibleRows()
         }
         tableView.layoutIfNeeded()
     }
@@ -130,6 +151,15 @@ private final class EpisodeTableViewController: UITableViewController {
         UIAccessibility.post(notification: .layoutChanged, argument: nil)
     }
 
+    private func refreshQueueDisplayOnVisibleRows() {
+        let queued = Set(queueStore.queueEpisodeIDs())
+        for indexPath in tableView.indexPathsForVisibleRows ?? [] {
+            guard let cell = tableView.cellForRow(at: indexPath) as? EpisodeTableViewCell else { continue }
+            let episode = feed.episodes[indexPath.row]
+            cell.applyQueueDisplay(isQueued: queued.contains(episode.id), index: indexPath.row)
+        }
+    }
+
     private func refreshAnalysisDisplayOnVisibleRows() {
         for indexPath in tableView.indexPathsForVisibleRows ?? [] {
             guard let cell = tableView.cellForRow(at: indexPath) as? EpisodeTableViewCell else { continue }
@@ -141,6 +171,16 @@ private final class EpisodeTableViewController: UITableViewController {
         }
         tableView.layoutIfNeeded()
         UIAccessibility.post(notification: .layoutChanged, argument: nil)
+    }
+
+    private func queueAddHandler(for indexPath: IndexPath) -> () -> Void {
+        { [weak self] in
+            guard let self else { return }
+            let episode = self.feed.episodes[indexPath.row]
+            try? self.queueStore.add(episode.id)
+            self.onQueueChanged()
+            self.refreshQueueDisplayOnVisibleRows()
+        }
     }
 
     private func downloadButtonHandler(for indexPath: IndexPath) -> () -> Void {
@@ -228,13 +268,16 @@ private final class EpisodeTableViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: EpisodeTableViewCell.reuseID, for: indexPath) as! EpisodeTableViewCell
         let episode = feed.episodes[indexPath.row]
+        let isQueued = queueStore.queueEpisodeIDs().contains(episode.id)
         cell.configure(
             episode: episode,
             index: indexPath.row,
             analysisViewModel: analysisViewModel,
             downloadManager: downloadManager,
+            isQueued: isQueued,
             onToggle: episodeToggleHandler(for: indexPath),
-            onDownload: downloadButtonHandler(for: indexPath)
+            onDownload: downloadButtonHandler(for: indexPath),
+            onQueueAdd: queueAddHandler(for: indexPath)
         )
         return cell
     }
@@ -256,10 +299,12 @@ private final class EpisodeTableViewCell: UITableViewCell {
     private let downloadProgressAccessibilityHost = UIView()
     private let textStack = UIStackView()
     private let downloadButton = UIButton(type: .system)
+    private let queueAddButton = UIButton(type: .system)
     private let cleaningSwitch = UISwitch()
     private let accessoryStack = UIStackView()
     private var onToggle: ((Bool) -> Void)?
     private var onDownload: (() -> Void)?
+    private var onQueueAdd: (() -> Void)?
     private var rowIndex: Int = 0
     private var cellAccessibilityValue: String?
 
@@ -399,9 +444,24 @@ private final class EpisodeTableViewCell: UITableViewCell {
             downloadButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
         ])
 
+        queueAddButton.addTarget(self, action: #selector(queueAddTapped), for: .touchUpInside)
+        queueAddButton.isAccessibilityElement = true
+        queueAddButton.accessibilityTraits = .button
+        queueAddButton.setImage(UIImage(systemName: "text.badge.plus"), for: .normal)
+        queueAddButton.setPreferredSymbolConfiguration(
+            UIImage.SymbolConfiguration(textStyle: .body),
+            forImageIn: .normal
+        )
+        queueAddButton.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            queueAddButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            queueAddButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+        ])
+
         accessoryStack.axis = .horizontal
         accessoryStack.spacing = 8
         accessoryStack.alignment = .center
+        accessoryStack.addArrangedSubview(queueAddButton)
         accessoryStack.addArrangedSubview(downloadButton)
         accessoryStack.addArrangedSubview(cleaningSwitch)
         accessoryStack.translatesAutoresizingMaskIntoConstraints = false
@@ -426,11 +486,14 @@ private final class EpisodeTableViewCell: UITableViewCell {
         index: Int,
         analysisViewModel: AnalysisUIViewModel,
         downloadManager: DownloadManager,
+        isQueued: Bool,
         onToggle: @escaping (Bool) -> Void,
-        onDownload: @escaping () -> Void
+        onDownload: @escaping () -> Void,
+        onQueueAdd: @escaping () -> Void
     ) {
         self.onToggle = onToggle
         self.onDownload = onDownload
+        self.onQueueAdd = onQueueAdd
         self.rowIndex = index
 
         titleLabel.text = episode.title
@@ -442,6 +505,7 @@ private final class EpisodeTableViewCell: UITableViewCell {
         cleaningSwitch.accessibilityValue = cleaningSwitch.isOn ? "on" : "off"
 
         downloadButton.accessibilityIdentifier = "downloadButton_\(index)"
+        applyQueueDisplay(isQueued: isQueued, index: index)
         applyAnalysisDisplay(analysisViewModel: analysisViewModel, episodeID: episode.id)
         applyDownloadDisplay(
             downloadManager: downloadManager,
@@ -455,6 +519,14 @@ private final class EpisodeTableViewCell: UITableViewCell {
 
         titleLabel.isAccessibilityElement = false
         dateLabel.isAccessibilityElement = false
+    }
+
+    func applyQueueDisplay(isQueued: Bool, index: Int) {
+        queueAddButton.accessibilityIdentifier = "queueAddButton_\(index)"
+        queueAddButton.isEnabled = !isQueued
+        queueAddButton.accessibilityValue = isQueued ? "queued" : "notQueued"
+        queueAddButton.accessibilityLabel = isQueued ? "In queue" : "Add to queue"
+        queueAddButton.accessibilityHint = isQueued ? nil : "Adds this episode to up next."
     }
 
     func applyDownloadDisplay(
@@ -598,6 +670,10 @@ private final class EpisodeTableViewCell: UITableViewCell {
 
     @objc private func downloadTapped() {
         onDownload?()
+    }
+
+    @objc private func queueAddTapped() {
+        onQueueAdd?()
     }
 }
 

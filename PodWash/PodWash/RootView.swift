@@ -8,10 +8,17 @@
 import SwiftUI
 
 struct RootView: View {
+    let persistence: PersistenceController
+
     @State private var fixtureEngine: PlaybackEngine?
     @State private var fixtureFeedViewModel: EpisodeListViewModel?
     @State private var fixtureAnalysisViewModel: AnalysisUIViewModel?
     @State private var fixtureDownloadManager: DownloadManager?
+    @State private var queueStore: QueueStore?
+
+    init(persistence: PersistenceController) {
+        self.persistence = persistence
+    }
 
     var body: some View {
         Group {
@@ -22,12 +29,13 @@ struct RootView: View {
                     ProgressView()
                         .accessibilityIdentifier("playback.loading")
                 }
-            } else if FixtureFeed.isEnabled || FixtureAnalysis.isEnabled {
-                if let fixtureFeedViewModel, let fixtureAnalysisViewModel, let fixtureDownloadManager {
+            } else if FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch {
+                if let fixtureFeedViewModel, let fixtureAnalysisViewModel, let fixtureDownloadManager, let queueStore {
                     PodcastDetailView(
                         viewModel: fixtureFeedViewModel,
                         analysisViewModel: fixtureAnalysisViewModel,
-                        downloadManager: fixtureDownloadManager
+                        downloadManager: fixtureDownloadManager,
+                        queueStore: queueStore
                     )
                 } else {
                     ProgressView()
@@ -54,28 +62,34 @@ struct RootView: View {
     }
 
     private func loadFixtureFeedIfNeeded() async {
-        guard FixtureFeed.isEnabled || FixtureAnalysis.isEnabled else { return }
+        guard FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch else { return }
         guard fixtureFeedViewModel == nil else { return }
 
         FixtureDownload.clearDownloadsDirectoryIfNeeded()
 
-        let store = InMemoryPodcastStore()
+        let context = persistence.viewContext
+        let store = PodcastStore(context: context)
         let feedViewModel = EpisodeListViewModel(parser: RSSParser(), store: store)
-        let cleaningStore = InMemoryCleaningToggleStore()
+        let cleaningStore = CleaningToggleStore(context: context)
         let analysisViewModel = AnalysisUIViewModel(
-            store: cleaningStore,
+            store: CleaningToggleStoreAdapter(cleaningStore),
             analyzer: InstantEpisodeAnalyzer(),
             autoAnalyzeOnEpisodeEnable: FixtureAnalysis.isEnabled
         )
-        let downloadStateStore = InMemoryDownloadStateStore()
+        let downloadStateStore = DownloadStateStore(context: context)
         let downloadManager = DownloadManager(
             downloadsDirectory: DownloadPaths.productionDownloadsDirectory,
-            stateStore: downloadStateStore
+            stateStore: InMemoryDownloadStateStore(backing: downloadStateStore)
         )
+        let queue = QueueStore(context: context)
+        if FixtureQueue.shouldResetOnLaunch {
+            try? queue.clear()
+        }
 
         fixtureFeedViewModel = feedViewModel
         fixtureAnalysisViewModel = analysisViewModel
         fixtureDownloadManager = downloadManager
+        queueStore = queue
 
         guard let data = FixtureFeed.bundledData() else { return }
         await feedViewModel.load(data: data)

@@ -19,18 +19,23 @@ final class EpisodeListViewModel {
     private(set) var phase: Phase = .idle
 
     private let parser: RSSParser
-    private let store: InMemoryPodcastStore
+    private let store: PodcastStore
 
-    init(parser: RSSParser, store: InMemoryPodcastStore) {
+    init(parser: RSSParser, store: PodcastStore) {
         self.parser = parser
         self.store = store
+    }
+
+    /// Pre–Slice 11 tests construct `InMemoryPodcastStore()`.
+    convenience init(parser: RSSParser, store: InMemoryPodcastStore) {
+        self.init(parser: parser, store: store.backing)
     }
 
     func load(feedURL: URL) async {
         phase = .loading
         do {
             let feed = try await parser.parse(url: feedURL)
-            store.save(feed)
+            try store.save(feed)
             phase = .loaded(feed)
         } catch let error as RSSParserError {
             phase = .failed(error)
@@ -43,7 +48,7 @@ final class EpisodeListViewModel {
         phase = .loading
         do {
             let feed = try parser.parse(data: data)
-            store.save(feed)
+            try store.save(feed)
             phase = .loaded(feed)
         } catch let error as RSSParserError {
             phase = .failed(error)

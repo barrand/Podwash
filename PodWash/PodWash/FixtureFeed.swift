@@ -11,7 +11,10 @@ enum FixtureFeed {
     static let launchArgument = "-UITestFixtureFeed"
 
     static var isEnabled: Bool {
-        ProcessInfo.processInfo.arguments.contains(launchArgument) || FixtureAnalysis.isEnabled
+        ProcessInfo.processInfo.arguments.contains(launchArgument)
+            || FixtureAnalysis.isEnabled
+            || FixtureQueue.isEnabled
+            || FixtureQueue.shouldPreserveOnLaunch
     }
 
     static func bundledData(in bundle: Bundle = .main) -> Data? {

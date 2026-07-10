@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22758" systemVersion="23F79" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="PodWash">
+    <entity name="CDPodcast" representedClassName="CDPodcast" syncable="YES" codeGenerationType="class">
+        <attribute name="artworkURLString" optional="YES" attributeType="String"/>
+        <attribute name="channelCleaningEnabled" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="feedDescription" optional="YES" attributeType="String"/>
+        <attribute name="title" attributeType="String" defaultValueString=""/>
+        <relationship name="episodes" optional="YES" toMany="YES" deletionRule="Cascade" ordered="YES" destinationEntity="CDEpisode" inverseName="podcast" inverseEntity="CDEpisode"/>
+    </entity>
+    <entity name="CDEpisode" representedClassName="CDEpisode" syncable="YES" codeGenerationType="class">
+        <attribute name="artworkURLString" optional="YES" attributeType="String"/>
+        <attribute name="audioURLString" optional="YES" attributeType="String"/>
+        <attribute name="downloadStateRaw" attributeType="String" defaultValueString="notDownloaded"/>
+        <attribute name="episodeCleaningEnabled" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="String" defaultValueString=""/>
+        <attribute name="isPlayed" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="playbackPosition" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="pubDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="showNotes" optional="YES" attributeType="String"/>
+        <attribute name="title" attributeType="String" defaultValueString=""/>
+        <relationship name="podcast" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="CDPodcast" inverseName="episodes" inverseEntity="CDPodcast"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="CDQueueEntry" representedClassName="CDQueueEntry" syncable="YES" codeGenerationType="class">
+        <attribute name="episodeID" attributeType="String" defaultValueString=""/>
+        <attribute name="sortIndex" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+    </entity>
+</model>

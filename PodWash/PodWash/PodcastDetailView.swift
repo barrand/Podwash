@@ -2,7 +2,7 @@
 //  PodcastDetailView.swift
 //  PodWash
 //
-//  Slice 06 — Podcast header + feed states (slice-06-ux.md).
+//  Slice 06/11 — Podcast header + feed states + up-next queue (slice-06-ux, slice-11-queue-resume-ux).
 //
 
 import SwiftUI
@@ -11,6 +11,8 @@ struct PodcastDetailView: View {
     @Bindable var viewModel: EpisodeListViewModel
     @Bindable var analysisViewModel: AnalysisUIViewModel
     var downloadManager: DownloadManager
+    var queueStore: QueueStore
+    @State private var queueRevision = 0
 
     var body: some View {
         return Group {
@@ -42,12 +44,16 @@ struct PodcastDetailView: View {
     }
 
     private func loadedView(_ feed: PodcastFeed) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let _ = queueRevision
+        return VStack(alignment: .leading, spacing: 0) {
             podcastHeader(feed)
+            upNextSection(feed: feed)
             EpisodeListView(
                 feed: feed,
                 analysisViewModel: analysisViewModel,
-                downloadManager: downloadManager
+                downloadManager: downloadManager,
+                queueStore: queueStore,
+                onQueueChanged: { queueRevision += 1 }
             )
         }
     }
@@ -60,6 +66,57 @@ struct PodcastDetailView: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityIdentifier("feed.empty")
                 .accessibilityLabel("No episodes")
+        }
+    }
+
+    private func upNextSection(feed: PodcastFeed) -> some View {
+        let ids = queueStore.queueEpisodeIDs()
+        let titleByID = Dictionary(uniqueKeysWithValues: feed.episodes.map { ($0.id, $0.title) })
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("Up Next")
+                .font(.headline)
+                .padding(.horizontal)
+                .padding(.top, 8)
+
+            if ids.isEmpty {
+                Text("Nothing queued")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityIdentifier("queueEmpty")
+                    .accessibilityLabel("Nothing queued")
+            }
+
+            VStack(spacing: 0) {
+                ForEach(Array(ids.enumerated()), id: \.element) { index, episodeID in
+                    HStack {
+                        Text(titleByID[episodeID] ?? episodeID)
+                            .lineLimit(2)
+                        Spacer()
+                        Button("Remove") {
+                            try? queueStore.remove(episodeID)
+                            queueRevision += 1
+                        }
+                        .accessibilityIdentifier("queueRemoveButton_\(index)")
+                        .accessibilityLabel("Remove from queue")
+                        .accessibilityValue(episodeID)
+                        .accessibilityHint("Removes this episode from up next.")
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("queueCell_\(index)")
+                    .accessibilityLabel(titleByID[episodeID] ?? episodeID)
+                    .accessibilityValue(episodeID)
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("queueList")
+            .accessibilityLabel("Up next")
+            .accessibilityValue("\(ids.count)")
         }
     }
 

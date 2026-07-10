@@ -9,11 +9,48 @@ import Foundation
 import Observation
 import UIKit
 
+@MainActor
+protocol CleaningToggleStoring: AnyObject {
+    var isChannelCleaningEnabled: Bool { get }
+    var enabledEpisodeIDs: Set<String> { get }
+    func isEpisodeCleaningEnabled(_ episodeID: String) -> Bool
+    func setChannelCleaning(_ enabled: Bool)
+    func setEpisodeCleaning(_ episodeID: String, enabled: Bool)
+}
+
+/// Adapts throwing `CleaningToggleStore` mutators to the non-throwing UI protocol.
+@MainActor
+final class CleaningToggleStoreAdapter: CleaningToggleStoring {
+    nonisolated(unsafe) private let store: CleaningToggleStore
+
+    init(_ store: CleaningToggleStore) {
+        self.store = store
+    }
+
+    // Avoid MainActor/TaskLocal deinit crash (same pattern as AnalysisUIViewModel).
+    nonisolated deinit {}
+
+    var isChannelCleaningEnabled: Bool { store.isChannelCleaningEnabled }
+    var enabledEpisodeIDs: Set<String> { store.enabledEpisodeIDs }
+
+    func isEpisodeCleaningEnabled(_ episodeID: String) -> Bool {
+        store.isEpisodeCleaningEnabled(episodeID)
+    }
+
+    func setChannelCleaning(_ enabled: Bool) {
+        try? store.setChannelCleaning(enabled)
+    }
+
+    func setEpisodeCleaning(_ episodeID: String, enabled: Bool) {
+        try? store.setEpisodeCleaning(episodeID, enabled: enabled)
+    }
+}
+
 @MainActor @Observable
 final class AnalysisUIViewModel {
     private(set) var state: AnalysisUIState = .off
     private(set) var isChannelCleaningEnabled = false
-    @ObservationIgnored let store: InMemoryCleaningToggleStore
+    @ObservationIgnored let store: any CleaningToggleStoring
     private(set) var analyzingEpisodeID: String?
     private(set) var contentGeneration = 0
 
@@ -22,7 +59,7 @@ final class AnalysisUIViewModel {
     @ObservationIgnored var onAnalyzingEpisodeIDChanged: (() -> Void)?
 
     init(
-        store: InMemoryCleaningToggleStore,
+        store: any CleaningToggleStoring,
         analyzer: InstantEpisodeAnalyzer,
         autoAnalyzeOnEpisodeEnable: Bool = false
     ) {
