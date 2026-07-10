@@ -18,7 +18,7 @@ todos:
     content: "P1: JSONL event log + Cursor-like role/phase timeline; SUMMARY line contract for workers"
     status: pending
   - id: narrator
-    content: "P1: Shift-floor narrator — named agents (E/Q/A/P/U initials), template narration from events, referee-written handoff lines"
+    content: "P1: Shift-floor narrator — named agents (E/Q/A/P/U initials), template narration from events, referee-written handoff lines, Murphy the failure-mascot monkey with mandatory exoneration beat"
     status: pending
   - id: pipeline-only
     content: "P1: Pipeline mode only for unattended; implement gate = tier-2 green; cap implement verify runs; exit 6 for infra"
@@ -157,6 +157,25 @@ Every spawned worker gets a **name drawn from a role-initial pool**, assigned at
 - Referee verdict: `⚖️ Rhea rules: primary failure is the unit cancel test, app-side. Elena (Engineer) gets the ticket — fresh eyes, Edison's notes attached.`
 - Ledger block: `Rhea checked the logbook — Elena's theory matches Edison's failed attempt. Halting before we burn tokens on a rerun.`
 - Done: keep the existing ASCII celebration banner, narrated: `🏁 Quinn signs the sheet: 45/45. Slice 10 ships. Edison, Elena — good shift.`
+
+### Murphy, the factory monkey (failure mascot)
+
+The factory has one resident villain: **Murphy** 🐒, an evil monkey the whole floor blames when things go red (homage to Netflix's Chaos Monkey + Murphy's law). Every failed-test narration line carries the monkey emoji and a blame beat:
+
+- Red verify: `🐒 Quinn's report: 43/45 — Murphy's been at the download station again.`
+- Simulator crash: `🐒 Something knocked the simulator over. Murphy denies everything. Rhea is pulling the crash log.`
+- Flake suspicion (Murphy's true domain): `🐒 Rhea suspects Murphy — flake signals. Running the line once more before blaming the code.`
+- Cold retry passes: `Murphy confirmed. It ran green untouched. Logging the flake and moving on.`
+- Root cause found — **the exoneration beat** (mandatory): `Turns out it wasn't Murphy — the cancel gate fires before bytes flush. Edison owns it.`
+- Thrash halt: `🐒 Murphy wins this round. Halting — logbook and stuck card are on the desk. (exit=5)`
+- Green Done: `Not a monkey in sight. 45/45.`
+
+**Guardrails (why this isn't a terrible idea, kept honest):**
+
+1. **Narration layer only.** Murphy never appears in structured fields, ledger entries, stuck cards, or the JSONL event log — those state the literal failure. The monkey is a rendering, like the names.
+2. **Exoneration is mandatory.** Any failure the referee attributes to a real cause gets the "wasn't Murphy" beat naming the actual bug and owner. Blame-the-monkey is a placeholder for *undiagnosed*, never a resting state — the factory culture stays "bugs are ours."
+3. **Flake is the one place Murphy is canon.** When the cold-retry policy confirms a flake (green with no code change), the narration credits Murphy — which is truthful: nondeterminism really is an outside agent.
+4. Template-driven like the rest of the narrator: the 🐒 emoji triggers off `verify_end.failed > 0` and crash events; blame/exoneration lines are Python templates keyed off referee verdict fields. Zero extra LLM cost.
 
 **Implementation (two layers, cheap by design):**
 
