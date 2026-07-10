@@ -97,10 +97,22 @@ final class PlaybackEngine: PlaybackPausing {
     func setRate(_ rate: Float) {
         let resolved = Self.nearestSupportedRate(to: rate)
         selectedRate = resolved
-        // Assign rate in place only — do not call play/pause/playImmediately here,
-        // which would re-enter `.playing` and double-fire live timeControlStatus KVO.
-        if player.timeControlStatus == .playing, abs(player.rate - resolved) > 0.0001 {
+
+        // Only touch AVPlayer while actively playing (or mid-rate). Prefer an
+        // in-place `rate` write; if that parks us in waiting/paused, resume with
+        // `playImmediately` so callers still observe `.playing` at `resolved`.
+        let isActivelyPlaying =
+            player.timeControlStatus == .playing || abs(player.rate) > 0.0001
+        guard isActivelyPlaying else {
+            touchUI()
+            return
+        }
+
+        if abs(player.rate - resolved) > 0.0001 {
             player.rate = resolved
+        }
+        if player.timeControlStatus != .playing {
+            player.playImmediately(atRate: resolved)
         }
         touchUI()
     }

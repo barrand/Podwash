@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 12 |
 | **Title** | Variable speed + sleep timer |
-| **Status** | Ready |
+| **Status** | Done |
 | **Crux** | Discrete playback-rate changes apply to `AVPlayer.rate` without remapping media-timeline mute ramp boundaries, and a sleep timer with an injectable `Clock` pauses playback exactly once on deadline — all assertable without wall-clock waits. |
 
 ## PRD / spec references
@@ -97,7 +97,7 @@ scripts/verify.sh
 > A slice without a recorded full-suite green artifact is not Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=55 passed=55 failed=0 skipped=0 filtered=0 bundle=build/test-results/verify-20260710-135547.xcresult tier=3 class=tests
 ```
 
 ## Plan review record (coordinator fills before downstream roles)
