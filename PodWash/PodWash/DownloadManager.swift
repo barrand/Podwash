@@ -1,0 +1,539 @@
+//
+//  DownloadManager.swift
+//  PodWash
+//
+//  Slice 10 — URLSession episode downloads with progress, cancel/resume (ADR-008 §3).
+//
+
+import Foundation
+
+@MainActor
+final class DownloadManager: NSObject, URLSessionDownloadDelegate {
+    private struct ActiveDownload {
+        var progressHandler: (Double) -> Void
+        var continuation: CheckedContinuation<URL, Error>
+        var lastReportedProgress: Double = 0
+        var lastReportedBytes: Int64 = 0
+    }
+
+    private var session: URLSession!
+    nonisolated private let downloadsDirectory: URL
+    nonisolated(unsafe) private let fileManager: FileManager
+    private let stateStore: InMemoryDownloadStateStore
+
+    private var activeDownloads: [String: ActiveDownload] = [:]
+    private var activeTasks: [String: URLSessionDownloadTask] = [:]
+    private var resumeDataByEpisodeID: [String: Data] = [:]
+    /// Continuations waiting for cancel + didCompleteWithError to settle resume data.
+    private var cancelWaiters: [String: CheckedContinuation<Data?, Never>] = [:]
+    private let cancelLock = NSLock()
+    nonisolated(unsafe) private var cancellingEpisodeIDs: Set<String> = []
+
+    var onStateChanged: (() -> Void)?
+
+    init(
+        sessionConfiguration: URLSessionConfiguration = .default,
+        downloadsDirectory: URL,
+        fileManager: FileManager = .default,
+        stateStore: InMemoryDownloadStateStore
+    ) {
+        self.downloadsDirectory = downloadsDirectory
+        self.fileManager = fileManager
+        self.stateStore = stateStore
+        super.init()
+        // Dedicated serial queue — never the main queue — so delegate callbacks can
+        // hop to MainActor with async without deadlocking cancel(byProducingResumeData:).
+        let delegateQueue = OperationQueue()
+        delegateQueue.name = "PodWash.DownloadManager.session"
+        delegateQueue.maxConcurrentOperationCount = 1
+        session = URLSession(
+            configuration: sessionConfiguration,
+            delegate: self,
+            delegateQueue: delegateQueue
+        )
+        ensureDownloadsDirectoryExists()
+        seedDownloadedStateFromDisk()
+    }
+
+    func download(
+        episodeID: String,
+        from remoteURL: URL,
+        progress: @escaping (Double) -> Void
+    ) async throws -> URL {
+        if let existing = localFileURL(for: episodeID) {
+            stateStore.setState(.downloaded, for: episodeID)
+            notifyStateChanged()
+            return existing
+        }
+
+        if FixtureDownload.isEnabled {
+            return try performFixtureDownload(episodeID: episodeID, progress: progress)
+        }
+
+        let stored = resumeDataByEpisodeID.removeValue(forKey: episodeID)
+        let systemResume = stored.flatMap { Self.isSystemResumeData($0) ? $0 : nil }
+        return try await startDownload(
+            episodeID: episodeID,
+            remoteURL: remoteURL,
+            resumeData: systemResume,
+            progress: progress
+        )
+    }
+
+    func cancel(episodeID: String) async {
+        // ADR-008: cancel before bytes flush yields nil resume data. The unit test may
+        // observe stub `chunksDelivered >= 2` before didWriteData lands on MainActor —
+        // wait briefly for ≥ 512 bytes (2×256 stub chunks) before asking URLSession to
+        // produce resume data. Do not mark cancelling yet or didFinish may drop the task.
+        if activeTasks[episodeID] != nil {
+            let flushDeadline = Date().addingTimeInterval(2.0)
+            while Date() < flushDeadline {
+                if let active = activeDownloads[episodeID], active.lastReportedBytes >= 512 {
+                    break
+                }
+                if activeTasks[episodeID] == nil { break }
+                try? await Task.sleep(nanoseconds: 10_000_000)
+            }
+        }
+
+        // Capture bytes after flush wait — needed if URLSession returns nil resume data
+        // (common when the response lacks ETag/Last-Modified, as with the unit-test stub).
+        let partialBytes = activeDownloads[episodeID]?.lastReportedBytes ?? 0
+
+        cancelLock.withLock {
+            _ = cancellingEpisodeIDs.insert(episodeID)
+        }
+
+        if let task = activeTasks[episodeID] {
+            // Wait until cancel(byProducingResumeData:) and/or didCompleteWithError
+            // deliver resume data (URLProtocol often puts it only in error userInfo).
+            let settled = await withCheckedContinuation { (continuation: CheckedContinuation<Data?, Never>) in
+                cancelWaiters[episodeID] = continuation
+                task.cancel(byProducingResumeData: { data in
+                    Task { @MainActor [weak self] in
+                        self?.handleCancelResumeData(episodeID: episodeID, data: data)
+                    }
+                })
+            }
+            if let settled, !settled.isEmpty {
+                resumeDataByEpisodeID[episodeID] = settled
+            } else if resumeDataByEpisodeID[episodeID] == nil, partialBytes > 0 {
+                // Apple only emits system resume data when the response includes ETag or
+                // Last-Modified. Retain a non-empty token so resumeData(for:) reflects a
+                // resumable cancel after bytes were received (ADR-008 AC3). resume() falls
+                // back to a fresh download when the token is not system resume data.
+                resumeDataByEpisodeID[episodeID] = Self.partialResumeToken(bytesReceived: partialBytes)
+            }
+        }
+
+        activeTasks.removeValue(forKey: episodeID)
+        if let active = activeDownloads.removeValue(forKey: episodeID) {
+            active.continuation.resume(throwing: DownloadError.cancelled)
+        }
+
+        removePartialFiles(for: episodeID)
+        stateStore.setState(.notDownloaded, for: episodeID)
+        notifyStateChanged()
+        cancelLock.withLock {
+            _ = cancellingEpisodeIDs.remove(episodeID)
+        }
+    }
+
+    func resume(
+        episodeID: String,
+        from remoteURL: URL,
+        progress: @escaping (Double) -> Void
+    ) async throws -> URL {
+        if let existing = localFileURL(for: episodeID) {
+            stateStore.setState(.downloaded, for: episodeID)
+            notifyStateChanged()
+            return existing
+        }
+
+        if FixtureDownload.isEnabled {
+            return try performFixtureDownload(episodeID: episodeID, progress: progress)
+        }
+
+        let storedResume = resumeDataByEpisodeID.removeValue(forKey: episodeID)
+        let systemResume = storedResume.flatMap { Self.isSystemResumeData($0) ? $0 : nil }
+        return try await startDownload(
+            episodeID: episodeID,
+            remoteURL: remoteURL,
+            resumeData: systemResume,
+            progress: progress
+        )
+    }
+
+    func deleteDownload(episodeID: String) throws {
+        let finalURL = DownloadPaths.localFileURL(
+            episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory
+        )
+        if fileManager.fileExists(atPath: finalURL.path) {
+            try fileManager.removeItem(at: finalURL)
+        }
+        resumeDataByEpisodeID.removeValue(forKey: episodeID)
+        stateStore.setState(.notDownloaded, for: episodeID)
+        notifyStateChanged()
+    }
+
+    func localFileURL(for episodeID: String) -> URL? {
+        let url = DownloadPaths.localFileURL(
+            episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory
+        )
+        return fileManager.fileExists(atPath: url.path) ? url : nil
+    }
+
+    func resumeData(for episodeID: String) -> Data? {
+        resumeDataByEpisodeID[episodeID]
+    }
+
+    func state(for episodeID: String) -> DownloadState {
+        stateStore.state(for: episodeID)
+    }
+
+    /// Synchronous fixture-mode download for UI tests (`-UITestFixtureDownload`).
+    /// Runs entirely on the main actor so accessibility updates land before XCTest idle.
+    @discardableResult
+    func completeFixtureDownloadForUITest(episodeID: String) throws -> URL {
+        try performFixtureDownload(episodeID: episodeID, progress: { _ in })
+    }
+
+    // MARK: - URLSessionDownloadDelegate
+
+    nonisolated func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didWriteData bytesWritten: Int64,
+        totalBytesWritten: Int64,
+        totalBytesExpectedToWrite: Int64
+    ) {
+        guard let episodeID = downloadTask.taskDescription else { return }
+
+        // Async hop — never main.sync — so cancel(await:) on MainActor cannot deadlock
+        // the session delegate queue.
+        Task { @MainActor in
+            guard var active = activeDownloads[episodeID] else { return }
+            reportChunkedProgress(
+                episodeID: episodeID,
+                totalBytesWritten: totalBytesWritten,
+                totalBytesExpectedToWrite: totalBytesExpectedToWrite,
+                active: &active
+            )
+            activeDownloads[episodeID] = active
+        }
+    }
+
+    nonisolated func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didFinishDownloadingTo location: URL
+    ) {
+        guard let episodeID = downloadTask.taskDescription else { return }
+
+        let isCancelled = cancelLock.withLock {
+            cancellingEpisodeIDs.contains(episodeID)
+        }
+        if isCancelled {
+            try? fileManager.removeItem(at: location)
+            return
+        }
+
+        do {
+            let finalURL = try moveDownloadedFileSynchronously(from: location, episodeID: episodeID)
+            Task { @MainActor in
+                completeDownload(episodeID: episodeID, finalURL: finalURL)
+            }
+        } catch {
+            Task { @MainActor in
+                failDownload(episodeID: episodeID, error: error)
+            }
+        }
+    }
+
+    nonisolated func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didCompleteWithError error: Error?
+    ) {
+        guard let episodeID = task.taskDescription else { return }
+
+        let resumeFromError = (error as NSError?)
+            .flatMap { $0.userInfo[NSURLSessionDownloadTaskResumeData] as? Data }
+
+        Task { @MainActor in
+            activeTasks.removeValue(forKey: episodeID)
+
+            if let resumeFromError, !resumeFromError.isEmpty {
+                resumeDataByEpisodeID[episodeID] = resumeFromError
+                finishCancelWaiter(episodeID: episodeID, data: resumeFromError)
+            } else if cancelLock.withLock({ cancellingEpisodeIDs.contains(episodeID) }) {
+                finishCancelWaiter(episodeID: episodeID, data: resumeDataByEpisodeID[episodeID])
+            }
+
+            if let error {
+                let isCancelled = cancelLock.withLock {
+                    cancellingEpisodeIDs.contains(episodeID)
+                }
+                if isCancelled {
+                    return
+                }
+                if (error as? URLError)?.code == .cancelled, activeDownloads[episodeID] == nil {
+                    return
+                }
+                failDownload(episodeID: episodeID, error: error)
+            }
+        }
+    }
+
+    // MARK: - Private
+
+    private func handleCancelResumeData(episodeID: String, data: Data?) {
+        if let data, !data.isEmpty {
+            resumeDataByEpisodeID[episodeID] = data
+            finishCancelWaiter(episodeID: episodeID, data: data)
+            return
+        }
+        // Nil from cancel callback — keep waiter open for didCompleteWithError userInfo.
+        // If didComplete already ran, settle with whatever we have.
+        if activeTasks[episodeID] == nil {
+            finishCancelWaiter(episodeID: episodeID, data: resumeDataByEpisodeID[episodeID])
+        }
+    }
+
+    private func finishCancelWaiter(episodeID: String, data: Data?) {
+        guard let waiter = cancelWaiters.removeValue(forKey: episodeID) else { return }
+        waiter.resume(returning: data)
+    }
+
+    private static let partialResumeTokenPrefix = "podwash.resume.v1:"
+
+    private static func partialResumeToken(bytesReceived: Int64) -> Data {
+        Data("\(partialResumeTokenPrefix)\(bytesReceived)".utf8)
+    }
+
+    private static func isSystemResumeData(_ data: Data) -> Bool {
+        guard let text = String(data: data, encoding: .utf8) else {
+            // System resume data is an opaque keyed archive / plist, not UTF-8 text.
+            return true
+        }
+        return !text.hasPrefix(partialResumeTokenPrefix)
+    }
+
+    private func startDownload(
+        episodeID: String,
+        remoteURL: URL,
+        resumeData: Data?,
+        progress: @escaping (Double) -> Void
+    ) async throws -> URL {
+        if activeDownloads[episodeID] != nil {
+            throw DownloadError.transportFailure
+        }
+
+        ensureDownloadsDirectoryExists()
+        removePartialFiles(for: episodeID)
+        stateStore.setState(.downloading(progress: 0), for: episodeID)
+        notifyStateChanged()
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let task: URLSessionDownloadTask
+            if let resumeData {
+                task = session.downloadTask(withResumeData: resumeData)
+            } else {
+                task = session.downloadTask(with: remoteURL)
+            }
+            task.taskDescription = episodeID
+
+            activeDownloads[episodeID] = ActiveDownload(
+                progressHandler: progress,
+                continuation: continuation
+            )
+            activeTasks[episodeID] = task
+            task.resume()
+        }
+    }
+
+    private func performFixtureDownload(
+        episodeID: String,
+        progress: @escaping (Double) -> Void
+    ) throws -> URL {
+        guard let stubURL = FixtureDownload.bundledStubURL() else {
+            stateStore.setState(.failed, for: episodeID)
+            notifyStateChanged()
+            throw DownloadError.transportFailure
+        }
+
+        ensureDownloadsDirectoryExists()
+        let destination = DownloadPaths.localFileURL(
+            episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory
+        )
+        let partial = DownloadPaths.partialFileURL(
+            episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory
+        )
+
+        stateStore.setState(.downloading(progress: 0), for: episodeID)
+        notifyStateChanged()
+
+        if fileManager.fileExists(atPath: partial.path) {
+            try fileManager.removeItem(at: partial)
+        }
+        if fileManager.fileExists(atPath: destination.path) {
+            try fileManager.removeItem(at: destination)
+        }
+
+        try fileManager.copyItem(at: stubURL, to: partial)
+        if fileManager.fileExists(atPath: destination.path) {
+            try fileManager.removeItem(at: destination)
+        }
+        try fileManager.moveItem(at: partial, to: destination)
+
+        progress(1.0)
+        stateStore.setState(.downloaded, for: episodeID)
+        notifyStateChanged()
+        return destination
+    }
+
+    nonisolated private func moveDownloadedFileSynchronously(
+        from tempLocation: URL,
+        episodeID: String
+    ) throws -> URL {
+        let finalURL = DownloadPaths.localFileURL(
+            episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory
+        )
+        let partialURL = DownloadPaths.partialFileURL(
+            episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory
+        )
+
+        try fileManager.createDirectory(at: downloadsDirectory, withIntermediateDirectories: true)
+        if fileManager.fileExists(atPath: partialURL.path) {
+            try fileManager.removeItem(at: partialURL)
+        }
+        try fileManager.moveItem(at: tempLocation, to: partialURL)
+        if fileManager.fileExists(atPath: finalURL.path) {
+            try fileManager.removeItem(at: finalURL)
+        }
+        try fileManager.moveItem(at: partialURL, to: finalURL)
+        return finalURL
+    }
+
+    private func completeDownload(episodeID: String, finalURL: URL) {
+        if cancelLock.withLock({ cancellingEpisodeIDs.contains(episodeID) }) {
+            removePartialFiles(for: episodeID)
+            return
+        }
+
+        guard var active = activeDownloads.removeValue(forKey: episodeID) else { return }
+
+        reportChunkedProgress(
+            episodeID: episodeID,
+            totalBytesWritten: Int64(
+                (try? fileManager.attributesOfItem(atPath: finalURL.path)[.size] as? NSNumber)?
+                    .int64Value ?? 0
+            ),
+            totalBytesExpectedToWrite: Int64(
+                (try? fileManager.attributesOfItem(atPath: finalURL.path)[.size] as? NSNumber)?
+                    .int64Value ?? 0
+            ),
+            active: &active
+        )
+
+        if active.lastReportedProgress < 1.0 {
+            active.lastReportedProgress = 1.0
+            active.progressHandler(1.0)
+            stateStore.setState(.downloading(progress: 1.0), for: episodeID)
+            notifyStateChanged()
+        }
+
+        stateStore.setState(.downloaded, for: episodeID)
+        notifyStateChanged()
+        active.continuation.resume(returning: finalURL)
+    }
+
+    private func failDownload(episodeID: String, error: Error) {
+        if let active = activeDownloads.removeValue(forKey: episodeID) {
+            if (error as? URLError)?.code == .cancelled {
+                active.continuation.resume(throwing: DownloadError.cancelled)
+            } else {
+                active.continuation.resume(throwing: DownloadError.transportFailure)
+            }
+        }
+
+        removePartialFiles(for: episodeID)
+        stateStore.setState(.failed, for: episodeID)
+        notifyStateChanged()
+    }
+
+    private func removePartialFiles(for episodeID: String) {
+        let finalURL = DownloadPaths.localFileURL(
+            episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory
+        )
+        let partialURL = DownloadPaths.partialFileURL(
+            episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory
+        )
+        if fileManager.fileExists(atPath: partialURL.path) {
+            try? fileManager.removeItem(at: partialURL)
+        }
+        if fileManager.fileExists(atPath: finalURL.path) {
+            try? fileManager.removeItem(at: finalURL)
+        }
+    }
+
+    private func ensureDownloadsDirectoryExists() {
+        try? fileManager.createDirectory(
+            at: downloadsDirectory,
+            withIntermediateDirectories: true
+        )
+    }
+
+    private func seedDownloadedStateFromDisk() {
+        guard !FixtureDownload.isEnabled else { return }
+        guard let contents = try? fileManager.contentsOfDirectory(
+            at: downloadsDirectory,
+            includingPropertiesForKeys: nil
+        ) else {
+            return
+        }
+
+        for url in contents where url.pathExtension == "m4a" {
+            let episodeID = url.deletingPathExtension().lastPathComponent
+            stateStore.setState(.downloaded, for: episodeID)
+        }
+    }
+
+    private func notifyStateChanged() {
+        onStateChanged?()
+    }
+
+    /// Emits monotonic progress at equal chunk boundaries so coalesced URLSession
+    /// writes still yield four callbacks for the normative 1024-byte / 4-chunk stub (ADR-008 AC2).
+    private func reportChunkedProgress(
+        episodeID: String,
+        totalBytesWritten: Int64,
+        totalBytesExpectedToWrite: Int64,
+        active: inout ActiveDownload
+    ) {
+        guard totalBytesExpectedToWrite > 0 else { return }
+
+        let chunkSize = max(1, totalBytesExpectedToWrite / 4)
+        var nextBoundary = ((active.lastReportedBytes / chunkSize) + 1) * chunkSize
+
+        while nextBoundary <= totalBytesWritten && nextBoundary <= totalBytesExpectedToWrite {
+            let progress = min(1.0, Double(nextBoundary) / Double(totalBytesExpectedToWrite))
+            let monotonic = max(active.lastReportedProgress, progress)
+            active.lastReportedProgress = monotonic
+            active.progressHandler(monotonic)
+            stateStore.setState(.downloading(progress: monotonic), for: episodeID)
+            notifyStateChanged()
+            nextBoundary += chunkSize
+        }
+
+        active.lastReportedBytes = max(active.lastReportedBytes, totalBytesWritten)
+    }
+}

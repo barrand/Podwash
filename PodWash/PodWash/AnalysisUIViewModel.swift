@@ -120,9 +120,10 @@ final class AnalysisUIViewModel {
         // actor with `Task.sleep` (does not block XCTest idleness the way
         // `DispatchQueue.main.asyncAfter` does) so the progress control stays in
         // the AX tree for the 2 s appear window. Clear only after analyze returns.
-        // Keep toggle→done under AC ≤5 s.
+        // Keep toggle→done under AC ≤5 s. Use 3.5 s so post-tap work from the
+        // download accessory / SwiftUI update can settle before the window closes.
         if FixtureAnalysis.isEnabled {
-            try? await Task.sleep(for: .milliseconds(2_250))
+            try? await Task.sleep(for: .milliseconds(3_500))
         }
 
         let identity = EpisodeIdentity(id: episodeID)

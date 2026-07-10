@@ -10,6 +10,7 @@ import SwiftUI
 struct PodcastDetailView: View {
     @Bindable var viewModel: EpisodeListViewModel
     @Bindable var analysisViewModel: AnalysisUIViewModel
+    var downloadManager: DownloadManager
 
     var body: some View {
         return Group {
@@ -43,7 +44,11 @@ struct PodcastDetailView: View {
     private func loadedView(_ feed: PodcastFeed) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             podcastHeader(feed)
-            EpisodeListView(feed: feed, analysisViewModel: analysisViewModel)
+            EpisodeListView(
+                feed: feed,
+                analysisViewModel: analysisViewModel,
+                downloadManager: downloadManager
+            )
         }
     }
 

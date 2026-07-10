@@ -11,6 +11,7 @@ struct RootView: View {
     @State private var fixtureEngine: PlaybackEngine?
     @State private var fixtureFeedViewModel: EpisodeListViewModel?
     @State private var fixtureAnalysisViewModel: AnalysisUIViewModel?
+    @State private var fixtureDownloadManager: DownloadManager?
 
     var body: some View {
         Group {
@@ -22,10 +23,11 @@ struct RootView: View {
                         .accessibilityIdentifier("playback.loading")
                 }
             } else if FixtureFeed.isEnabled || FixtureAnalysis.isEnabled {
-                if let fixtureFeedViewModel, let fixtureAnalysisViewModel {
+                if let fixtureFeedViewModel, let fixtureAnalysisViewModel, let fixtureDownloadManager {
                     PodcastDetailView(
                         viewModel: fixtureFeedViewModel,
-                        analysisViewModel: fixtureAnalysisViewModel
+                        analysisViewModel: fixtureAnalysisViewModel,
+                        downloadManager: fixtureDownloadManager
                     )
                 } else {
                     ProgressView()
@@ -55,6 +57,8 @@ struct RootView: View {
         guard FixtureFeed.isEnabled || FixtureAnalysis.isEnabled else { return }
         guard fixtureFeedViewModel == nil else { return }
 
+        FixtureDownload.clearDownloadsDirectoryIfNeeded()
+
         let store = InMemoryPodcastStore()
         let feedViewModel = EpisodeListViewModel(parser: RSSParser(), store: store)
         let cleaningStore = InMemoryCleaningToggleStore()
@@ -63,9 +67,15 @@ struct RootView: View {
             analyzer: InstantEpisodeAnalyzer(),
             autoAnalyzeOnEpisodeEnable: FixtureAnalysis.isEnabled
         )
+        let downloadStateStore = InMemoryDownloadStateStore()
+        let downloadManager = DownloadManager(
+            downloadsDirectory: DownloadPaths.productionDownloadsDirectory,
+            stateStore: downloadStateStore
+        )
 
         fixtureFeedViewModel = feedViewModel
         fixtureAnalysisViewModel = analysisViewModel
+        fixtureDownloadManager = downloadManager
 
         guard let data = FixtureFeed.bundledData() else { return }
         await feedViewModel.load(data: data)
