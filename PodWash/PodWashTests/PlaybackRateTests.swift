@@ -75,17 +75,11 @@ final class PlaybackRateTests: XCTestCase {
     }
 
     private func waitForPlaying(_ engine: PlaybackEngine, timeout: TimeInterval = 5) {
-        let expectation = expectation(description: "timeControlStatus reaches playing")
-        let observation = engine.avPlayer.observe(\.timeControlStatus, options: [.new]) { player, _ in
-            if player.timeControlStatus == .playing {
-                expectation.fulfill()
-            }
+        let pred = NSPredicate { _, _ in
+            engine.avPlayer.timeControlStatus == .playing
         }
-        addTeardownBlock { [engine] in
-            engine.pause()
-            observation.invalidate()
-        }
-        wait(for: [expectation], timeout: timeout)
+        let exp = expectation(for: pred, evaluatedWith: nil)
+        wait(for: [exp], timeout: timeout)
     }
 
     // MARK: - AC1: supported rates match AVPlayer.rate while playing
