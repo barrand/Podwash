@@ -21,12 +21,24 @@ from failure_packet import (
     build_failure_packet,
     extract_slice_swift_paths,
     format_stuck_card,
-    merge_diagnose_into_packet,
-    parse_diagnose_reply,
     persist_stuck_card,
     is_flake_signal,
+    slice_id_from_path,
 )
-from fix_playbooks import select_lever, starter_lever_text
+from hypothesis_ledger import (
+    append_ledger,
+    format_ledger_for_prompt,
+    hypothesis_seen,
+    load_ledger,
+    make_entry,
+)
+from referee import (
+    RefereeError,
+    RefereeVerdict,
+    apply_verdict_to_packet,
+    build_referee_prompt,
+    parse_referee_reply,
+)
 from slice_loop_progress import (
     ThrashHalt,
     _implement_artifacts_exist,
@@ -63,6 +75,7 @@ ROLE_MODELS: dict[str, str] = {
     "PM review": "composer-2.5",
     "QA review": "composer-2.5",
     "Architect review": "grok-4.5",
+    "Referee": "composer-2.5",
 }
 
 ROLE_AGENT_FILES: dict[str, str] = {
@@ -74,10 +87,11 @@ ROLE_AGENT_FILES: dict[str, str] = {
     "PM review": "podwash-pm.md",
     "QA review": "podwash-qa.md",
     "Architect review": "podwash-architect.md",
+    "Referee": "podwash-qa.md",
 }
 
-# Reviewers run in SDK plan mode (read-only). Authors/fixers use agent mode.
-PLAN_MODE_ROLES = frozenset({"PM review", "QA review", "Architect review"})
+# Reviewers + referee run in SDK plan mode (read-only). Authors/fixers use agent mode.
+PLAN_MODE_ROLES = frozenset({"PM review", "QA review", "Architect review", "Referee"})
 
 GateId = Literal[
     "story",
@@ -238,6 +252,47 @@ class VerifyOutcome:
     output: str = ""
     elapsed_secs: float = 0.0
     packet: FailurePacket | None = None
+    tier: int = 3
+
+
+def test_ids_for_tier1(packet: FailurePacket | None, failures: list[str]) -> list[str]:
+    """Stable -only-testing: ids for tier-1 re-verify (failed tests first)."""
+    ids: list[str] = []
+    if packet:
+        for tid in packet.test_ids:
+            t = (tid or "").strip()
+            if t and t not in ids:
+                ids.append(t)
+    if not ids:
+        for f in failures or []:
+            if f.lower().startswith("xcodebuild"):
+                continue
+            # Prefer "Class/test()" prefix before em-dash detail
+            head = re.split(r"\s+[—–-]\s+", f, maxsplit=1)[0].strip()
+            if head and ("/" in head or head.startswith("PodWash")):
+                if head not in ids:
+                    ids.append(head)
+    return ids
+
+
+def verify_env_for_tier(
+    tier: int,
+    *,
+    failed_tests: list[str] | None = None,
+    slice_tests: list[str] | None = None,
+) -> dict[str, str]:
+    """Environment overrides passed to scripts/verify.sh for a given tier."""
+    env = {"VERIFY_TIER": str(tier)}
+    if tier == 1:
+        ids = failed_tests or []
+        if not ids:
+            raise ValueError("tier 1 requires failed_tests")
+        env["VERIFY_FAILED_TESTS"] = " ".join(ids)
+    elif tier == 2:
+        ids = slice_tests or failed_tests or []
+        if ids:
+            env["VERIFY_SLICE_TESTS"] = " ".join(ids)
+    return env
 
 
 # ---------------------------------------------------------------------------
@@ -455,19 +510,44 @@ def run_verify(
     log: LogFn | None = None,
     extra_args: list[str] | None = None,
     slice_file: str = "",
+    tier: int = 3,
+    failed_tests: list[str] | None = None,
+    slice_tests: list[str] | None = None,
+    env: dict[str, str] | None = None,
 ) -> VerifyOutcome:
-    """Run scripts/verify.sh as a subprocess; parse VERIFY RESULT as truth."""
+    """Run scripts/verify.sh as a subprocess; parse VERIFY RESULT as truth.
+
+    ``tier`` maps to VERIFY_TIER (0 build / 1 failed-tests / 2 slice / 3 full).
+    """
     _log = log or (lambda m: None)
     cmd = [VERIFY_SH if repo_root == REPO_ROOT_DEFAULT else os.path.join(repo_root, "scripts", "verify.sh")]
     if extra_args:
         cmd.extend(extra_args)
-    _log(f"loop-owned verify: {' '.join(cmd)}")
+    run_env = os.environ.copy()
+    try:
+        tier_env = verify_env_for_tier(
+            tier, failed_tests=failed_tests, slice_tests=slice_tests
+        )
+    except ValueError as exc:
+        _log(f"loop-owned verify aborted: {exc}")
+        return VerifyOutcome(
+            result={"exit": "1", "total": "?", "passed": "?", "failed": "?", "skipped": "?"},
+            green=False,
+            failures=[str(exc)],
+            output=str(exc),
+            tier=tier,
+        )
+    run_env.update(tier_env)
+    if env:
+        run_env.update(env)
+    _log(f"loop-owned verify: tier={tier} {' '.join(cmd)}")
     t0 = time.time()
     proc = subprocess.run(
         cmd,
         cwd=repo_root,
         capture_output=True,
         text=True,
+        env=run_env,
     )
     elapsed = time.time() - t0
     output = (proc.stdout or "") + "\n" + (proc.stderr or "")
@@ -480,7 +560,13 @@ def run_verify(
             "failed": "?",
             "skipped": "?",
         }
+    if result is not None and "tier" not in result:
+        result = dict(result)
+        result["tier"] = str(tier)
     green = verify_is_green(result)
+    # Tier 0 is build-only — green when exit=0 (no tests executed).
+    if tier == 0 and result and result.get("exit") == "0":
+        green = True
     failures = detect_test_failures(output)
     crashes = detect_simulator_crashes(output)
     bundle = (result or {}).get("bundle") or latest_xcresult_path(repo_root)
@@ -511,8 +597,9 @@ def run_verify(
         _log(f"stuck card:\n{card}")
         _log(f"stuck card written: {path}")
     _log(
-        f"loop-owned verify done: green={green} exit={(result or {}).get('exit')} "
-        f"failed={(result or {}).get('failed')} elapsed={elapsed:.0f}s"
+        f"loop-owned verify done: tier={tier} green={green} "
+        f"exit={(result or {}).get('exit')} failed={(result or {}).get('failed')} "
+        f"elapsed={elapsed:.0f}s"
     )
     return VerifyOutcome(
         result=result,
@@ -522,6 +609,7 @@ def run_verify(
         output=output,
         elapsed_secs=elapsed,
         packet=packet,
+        tier=tier,
     )
 
 
@@ -593,6 +681,10 @@ def failure_signature(failures: list[str], crashes: list[str]) -> str:
 
 
 def build_diagnose_prompt(packet: FailurePacket, slice_file: str, card: str) -> str:
+    """Legacy diagnose prompt (kept for tests / fallback tooling).
+
+    Factory v2 P0 routes via :func:`build_referee_prompt` instead.
+    """
     persona = load_persona("QA review")
     return f"""{persona}
 
@@ -636,6 +728,10 @@ def build_fix_prompt(
     lever_forbid: tuple[str, ...] | list[str] = (),
     attempt_notes: list[str] | None = None,
     suggested_files: list[str] | None = None,
+    referee_instruction: str = "",
+    referee_hypothesis: str = "",
+    ledger_block: str = "",
+    primary_failure: str = "",
 ) -> str:
     persona = load_persona(role)
     scope = (
@@ -647,18 +743,25 @@ def build_fix_prompt(
     crash_lines = "\n".join(f"- {c}" for c in crashes) if crashes else "(none)"
     bundle_line = bundle or "(none — check build/test-results/)"
     card_block = stuck_card.strip() or "(no stuck card)"
-    lever_block = lever_instruction or "(no playbook lever — minimal change)"
-    forbid_block = ", ".join(lever_forbid) if lever_forbid else "(none)"
+    instruction = (
+        referee_instruction
+        or lever_instruction
+        or "(no referee instruction — minimal change guided by FailurePacket)"
+    )
+    forbid_block = ", ".join(lever_forbid) if lever_forbid else "weaken XCTAssert, delete assertions"
     files = suggested_files or (packet.suggested_files if packet else [])
     files_block = ", ".join(files) if files else "(none suggested)"
     history = ""
     if attempt_notes:
         history = "Attempt history:\n" + "\n".join(f"- {n}" for n in attempt_notes)
+    ledger = ledger_block or "(empty)"
+    hyp = referee_hypothesis or (packet.hypothesis if packet else "") or "(none)"
+    primary = primary_failure or "(see failing tests)"
     packet_block = ""
     if packet:
         packet_block = f"""
 FailurePacket:
-- class: {packet.failure_class}
+- class hint: {packet.failure_class}
 - signature: {packet.signature}
 - test_ids: {packet.test_ids}
 - assertions: {packet.assertions}
@@ -671,6 +774,7 @@ FailurePacket:
     return f"""{persona}
 
 You are a **fix worker** for PodWash (attempt {attempt}/{max_attempts}).
+Fresh context — do not defend prior theories; the hypothesis ledger is authoritative.
 Slice file: {slice_file}
 
 **Edit scope (hard):** {scope}
@@ -681,10 +785,15 @@ Do NOT edit docs except if QA needs a fixture README note.
 Stuck card:
 {card_block}
 
-Playbook lever for this attempt:
-{lever_block}
+Referee verdict for this attempt:
+- primary_failure: {primary}
+- hypothesis: {hyp}
+- instruction: {instruction}
 Forbidden: {forbid_block}
 Suggested files: {files_block}
+
+Hypothesis ledger (do not repeat a prior hypothesis on the same signature):
+{ledger}
 
 {history}
 {packet_block}
@@ -698,6 +807,61 @@ xcresult bundle: {bundle_line}
 
 Diagnose, make the minimal fix in scope, then end your turn. Do not verify.
 """
+
+
+def call_referee(
+    client: Any,
+    *,
+    packet: FailurePacket,
+    slice_file: str,
+    stuck_card: str,
+    api_key: str,
+    repo_root: str,
+    ledger_entries: list[Any] | None = None,
+    log: LogFn | None = None,
+    progress_factory: Callable[[str], Any] | None = None,
+) -> RefereeVerdict:
+    """Spawn plan-mode Referee worker; parse strict JSON. Raises RefereeError."""
+    _log = log or (lambda m: None)
+    slice_text = ""
+    try:
+        slice_text = _read_slice_text(slice_file, repo_root)
+    except OSError:
+        slice_text = ""
+    deliverables = ""
+    if slice_text:
+        # Light hint: Role artifacts + Deliverables lines
+        lines = []
+        for line in slice_text.splitlines():
+            if "PodWash/" in line or line.strip().startswith("| **"):
+                lines.append(line.strip())
+            if len(lines) >= 40:
+                break
+        deliverables = "\n".join(lines[:40])
+    prompt = build_referee_prompt(
+        packet,
+        slice_file=slice_file,
+        stuck_card=stuck_card,
+        ledger_entries=ledger_entries,
+        slice_deliverables=deliverables,
+    )
+    _log("referee worker (plan mode, strict JSON)")
+    progress = progress_factory("Referee") if progress_factory else None
+    ok, status = run_worker(
+        client,
+        role="Referee",
+        prompt=prompt,
+        api_key=api_key,
+        repo_root=repo_root,
+        log=_log,
+        progress=progress,
+    )
+    diag_text = ""
+    if progress is not None and hasattr(progress, "assistant_text"):
+        diag_text = progress.assistant_text or ""
+    if not diag_text and not ok:
+        raise RefereeError(f"referee worker failed (status={status})")
+    return parse_referee_reply(diag_text)
 
 
 # ---------------------------------------------------------------------------
@@ -1138,23 +1302,33 @@ def run_fix_loop(
     log: LogFn | None = None,
     progress_factory: Callable[[str], Any] | None = None,
     verify_fn: Callable[..., VerifyOutcome] | None = None,
+    referee_fn: Callable[..., RefereeVerdict] | None = None,
 ) -> VerifyOutcome:
-    """Loop-owned verify + bounded Engineer|QA fix workers.
+    """Loop-owned verify + LLM referee + bounded Engineer|QA fix workers.
 
-    Raises ThrashHalt when budget is exhausted on red.
+    Re-verify order after a fix: **tier 1 (failed tests) → tier 3 (full)**.
+    Raises ThrashHalt when budget is exhausted, referee is low-confidence, or
+    the hypothesis ledger rejects a repeat hypothesis on the same signature.
     """
     _log = log or (lambda m: None)
     _verify = verify_fn or (
-        lambda **kw: run_verify(repo_root, log=_log, slice_file=slice_file)
+        lambda **kw: run_verify(repo_root, log=_log, slice_file=slice_file, **kw)
     )
 
-    def _do_verify() -> VerifyOutcome:
+    def _do_verify(**kwargs: Any) -> VerifyOutcome:
+        # Default tier 3 (full Done gate) when caller omits tier.
+        if "tier" not in kwargs:
+            kwargs = {**kwargs, "tier": 3}
         try:
-            return _verify(slice_file=slice_file)
+            return _verify(slice_file=slice_file, **kwargs)
         except TypeError:
-            return _verify()
+            # Test doubles that ignore kwargs
+            try:
+                return _verify(**kwargs)
+            except TypeError:
+                return _verify()
 
-    outcome = _do_verify()
+    outcome = _do_verify(tier=3)
     if outcome.green:
         return outcome
 
@@ -1164,6 +1338,8 @@ def run_fix_loop(
     except OSError:
         slice_text = ""
     slice_files = extract_slice_swift_paths(slice_text)
+    slice_id = slice_id_from_path(slice_file)
+    ledger = load_ledger(repo_root, slice_id)
 
     while not budget.exhausted():
         packet = outcome.packet or build_failure_packet(
@@ -1194,103 +1370,108 @@ def run_fix_loop(
         ):
             budget.flake_cold_retried = True
             _log("flake signal — cold re-verify (does not burn fix budget)")
-            outcome = _do_verify()
+            outcome = _do_verify(tier=3)
             if outcome.green:
                 return outcome
             continue
 
         sig = packet.signature or failure_signature(outcome.failures, outcome.crashes)
-        same = bool(budget.last_signature and budget.last_signature == sig)
-        lever_index = (budget.last_lever_index + 1) if same else 0
-        if not same:
-            lever_index = 0
+        failed_ids = test_ids_for_tier1(packet, outcome.failures)
 
-        # Free diagnose (does not burn fix budget)
-        need_diagnose = (
-            packet.failure_class == "unknown"
-            or packet.failure_class == "assertion"
-            or (
-                budget.attempts_used == 0
-                and any("uitest" in t.lower() for t in packet.test_ids)
-            )
+        card0 = format_stuck_card(
+            packet,
+            slice_file=slice_file,
+            attempt=budget.attempts_used + 1,
+            max_attempts=budget.max_attempts,
         )
-        if need_diagnose and client is not None:
-            card0 = format_stuck_card(
-                packet,
-                slice_file=slice_file,
-                attempt=budget.attempts_used + 1,
-                max_attempts=budget.max_attempts,
-                lever=starter_lever_text(packet.failure_class),
-            )
-            dprompt = build_diagnose_prompt(packet, slice_file, card0)
-            _log("diagnose worker (free, plan mode)")
-            dprogress = progress_factory("QA review") if progress_factory else None
-            ok_d, _status_d = run_worker(
-                client,
-                role="QA review",
-                prompt=dprompt,
-                api_key=api_key,
-                repo_root=repo_root,
-                log=_log,
-                progress=dprogress,
-            )
-            diag_text = ""
-            if dprogress is not None and hasattr(dprogress, "assistant_text"):
-                diag_text = dprogress.assistant_text or ""
-            parsed = parse_diagnose_reply(diag_text)
-            if parsed:
-                packet = merge_diagnose_into_packet(packet, parsed)
-                _log(
-                    f"diagnose merged: class={packet.failure_class} "
-                    f"scope={packet.fix_scope} hyp={packet.hypothesis[:80]}"
+        persist_stuck_card(card0, repo_root=repo_root, slice_file=slice_file)
+
+        # LLM referee (replaces classify_failure + playbook routing)
+        try:
+            if referee_fn is not None:
+                verdict = referee_fn(
+                    packet=packet,
+                    slice_file=slice_file,
+                    stuck_card=card0,
+                    ledger_entries=ledger,
                 )
-            elif not ok_d:
-                _log("diagnose failed to parse — keeping heuristic class")
-
-        allow_wait = (
-            packet.fix_scope == "tests"
-            and "transient" in (packet.hypothesis or "").lower()
-        ) or (
-            packet.fix_scope == "tests"
-            and "ac" in (packet.hypothesis or "").lower()
-        )
-        lever = select_lever(
-            packet.failure_class,
-            lever_index=lever_index,
-            fix_scope=packet.fix_scope,
-            allow_uitest_wait_fix=allow_wait,
-        )
-        if lever.role == "halt":
+            elif client is not None:
+                verdict = call_referee(
+                    client,
+                    packet=packet,
+                    slice_file=slice_file,
+                    stuck_card=card0,
+                    api_key=api_key,
+                    repo_root=repo_root,
+                    ledger_entries=ledger,
+                    log=_log,
+                    progress_factory=progress_factory,
+                )
+            else:
+                raise RefereeError("no client/referee_fn — cannot route fix")
+        except RefereeError as exc:
             card = format_stuck_card(
                 packet,
                 slice_file=slice_file,
                 attempt=budget.attempts_used,
                 max_attempts=budget.max_attempts,
-                lever=lever.instruction,
-                levers_tried=budget.levers_tried + [lever.instruction[:80]],
+                lever=str(exc.reason),
             )
             persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
             _log(card)
-            raise ThrashHalt(
-                f"playbook halt ({packet.failure_class}): {lever.instruction}"
-            )
+            raise ThrashHalt(f"referee halt: {exc.reason}") from exc
 
+        # Ledger gate: reject repeat hypothesis on same signature
+        if hypothesis_seen(ledger, verdict.hypothesis, sig):
+            reason = (
+                "no new hypothesis — ledger already has this hypothesis "
+                f"on signature={sig[:120]!r}"
+            )
+            card = format_stuck_card(
+                packet,
+                slice_file=slice_file,
+                attempt=budget.attempts_used,
+                max_attempts=budget.max_attempts,
+                lever=reason,
+                levers_tried=budget.levers_tried
+                + [f"blocked:{verdict.hypothesis[:60]}"],
+            )
+            persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
+            _log(card)
+            append_ledger(
+                make_entry(
+                    slice_id=slice_id,
+                    attempt=budget.attempts_used + 1,
+                    role=verdict.role,
+                    hypothesis=verdict.hypothesis,
+                    signature=sig,
+                    files_touched=verdict.files,
+                    verify_tier=1,
+                    outcome="halt",
+                    primary_failure=verdict.primary_failure,
+                    instruction=verdict.instruction,
+                ),
+                repo_root=repo_root,
+                slice_id=slice_id,
+            )
+            raise ThrashHalt(reason)
+
+        packet = apply_verdict_to_packet(packet, verdict)
         suggested = list(
             dict.fromkeys(
                 list(packet.suggested_files)
-                + list(lever.suggested_files)
+                + list(verdict.files)
                 + list(slice_files)
             )
         )
         packet = packet.with_updates(suggested_files=suggested)
-        role = route_fix(
-            outcome.failures,
-            outcome.crashes,
-            previous_role=budget.last_role,
-            previous_signature=budget.last_signature,
-            packet=packet,
-            lever_role=lever.role,
-        )
+        role = verdict.role if verdict.role in ("Engineer", "QA") else "Engineer"
+        # Enforce fix_scope ↔ role consistency
+        if verdict.fix_scope == "tests":
+            role = "QA"
+        elif verdict.fix_scope == "app":
+            role = "Engineer"
+
         attempt = budget.attempts_used + 1
         bundle = (outcome.result or {}).get("bundle") or latest_xcresult_path(repo_root)
         card = format_stuck_card(
@@ -1299,12 +1480,13 @@ def run_fix_loop(
             attempt=attempt,
             max_attempts=budget.max_attempts,
             next_role=role,
-            lever=f"{lever.instruction} ({role})",
+            lever=f"{verdict.instruction} ({role})",
             levers_tried=budget.levers_tried,
         )
         persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
         _log(card)
 
+        ledger_block = format_ledger_for_prompt(ledger)
         prompt = build_fix_prompt(
             role,
             slice_file,
@@ -1315,16 +1497,20 @@ def run_fix_loop(
             budget.max_attempts,
             packet=packet,
             stuck_card=card,
-            lever_instruction=lever.instruction,
-            lever_forbid=lever.forbid,
+            referee_instruction=verdict.instruction,
+            referee_hypothesis=verdict.hypothesis,
+            ledger_block=ledger_block,
+            primary_failure=verdict.primary_failure,
             attempt_notes=list(budget.attempt_notes),
             suggested_files=suggested,
         )
         _log(
             f"fix attempt {attempt}/{budget.max_attempts}: role={role} "
-            f"class={packet.failure_class} lever={lever_index} "
+            f"confidence={verdict.confidence} hyp={verdict.hypothesis[:80]} "
             f"failures={(outcome.failures or packet.raw_failures)[:3]}"
         )
+        if client is None:
+            raise ThrashHalt("no SDK client for fix worker")
         progress = progress_factory(role) if progress_factory else None
         ok, status = run_worker(
             client,
@@ -1336,21 +1522,52 @@ def run_fix_loop(
             progress=progress,
         )
         note = (
-            f"attempt {attempt}: role={role} class={packet.failure_class} "
-            f"hyp={packet.hypothesis[:60] or 'n/a'} status={status}"
+            f"attempt {attempt}: role={role} hyp={verdict.hypothesis[:60] or 'n/a'} "
+            f"status={status}"
         )
         budget.record(role, sig, note=note)
         budget.last_packet = packet
         budget.last_class = packet.failure_class
-        budget.last_hypothesis = packet.hypothesis
-        budget.last_lever_index = lever_index
-        budget.levers_tried.append(f"L{lever_index}:{role}:{lever.instruction[:60]}")
+        budget.last_hypothesis = verdict.hypothesis
+        budget.levers_tried.append(
+            f"R{attempt}:{role}:{verdict.hypothesis[:60]}"
+        )
         if not ok:
             _log(f"fix worker did not finish cleanly (status={status})")
-        outcome = _do_verify()
+
+        # Tier 1: previously failing tests only
+        if failed_ids:
+            _log(f"tier-1 re-verify ({len(failed_ids)} failed tests)")
+            outcome = _do_verify(tier=1, failed_tests=failed_ids)
+        else:
+            _log("tier-1 skipped (no test ids) — full suite")
+            outcome = _do_verify(tier=3)
+
+        tier1_green = outcome.green
+        if tier1_green:
+            # Promote to full suite (Done gate)
+            _log("tier-1 green — promoting to tier-3 full suite")
+            outcome = _do_verify(tier=3)
+
+        entry_outcome = "green" if outcome.green else "red"
+        entry = make_entry(
+            slice_id=slice_id,
+            attempt=attempt,
+            role=role,
+            hypothesis=verdict.hypothesis,
+            signature=sig,
+            files_touched=suggested,
+            verify_tier=3 if tier1_green else 1,
+            outcome=entry_outcome,
+            primary_failure=verdict.primary_failure,
+            instruction=verdict.instruction,
+        )
+        append_ledger(entry, repo_root=repo_root, slice_id=slice_id)
+        ledger.append(entry)
+
         if outcome.green:
             return outcome
-        # Refresh packet signature comparison on next loop
+        # Refresh packet for next loop
         if outcome.packet is None:
             outcome.packet = build_failure_packet(
                 failures=outcome.failures,

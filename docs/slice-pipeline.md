@@ -2,6 +2,7 @@
 
 > Design reference for `scripts/slice_pipeline.py` and `--orchestrator=pipeline`.
 > Plan: [`plans/loop-as-orchestrator-refactor.md`](plans/loop-as-orchestrator-refactor.md).
+> Factory v2: [`plans/factory-v2.md`](plans/factory-v2.md) (**P0 landed** — tiers, referee, ledger).
 > Fix confidence: [`plans/factory-fix-confidence.md`](plans/factory-fix-confidence.md).
 > Runner mechanics: [`slice-runner.md`](slice-runner.md).
 
@@ -10,9 +11,10 @@
 | Concern | Owner |
 |---------|--------|
 | Gate ordering / skip-done | `GateState` + FSM in `slice_pipeline.py` |
-| `scripts/verify.sh` | Loop (subprocess) — source of truth |
-| Red → FailurePacket + stuck card | `failure_packet.py` (xcresult summary + attachments) |
-| Red → diagnose → fix | Free plan-mode diagnose + Engineer\|QA + playbooks |
+| `scripts/verify.sh` (tiers 0–3) | Loop (subprocess) — source of truth |
+| Red → FailurePacket + stuck card | `failure_packet.py` (evidence formats) |
+| Red → **LLM referee** → fix | `referee.py` (strict JSON) + Engineer\|QA |
+| Hypothesis ledger (anti-thrash) | `hypothesis_ledger.py` — reject repeat hyp+signature |
 | Red → fix budget | `--max-fix-attempts` (default 2); flake cold-retry is free |
 | `VERIFY RESULT` + Status Done | Deterministic doc writer |
 | Split commits + isolation + push | Loop (pipeline mode) |
@@ -54,18 +56,33 @@ story ─┬─► architect ─┐
 `assess_slice_gates()` in `slice_loop_progress.py` remains a **progress heuristic**
 for heartbeats only — do not treat it as the FSM.
 
-## Fix path (FailurePacket → stuck card → diagnose → playbook)
+## Verify tiers (P0)
+
+`scripts/verify.sh` accepts `VERIFY_TIER` (default **3**) and shares `-derivedDataPath build/dd`:
+
+| Tier | Action | Filters | When |
+|------|--------|---------|------|
+| 0 | `build-for-testing` | none | warm derived data after edits |
+| 1 | `test-without-building` | `VERIFY_FAILED_TESTS` → `-only-testing:` | **after every fix attempt** |
+| 2 | `test` / `test-without-building` | slice-mapped + smoke (`VERIFY_SLICE_TESTS` / CLI) | implement exit gate (P1) |
+| 3 | `test` (unfiltered) | none | **Done gate** — `VERIFY RESULT:` contract unchanged (+ optional `tier=3`) |
+
+`VERIFY_DRY_RUN=1` prints the resolved argv and exits 0 (unit tests: `scripts/test-verify-tiers.sh`).
+
+## Fix path (FailurePacket → stuck card → referee → ledger → fix)
 
 Applies to **both** coordinator and pipeline modes via shared `run_fix_loop`.
 
 ```text
-loop-owned verify.sh (red)
+loop-owned verify.sh tier 3 (red)
   → FailurePacket (summary testFailures + exported attachments)
   → print + persist stuck card (build/test-results/stuck-slice-NN.txt)
-  → heuristic class (+ free plan-mode diagnose when unknown / UITest / assertion)
-  → playbook lever for attempt N
-  → Engineer|QA fix worker (verify banned)
-  → loop-owned verify again
+  → LLM referee (plan mode, cheap model, strict JSON verdict)
+  → ledger gate: reject repeat hypothesis on same signature → halt exit 5
+  → Engineer|QA fix worker (fresh context, verify banned, ledger in prompt)
+  → tier 1 re-verify (failed tests only)
+  → if green → tier 3 full suite
+  → append ledger entry
 ```
 
 ### FailurePacket
@@ -74,45 +91,56 @@ Built by `scripts/failure_packet.py` from:
 
 1. `xcresulttool get test-results summary` — **must** surface real test ids (never leave prompts on only `xcodebuild — TEST FAILED` when summary has names).
 2. `xcresulttool export attachments --test-id 'Class/testName()'` — hierarchy + query-chain `.txt` files.
-3. Soft undiagnosable: build/lock reds without test ids still route Engineer (`build_error`). Hard-halt only when there is **no** actionable evidence and no bundle.
+3. Soft undiagnosable: build/lock reds without test ids still produce an actionable packet. Hard-halt only when there is **no** actionable evidence and no bundle.
 
-Signature is stable: sorted `test_ids` + crash fingerprint (not assertion/hierarchy text).
+Signature is stable: sorted `test_ids` + crash fingerprint (not assertion/hierarchy text). Heuristic `classify_failure` remains as a **hint** inside the packet; it no longer routes fixes.
 
 ### Stuck card
 
-Human-readable card printed on every red loop-owned verify and thrash halt, also written to `build/test-results/stuck-slice-NN.txt`, and embedded in fix prompts.
+Human-readable card printed on every red loop-owned verify and thrash halt, also written to `build/test-results/stuck-slice-NN.txt`, and embedded in referee + fix prompts.
 
-### Diagnose (free)
+### LLM referee (replaces diagnose + playbooks as router)
 
-Plan-mode `QA review` worker when class is `unknown`, first UITest attempt, or `assertion`. Does **not** increment `--max-fix-attempts`. Heuristic `failure_class` wins unless heuristic was `unknown`; diagnose may still set hypothesis / `fix_scope` / `suggested_files`.
+`scripts/referee.py` — plan-mode worker (`composer-2.5`) returns **only** JSON:
 
-### Playbooks
+```json
+{
+  "primary_failure": "…",
+  "failure_groups": [["unit …"], ["UI …"]],
+  "role": "Engineer",
+  "fix_scope": "app",
+  "files": ["PodWash/PodWash/…"],
+  "instruction": "≤2 sentences",
+  "hypothesis": "…",
+  "confidence": "high|med|low",
+  "narration": "≤25 words"
+}
+```
 
-`scripts/fix_playbooks.py` — per-class levers. Same packet signature advances lever index. Notable rules:
+Python enforces: parse failure or `confidence=low` → **halt** (never guess). `fix_scope=app` → Engineer; `tests` → QA. Prefer unit assertion/crash over UITest waits as primary (prompt rule).
 
-| Class | Lever 1 | Lever 2 (same signature) |
-|-------|---------|---------------------------|
-| `ui_race` | Engineer: hold analyzing / defer completion | Engineer: alternate app lever (defer completion / main-actor publish). Halt only after **two** Engineer attempts (or `--max-fix-attempts` exhaustion) unless diagnose `fix_scope=tests` + AC requires transient |
-| `flake` | Cold re-verify once (no budget burn) | Then normal levers for reclassified class |
-| `unknown` | Diagnose then minimal Engineer | Halt with stuck card |
+Legacy `fix_playbooks.py` / diagnose helpers remain in-tree for tests but are **not** consulted by `run_fix_loop`.
 
-Slice Role artifacts / Deliverables Swift paths are unioned into `suggested_files`.
+### Hypothesis ledger
+
+`build/test-results/ledger-slice-NN.jsonl` — durable across bridge death. Each attempt appends `{ts, attempt, role, hypothesis, files_touched, result_signature, verify_tier, outcome}`. Before spawning a fix worker, Python rejects any referee verdict whose **hypothesis + signature** matches a prior entry → stuck card + exit 5 (“no new hypothesis”). Repeat signatures always get a **fresh** fix worker (new agent context) with the ledger attached.
 
 ### Verify ban (fix workers)
 
 Fix-worker `RunProgress` uses `fix_worker=True` + `forced_role=` so logs show `[Engineer]` / `[QA]`, nested red-verify thrash is disabled (`max_red_verifies=0`), and shell `verify.sh` / `xcodebuild … test` is cancelled. First violation → re-prompt; second → attempt burned.
 
-## Fix router
+## Fix routing (P0)
 
 | Signal | Worker |
 |--------|--------|
-| Crash / IPS / `ui_race` / `missing_identifier` / `build_error` | Engineer (`PodWash/PodWash/**`) |
-| `assertion` with `fix_scope=tests` / fixture-only | QA (tests only) |
-| Same signature after first role | Opposite role (or playbook halt for `ui_race`) |
-| Ambiguous | Engineer first |
+| Referee `fix_scope=app` / `role=Engineer` | Engineer (`PodWash/PodWash/**`) |
+| Referee `fix_scope=tests` / `role=QA` | QA (tests only) |
+| Referee `confidence=low` or unparseable JSON | Halt (stuck card) |
+| Ledger hit (same hyp + signature) | Halt (no new hypothesis) |
 
 Shared budget: `--max-fix-attempts` (default 2) → exit **5** on exhaustion.
-Budget **persists** across bridge retries. Diagnose + flake cold-retry do **not** burn budget.
+Budget **persists** across bridge retries. Flake cold-retry does **not** burn budget.
+Referee calls do **not** burn budget (routing only).
 
 ## Partial-failure policy
 
@@ -127,3 +155,14 @@ Budget **persists** across bridge retries. Diagnose + flake cold-retry do **not*
 1. Coordinator authors only; ends when implement exists or status is Verify.
 2. Loop always owns verify when implement is done **or** status ∈ `{In Progress, Verify}`.
 3. Sequential only — never parallel loop verify with a coordinator-owned verify.
+
+## P0 unit tests
+
+```bash
+python3 -m unittest scripts.test_referee scripts.test_hypothesis_ledger \
+  scripts.test_slice_pipeline scripts.test_failure_packet -q
+./scripts/test-verify-tiers.sh
+```
+
+P1 (not yet): JSONL event log, narrator, pipeline-only unattended, implement=tier-2 gate, exit 6 infra, sim hygiene.
+P2: Slice-10-shaped confidence replay before the next unattended slice.

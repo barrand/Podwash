@@ -7,13 +7,13 @@ todos:
     status: completed
   - id: verify-tiers
     content: "P0: Tiered verify (build-for-testing / failed-tests-first / slice tests / full) in verify.sh + loop"
-    status: pending
+    status: completed
   - id: llm-referee
     content: "P0: Replace classify_failure + fix_playbooks routing with LLM referee (strict JSON verdict, Python enforces)"
-    status: pending
+    status: completed
   - id: hypothesis-ledger
     content: "P0: Hypothesis ledger per slice; reject repeat hypotheses on same signature; fresh-context retry"
-    status: pending
+    status: completed
   - id: visibility-event-log
     content: "P1: JSONL event log + Cursor-like role/phase timeline; SUMMARY line contract for workers"
     status: pending

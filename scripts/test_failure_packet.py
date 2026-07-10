@@ -507,6 +507,8 @@ class FixLoopPacketTests(unittest.TestCase):
         self.assertTrue(budget.flake_cold_retried)
 
     def test_attempt_memory_second_prompt(self):
+        from referee import RefereeVerdict
+
         budget = FixBudget(max_attempts=2)
         packet = FailurePacket(
             test_ids=["PodWashUITests/AnalysisProgressUITests/testProgressIndicatorLifecycle()"],
@@ -528,33 +530,44 @@ class FixLoopPacketTests(unittest.TestCase):
             packet=packet,
         )
         prompts: list[str] = []
+        refs = {"n": 0}
 
         def fake_verify(**_kw):
             return red
 
         def fake_worker(*_a, **kwargs):
             prompts.append(kwargs.get("prompt") or "")
-            # Skip diagnose (QA review) burning — return empty assistant via progress
             return True, "finished"
 
-        with mock.patch("slice_pipeline.run_worker", side_effect=fake_worker):
-            with self.assertRaises(ThrashHalt):
-                run_fix_loop(
-                    client=object(),
-                    slice_file="docs/slices/slice-09-analysis-ui.md",
-                    repo_root=REPO,
-                    api_key="k",
-                    budget=budget,
-                    verify_fn=fake_verify,
-                )
-        # diagnose + fix attempts (may include diagnose prompts)
-        self.assertGreaterEqual(len(prompts), 2)
-        # A later fix prompt should cite attempt history after first fix
+        def fake_referee(**_kw):
+            refs["n"] += 1
+            return RefereeVerdict(
+                primary_failure=packet.test_ids[0],
+                role="Engineer",
+                fix_scope="app",
+                files=["PodWash/PodWash/EpisodeListView.swift"],
+                instruction="Hold analyzing state so UITests can observe progress",
+                hypothesis=f"download refresh clobbers analysisProgress AX (try {refs['n']})",
+                confidence="high",
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch("slice_pipeline.run_worker", side_effect=fake_worker):
+                with self.assertRaises(ThrashHalt):
+                    run_fix_loop(
+                        client=object(),
+                        slice_file="docs/slices/slice-09-analysis-ui.md",
+                        repo_root=tmp,
+                        api_key="k",
+                        budget=budget,
+                        verify_fn=fake_verify,
+                        referee_fn=fake_referee,
+                    )
         fix_prompts = [p for p in prompts if "fix worker" in p]
-        self.assertGreaterEqual(len(fix_prompts), 1)
-        if len(fix_prompts) >= 2:
-            self.assertIn("Attempt history", fix_prompts[1])
-            self.assertIn("hold analyzing", fix_prompts[0].lower())
+        self.assertGreaterEqual(len(fix_prompts), 2)
+        self.assertIn("Attempt history", fix_prompts[1])
+        self.assertIn("Hold analyzing", fix_prompts[0])
+        self.assertIn("Hypothesis ledger", fix_prompts[0])
 
 
 class RouteWithPacketTests(unittest.TestCase):

@@ -48,6 +48,14 @@ class ParseVerifyBundleTests(unittest.TestCase):
         self.assertEqual(v["bundle"], "build/test-results/verify-x.xcresult")
         self.assertEqual(v["filtered"], "0")
 
+    def test_parse_captures_tier(self):
+        v = parse_verify_result(
+            "VERIFY RESULT: exit=0 total=10 passed=10 failed=0 skipped=0 "
+            "filtered=0 bundle=build/test-results/verify-x.xcresult tier=3"
+        )
+        self.assertEqual(v.get("tier"), "3")
+        self.assertTrue(verify_is_green(v))
+
     def test_format_verify_result_line(self):
         line = format_verify_result_line(
             {
@@ -61,6 +69,27 @@ class ParseVerifyBundleTests(unittest.TestCase):
         )
         self.assertIn("VERIFY RESULT:", line)
         self.assertIn("bundle=b.xcresult", line)
+
+
+class VerifyTierHelpersTests(unittest.TestCase):
+    def test_verify_env_tier1(self):
+        from slice_pipeline import verify_env_for_tier
+
+        env = verify_env_for_tier(1, failed_tests=["A/b()", "C/d()"])
+        self.assertEqual(env["VERIFY_TIER"], "1")
+        self.assertIn("A/b()", env["VERIFY_FAILED_TESTS"])
+        with self.assertRaises(ValueError):
+            verify_env_for_tier(1, failed_tests=[])
+
+    def test_test_ids_for_tier1(self):
+        from failure_packet import FailurePacket
+        from slice_pipeline import test_ids_for_tier1
+
+        p = FailurePacket(test_ids=["PodWashTests/Foo/testA()"])
+        self.assertEqual(
+            test_ids_for_tier1(p, ["noise"]),
+            ["PodWashTests/Foo/testA()"],
+        )
 
 
 class FixRouterTests(unittest.TestCase):
@@ -117,48 +146,61 @@ class FixRouterTests(unittest.TestCase):
 
     def test_halts_when_budget_exhausted(self):
         budget = FixBudget(max_attempts=2)
-        # crash class has two Engineer levers (no early playbook halt)
+        # crash class — referee returns a fresh hypothesis each attempt so ledger
+        # does not halt early; both fix attempts stay red → budget exhausted.
         from failure_packet import FailurePacket
+        from referee import RefereeVerdict
 
         packet = FailurePacket(
-            test_ids=[],
+            test_ids=["PodWashTests/Foo/testCrash()"],
             crashes=["Crash: PodWash EXC_BAD_ACCESS at Foo"],
             failure_class="crash",
-            signature="crash:podwash",
-            raw_failures=[],
+            signature="PodWashTests/Foo/testCrash()",
+            raw_failures=["PodWashTests/Foo/testCrash() — crash"],
             actionable=True,
         )
         red = VerifyOutcome(
             result={"exit": "1", "total": "1", "passed": "0", "failed": "1", "skipped": "0"},
             green=False,
-            failures=[],
+            failures=packet.raw_failures,
             crashes=packet.crashes,
             packet=packet,
         )
-        calls = {"n": 0}
+        calls = {"n": 0, "ref": 0}
 
         def fake_verify(**_kw):
             calls["n"] += 1
             return red
 
-        with mock.patch("slice_pipeline.run_worker", return_value=(True, "finished")):
-            with self.assertRaises(ThrashHalt) as ctx:
-                run_fix_loop(
-                    client=object(),
-                    slice_file="x.md",
-                    repo_root=REPO,
-                    api_key="k",
-                    budget=budget,
-                    verify_fn=fake_verify,
-                )
-        self.assertTrue(
-            "exhausted" in str(ctx.exception.reason).lower()
-            or "playbook halt" in str(ctx.exception.reason).lower()
-            or "crash" in str(ctx.exception.reason).lower()
-        )
+        def fake_referee(**_kw):
+            calls["ref"] += 1
+            return RefereeVerdict(
+                primary_failure="PodWashTests/Foo/testCrash()",
+                role="Engineer",
+                fix_scope="app",
+                files=["PodWash/PodWash/Foo.swift"],
+                instruction=f"Fix crash attempt {calls['ref']}",
+                hypothesis=f"nil guard missing in path {calls['ref']}",
+                confidence="high",
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch("slice_pipeline.run_worker", return_value=(True, "finished")):
+                with self.assertRaises(ThrashHalt) as ctx:
+                    run_fix_loop(
+                        client=object(),
+                        slice_file="docs/slices/slice-09.md",
+                        repo_root=tmp,
+                        api_key="k",
+                        budget=budget,
+                        verify_fn=fake_verify,
+                        referee_fn=fake_referee,
+                    )
+        self.assertIn("exhausted", str(ctx.exception.reason).lower())
         self.assertEqual(budget.attempts_used, 2)
-        # initial verify + 2 after fixes
+        # initial verify + tier1 + tier3 per attempt (or tier1 only when red)
         self.assertGreaterEqual(calls["n"], 3)
+        self.assertEqual(calls["ref"], 2)
 
     def test_returns_on_green(self):
         budget = FixBudget(max_attempts=2)
@@ -172,9 +214,159 @@ class FixRouterTests(unittest.TestCase):
             repo_root=REPO,
             api_key="k",
             budget=budget,
-            verify_fn=lambda: green,
+            verify_fn=lambda **_kw: green,
         )
         self.assertTrue(out.green)
+        self.assertEqual(budget.attempts_used, 0)
+
+    def test_ledger_blocks_repeat_hypothesis(self):
+        from failure_packet import FailurePacket
+        from referee import RefereeVerdict
+
+        budget = FixBudget(max_attempts=2)
+        packet = FailurePacket(
+            test_ids=["PodWashTests/Foo/testA()"],
+            signature="PodWashTests/Foo/testA()",
+            raw_failures=["PodWashTests/Foo/testA() — fail"],
+            actionable=True,
+        )
+        red = VerifyOutcome(
+            result={"exit": "1", "failed": "1", "passed": "0", "skipped": "0", "total": "1"},
+            green=False,
+            failures=packet.raw_failures,
+            packet=packet,
+        )
+        hyp = "cancel fires before bytes flushed"
+
+        def fake_referee(**_kw):
+            return RefereeVerdict(
+                primary_failure="PodWashTests/Foo/testA()",
+                role="Engineer",
+                fix_scope="app",
+                files=[],
+                instruction="Fix cancel gate",
+                hypothesis=hyp,
+                confidence="high",
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            # Seed ledger with the same hypothesis+signature
+            from hypothesis_ledger import append_ledger, make_entry
+
+            append_ledger(
+                make_entry(
+                    slice_id=9,
+                    attempt=1,
+                    role="Engineer",
+                    hypothesis=hyp,
+                    signature=packet.signature,
+                    outcome="red",
+                ),
+                repo_root=tmp,
+                slice_id=9,
+            )
+            with self.assertRaises(ThrashHalt) as ctx:
+                run_fix_loop(
+                    client=object(),
+                    slice_file="docs/slices/slice-09.md",
+                    repo_root=tmp,
+                    api_key="k",
+                    budget=budget,
+                    verify_fn=lambda **_kw: red,
+                    referee_fn=fake_referee,
+                )
+            self.assertIn("no new hypothesis", str(ctx.exception.reason).lower())
+            self.assertEqual(budget.attempts_used, 0)
+
+    def test_tier1_then_tier3_on_fix_green(self):
+        from failure_packet import FailurePacket
+        from referee import RefereeVerdict
+
+        budget = FixBudget(max_attempts=2)
+        packet = FailurePacket(
+            test_ids=["PodWashTests/Foo/testA()"],
+            signature="PodWashTests/Foo/testA()",
+            raw_failures=["PodWashTests/Foo/testA() — fail"],
+            actionable=True,
+        )
+        red = VerifyOutcome(
+            result={"exit": "1", "failed": "1", "passed": "0", "skipped": "0", "total": "1"},
+            green=False,
+            failures=packet.raw_failures,
+            packet=packet,
+        )
+        green = VerifyOutcome(
+            result={"exit": "0", "failed": "0", "passed": "1", "skipped": "0", "total": "1"},
+            green=True,
+        )
+        tiers: list[int] = []
+
+        def fake_verify(**kw):
+            tier = int(kw.get("tier", 3))
+            tiers.append(tier)
+            # First call = initial full red; after fix, tier1 green then tier3 green
+            if len(tiers) == 1:
+                return red
+            return green
+
+        def fake_referee(**_kw):
+            return RefereeVerdict(
+                primary_failure="PodWashTests/Foo/testA()",
+                role="Engineer",
+                fix_scope="app",
+                files=["PodWash/PodWash/Foo.swift"],
+                instruction="Fix the assertion",
+                hypothesis="off-by-one in Foo",
+                confidence="high",
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch("slice_pipeline.run_worker", return_value=(True, "finished")):
+                out = run_fix_loop(
+                    client=object(),
+                    slice_file="docs/slices/slice-10.md",
+                    repo_root=tmp,
+                    api_key="k",
+                    budget=budget,
+                    verify_fn=fake_verify,
+                    referee_fn=fake_referee,
+                )
+        self.assertTrue(out.green)
+        self.assertEqual(tiers[:3], [3, 1, 3])
+
+    def test_low_confidence_referee_halts(self):
+        from failure_packet import FailurePacket
+        from referee import RefereeError
+
+        budget = FixBudget(max_attempts=2)
+        packet = FailurePacket(
+            test_ids=["PodWashTests/Foo/testA()"],
+            signature="PodWashTests/Foo/testA()",
+            raw_failures=["PodWashTests/Foo/testA() — fail"],
+            actionable=True,
+        )
+        red = VerifyOutcome(
+            result={"exit": "1", "failed": "1", "passed": "0", "skipped": "0", "total": "1"},
+            green=False,
+            failures=packet.raw_failures,
+            packet=packet,
+        )
+
+        def fake_referee(**_kw):
+            raise RefereeError("referee confidence=low — insufficient evidence")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ThrashHalt) as ctx:
+                run_fix_loop(
+                    client=object(),
+                    slice_file="docs/slices/slice-09.md",
+                    repo_root=tmp,
+                    api_key="k",
+                    budget=budget,
+                    verify_fn=lambda **_kw: red,
+                    referee_fn=fake_referee,
+                )
+        self.assertIn("referee", str(ctx.exception.reason).lower())
         self.assertEqual(budget.attempts_used, 0)
 
 
@@ -188,8 +380,12 @@ class ModelModeMapTests(unittest.TestCase):
         self.assertEqual(mode_for_role("QA review"), "plan")
         self.assertEqual(mode_for_role("PM review"), "plan")
         self.assertEqual(mode_for_role("Architect review"), "plan")
+        self.assertEqual(mode_for_role("Referee"), "plan")
         self.assertEqual(mode_for_role("Engineer"), "agent")
         self.assertEqual(mode_for_role("QA"), "agent")
+
+    def test_referee_model_is_cheap(self):
+        self.assertEqual(model_for_role("Referee"), "composer-2.5")
 
 
 class GateStateTests(unittest.TestCase):
@@ -200,14 +396,13 @@ class GateStateTests(unittest.TestCase):
         self.assertTrue(state.all_done, state.summary)
         self.assertIsNone(next_gate(state))
 
-    def test_slice_09_partial(self):
+    def test_slice_09_done(self):
         state = assess_gate_state("docs/slices/slice-09-analysis-ui.md", REPO)
         arch = state.gate("architect")
         self.assertTrue(arch.applicable)
         self.assertEqual(arch.status, "waived")
-        self.assertFalse(state.all_done)
-        nxt = next_gate(state)
-        self.assertIsNotNone(nxt)
+        self.assertTrue(state.all_done, state.summary)
+        self.assertIsNone(next_gate(state))
 
     def test_synthetic_story_pending(self):
         with tempfile.TemporaryDirectory() as tmp:

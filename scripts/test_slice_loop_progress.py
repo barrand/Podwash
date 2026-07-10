@@ -422,7 +422,7 @@ class ProgressFormattingTests(unittest.TestCase):
         repo = os.path.dirname(SCRIPT_DIR)
         info = assess_slice_gates("docs/slices/slice-09-analysis-ui.md", repo)
         self.assertGreaterEqual(info["total"], 6)
-        self.assertLess(info["done"], info["total"])  # not Done yet
+        self.assertEqual(info["done"], info["total"])  # Status Done + green VERIFY
         self.assertIn("gates ", info["summary"])
         self.assertIn("next:", info["summary"])
         labels = {g["label"] for g in info["gates"]}
@@ -430,10 +430,9 @@ class ProgressFormattingTests(unittest.TestCase):
         self.assertIn("ux", labels)
         self.assertIn("implement", labels)
         self.assertIn("verify", labels)
-        # Architect waived on slice 09 — still counted as done via ADR review/waive.
         detail = format_gate_detail(info)
         self.assertIn("story✓", detail)
-        self.assertIn("verify·", detail)
+        self.assertIn("verify✓", detail)
 
     def test_assess_slice_gates_done_slice(self):
         repo = os.path.dirname(SCRIPT_DIR)

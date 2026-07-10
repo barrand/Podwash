@@ -11,7 +11,8 @@ VERIFY_RESULT_RE = re.compile(
     r"VERIFY RESULT:\s*exit=(\d+)\s+total=([^\s]+)\s+passed=([^\s]+)\s+"
     r"failed=([^\s]+)\s+skipped=([^\s]+)"
     r"(?:\s+filtered=([^\s]+))?"
-    r"(?:\s+bundle=([^\s]+))?",
+    r"(?:\s+bundle=([^\s]+))?"
+    r"(?:\s+tier=([^\s]+))?",
     re.IGNORECASE,
 )
 
@@ -287,6 +288,8 @@ def parse_verify_result(text: str) -> dict[str, str] | None:
         out["filtered"] = m.group(6)
     if m.group(7) is not None:
         out["bundle"] = m.group(7)
+    if m.lastindex and m.lastindex >= 8 and m.group(8) is not None:
+        out["tier"] = m.group(8)
     return out
 
 
