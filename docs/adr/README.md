@@ -23,3 +23,5 @@ from the relevant slice file's Role artifacts table.
 | [004](004-rss-parser.md) | RSS parser, episode list, and fixture-feed mode | Accepted |
 | [005](005-analysis-pipeline.md) | Analyze-episode pipeline: ASR → matcher → cache | Accepted |
 | [006](006-playback-integration.md) | Playback integration: cache → scheduler → engine | Accepted |
+| [007](007-persistence-core-data.md) | Local persistence: Core Data | Accepted |
+| [008](008-episode-downloads.md) | Episode downloads: sandbox layout, session injection, source resolution | Accepted |
