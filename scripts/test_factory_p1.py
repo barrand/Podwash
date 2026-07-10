@@ -27,6 +27,9 @@ from factory_narrator import (  # noqa: E402
     narrate_exoneration,
     narrate_gate_cleared,
     narrate_gate_stuck,
+    narrate_failure_detail,
+    narrate_role_report,
+    extract_gate_stuck_body,
     narrate_slice_recap,
     narrate_slice_mission,
     narrate_spawn,
@@ -182,10 +185,26 @@ class NarratorTests(unittest.TestCase):
         narrate_exoneration(cause="cancel gate fires early", owner="Edison", log=lines.append)
         self.assertIn("Murphy", lines[1])
         self.assertIn("Edison", lines[1])
+        from failure_packet import FailurePacket
+
+        pkt = FailurePacket(
+            test_ids=["SettingsStoreTests/testFreshStoreMatchesPRDDefaultProfile()"],
+            assertions=["XCTAssertEqual failed: (\"mute\") is not equal to (\"skip\")"],
+            raw_failures=["Test failed on line 42"],
+        )
+        narrate_failure_detail("Edison", pkt, log=lines.append)
+        self.assertTrue(any("from Edison:" in ln for ln in lines))
+        self.assertTrue(any("testFreshStore" in ln for ln in lines))
+        narrate_role_report(
+            "Ada",
+            "Status=Ready; missing artifacts: SettingsStore. Unblock: create ADR artifact",
+            log=lines.append,
+        )
+        self.assertTrue(any("from Ada:" in ln for ln in lines))
         narrate_thrash_halt(log=lines.append)
-        self.assertIn("exit=5", lines[2])
+        self.assertIn("exit=5", lines[-1])
         narrate_spawn("Edison", "Engineer", "fix DownloadManager", log=lines.append)
-        self.assertIn("Edison", lines[3])
+        self.assertIn("Edison", lines[-1])
 
     def test_story_voice_rotates_without_back_to_back_repeat(self):
         voice = StoryVoice()

@@ -632,6 +632,52 @@ def build_failure_packet(
     return packet
 
 
+def _shorten(text: str, limit: int) -> str:
+    s = re.sub(r"\s+", " ", (text or "").strip())
+    if len(s) <= limit:
+        return s
+    return s[: limit - 1].rstrip() + "…"
+
+
+def failure_story_parts(packet: FailurePacket) -> dict[str, str]:
+    """Extract test / intent / got strings for floor narration."""
+    if packet.test_ids:
+        test = ", ".join(packet.test_ids[:2])
+        if len(packet.test_ids) > 2:
+            test += f" (+{len(packet.test_ids) - 2} more)"
+    elif packet.crashes:
+        test = "a simulator crash"
+    else:
+        test = "the verify run"
+
+    if packet.assertions:
+        intent = _shorten(packet.assertions[0], 120)
+    elif packet.hypothesis:
+        intent = _shorten(packet.hypothesis, 120)
+    else:
+        intent = "get green"
+
+    got = ""
+    if packet.hierarchy_excerpt.startswith("[got] "):
+        got = _shorten(
+            packet.hierarchy_excerpt.split("\n", 1)[0][len("[got] ") :],
+            140,
+        )
+    elif packet.failed_queries:
+        got = _shorten(
+            f"queries missing: {', '.join(packet.failed_queries[:3])}",
+            140,
+        )
+    elif packet.raw_failures:
+        got = _shorten(packet.raw_failures[0], 140)
+    elif packet.crashes:
+        got = _shorten(packet.crashes[0], 140)
+    else:
+        got = "(no detail captured)"
+
+    return {"test": test, "intent": intent, "got": got}
+
+
 def slice_id_from_path(slice_file: str) -> int | None:
     m = re.search(r"slice-(\d+)", slice_file or "")
     return int(m.group(1)) if m else None

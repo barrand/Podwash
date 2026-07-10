@@ -33,11 +33,14 @@ from factory_narrator import (
     narrate_chapter_open,
     narrate_crash,
     narrate_exoneration,
+    narrate_failure_detail,
     narrate_flake_confirmed,
     narrate_gate_cleared,
     narrate_gate_stuck,
     narrate_ledger_block,
     narrate_referee,
+    narrate_role_report,
+    extract_gate_stuck_body,
     narrate_slice_recap,
     narrate_slice_mission,
     narrate_thrash_halt,
@@ -535,6 +538,34 @@ def _log_stuck_card_path(
     else:
         log(f"stuck card updated: {path}")
     return path
+
+
+def _narrate_verify_failure(
+    name: str,
+    outcome: VerifyOutcome,
+    *,
+    repo_root: str,
+    log: LogFn,
+    voice: Any = None,
+) -> None:
+    """Red verify tally plus in-character test/intent/got detail."""
+    narrate_verify_red(
+        name,
+        passed=(outcome.result or {}).get("passed", "?"),
+        total=(outcome.result or {}).get("total", "?"),
+        log=log,
+        voice=voice,
+    )
+    packet = outcome.packet or build_failure_packet(
+        failures=outcome.failures,
+        crashes=outcome.crashes,
+        bundle=(outcome.result or {}).get("bundle"),
+        exit_code=(outcome.result or {}).get("exit"),
+        output=outcome.output,
+        repo_root=repo_root,
+        export_attachments=False,
+    )
+    narrate_failure_detail(name, packet, log=log, voice=voice)
 
 
 def explain_gate_pending(gid: GateId, slice_file: str, repo_root: str) -> str:
@@ -1970,6 +2001,13 @@ def run_fix_loop(
         return outcome
 
     _cast.note_murphy()
+    _narrate_verify_failure(
+        "Quinn",
+        outcome,
+        repo_root=repo_root,
+        log=_log,
+        voice=_voice,
+    )
     fresh_ips = watchdog.new_crashes()
     if fresh_ips:
         narrate_crash(log=_log, voice=_voice)
@@ -2340,6 +2378,12 @@ def run_fix_loop(
         )
         if not ok:
             _log(f"fix worker did not finish cleanly (status={status})")
+            narrate_role_report(
+                agent,
+                f"didn't finish cleanly (status={status}) — verify still red.",
+                log=_log,
+                voice=_voice,
+            )
 
         if failed_ids:
             _log(f"tier-1 re-verify ({len(failed_ids)} failed tests)")
@@ -2414,10 +2458,10 @@ def run_fix_loop(
             )
             return outcome
 
-        narrate_verify_red(
+        _narrate_verify_failure(
             agent,
-            passed=(outcome.result or {}).get("passed", "?"),
-            total=(outcome.result or {}).get("total", "?"),
+            outcome,
+            repo_root=repo_root,
             log=_log,
             voice=_voice,
         )
@@ -2449,6 +2493,14 @@ def run_fix_loop(
         printed=_stuck_printed,
     )
     narrate_thrash_halt(log=_log, voice=_voice)
+    if outcome.packet:
+        last_name = _cast.entries[-1].name if _cast.entries else "Quinn"
+        narrate_failure_detail(
+            last_name,
+            outcome.packet,
+            log=_log,
+            voice=_voice,
+        )
     reason = (
         f"fix budget exhausted ({budget.max_attempts} attempts); "
         f"still red: {outcome.failures[:3] or outcome.crashes[:2]}"
@@ -2580,10 +2632,10 @@ def run_tier2_implement_gate(
                 )
             return outcome
 
-        narrate_verify_red(
+        _narrate_verify_failure(
             agent_hint,
-            passed=(outcome.result or {}).get("passed", "?"),
-            total=(outcome.result or {}).get("total", "?"),
+            outcome,
+            repo_root=repo_root,
             log=_log,
             voice=_voice,
         )
@@ -2984,6 +3036,12 @@ def run_pipeline_slice(
             if not ok:
                 explain = explain_gate_pending(gid, slice_file, repo_root)
                 narrate_gate_stuck(label, explain, log=_log, voice=_voice)
+                narrate_role_report(
+                    agent,
+                    extract_gate_stuck_body(explain),
+                    log=_log,
+                    voice=_voice,
+                )
                 elapsed = int(time.time() - t0)
                 _emit_recap("halt", elapsed)
                 return False, elapsed, last_verify, _slice_meta()
@@ -3007,12 +3065,24 @@ def run_pipeline_slice(
                         break
                     explain = explain_gate_pending(gid, slice_file, repo_root)
                     narrate_gate_stuck(label, explain, log=_log, voice=_voice)
+                    narrate_role_report(
+                        agent,
+                        extract_gate_stuck_body(explain),
+                        log=_log,
+                        voice=_voice,
+                    )
                     elapsed = int(time.time() - t0)
                     _emit_recap("halt", elapsed)
                     return False, elapsed, last_verify, _slice_meta()
                 else:
                     explain = explain_gate_pending(gid, slice_file, repo_root)
                     narrate_gate_stuck(label, explain, log=_log, voice=_voice)
+                    narrate_role_report(
+                        agent,
+                        extract_gate_stuck_body(explain),
+                        log=_log,
+                        voice=_voice,
+                    )
                     elapsed = int(time.time() - t0)
                     _emit_recap("halt", elapsed)
                     return False, elapsed, last_verify, _slice_meta()

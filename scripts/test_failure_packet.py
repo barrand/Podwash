@@ -17,6 +17,7 @@ from failure_packet import (  # noqa: E402
     FailurePacket,
     build_failure_packet,
     classify_failure,
+    failure_story_parts,
     format_stuck_card,
     merge_diagnose_into_packet,
     packet_signature,
@@ -300,6 +301,19 @@ class PacketBuilderTests(unittest.TestCase):
         )
         self.assertEqual(a, b)
         self.assertNotIn("xctassert", a.lower())
+
+
+class FailureStoryPartsTests(unittest.TestCase):
+    def test_extracts_test_intent_got(self):
+        pkt = FailurePacket(
+            test_ids=["FooTests/testBar()"],
+            assertions=["XCTAssertTrue failed"],
+            hierarchy_excerpt="[got] cleaningBadge missing",
+        )
+        parts = failure_story_parts(pkt)
+        self.assertIn("FooTests", parts["test"])
+        self.assertIn("XCTAssertTrue", parts["intent"])
+        self.assertIn("cleaningBadge", parts["got"])
 
 
 class StuckCardPersistTests(unittest.TestCase):

@@ -7,8 +7,12 @@ JSONL / ledger / stuck cards — only in narrated lines.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
+
+if TYPE_CHECKING:
+    from failure_packet import FailurePacket
 
 LogFn = Callable[[str], None]
 
@@ -104,6 +108,25 @@ REFEREE_PRIMARY_LINES: tuple[str, ...] = (
     "⚖️ {referee} rules: primary is {short} — {next} ({role}) gets the ticket, fresh eyes.",
     "⚖️ {referee} pins it on {short}. {next} ({role}) clocks in with clean goggles.",
     "⚖️ {referee} reads the failure: {short}. {next} ({role}) owns the next pass.",
+)
+
+MURPHY_BLAME_LINES: tuple[str, ...] = (
+    "I bet it was Murphy. He is always monkeying around.",
+    "Murphy denies everything. The tests disagree.",
+    "Could've been Murphy — he's always in the wrench drawer.",
+    "Murphy swears he wasn't on the keyboard. I don't buy it.",
+)
+
+FAILURE_DETAIL_LINES: tuple[str, ...] = (
+    "from {name}: {murphy_tail} I was on {test} — tried {intent}. Got {got} instead. {blame}",
+    "from {name}: {murphy_tail} Working {test}: wanted {intent}, but got {got}. {blame}",
+    "from {name}: {murphy_tail} {test} — expected {intent}; saw {got}. {blame}",
+)
+
+ROLE_REPORT_LINES: tuple[str, ...] = (
+    "from {name}: {detail}",
+    "{name} back to the coordinator: {detail}",
+    "from {name} on the floor: {detail}",
 )
 
 GATE_STUCK_LINES: tuple[str, ...] = (
@@ -548,6 +571,80 @@ def narrate_gate_cleared(
         gate=gate_label,
         time=time_bit,
         next=next_bit,
+    )
+    _emit(line, log)
+    return line
+
+
+def extract_gate_stuck_body(explain_msg: str) -> str:
+    """Pull the actionable body from explain_gate_pending output."""
+    body = (explain_msg or "").strip()
+    marker = " — stopping."
+    if marker in body:
+        body = body.split(marker, 1)[1].strip()
+    body = body.lstrip(". ").strip()
+    if body.startswith("(") and body.endswith(")"):
+        body = body[1:-1].strip()
+    for prefix in ("gate ",):
+        if body.lower().startswith(prefix):
+            rest = body.split(" still pending after worker", 1)
+            if len(rest) > 1:
+                body = rest[1].strip().lstrip(". ").strip()
+            break
+    unblock = " unblock:"
+    if unblock in body.lower():
+        idx = body.lower().index(unblock)
+        body = body[:idx].strip().rstrip(";") + ". " + body[idx + len(unblock) :].strip()
+    return body
+
+
+def narrate_failure_detail(
+    name: str,
+    packet: FailurePacket | None,
+    *,
+    log: LogFn | None = None,
+    voice: StoryVoice | None = None,
+) -> str:
+    """Character-voiced test failure report with test / intent / got."""
+    from failure_packet import FailurePacket as _FailurePacket, failure_story_parts
+
+    v = voice or _default_voice
+    if not isinstance(packet, _FailurePacket):
+        return ""
+    parts = failure_story_parts(packet)
+    murphy_tail = v.pick("verify_red", VERIFY_RED_TAILS)
+    blame = v.pick("murphy_blame", MURPHY_BLAME_LINES)
+    line = v.format(
+        "failure_detail",
+        FAILURE_DETAIL_LINES,
+        name=name,
+        murphy_tail=murphy_tail,
+        test=parts["test"],
+        intent=parts["intent"],
+        got=parts["got"],
+        blame=blame,
+    )
+    _emit(line, log)
+    return line
+
+
+def narrate_role_report(
+    name: str,
+    detail: str,
+    *,
+    log: LogFn | None = None,
+    voice: StoryVoice | None = None,
+) -> str:
+    """Generic in-character report (gate stuck, worker status, etc.)."""
+    v = voice or _default_voice
+    body = re.sub(r"\s+", " ", (detail or "").strip())
+    if not body:
+        return ""
+    line = v.format(
+        "role_report",
+        ROLE_REPORT_LINES,
+        name=name,
+        detail=body,
     )
     _emit(line, log)
     return line

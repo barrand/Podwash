@@ -82,6 +82,8 @@ noise:
 - Chapter open: `── Slice 12 · 4/9 test spec · QA Quincy ──`
 - Clear: `✓ Quincy cleared test spec (2m) — next: …`
 - Stuck: `✗ story stuck — … Unblock: …`
+- Failure detail: `from Edison: Murphy got into the wrench drawer. I was on FooTests/testBar() — tried … Got … instead.`
+- Role report: `from Ada: Status=Ready; missing artifacts …`
 - Recap: `Forge recap · slice 12 · 18m · Priya, Quincy · Murphy ×1 · green`
 
 `worker start` / `worker finished` / duplicate `SUMMARY:` lines are verbose-only.
