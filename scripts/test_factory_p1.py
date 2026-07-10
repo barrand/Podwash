@@ -33,7 +33,6 @@ from factory_narrator import (  # noqa: E402
     narrate_thrash_halt,
     narrate_verify_red,
     StoryVoice,
-    persist_story_recap,
 )
 from sim_hygiene import (  # noqa: E402
     CrashWatchdog,
@@ -154,13 +153,6 @@ class NarratorTests(unittest.TestCase):
         self.assertIn("Priya", recap)
         self.assertIn("Murphy ×1", recap)
         self.assertIn("green", recap)
-
-        with tempfile.TemporaryDirectory() as tmp:
-            path = persist_story_recap(recap, repo_root=tmp, slice_id=12)
-            self.assertTrue(os.path.isfile(path))
-            self.assertIn("story-slice-12.txt", path)
-            with open(path, encoding="utf-8") as fh:
-                self.assertEqual(fh.read().strip(), recap)
 
         fix_open = narrate_chapter_open(
             slice_id=12,
@@ -299,6 +291,21 @@ class ArtifactCellTests(unittest.TestCase):
                 ["docs/adr/009-queue-resume.md"],
             )
             open(os.path.join(tmp, "docs", "adr", "009-queue-resume.md"), "w").write("y")
+            self.assertTrue(artifact_cell_satisfied(tmp, cell))
+
+    def test_inline_type_names_not_artifact_paths(self):
+        from slice_loop_progress import artifact_cell_satisfied, missing_artifact_paths
+
+        cell = (
+            "`docs/adr/010-settings-word-lists.md` "
+            "(category IDs, `SettingsStore` API, matcher seam)"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "docs", "adr"), exist_ok=True)
+            open(
+                os.path.join(tmp, "docs", "adr", "010-settings-word-lists.md"), "w"
+            ).write("x")
+            self.assertEqual(missing_artifact_paths(tmp, cell), [])
             self.assertTrue(artifact_cell_satisfied(tmp, cell))
 
 

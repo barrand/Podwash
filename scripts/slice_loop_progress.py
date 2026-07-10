@@ -976,14 +976,33 @@ def _path_exists(repo_root: str, raw: str) -> bool:
     return os.path.isfile(path)
 
 
+_ARTIFACT_EXTENSIONS = (".md", ".swift", ".json", ".txt", ".yml", ".yaml", ".xcdatamodeld")
+
+
+def _looks_like_artifact_path(token: str) -> bool:
+    """True for file/repo paths — not inline type names like ``SettingsStore``."""
+    token = (token or "").strip().strip("`")
+    if not token or token in ("—", "-", "n/a", "N/A"):
+        return False
+    if "/" in token or token.startswith("docs/"):
+        return True
+    return token.endswith(_ARTIFACT_EXTENSIONS)
+
+
+def _artifact_paths_from_cell(raw: str) -> list[str]:
+    """Backtick tokens from a Role-artifacts cell that look like paths on disk."""
+    return [p for p in _extract_backtick_paths(raw or "") if _looks_like_artifact_path(p)]
+
+
 def artifact_cell_satisfied(repo_root: str, raw: str) -> bool:
     """True when every backtick path in a Role-artifacts cell exists on disk.
 
     Slice tables often list multiple artifacts in one cell, e.g.
     ``007.md`` (stack) + ``009.md`` (APIs). ``_path_exists`` only checks the
-    first token — use this for gate FSM rows.
+    first token — use this for gate FSM rows. Inline type names in backticks
+    (e.g. ``SettingsStore`` API) are ignored.
     """
-    paths = _extract_backtick_paths(raw or "")
+    paths = _artifact_paths_from_cell(raw)
     if paths:
         return all(_path_exists(repo_root, p) for p in paths)
     return _path_exists(repo_root, raw)
@@ -991,7 +1010,7 @@ def artifact_cell_satisfied(repo_root: str, raw: str) -> bool:
 
 def missing_artifact_paths(repo_root: str, raw: str) -> list[str]:
     """Backtick paths from a cell that are not yet on disk."""
-    paths = _extract_backtick_paths(raw or "")
+    paths = _artifact_paths_from_cell(raw)
     if not paths:
         return [] if _path_exists(repo_root, raw) else [raw.strip()]
     return [p for p in paths if not _path_exists(repo_root, p)]
@@ -1112,7 +1131,7 @@ def assess_slice_gates(slice_file: str, repo_root: str) -> dict[str, Any]:
         if "waiv" in gate:
             return True, True
         path = row["path"]
-        if _path_exists(repo_root, path):
+        if artifact_cell_satisfied(repo_root, path):
             return True, True
         if "accepted" in gate or "(done)" in gate or "done)" in path.lower():
             return True, True

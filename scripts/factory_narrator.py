@@ -741,23 +741,6 @@ def narrate_slice_recap(
     return line
 
 
-def persist_story_recap(
-    recap: str,
-    *,
-    repo_root: str,
-    slice_id: int,
-) -> str:
-    """Write recap to build/test-results/story-slice-NN.txt. Returns path."""
-    import os
-
-    out_dir = os.path.join(repo_root, "build", "test-results")
-    os.makedirs(out_dir, exist_ok=True)
-    path = os.path.join(out_dir, f"story-slice-{slice_id:02d}.txt")
-    with open(path, "w", encoding="utf-8") as fh:
-        fh.write(recap.rstrip() + "\n")
-    return path
-
-
 def _emit(line: str, log: LogFn | None) -> None:
     if log:
         log(line)

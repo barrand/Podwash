@@ -149,7 +149,7 @@ Test spec review: (pending)
 | Role | Gate | Artifact path |
 |------|------|---------------|
 | PM | Required | `docs/slices/slice-13-settings.md` (this file) |
-| Architect | Required | `docs/adr/010-settings-word-lists.md` (category IDs, `SettingsStore` API, matcher seam) |
+| Architect | Required | `docs/adr/010-settings-word-lists.md` (category IDs, SettingsStore API, matcher seam) |
 | UX | Required | `docs/slices/slice-13-settings-ux.md` (states, identifiers, UI scenarios) |
 | QA | Required | `SettingsStoreTests.swift`, `SettingsUITests.swift` |
-| Engineer | Required | `WordCategories`, `SettingsStore`, `SettingsView`, matcher wiring |
+| Engineer | Required | `WordCategories.swift`, `SettingsStore.swift`, `SettingsView.swift`, matcher wiring |

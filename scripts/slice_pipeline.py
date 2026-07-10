@@ -44,7 +44,6 @@ from factory_narrator import (
     narrate_verify_green,
     narrate_verify_red,
     narrate_worker_done,
-    persist_story_recap,
 )
 from hypothesis_ledger import (
     append_ledger,
@@ -2827,7 +2826,7 @@ def run_pipeline_slice(
         accomplishment = None
         if outcome == "green":
             accomplishment = extract_slice_accomplishment(slice_file, repo_root)
-        line = narrate_slice_recap(
+        narrate_slice_recap(
             slice_id=slice_id,
             elapsed_secs=elapsed,
             cast=cast,
@@ -2835,8 +2834,6 @@ def run_pipeline_slice(
             accomplishment=accomplishment,
             log=_log,
         )
-        path = persist_story_recap(line, repo_root=repo_root, slice_id=slice_id)
-        _log(f"story recap written: {path}")
 
     from cursor_bridge import launch_bridge as launch_cursor_bridge
 

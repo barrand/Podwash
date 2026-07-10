@@ -689,15 +689,6 @@ def main():
             voice=session_voice,
         )
         print(report, flush=True)
-        story_path = os.path.join(
-            REPO_ROOT, "build", "test-results", f"story-slice-{slice_id:02d}.txt"
-        )
-        try:
-            if os.path.isfile(story_path):
-                with open(story_path, "a", encoding="utf-8") as fh:
-                    fh.write(report.rstrip() + "\n")
-        except OSError:
-            pass
 
     log(f"reached --max {args.max} slices for this session. Re-run to continue.")
     return EXIT_OK

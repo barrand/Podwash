@@ -83,7 +83,6 @@ noise:
 - Clear: `✓ Quincy cleared test spec (2m) — next: …`
 - Stuck: `✗ story stuck — … Unblock: …`
 - Recap: `Forge recap · slice 12 · 18m · Priya, Quincy · Murphy ×1 · green`
-  (also written to `build/test-results/story-slice-NN.txt`)
 
 `worker start` / `worker finished` / duplicate `SUMMARY:` lines are verbose-only.
 Heartbeats say `Forge · slice 12 · QA Quincy · 4m` when a named agent is on stage.
