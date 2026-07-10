@@ -175,23 +175,63 @@ post-implement grinding — **not** authoring-gate TDD compile-red. After
 
 See also [`plans/factory-tier2-infra-qa-routing.md`](plans/factory-tier2-infra-qa-routing.md).
 
-## Fix path (FailurePacket → stuck card → referee → ledger → fix)
+## Fix path (FailurePacket → lane|referee → ledger → fix)
 
-Applies to **both** coordinator and pipeline modes via shared `run_fix_loop`.
+Applies to **both** coordinator and pipeline modes via shared `run_fix_loop`
+(and the same lane brain on tier-2 via `resolve_tier2_continue`).
 
 ```text
-loop-owned verify.sh tier 3 (red)
+loop-owned verify.sh (red)
   → FailurePacket (summary testFailures + exported attachments)
   → print + persist stuck card (build/test-results/stuck-slice-NN.txt)
-  → LLM referee (plan mode, cheap model, sentinel-wrapped JSON verdict)
+  → classify_fix_lane (scripts/fix_lanes.py) — deterministic short-circuit
+       packaging | expectation_api | artifact_fixture | build → skip referee
+  → else LLM referee (plan mode, sentinel-wrapped JSON verdict)
   → on parse fail: one free referee retry, then heuristic fallback (try-N)
   → ledger gate: same hyp+sig → reroute opposite role (does not halt while budget remains)
   → scope-contradiction guard (Engineer+test-only files → QA, and vice versa)
-  → Engineer|QA fix worker (fresh context, verify banned, ledger in prompt)
+  → git baseline snapshot → Engineer|QA fix worker → git delta (real files_touched)
+  → optional HANDOFF: line (honored only when in-scope delta empty)
+  → empty in-scope → force opposite role next; explicit no-edit×2 → NO-EDIT THRASH
   → tier 1 re-verify (failed tests only)
   → if green → tier 3 full suite
-  → append ledger entry
+  → append ledger entry (files_touched = in-scope git delta, not suggestions)
 ```
+
+### Deterministic lanes (`scripts/fix_lanes.py`)
+
+High-confidence lanes skip the LLM referee on **both** tier-2 and full-suite:
+
+| Lane | Role | Trigger |
+|------|------|---------|
+| `packaging` | Engineer | Missing bundle executable |
+| `expectation_api` | QA | XCTestExpectation double-fulfill (+ lever escalate from ledger) |
+| `artifact_fixture` | QA | Regenerate / unparsable `benchmark-results.json` (slice 18) |
+| `build` | Engineer | `is_build_lane` / compile-red |
+
+Still go through referee: `crash`, `ui_race`, `missing_identifier`, `wrong_state`,
+generic `assertion`, `unknown`, multi-primary failures.
+
+Console: `LANE: artifact_fixture → QA`.
+
+### Worker handoff line
+
+Fix prompts require:
+
+```text
+SUMMARY: <one line>
+HANDOFF: scope=ok|out_of_scope; route=loop|QA|Engineer; applied=yes|no
+```
+
+Python parses `HANDOFF:` softly (missing line = warn, not hard fail). Honor
+`out_of_scope` / explicit `route=` **only when** the in-scope git delta is empty;
+otherwise log `HANDOFF IGNORED: worker edited in-scope paths`.
+
+### Git baseline (observation-first)
+
+Before each fix worker: snapshot `git status --porcelain`. After: ledger
+`files_touched` = set-difference filtered by role scope. Pre-existing dirty
+tree (ADR/app from earlier gates) must not pollute the attempt record.
 
 ### FailurePacket
 
@@ -233,7 +273,7 @@ Legacy `fix_playbooks.py` / diagnose helpers remain in-tree for tests but are **
 
 ### Hypothesis ledger
 
-`build/test-results/ledger-slice-NN.jsonl` — durable across bridge death. Each attempt appends `{ts, attempt, role, hypothesis, files_touched, result_signature, verify_tier, outcome}`. Before spawning a fix worker, if the referee verdict's **hypothesis + signature** matches a prior entry, Python **reroutes to the opposite role** with a fresh `ledger-reroute:…:try-N` hypothesis (never pays for the same theory twice, never leaves budget on the table). Halt on ledger only after the fix budget is exhausted. Repeat signatures always get a **fresh** fix worker (new agent context) with the ledger attached.
+`build/test-results/ledger-slice-NN.jsonl` — durable across bridge death. Each attempt appends `{ts, attempt, role, hypothesis, files_touched, result_signature, verify_tier, outcome}`. **`files_touched` is the per-worker in-scope git delta**, not referee suggestions. Before spawning a fix worker, if the referee verdict's **hypothesis + signature** matches a prior entry, Python **reroutes to the opposite role** with a fresh `ledger-reroute:…:try-N` hypothesis (never pays for the same theory twice, never leaves budget on the table). Halt on ledger only after the fix budget is exhausted. Repeat signatures always get a **fresh** fix worker (new agent context) with the ledger attached.
 
 ### Verify ban (fix workers + authoring gates)
 
@@ -251,9 +291,12 @@ guarantee.
 
 | Signal | Worker |
 |--------|--------|
+| Deterministic lane (`fix_lanes.classify_fix_lane`) | Role from lane; skip referee |
 | Referee `fix_scope=app` / `role=Engineer` | Engineer (`PodWash/PodWash/**`) |
 | Referee `fix_scope=tests` / `role=QA` | QA (tests only) |
 | Scope contradiction (role vs suggested files) | Flip role before spawn |
+| Empty in-scope git delta | Force opposite role next (`NO-EDIT` / `ledger-reroute:no-edit`) |
+| Explicit `HANDOFF: … applied=no` / `out_of_scope` ×2 | `NO-EDIT THRASH` halt |
 | Referee `confidence=low` | Halt (stuck card) |
 | Unparseable referee JSON | Retry once → heuristic fallback (`try-N`) |
 | Ledger hit (same hyp + signature) | Reroute opposite role while budget remains |
@@ -280,6 +323,7 @@ Referee calls (including one parse retry) do **not** burn budget (routing only).
 
 ```bash
 python3 -m unittest scripts.test_factory_p1 scripts.test_referee \
+  scripts.test_fix_lanes scripts.test_factory_hardening \
   scripts.test_hypothesis_ledger scripts.test_slice_pipeline \
   scripts.test_slice_loop_progress scripts.test_failure_packet -q
 ./scripts/test-verify-tiers.sh

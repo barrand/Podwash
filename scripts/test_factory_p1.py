@@ -546,6 +546,60 @@ class Tier2ContinuePromptTests(unittest.TestCase):
             self.assertIn("ledger-escalate:predicate-wait", prompt2)
             self.assertIn("Do not edit app", prompt2)
 
+    def test_artifact_regeneration_routes_to_qa(self):
+        from failure_packet import build_failure_packet
+        from slice_pipeline import resolve_tier2_continue
+
+        with tempfile.TemporaryDirectory() as tmp:
+            slice_path = os.path.join(
+                tmp, "docs", "slices", "slice-18-segmentation-spike.md"
+            )
+            os.makedirs(os.path.dirname(slice_path), exist_ok=True)
+            open(slice_path, "w").write(
+                "Deliverables:\n"
+                "- `PodWash/PodWash/ContentSegmenting.swift`\n"
+                "- `PodWash/PodWashTests/SegmentationSpikeTests.swift`\n"
+                "- `PodWash/PodWashTests/Fixtures/segmentation/benchmark-results.json`\n"
+            )
+            failures = [
+                "PodWashTests/SegmentationSpikeTests/testBenchmarkArtifactExistsAndNonEmpty() — "
+                "failed - benchmark-results.json is unparsable as SegmentationBenchmark. "
+                "Regenerate via PodWashSlowTests/SegmentationBenchmarkTests "
+                "(VERIFY_ALLOW_SKIPS=1 scripts/verify.sh -only-testing:PodWashSlowTests/"
+                "SegmentationBenchmarkTests).",
+                'PodWashTests/testDecisionArtifactRecorded() — failed: caught error: '
+                '"keyNotFound(CodingKeys(stringValue: \\"approach\\", intValue: nil), '
+                "Swift.DecodingError.Context(codingPath: [], debugDescription: "
+                '"No value associated with key CodingKeys(stringValue: \\"approach\\""))"',
+            ]
+            packet = build_failure_packet(
+                failures=failures,
+                crashes=[],
+                bundle="b.xcresult",
+                exit_code="65",
+                output="\n".join(failures),
+                export_attachments=False,
+            )
+            outcome = VerifyOutcome(
+                result={"exit": "65", "failed": "3", "total": "5", "bundle": "b.xcresult"},
+                green=False,
+                failures=failures,
+                packet=packet,
+                tier=2,
+            )
+            role, prompt = resolve_tier2_continue(
+                slice_file=slice_path,
+                repo_root=tmp,
+                outcome=outcome,
+                run_i=1,
+                max_runs=3,
+            )
+            self.assertEqual(role, "QA")
+            self.assertIn("Artifact/fixture lane", prompt)
+            self.assertIn("benchmark-results.json", prompt)
+            self.assertIn("do not edit app code", prompt.lower())
+            self.assertIn("SegmentationBenchmarkTests", prompt)
+
     def test_sim_launch_failure_is_infra_not_packaging(self):
         from slice_pipeline import is_tier2_infra_failure
 

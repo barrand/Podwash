@@ -369,6 +369,11 @@ def looks_like_build_failure(
     text: str, verify: dict[str, str] | None = None
 ) -> bool:
     """True when verify/xcodebuild failed with no tests executed (compile-red)."""
+    from failure_packet import is_artifact_fixture_failure, is_test_decode_assertion_blob
+
+    blob = text or ""
+    if is_artifact_fixture_failure(blob) or is_test_decode_assertion_blob(blob):
+        return False
     if verify and verify.get("class") == "build":
         return True
     if verify:
@@ -380,6 +385,12 @@ def looks_like_build_failure(
             failed_n = int(failed) if str(failed).isdigit() else -1
             if exit_code != 0 and total_n == 0 and failed_n == 0:
                 return True
+            # Tests ran and failed — generic ``error:`` in decode assertions is not build.
+            if exit_code != 0 and total_n > 0 and failed_n > 0:
+                if is_artifact_fixture_failure(blob) or is_test_decode_assertion_blob(
+                    blob
+                ):
+                    return False
         except ValueError:
             pass
     return extract_build_error(text) is not None

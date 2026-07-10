@@ -19,12 +19,23 @@ from typing import Any, Callable, Literal, Optional
 from failure_packet import (
     FailurePacket,
     build_failure_packet,
+    extract_artifact_regeneration_hint,
     extract_slice_swift_paths,
     format_stuck_card,
+    is_artifact_fixture_failure,
     is_expectation_api_violation,
     is_flake_signal,
     persist_stuck_card,
     slice_id_from_path,
+)
+from fix_lanes import (
+    classify_fix_lane,
+    filter_paths_for_role,
+    format_attempt_note,
+    git_delta,
+    opposite_role,
+    parse_handoff_line,
+    resolve_handoff_flip,
 )
 from factory_events import EventLog, parse_summary_line
 from factory_narrator import (
@@ -309,6 +320,9 @@ class FixBudget:
     last_lever_index: int = -1
     flake_cold_retried: bool = False
     levers_tried: list[str] = field(default_factory=list)
+    # Observation-first handoffs (git no-edit / worker HANDOFF line)
+    forced_next_role: str = ""
+    no_edit_counts: dict[str, int] = field(default_factory=dict)
 
     @property
     def remaining(self) -> int:
@@ -989,6 +1003,20 @@ def route_fix(
     """Return 'Engineer' or 'QA' for the next fix worker."""
     if lever_role in ("Engineer", "QA"):
         return lever_role
+    blob = "\n".join(list(failures or []) + list(crashes or []))
+    if packet is not None:
+        blob = "\n".join(
+            [blob]
+            + list(packet.raw_failures or [])
+            + list(packet.assertions or [])
+        )
+    lane = classify_fix_lane(
+        blob=blob,
+        packet=packet,
+        is_build=bool(packet and packet.failure_class == "build_error"),
+    )
+    if lane is not None:
+        return lane.role
     if packet is not None:
         cls = packet.failure_class
         sig = packet.signature or failure_signature(failures, crashes)
@@ -1005,7 +1033,6 @@ def route_fix(
         if crashes or packet.crashes:
             return "Engineer"
 
-    blob = "\n".join(failures + crashes)
     sig = failure_signature(failures, crashes)
 
     if crashes:
@@ -1016,7 +1043,17 @@ def route_fix(
         # Pure test-side wording without app paths
         testish = any(
             tok in blob.lower()
-            for tok in ("fixture", "xctassert", "golden", "test case", "uitest")
+            for tok in (
+                "fixture",
+                "xctassert",
+                "golden",
+                "test case",
+                "uitest",
+                "regenerate",
+                "benchmark-results",
+                "execution evidence",
+                "unparsable",
+            )
         )
         appish = any(
             tok in blob.lower()
@@ -1138,6 +1175,9 @@ def outcome_failure_class(outcome: VerifyOutcome) -> str:
     """Stable class label for budget / transition accounting."""
     if is_build_lane(outcome):
         return "build_error"
+    blob = _tier2_failure_blob(outcome)
+    if is_artifact_fixture_failure(blob):
+        return "fixture_artifact"
     pkt = outcome.packet
     if pkt and pkt.failure_class:
         return str(pkt.failure_class)
@@ -1203,6 +1243,27 @@ def is_tier2_infra_failure(
     return False
 
 
+def _suggested_files_for_lane(
+    lane_id: str,
+    role: str,
+    packet: FailurePacket,
+    slice_files: list[str],
+) -> list[str]:
+    """Pick suggested edit paths for a deterministic lane."""
+    src = list(packet.suggested_files or []) + list(slice_files)
+    if role == "QA" or lane_id in ("expectation_api", "artifact_fixture"):
+        picked = [f for f in src if "Tests" in f or "Fixtures" in f]
+        return picked or [f for f in slice_files if "Tests" in f or "Fixtures" in f]
+    picked = [
+        f
+        for f in src
+        if f.startswith("PodWash/PodWash/") and "Tests" not in f
+    ]
+    if lane_id == "packaging" and not picked:
+        return ["PodWash/PodWash/PodWashApp.swift"]
+    return picked or [f for f in slice_files if "Tests" not in f]
+
+
 def resolve_tier2_continue(
     *,
     slice_file: str,
@@ -1248,56 +1309,28 @@ def resolve_tier2_continue(
         slice_text = ""
     slice_files = extract_slice_swift_paths(slice_text)
 
-    if is_missing_bundle_executable(blob):
-        role = "Engineer"
-        instruction = (
-            "Packaging failure: restore a valid PodWash.app bundle executable "
-            "(do not delete the app target @main entry point). Do not edit tests."
+    lane = classify_fix_lane(
+        blob=blob,
+        packet=packet,
+        is_build=is_build_lane(outcome),
+        escalate_expectation=escalate_expectation or run_i >= 2,
+    )
+    if lane is not None:
+        role = lane.role
+        instruction = lane.instruction
+        hypothesis = lane.hypothesis
+        packet = packet.with_updates(
+            fix_scope=lane.fix_scope,
+            failure_class=(
+                "assertion"
+                if lane.lane_id in ("expectation_api", "artifact_fixture")
+                else packet.failure_class or "build_error"
+            ),
+            hypothesis=hypothesis or packet.hypothesis,
         )
-        hypothesis = "App target missing/broken executable or installable product"
-        suggested = [
-            f
-            for f in slice_files
-            if f.startswith("PodWash/PodWash/") and "Tests" not in f
-        ] or [
-            "PodWash/PodWash/PodWashApp.swift",
-        ]
-    elif is_expectation_api_violation(blob) or is_expectation_api_violation(
-        "\n".join((packet.assertions or []) + (packet.raw_failures or []))
-    ):
-        role = "QA"
-        if escalate_expectation or run_i >= 2:
-            instruction = (
-                "Lever 1 (prior invalidate-KVO hyp failed): replace the KVO "
-                "wait with expectation(for: NSPredicate, evaluatedWith:) on "
-                "timeControlStatus == .playing. Do NOT use observe(\\.timeControlStatus) "
-                "— setRate re-notifies status while still .playing and a live "
-                "observer double-fulfills. No long-lived KVO across the rate loop. "
-                "Do not weaken AC. Do not edit app."
-            )
-            hypothesis = (
-                f"ledger-escalate:predicate-wait:"
-                f"{(packet.signature or 'expectation')[:50]}"
-            )
-        else:
-            instruction = (
-                "XCTestExpectation double-fulfill (KVO). Lever 0: wait only "
-                "until playing, then invalidate the observation BEFORE any "
-                "further player mutation (setRate / pause / play). Never leave "
-                "KVO alive across the rate loop — the stack shows fulfill "
-                "firing inside setRate when the observer is still registered. "
-                "Do not weaken AC thresholds. Do not edit app code."
-            )
-            hypothesis = (
-                packet.hypothesis
-                or "Test harness: live KVO across setRate double-fulfills expectation"
-            )
-        suggested = [
-            f
-            for f in (packet.suggested_files or slice_files)
-            if "Tests" in f
-        ] or [f for f in slice_files if "Tests" in f]
-        packet = packet.with_updates(fix_scope="tests", failure_class="assertion")
+        suggested = _suggested_files_for_lane(
+            lane.lane_id, role, packet, slice_files
+        )
     elif packet.fix_scope == "tests":
         role = "QA"
         instruction = (
@@ -1476,7 +1509,9 @@ Simulator crashes:
 xcresult bundle: {bundle_line}
 
 Diagnose, make the minimal fix in scope, then end your turn. Do not verify.
-End with: SUMMARY: <one line of what you changed>
+End with:
+SUMMARY: <one line of what you changed>
+HANDOFF: scope=ok|out_of_scope; route=loop|QA|Engineer; applied=yes|no
 """
 
 
@@ -2294,106 +2329,170 @@ def run_fix_loop(
                 agent_name=rhea, timeline=True, mission="route primary failure",
             )
 
-        try:
-            if referee_fn is not None:
-                verdict = referee_fn(
-                    packet=packet,
-                    slice_file=slice_file,
-                    stuck_card=card0,
-                    ledger_entries=ledger,
+        # Deterministic lanes skip the LLM referee (packaging / expectation /
+        # artifact / build). Hard cases still go through Rhea.
+        forced_role = budget.forced_next_role
+        if forced_role:
+            budget.forced_next_role = ""
+        lane = classify_fix_lane(
+            blob=_tier2_failure_blob(outcome),
+            packet=packet,
+            is_build=is_build_lane(outcome),
+        )
+        if lane is not None:
+            _log(f"LANE: {lane.lane_id} → {lane.role}")
+            if lane.lane_id == "artifact_fixture":
+                hint = extract_artifact_regeneration_hint(
+                    _tier2_failure_blob(outcome)
                 )
-            elif client is not None:
-                verdict = call_referee(
-                    client,
-                    packet=packet,
-                    slice_file=slice_file,
-                    stuck_card=card0,
-                    api_key=api_key,
-                    repo_root=repo_root,
-                    ledger_entries=ledger,
-                    log=_log,
-                    progress_factory=progress_factory,
-                    attempt=budget.attempts_used + 1,
-                    telemetry=referee_telemetry,
-                )
-            else:
-                raise RefereeError("no client/referee_fn — cannot route fix")
-        except RefereeError as exc:
-            reason = str(exc.reason)
-            parseish = (
-                "JSON parse failed" in reason
-                or "no JSON object" in reason
-                or "empty reply" in reason
-                or "role invalid" in reason
-            )
-            if parseish:
-                # Do not thrash-halt the whole slice on a bad referee blob —
-                # fall back to heuristic routing and spend a real fix attempt.
-                _log(f"referee parse/format failed — heuristic fallback: {reason}")
-                role = route_fix(
-                    outcome.failures,
-                    outcome.crashes,
-                    packet=packet,
-                    previous_role=budget.last_role,
-                    previous_signature=budget.last_signature,
-                )
-                try_n = budget.attempts_used + 1
-                hyp = (
-                    packet.hypothesis
-                    or f"heuristic:{packet.failure_class or 'unknown'}:{sig[:60]}:try-{try_n}"
-                )
-                verdict = RefereeVerdict(
-                    primary_failure=(outcome.failures or ["(unknown)"])[0],
-                    role=role,
-                    fix_scope="app" if role == "Engineer" else "tests",
-                    files=list(packet.suggested_files or [])[:6],
-                    instruction=(
-                        "Referee JSON unusable; apply minimal fix for the stuck-card "
-                        f"failure class={packet.failure_class or 'unknown'}."
-                    ),
-                    hypothesis=hyp,
-                    confidence="med",
-                    narration="Rhea's JSON was unreadable — routing by heuristic.",
-                )
-            else:
-                card = format_stuck_card(
-                    packet,
-                    slice_file=slice_file,
-                    attempt=budget.attempts_used,
-                    max_attempts=budget.max_attempts,
-                    lever=reason,
-                )
-                _log_stuck_card_path(
-                    card,
-                    repo_root=repo_root,
-                    slice_file=slice_file,
-                    log=_log,
-                    printed=_stuck_printed,
-                )
-                narrate_thrash_halt(log=_log, voice=_voice)
-                bundle_dir = write_session_bundle(
-                    repo_root=repo_root,
-                    slice_id=slice_id,
-                    reason=f"referee halt: {reason}",
-                    stuck_card=card,
-                    verify_result=outcome.result,
-                    failures=outcome.failures,
-                    crashes=outcome.crashes,
-                    phase="REFEREE",
-                    extra={
-                        "gate": "referee",
-                        "reason": reason,
-                        "referee_telemetry": dict(referee_telemetry),
-                    },
-                )
-                _log(f"session bundle written: {bundle_dir}")
+                if hint:
+                    _log(f"hint: {hint}")
+            use_role = forced_role if forced_role in ("Engineer", "QA") else lane.role
+            if forced_role and forced_role != lane.role:
                 _log(
-                    "referee telemetry: "
-                    f"ok={referee_telemetry.get('parse_ok', 0)} "
-                    f"retry={referee_telemetry.get('parse_retry', 0)} "
-                    f"fail={referee_telemetry.get('parse_fail', 0)}"
+                    f"HANDOFF FLIP applied: forcing role={forced_role} "
+                    f"(lane chose {lane.role})"
                 )
-                raise ThrashHalt(f"referee halt: {reason}") from exc
+            verdict = RefereeVerdict(
+                primary_failure=(outcome.failures or ["(unknown)"])[0],
+                role=use_role,
+                fix_scope="tests" if use_role == "QA" else "app",
+                files=_suggested_files_for_lane(
+                    lane.lane_id, use_role, packet, slice_files
+                )[:6],
+                instruction=lane.instruction,
+                hypothesis=(
+                    f"ledger-reroute:no-edit:{use_role}:{sig[:50]}"
+                    if forced_role
+                    else lane.hypothesis
+                ),
+                confidence="high",
+                narration=(
+                    f"Deterministic lane {lane.lane_id} — skipping referee."
+                    if not forced_role
+                    else f"Lane {lane.lane_id} + handoff flip → {use_role}."
+                ),
+            )
+            forced_role = ""  # consumed
+        else:
+            try:
+                if referee_fn is not None:
+                    verdict = referee_fn(
+                        packet=packet,
+                        slice_file=slice_file,
+                        stuck_card=card0,
+                        ledger_entries=ledger,
+                    )
+                elif client is not None:
+                    verdict = call_referee(
+                        client,
+                        packet=packet,
+                        slice_file=slice_file,
+                        stuck_card=card0,
+                        api_key=api_key,
+                        repo_root=repo_root,
+                        ledger_entries=ledger,
+                        log=_log,
+                        progress_factory=progress_factory,
+                        attempt=budget.attempts_used + 1,
+                        telemetry=referee_telemetry,
+                    )
+                else:
+                    raise RefereeError("no client/referee_fn — cannot route fix")
+            except RefereeError as exc:
+                reason = str(exc.reason)
+                parseish = (
+                    "JSON parse failed" in reason
+                    or "no JSON object" in reason
+                    or "empty reply" in reason
+                    or "role invalid" in reason
+                )
+                if parseish:
+                    # Do not thrash-halt the whole slice on a bad referee blob —
+                    # fall back to heuristic routing and spend a real fix attempt.
+                    _log(f"referee parse/format failed — heuristic fallback: {reason}")
+                    role = route_fix(
+                        outcome.failures,
+                        outcome.crashes,
+                        packet=packet,
+                        previous_role=budget.last_role,
+                        previous_signature=budget.last_signature,
+                    )
+                    try_n = budget.attempts_used + 1
+                    hyp = (
+                        packet.hypothesis
+                        or f"heuristic:{packet.failure_class or 'unknown'}:{sig[:60]}:try-{try_n}"
+                    )
+                    verdict = RefereeVerdict(
+                        primary_failure=(outcome.failures or ["(unknown)"])[0],
+                        role=role,
+                        fix_scope="app" if role == "Engineer" else "tests",
+                        files=list(packet.suggested_files or [])[:6],
+                        instruction=(
+                            "Referee JSON unusable; apply minimal fix for the stuck-card "
+                            f"failure class={packet.failure_class or 'unknown'}."
+                        ),
+                        hypothesis=hyp,
+                        confidence="med",
+                        narration="Rhea's JSON was unreadable — routing by heuristic.",
+                    )
+                else:
+                    card = format_stuck_card(
+                        packet,
+                        slice_file=slice_file,
+                        attempt=budget.attempts_used,
+                        max_attempts=budget.max_attempts,
+                        lever=reason,
+                    )
+                    _log_stuck_card_path(
+                        card,
+                        repo_root=repo_root,
+                        slice_file=slice_file,
+                        log=_log,
+                        printed=_stuck_printed,
+                    )
+                    narrate_thrash_halt(log=_log, voice=_voice)
+                    bundle_dir = write_session_bundle(
+                        repo_root=repo_root,
+                        slice_id=slice_id,
+                        reason=f"referee halt: {reason}",
+                        stuck_card=card,
+                        verify_result=outcome.result,
+                        failures=outcome.failures,
+                        crashes=outcome.crashes,
+                        phase="REFEREE",
+                        extra={
+                            "gate": "referee",
+                            "reason": reason,
+                            "referee_telemetry": dict(referee_telemetry),
+                        },
+                    )
+                    _log(f"session bundle written: {bundle_dir}")
+                    _log(
+                        "referee telemetry: "
+                        f"ok={referee_telemetry.get('parse_ok', 0)} "
+                        f"retry={referee_telemetry.get('parse_retry', 0)} "
+                        f"fail={referee_telemetry.get('parse_fail', 0)}"
+                    )
+                    raise ThrashHalt(f"referee halt: {reason}") from exc
+
+        if forced_role in ("Engineer", "QA"):
+            _log(f"HANDOFF FLIP applied: forcing role={forced_role}")
+            verdict = RefereeVerdict(
+                primary_failure=verdict.primary_failure,
+                failure_groups=list(verdict.failure_groups),
+                role=forced_role,
+                fix_scope="tests" if forced_role == "QA" else "app",
+                files=list(verdict.files or packet.suggested_files or [])[:6],
+                instruction=verdict.instruction,
+                hypothesis=(
+                    f"ledger-reroute:no-edit:{forced_role}:{sig[:50]}"
+                    if "no-edit" not in (verdict.hypothesis or "")
+                    else verdict.hypothesis
+                ),
+                confidence="med",
+                narration=f"Prior attempt no-edit/out-of-scope — {forced_role} takes over.",
+            )
 
         if hypothesis_seen(ledger, verdict.hypothesis, sig):
             reason = (
@@ -2545,6 +2644,7 @@ def run_fix_loop(
                 mission=verdict.instruction[:80],
             )
         progress = progress_factory(role, agent) if progress_factory else None
+        baseline = set(git_paths_changed(repo_root))
         ok, status = run_worker(
             client,
             role=role,
@@ -2554,14 +2654,70 @@ def run_fix_loop(
             log=_log,
             progress=progress,
         )
-        summary = ""
+        after = set(git_paths_changed(repo_root))
+        delta = git_delta(baseline, after)
+        in_scope = filter_paths_for_role(delta, role)
+        if progress is not None and hasattr(progress, "_files_touched"):
+            progress._files_touched = list(in_scope)
+
+        assistant = ""
         if progress is not None and hasattr(progress, "assistant_text"):
-            summary = parse_summary_line(progress.assistant_text or "") or ""
+            assistant = progress.assistant_text or ""
+        summary = parse_summary_line(assistant) or ""
         if summary:
             narrate_worker_done(agent, summary, log=_log, voice=_voice)
-        note = (
-            f"attempt {attempt}: role={role} agent={agent} "
-            f"hyp={verdict.hypothesis[:60] or 'n/a'} status={status}"
+        handoff = parse_handoff_line(assistant)
+        flip_role, flip_msg = resolve_handoff_flip(role, handoff, in_scope)
+        if flip_msg:
+            _log(flip_msg)
+        handoff_tag = ""
+        if flip_role:
+            handoff_tag = f"out_of_scope→{flip_role}"
+            budget.forced_next_role = flip_role
+        elif handoff and handoff.scope == "out_of_scope":
+            handoff_tag = "out_of_scope(ignored)"
+        elif handoff:
+            handoff_tag = f"scope={handoff.scope};route={handoff.route}"
+
+        if not in_scope:
+            if not budget.forced_next_role:
+                budget.forced_next_role = opposite_role(role)
+                _log(
+                    f"NO-EDIT: empty in-scope delta — next role="
+                    f"{budget.forced_next_role} "
+                    f"(ledger-reroute:no-edit)"
+                )
+                if not handoff_tag:
+                    handoff_tag = f"no-edit→{budget.forced_next_role}"
+            # Thrash only on repeated *explicit* no-edit (HANDOFF applied=no /
+            # out_of_scope). Bare empty deltas (mock workers, aborted turns)
+            # still flip once but burn normal fix budget instead.
+            explicit_noop = handoff is not None and (
+                handoff.scope == "out_of_scope" or handoff.applied == "no"
+            )
+            if explicit_noop:
+                count = budget.no_edit_counts.get(sig, 0) + 1
+                budget.no_edit_counts[sig] = count
+                if count >= 2:
+                    reason = (
+                        f"NO-EDIT THRASH: explicit no-edit handoff twice "
+                        f"(role={role}, sig={sig[:80]!r})"
+                    )
+                    _log(reason)
+                    narrate_thrash_halt(log=_log, voice=_voice)
+                    raise ThrashHalt(reason)
+        else:
+            budget.no_edit_counts[sig] = 0
+
+        note = format_attempt_note(
+            attempt=attempt,
+            role=role,
+            agent=agent,
+            files=in_scope,
+            handoff=handoff_tag,
+            summary=summary,
+            hyp=verdict.hypothesis,
+            status=status,
         )
         budget.record(role, sig, note=note)
         budget.last_packet = packet
@@ -2616,7 +2772,7 @@ def run_fix_loop(
             role=role,
             hypothesis=verdict.hypothesis,
             signature=sig,
-            files_touched=suggested,
+            files_touched=in_scope,
             verify_tier=3 if tier1_green else 1,
             outcome=entry_outcome,
             primary_failure=verdict.primary_failure,
@@ -2838,6 +2994,9 @@ def run_tier2_implement_gate(
     pending_outcome: VerifyOutcome | None = None
     outcome = VerifyOutcome(result={}, green=False, tier=2)
     hard_cap = max_runs + DEFAULT_MAX_CLASS_TRANSITION_CREDITS
+    forced_next_role = ""
+    no_edit_counts: dict[str, int] = {}
+    attempt_notes: list[str] = []
 
     while fix_attempt < hard_cap:
         verify_n += 1
@@ -2989,6 +3148,20 @@ def run_tier2_implement_gate(
                     f"(predicate; stay on QA) sig={sig[:80]!r}"
                 )
 
+        tier2_blob = _tier2_failure_blob(outcome)
+        lane_pre = classify_fix_lane(
+            blob=tier2_blob,
+            packet=outcome.packet,
+            is_build=is_build_lane(outcome),
+            escalate_expectation=escalate,
+        )
+        if lane_pre is not None:
+            _log(f"LANE: {lane_pre.lane_id} → {lane_pre.role}")
+            if lane_pre.lane_id == "artifact_fixture":
+                hint = extract_artifact_regeneration_hint(tier2_blob)
+                if hint:
+                    _log(f"hint: {hint}")
+
         role, prompt = resolve_tier2_continue(
             slice_file=slice_file,
             repo_root=repo_root,
@@ -2997,29 +3170,51 @@ def run_tier2_implement_gate(
             max_runs=max_runs,
             escalate_expectation=escalate,
         )
+        if forced_next_role in ("Engineer", "QA") and forced_next_role != role:
+            _log(
+                f"HANDOFF FLIP applied: forcing role={forced_next_role} "
+                f"(lane chose {role})"
+            )
+            # Re-resolve with packet scope nudged so prompt matches forced role
+            if outcome.packet is not None:
+                outcome.packet = outcome.packet.with_updates(
+                    fix_scope="tests" if forced_next_role == "QA" else "app",
+                )
+            role, prompt = resolve_tier2_continue(
+                slice_file=slice_file,
+                repo_root=repo_root,
+                outcome=outcome,
+                run_i=fix_attempt,
+                max_runs=max_runs,
+                escalate_expectation=escalate,
+            )
+            # Deterministic lanes may still win — honor forced role in spawn
+            role = forced_next_role
+        forced_next_role = ""
         hyp = (
             f"ledger-escalate:predicate-wait:{sig[:50]}"
             if escalate
             else hyp_hint
         )
-        entry = make_entry(
-            slice_id=slice_id,
-            attempt=fix_attempt,
-            role=role,
-            hypothesis=hyp,
-            signature=sig,
-            files_touched=(pkt.suggested_files if pkt else []) or [],
-            verify_tier=2,
-            outcome="red",
-            primary_failure=(outcome.failures or [""])[0] if outcome.failures else "",
-            instruction="tier-2 continue",
-            agent_name=agent_hint,
-        )
-        append_ledger(entry, repo_root=repo_root, slice_id=slice_id)
-        ledger.append(entry)
+        # Ledger entry written after worker with real files_touched
         spawned_classes.add(fail_cls)
 
         if client is None:
+            entry = make_entry(
+                slice_id=slice_id,
+                attempt=fix_attempt,
+                role=role,
+                hypothesis=hyp,
+                signature=sig,
+                files_touched=[],
+                verify_tier=2,
+                outcome="red",
+                primary_failure=(outcome.failures or [""])[0] if outcome.failures else "",
+                instruction="tier-2 continue",
+                agent_name=agent_hint,
+            )
+            append_ledger(entry, repo_root=repo_root, slice_id=slice_id)
+            ledger.append(entry)
             break
 
         agent = _names.assign(role, slot="implement" if role == "Engineer" else "fix")
@@ -3033,6 +3228,10 @@ def run_tier2_implement_gate(
             log=_log,
             voice=_voice,
         )
+        if attempt_notes:
+            prompt += "\n\nAttempt history:\n" + "\n".join(
+                f"- {n}" for n in attempt_notes
+            )
         prompt += "\n\nHypothesis ledger (do not repeat):\n"
         prompt += format_ledger_for_prompt(ledger)
         if _events:
@@ -3053,6 +3252,7 @@ def run_tier2_implement_gate(
                 mission=f"tier-2 continue after fix attempt {fix_attempt}",
             )
         progress = progress_factory(role, agent) if progress_factory else None
+        baseline = set(git_paths_changed(repo_root))
         ok, status = run_worker(
             client,
             role=role,
@@ -3062,10 +3262,100 @@ def run_tier2_implement_gate(
             log=_log,
             progress=progress,
         )
+        after = set(git_paths_changed(repo_root))
+        delta = git_delta(baseline, after)
+        in_scope = filter_paths_for_role(delta, role)
+        if progress is not None and hasattr(progress, "_files_touched"):
+            progress._files_touched = list(in_scope)
+        assistant = ""
         if progress is not None and hasattr(progress, "assistant_text"):
-            summary = parse_summary_line(progress.assistant_text or "")
-            if summary:
-                narrate_worker_done(agent, summary, log=_log, voice=_voice)
+            assistant = progress.assistant_text or ""
+        summary = parse_summary_line(assistant) or ""
+        if summary:
+            narrate_worker_done(agent, summary, log=_log, voice=_voice)
+        handoff = parse_handoff_line(assistant)
+        flip_role, flip_msg = resolve_handoff_flip(role, handoff, in_scope)
+        if flip_msg:
+            _log(flip_msg)
+        handoff_tag = ""
+        if flip_role:
+            handoff_tag = f"out_of_scope→{flip_role}"
+            forced_next_role = flip_role
+        elif handoff and handoff.scope == "out_of_scope":
+            handoff_tag = "out_of_scope(ignored)"
+        elif handoff:
+            handoff_tag = f"scope={handoff.scope};route={handoff.route}"
+
+        if not in_scope:
+            if not forced_next_role:
+                forced_next_role = opposite_role(role)
+                _log(
+                    f"NO-EDIT: empty in-scope delta — next role="
+                    f"{forced_next_role} (ledger-reroute:no-edit)"
+                )
+                if not handoff_tag:
+                    handoff_tag = f"no-edit→{forced_next_role}"
+            explicit_noop = handoff is not None and (
+                handoff.scope == "out_of_scope" or handoff.applied == "no"
+            )
+            if explicit_noop:
+                count = no_edit_counts.get(sig, 0) + 1
+                no_edit_counts[sig] = count
+                if count >= 2:
+                    reason = (
+                        f"NO-EDIT THRASH: explicit no-edit handoff twice "
+                        f"(role={role}, sig={sig[:80]!r})"
+                    )
+                    _log(reason)
+                    entry = make_entry(
+                        slice_id=slice_id,
+                        attempt=fix_attempt,
+                        role=role,
+                        hypothesis=hyp,
+                        signature=sig,
+                        files_touched=[],
+                        verify_tier=2,
+                        outcome="red",
+                        primary_failure=(
+                            (outcome.failures or [""])[0] if outcome.failures else ""
+                        ),
+                        instruction="tier-2 no-edit thrash",
+                        agent_name=agent,
+                    )
+                    append_ledger(entry, repo_root=repo_root, slice_id=slice_id)
+                    ledger.append(entry)
+                    narrate_thrash_halt(log=_log, voice=_voice)
+                    raise ThrashHalt(reason)
+        else:
+            no_edit_counts[sig] = 0
+
+        attempt_notes.append(
+            format_attempt_note(
+                attempt=fix_attempt,
+                role=role,
+                agent=agent,
+                files=in_scope,
+                handoff=handoff_tag,
+                summary=summary,
+                hyp=hyp,
+                status=status,
+            )
+        )
+        entry = make_entry(
+            slice_id=slice_id,
+            attempt=fix_attempt,
+            role=role,
+            hypothesis=hyp,
+            signature=sig,
+            files_touched=in_scope,
+            verify_tier=2,
+            outcome="red",
+            primary_failure=(outcome.failures or [""])[0] if outcome.failures else "",
+            instruction="tier-2 continue",
+            agent_name=agent,
+        )
+        append_ledger(entry, repo_root=repo_root, slice_id=slice_id)
+        ledger.append(entry)
         if not ok:
             _log(f"implement continue worker status={status}")
 
@@ -3079,6 +3369,15 @@ def run_tier2_implement_gate(
             pending_outcome = t0
 
     reason = format_tier2_halt_reason(outcome, max_runs=max_runs)
+    tier2_halt_blob = _tier2_failure_blob(outcome)
+    if is_artifact_fixture_failure(tier2_halt_blob):
+        eng_count = sum(1 for e in ledger if getattr(e, "role", "") == "Engineer")
+        if eng_count >= 1:
+            _log(
+                f"THRASH HALT: fixture/artifact failure sent to Engineer {eng_count}× "
+                "— regenerate committed benchmark-results.json via slow test "
+                "(QA owns fixtures)"
+            )
     card = ""
     if outcome.packet is not None:
         card = format_stuck_card(

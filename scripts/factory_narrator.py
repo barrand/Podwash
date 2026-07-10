@@ -92,9 +92,9 @@ CRASH_LINES: tuple[str, ...] = (
 )
 
 LEDGER_BLOCK_LINES: tuple[str, ...] = (
-    "{referee} checked the logbook — same theory as last time. Halting before we burn tokens.",
-    "{referee} found a repeat in the logbook. Fresh eyes needed elsewhere. Halting.",
-    "{referee} won't sign the same ticket twice. Halting.",
+    "{referee} checked the logbook — same theory as last time. Flipping the wrench.",
+    "{referee} found a repeat in the logbook. Fresh eyes on the other role.",
+    "{referee} won't sign the same ticket twice. Rerouting to the opposite role.",
 )
 
 REFEREE_NARRATION_LINES: tuple[str, ...] = (

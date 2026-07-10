@@ -70,6 +70,21 @@ _INFER_QUERY_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"progress|analyz", re.IGNORECASE), "analysisProgress"),
     (re.compile(r"cleaningBadge|badge", re.IGNORECASE), "cleaningBadge_episodeOn"),
 )
+# Committed benchmark / golden execution-evidence failures (Slice 05/18 pattern).
+_ARTIFACT_FIXTURE_RE = re.compile(
+    r"(regenerate\s+via|benchmark-results\.json|execution\s+evidence|"
+    r"unparsable\s+as\s+\w*benchmark|fixtures/segmentation|fixtures/asr|"
+    r"golden_segments\.json)",
+    re.IGNORECASE,
+)
+_REGENERATE_HINT_RE = re.compile(
+    r"(Regenerate via[^\n.]+|VERIFY_ALLOW_SKIPS=1[^\n.]+)",
+    re.IGNORECASE,
+)
+_TEST_TARGET_RE = re.compile(
+    r"PodWash(?:Slow)?Tests/",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -122,8 +137,46 @@ def _norm_test_id(raw: str) -> str:
     return s
 
 
+def is_artifact_fixture_failure(blob: str) -> bool:
+    """True when a fast test expects a committed benchmark/golden artifact."""
+    low = (blob or "").lower()
+    if _ARTIFACT_FIXTURE_RE.search(low):
+        return True
+    if "benchmark-results" in low and any(
+        tok in low
+        for tok in ("missing", "unparsable", "unreadable", "regenerate", "absent")
+    ):
+        return True
+    return False
+
+
+def is_test_decode_assertion_blob(blob: str) -> bool:
+    """XCTest decode/keyNotFound failures — not compile-red."""
+    low = (blob or "").lower()
+    if not _TEST_TARGET_RE.search(low):
+        return False
+    return any(
+        tok in low
+        for tok in (
+            "decodingerror",
+            "keynotfound",
+            "caught error",
+            "swift.decode",
+            "unparsable as",
+        )
+    )
+
+
+def extract_artifact_regeneration_hint(blob: str) -> str:
+    """Pull slow-test regeneration command from XCTest failure text."""
+    m = _REGENERATE_HINT_RE.search(blob or "")
+    return m.group(1).strip() if m else ""
+
+
 def _looks_buildish(raw_failures: list[str], exit_code: str | None, output: str) -> bool:
     blob = "\n".join(raw_failures) + "\n" + (output or "")
+    if is_artifact_fixture_failure(blob) or is_test_decode_assertion_blob(blob):
+        return False
     if _BUILD_HINT_RE.search(blob):
         return True
     if exit_code and exit_code not in ("0", "1", "65", "?"):
@@ -614,7 +667,17 @@ def build_failure_packet(
     else:
         packet.failure_class = classify_failure(packet)
         raw_blob = "\n".join(raw + assertions)
-        if is_expectation_api_violation(raw_blob):
+        if is_artifact_fixture_failure(raw_blob) or (
+            test_ids and is_test_decode_assertion_blob(raw_blob)
+        ):
+            packet.failure_class = "assertion"
+            packet.fix_scope = "tests"
+            packet.hypothesis = (
+                packet.hypothesis
+                or "Committed benchmark/fixture artifact missing or stale — "
+                "regenerate via slow test and commit under PodWashTests/Fixtures/"
+            )
+        elif is_expectation_api_violation(raw_blob):
             # Double-fulfill / API violation lives in the test harness, not the app.
             packet.fix_scope = "tests"
             packet.hypothesis = (
@@ -623,7 +686,14 @@ def build_failure_packet(
             )
         elif packet.failure_class in ("assertion",) and "test" in " ".join(test_ids).lower():
             # default scope; diagnose may override
-            packet.fix_scope = "tests" if "fixture" in raw_blob.lower() else "app"
+            packet.fix_scope = (
+                "tests"
+                if (
+                    "fixture" in raw_blob.lower()
+                    or is_artifact_fixture_failure(raw_blob)
+                )
+                else "app"
+            )
         packet.actionable = True
 
     # Stash got_clue into hierarchy header for stuck card

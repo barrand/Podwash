@@ -116,6 +116,21 @@ Exclusive priority when multiple apply: **policy → build → infra → test �
 
 Messaging is often a **secondary** finding: always fix opaque halt lines when `still red: []` hides a real red verify.
 
+### Fix-loop handoff lanes (factory routing)
+
+When diagnosing thrash inside the fix/tier-2 loop (not forge-fix “who owns the product bug”):
+
+| Console / halt | Meaning |
+|----------------|---------|
+| `LANE: artifact_fixture → QA` | Deterministic lane skipped referee; QA owns fixtures |
+| `LANE: expectation_api → QA` | Double-fulfill / KVO harness |
+| `LANE: packaging → Engineer` | Missing bundle executable |
+| `LANE: build → Engineer` | Compile-red |
+| `NO-EDIT: empty in-scope delta — next role=…` | Worker changed nothing in scope; flip next |
+| `HANDOFF FLIP: …` | Worker `HANDOFF:` honored (empty in-scope delta) |
+| `HANDOFF IGNORED: …` | Worker claimed out_of_scope but edited in-scope paths |
+| `NO-EDIT THRASH` | Explicit no-edit handoff twice on same signature |
+
 ## Key scripts
 
 | Path | Role |
@@ -123,10 +138,11 @@ Messaging is often a **secondary** finding: always fix opaque halt lines when `s
 | `scripts/slice-loop.sh` | Shell wrapper |
 | `scripts/slice_loop.py` | Driver, exit codes |
 | `scripts/slice_pipeline.py` | Gate FSM, tier-2 gate, fix loop, thrash raises |
+| `scripts/fix_lanes.py` | Deterministic lanes + HANDOFF parse + git delta helpers |
 | `scripts/slice_loop_progress.py` | Telemetry, verify ban, `ThrashHalt` |
 | `scripts/verify.sh` | Green source of truth |
 | `scripts/failure_packet.py` | FailurePacket + stuck card |
-| `scripts/referee.py` | Fix routing (plan-mode diagnose) |
+| `scripts/referee.py` | Fix routing (plan-mode diagnose) for hard cases |
 | `scripts/hypothesis_ledger.py` | Anti-repeat hypotheses |
 | `scripts/session_bundle.py` | Halt bundle writer |
 | `scripts/factory_narrator.py` | Console narration (Murphy, recap) |
@@ -138,7 +154,7 @@ After factory patches:
 
 ```bash
 python3 -m unittest scripts.test_factory_hardening scripts.test_factory_p1 \
-  scripts.test_slice_pipeline scripts.test_failure_packet -q
+  scripts.test_fix_lanes scripts.test_slice_pipeline scripts.test_failure_packet -q
 ```
 
 Also: `./scripts/test-verify-tiers.sh` when touching `verify.sh` tiers.

@@ -389,6 +389,42 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(packet.failure_class, "assertion")
         self.assertEqual(packet.fix_scope, "tests")
 
+    def test_slice18_benchmark_unparsable_is_tests_scope_not_build(self):
+        from failure_packet import (
+            build_failure_packet,
+            is_artifact_fixture_failure,
+        )
+        from slice_loop_progress import looks_like_build_failure
+
+        msg = (
+            "PodWashTests/SegmentationSpikeTests/testBenchmarkArtifactExistsAndNonEmpty() — "
+            "failed - benchmark-results.json is unparsable as SegmentationBenchmark. "
+            "Regenerate via PodWashSlowTests/SegmentationBenchmarkTests "
+            "(VERIFY_ALLOW_SKIPS=1 scripts/verify.sh -only-testing:PodWashSlowTests/"
+            "SegmentationBenchmarkTests)."
+        )
+        decode_msg = (
+            "PodWashTests/testDecisionArtifactRecorded() — failed: caught error: "
+            '"keyNotFound(CodingKeys(stringValue: \\"approach\\", intValue: nil), '
+            'Swift.DecodingError.Context(codingPath: [], debugDescription: '
+            '"No value associated with key CodingKeys(stringValue: \\"approach\\""))"'
+        )
+        blob = f"{msg}\n{decode_msg}"
+        self.assertTrue(is_artifact_fixture_failure(blob))
+        verify = {"exit": "65", "total": "5", "failed": "3", "class": "tests"}
+        self.assertFalse(looks_like_build_failure(blob, verify))
+        packet = build_failure_packet(
+            failures=[msg, decode_msg],
+            crashes=[],
+            bundle="build/test-results/verify.xcresult",
+            exit_code="65",
+            output=blob,
+            export_attachments=False,
+        )
+        self.assertEqual(packet.failure_class, "assertion")
+        self.assertEqual(packet.fix_scope, "tests")
+        self.assertNotEqual(packet.failure_class, "build_error")
+
 
 class DiagnoseMergeTests(unittest.TestCase):
     def test_parse_and_heuristic_wins(self):
