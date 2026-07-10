@@ -28,6 +28,7 @@ from factory_narrator import (  # noqa: E402
     narrate_gate_cleared,
     narrate_gate_stuck,
     narrate_slice_recap,
+    narrate_slice_mission,
     narrate_spawn,
     narrate_thrash_halt,
     narrate_verify_red,
@@ -145,9 +146,11 @@ class NarratorTests(unittest.TestCase):
         cast.add("QA", "Quincy", "test_spec")
         cast.note_murphy()
         recap = format_slice_recap(
-            slice_id=12, elapsed_secs=1080, cast=cast, outcome="green"
+            slice_id=12, elapsed_secs=1080, cast=cast, outcome="green",
+            accomplishment="Shipped: rate API; sleep timer; UI controls",
         )
         self.assertIn("Forge recap", recap)
+        self.assertIn("Shipped:", recap)
         self.assertIn("Priya", recap)
         self.assertIn("Murphy ×1", recap)
         self.assertIn("green", recap)
@@ -170,6 +173,14 @@ class NarratorTests(unittest.TestCase):
         )
         self.assertIn("fix 1/3", fix_open)
         self.assertIn("Engineer Edison", fix_open)
+
+        mission_line = narrate_slice_mission(
+            slice_id=12,
+            mission="Deliver variable speed and a sleep timer on the player.",
+            log=lines.append,
+        )
+        self.assertIn("Slice 12", mission_line)
+        self.assertIn("variable speed", mission_line)
 
     def test_murphy_only_in_narration(self):
         lines: list[str] = []

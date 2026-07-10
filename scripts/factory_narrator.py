@@ -113,6 +113,26 @@ GATE_STUCK_LINES: tuple[str, ...] = (
     "✗ {gate} hit a wall — {body}",
 )
 
+COORDINATOR_REPORT_OPENERS: tuple[str, ...] = (
+    "Signing off — slice {slice_id} cleared the floor green.",
+    "Shift report: slice {slice_id} is green and ready to queue forward.",
+    "Handing you the logbook — slice {slice_id} finished clean.",
+    "Closing this chapter: slice {slice_id} made it through verify.",
+)
+
+COORDINATOR_REPORT_CLOSERS: tuple[str, ...] = (
+    "Forge gate cleared — safe to advance the queue when you're ready.",
+    "That's a green sheet from this shift. Re-run the loop for the next slice.",
+    "Floor's clean. Murphy didn't get the last word this time.",
+    "All accounted for — queue can move on.",
+)
+
+COORDINATOR_REPORT_HALT_CLOSERS: tuple[str, ...] = (
+    "We didn't get green — check the stuck card and story recap before retrying.",
+    "Shift ends on a halt. Unblock the gate, then spin the loop again.",
+    "Not a green close. Logs and stuck card are on the desk.",
+)
+
 
 @dataclass
 class StoryVoice:
@@ -151,6 +171,7 @@ NAME_POOLS: dict[str, tuple[str, ...]] = {
     "PM": ("Priya", "Parker", "Penny"),
     "UX": ("Uma", "Ulysses", "Unity"),
     "Referee": ("Rhea",),
+    "Coordinator": ("Kai", "Kira", "Kellen", "Kit"),
     "QA review": ("Quinn", "Quincy", "Queenie", "Quill"),
     "PM review": ("Priya", "Parker", "Penny"),
     "Architect review": ("Ada", "Atlas", "Aurora"),
@@ -163,6 +184,7 @@ ROLE_INITIAL: dict[str, str] = {
     "PM": "P",
     "UX": "U",
     "Referee": "R",
+    "Coordinator": "C",
     "QA review": "Q",
     "PM review": "P",
     "Architect review": "A",
@@ -205,7 +227,7 @@ def factory_session_banner(*, voice: StoryVoice | None = None) -> str:
     name = FACTORY_NAME
     v = voice or _default_voice
     tag = v.pick("session_tag", SESSION_TAGLINES)
-    # Keep ≤12 lines; no competition with the mountain summit done-art.
+    # Keep ≤12 lines; no competition with the coordinator shift report.
     inner = 42
     return (
         "\n"
@@ -558,18 +580,144 @@ def narrate_gate_stuck(
     return line
 
 
+def narrate_slice_mission(
+    *,
+    slice_id: int,
+    mission: str,
+    log: LogFn | None = None,
+) -> str:
+    """Opening beat: what this slice is trying to accomplish."""
+    body = (mission or "").strip() or "advance the product"
+    line = f"📋 Slice {slice_id} — {body}"
+    _emit(line, log)
+    return line
+
+
+def format_coordinator_report(
+    *,
+    coordinator_name: str,
+    slice_id: int,
+    title: str,
+    elapsed_secs: int,
+    green: bool,
+    mission: str | None = None,
+    accomplishment: str | None = None,
+    cast_names: list[str] | None = None,
+    murphy_visits: int = 0,
+    verify: dict[str, str] | None = None,
+    session: tuple[int, int] | None = None,
+    voice: StoryVoice | None = None,
+) -> str:
+    """End-of-slice shift report from the named Forge coordinator."""
+    v = voice or _default_voice
+    who = (coordinator_name or "Coordinator").strip() or "Coordinator"
+    opener_tpl = (
+        COORDINATOR_REPORT_OPENERS
+        if green
+        else (
+            "Slice {slice_id} did not finish green this run.",
+            "Shift report: slice {slice_id} halted before verify went green.",
+            "Handing off mid-shift — slice {slice_id} needs another pass.",
+        )
+    )
+    opener = v.format(
+        "coord_report_open",
+        opener_tpl,
+        name=who,
+        slice_id=str(slice_id),
+    )
+    lines = [
+        "",
+        f"── Coordinator {who} · shift report ──",
+        opener,
+        f"Slice {slice_id:02d} · {title} · {_fmt_elapsed(elapsed_secs)} on the clock.",
+    ]
+    if mission:
+        lines.append(f"We set out to {_sentence_lower(mission)}")
+    if accomplishment:
+        body = accomplishment.strip()
+        if green:
+            lines.append(body if body.lower().startswith("shipped") else f"Delivered: {body}")
+        else:
+            lines.append(f"Target: {body}")
+    if cast_names:
+        crew = ", ".join(cast_names)
+        murphy_bit = f" · Murphy ×{murphy_visits}" if murphy_visits else ""
+        lines.append(f"Crew on the floor: {crew}{murphy_bit}")
+    elif murphy_visits:
+        lines.append(f"Murphy visits this slice: ×{murphy_visits}")
+    if verify:
+        lines.append(
+            f"Verify: exit={verify.get('exit', '?')} · "
+            f"passed={verify.get('passed', '?')}/{verify.get('total', '?')} · "
+            f"skipped={verify.get('skipped', '?')}"
+        )
+    if session:
+        lines.append(f"Session: {session[0]}/{session[1]} slices completed this run.")
+    closer_pool = COORDINATOR_REPORT_CLOSERS if green else COORDINATOR_REPORT_HALT_CLOSERS
+    lines.append(v.pick("coord_report_close", closer_pool))
+    return "\n".join(lines)
+
+
+def narrate_coordinator_report(
+    *,
+    coordinator_name: str,
+    slice_id: int,
+    title: str,
+    elapsed_secs: int,
+    green: bool,
+    mission: str | None = None,
+    accomplishment: str | None = None,
+    cast_names: list[str] | None = None,
+    murphy_visits: int = 0,
+    verify: dict[str, str] | None = None,
+    session: tuple[int, int] | None = None,
+    voice: StoryVoice | None = None,
+    log: LogFn | None = None,
+) -> str:
+    report = format_coordinator_report(
+        coordinator_name=coordinator_name,
+        slice_id=slice_id,
+        title=title,
+        elapsed_secs=elapsed_secs,
+        green=green,
+        mission=mission,
+        accomplishment=accomplishment,
+        cast_names=cast_names,
+        murphy_visits=murphy_visits,
+        verify=verify,
+        session=session,
+        voice=voice,
+    )
+    for line in report.split("\n"):
+        if line.strip():
+            _emit(line, log)
+    return report
+
+
+def _sentence_lower(text: str) -> str:
+    s = (text or "").strip()
+    if not s:
+        return s
+    return s[0].lower() + s[1:] if len(s) > 1 else s.lower()
+
+
 def format_slice_recap(
     *,
     slice_id: int,
     elapsed_secs: int,
     cast: CastLog,
     outcome: str,
+    accomplishment: str | None = None,
 ) -> str:
     names = ", ".join(cast.cast_names()) or "—"
-    return (
+    base = (
         f"{FACTORY_NAME} recap · slice {slice_id} · {_fmt_elapsed(elapsed_secs)} · "
         f"{names} · Murphy ×{cast.murphy_visits} · {outcome}"
     )
+    if accomplishment and outcome == "green":
+        return f"{base}\n→ {accomplishment.strip()}"
+    return base
 
 
 def narrate_slice_recap(
@@ -578,6 +726,7 @@ def narrate_slice_recap(
     elapsed_secs: int,
     cast: CastLog,
     outcome: str,
+    accomplishment: str | None = None,
     log: LogFn | None = None,
 ) -> str:
     line = format_slice_recap(
@@ -585,8 +734,10 @@ def narrate_slice_recap(
         elapsed_secs=elapsed_secs,
         cast=cast,
         outcome=outcome,
+        accomplishment=accomplishment,
     )
-    _emit(line, log)
+    for part in line.split("\n"):
+        _emit(part, log)
     return line
 
 

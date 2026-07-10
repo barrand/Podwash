@@ -94,8 +94,8 @@ spawns show as `[Coordinator] spawn QA: …` plus `allowed edits: …`; completi
 `[QA] finished — …`. Wrong-role spawns (e.g. UX asked to fix a UI test) log
 `⚠ WRONG ROLE`. Idle heartbeat every N seconds (default 90) includes the known
 failing test when present (`❌ testName ×N`). A **done banner** prints when
-`next-slice.sh` confirms the slice reached Done with green verify, followed by
-epic summit ASCII art.
+`next-slice.sh` confirms the slice reached Done with green verify, followed by a
+**coordinator shift report** (named Forge coordinator — mission, crew, verify).
 
 **Anti-thrash:** after 2 red verify/xcodebuild outcomes in one run, the loop prints
 `🛑 HALT` (what failed, why it stopped, next steps) and exits code **5**. Disk work

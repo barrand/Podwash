@@ -53,10 +53,13 @@ from slice_loop_progress import (
     DEFAULT_MAX_RED_VERIFIES,
     RunProgress,
     ThrashHalt,
+    extract_slice_accomplishment,
+    extract_slice_mission,
     read_slice_meta,
     read_verify_from_slice,
     slice_done_banner,
     slice_start_banner,
+    verify_is_green,
 )
 from slice_pipeline import (
     DEFAULT_MAX_FIX_ATTEMPTS,
@@ -260,7 +263,8 @@ def run_slice_coordinator(
     )
 
     title, _rel = read_slice_meta(slice_file, REPO_ROOT)
-    print(slice_start_banner(slice_id, title, slice_file), flush=True)
+    mission = extract_slice_mission(slice_file, REPO_ROOT)
+    print(slice_start_banner(slice_id, title, slice_file, mission=mission), flush=True)
 
     prompt = build_prompt(slice_id, slice_file)
     stream_to = resolve_stream_timeout(stream_timeout)
@@ -374,7 +378,7 @@ def run_slice_coordinator(
 
                 elapsed = int(time.time() - t0)
                 log(f"slice attempt done: elapsed={elapsed}s")
-                return status == "finished", elapsed, last_verify
+                return status == "finished", elapsed, last_verify, {}
         except SystemExit:
             raise
         except CursorAgentError as err:
@@ -418,8 +422,13 @@ def run_slice(
     orchestrator="pipeline",
     do_commit=True,
     do_push=True,
+    coordinator_name=None,
+    session_voice=None,
 ):
-    """Run one slice via the selected orchestrator."""
+    """Run one slice via the selected orchestrator.
+
+    Returns ``(finished, elapsed, last_verify, meta)``.
+    """
     if orchestrator == "pipeline":
         log(f"orchestrator=pipeline (gate FSM)")
         try:
@@ -437,6 +446,8 @@ def run_slice(
                 do_commit=do_commit,
                 do_push=do_push,
                 progress_cls=RunProgress,
+                coordinator_name=coordinator_name,
+                session_voice=session_voice,
             )
         except InfraHalt as infra:
             log(f"INFRA HALT (exit={EXIT_INFRA}): {infra.reason}")
@@ -557,10 +568,18 @@ def main():
         log("CURSOR_API_KEY is not set. Export it before running (see the SDK docs).")
         return EXIT_STARTUP
 
-    from factory_narrator import StoryVoice, factory_session_banner
+    from factory_narrator import (
+        NameAssigner,
+        StoryVoice,
+        factory_session_banner,
+        format_coordinator_report,
+    )
 
     session_voice = StoryVoice()
+    session_names = NameAssigner()
+    coordinator = session_names.assign("Coordinator", slot="session")
     print(factory_session_banner(voice=session_voice), flush=True)
+    log(f"Forge coordinator on shift: {coordinator}")
 
     ran = 0
     last_started = None
@@ -593,7 +612,7 @@ def main():
             return EXIT_RUN_FAILED
         last_started = slice_id
 
-        finished, elapsed, last_verify = run_slice(
+        finished, elapsed, last_verify, run_meta = run_slice(
             slice_id,
             slice_file,
             args.model,
@@ -608,6 +627,8 @@ def main():
             orchestrator=args.orchestrator,
             do_commit=not args.no_commit,
             do_push=not args.no_push,
+            coordinator_name=coordinator,
+            session_voice=session_voice,
         )
         if not finished:
             log(f"slice {slice_id:02d} run did not finish cleanly — stopping.")
@@ -623,12 +644,47 @@ def main():
         ran += 1
         title, _rel = read_slice_meta(slice_file, REPO_ROOT)
         verify = read_verify_from_slice(slice_file, REPO_ROOT) or last_verify
+        green = verify_is_green(verify)
+        mission = extract_slice_mission(slice_file, REPO_ROOT)
+        accomplishment = (
+            extract_slice_accomplishment(slice_file, REPO_ROOT) if green else None
+        )
+        meta = run_meta or {}
         print(
             slice_done_banner(
-                slice_id, title, verify, elapsed, session=(ran, args.max)
+                slice_id,
+                title,
+                verify,
+                elapsed,
+                session=(ran, args.max),
+                accomplishment=accomplishment,
             ),
             flush=True,
         )
+        report = format_coordinator_report(
+            coordinator_name=coordinator,
+            slice_id=slice_id,
+            title=title,
+            elapsed_secs=elapsed,
+            green=green,
+            mission=mission,
+            accomplishment=accomplishment,
+            cast_names=meta.get("cast_names"),
+            murphy_visits=int(meta.get("murphy_visits") or 0),
+            verify=verify,
+            session=(ran, args.max),
+            voice=session_voice,
+        )
+        print(report, flush=True)
+        story_path = os.path.join(
+            REPO_ROOT, "build", "test-results", f"story-slice-{slice_id:02d}.txt"
+        )
+        try:
+            if os.path.isfile(story_path):
+                with open(story_path, "a", encoding="utf-8") as fh:
+                    fh.write(report.rstrip() + "\n")
+        except OSError:
+            pass
 
     log(f"reached --max {args.max} slices for this session. Re-run to continue.")
     return EXIT_OK

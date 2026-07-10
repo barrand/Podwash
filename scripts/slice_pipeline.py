@@ -39,6 +39,7 @@ from factory_narrator import (
     narrate_ledger_block,
     narrate_referee,
     narrate_slice_recap,
+    narrate_slice_mission,
     narrate_thrash_halt,
     narrate_verify_green,
     narrate_verify_red,
@@ -2767,11 +2768,22 @@ def run_pipeline_slice(
     do_push: bool = True,
     progress_cls: Any | None = None,
     preboot_sim: bool = True,
-) -> tuple[bool, int, dict[str, str] | None]:
-    """Drive one slice via the gate FSM. Returns (ok, elapsed, last_verify)."""
+    coordinator_name: str | None = None,
+    session_voice: Any | None = None,
+) -> tuple[bool, int, dict[str, str] | None, dict[str, Any]]:
+    """Drive one slice via the gate FSM.
+
+    Returns ``(ok, elapsed, last_verify, meta)`` where *meta* may include
+    ``cast_names`` and ``murphy_visits`` for the end-of-slice coordinator report.
+    """
     from cursor_sdk import CursorClient
 
-    from slice_loop_progress import read_slice_meta, slice_start_banner
+    from slice_loop_progress import (
+        extract_slice_accomplishment,
+        extract_slice_mission,
+        read_slice_meta,
+        slice_start_banner,
+    )
 
     def _resolve_stream_timeout(secs: float | None) -> float | None:
         if secs is None or secs <= 0:
@@ -2780,7 +2792,9 @@ def run_pipeline_slice(
 
     _log = log or (lambda m: print(f"[slice-pipeline] {m}", flush=True))
     title, _ = read_slice_meta(slice_file, repo_root)
-    print(slice_start_banner(slice_id, title, slice_file), flush=True)
+    mission = extract_slice_mission(slice_file, repo_root)
+    print(slice_start_banner(slice_id, title, slice_file, mission=mission), flush=True)
+    narrate_slice_mission(slice_id=slice_id, mission=mission, log=_log)
 
     budget = FixBudget(max_attempts=max_fix_attempts)
     stream_to = _resolve_stream_timeout(stream_timeout)
@@ -2788,8 +2802,18 @@ def run_pipeline_slice(
     last_verify: dict[str, str] | None = None
     names = NameAssigner()
     cast = CastLog()
-    _voice = cast.voice
+    _voice = cast.voice if session_voice is None else session_voice
+    if session_voice is not None:
+        cast.voice = session_voice
+    coordinator = (coordinator_name or "").strip() or names.assign("Coordinator", slot="session")
     events = EventLog(repo_root, slice_id, log=_log)
+
+    def _slice_meta() -> dict[str, Any]:
+        return {
+            "cast_names": cast.cast_names(),
+            "murphy_visits": cast.murphy_visits,
+            "coordinator_name": coordinator,
+        }
 
     if preboot_sim:
         udid = resolve_sim_udid(log=_log)
@@ -2802,11 +2826,15 @@ def run_pipeline_slice(
             )
 
     def _emit_recap(outcome: str, elapsed: int) -> None:
+        accomplishment = None
+        if outcome == "green":
+            accomplishment = extract_slice_accomplishment(slice_file, repo_root)
         line = narrate_slice_recap(
             slice_id=slice_id,
             elapsed_secs=elapsed,
             cast=cast,
             outcome=outcome,
+            accomplishment=accomplishment,
             log=_log,
         )
         path = persist_story_recap(line, repo_root=repo_root, slice_id=slice_id)
@@ -2961,7 +2989,7 @@ def run_pipeline_slice(
                 narrate_gate_stuck(label, explain, log=_log, voice=_voice)
                 elapsed = int(time.time() - t0)
                 _emit_recap("halt", elapsed)
-                return False, elapsed, last_verify
+                return False, elapsed, last_verify, _slice_meta()
 
             after = assess_gate_state(slice_file, repo_root)
             if after.gate(gid).applicable and not after.gate(gid).satisfied:
@@ -2984,13 +3012,13 @@ def run_pipeline_slice(
                     narrate_gate_stuck(label, explain, log=_log, voice=_voice)
                     elapsed = int(time.time() - t0)
                     _emit_recap("halt", elapsed)
-                    return False, elapsed, last_verify
+                    return False, elapsed, last_verify, _slice_meta()
                 else:
                     explain = explain_gate_pending(gid, slice_file, repo_root)
                     narrate_gate_stuck(label, explain, log=_log, voice=_voice)
                     elapsed = int(time.time() - t0)
                     _emit_recap("halt", elapsed)
-                    return False, elapsed, last_verify
+                    return False, elapsed, last_verify, _slice_meta()
             else:
                 nxt = next_gate(after)
                 next_label = GATE_LABELS.get(nxt, nxt) if nxt else None
@@ -3076,7 +3104,7 @@ def run_pipeline_slice(
         if not outcome.green or not outcome.result:
             elapsed = int(time.time() - t0)
             _emit_recap("red", elapsed)
-            return False, elapsed, last_verify
+            return False, elapsed, last_verify, _slice_meta()
 
         events.record("RECORD", "loop", "record_start", timeline=True, mission="VERIFY RESULT")
         record_green_verify(slice_file, repo_root, outcome.result)
@@ -3090,11 +3118,11 @@ def run_pipeline_slice(
                 _log("commit/push failed")
                 elapsed = int(time.time() - t0)
                 _emit_recap("halt", elapsed)
-                return False, elapsed, last_verify
+                return False, elapsed, last_verify, _slice_meta()
 
     elapsed = int(time.time() - t0)
     _emit_recap("green", elapsed)
-    return True, elapsed, last_verify
+    return True, elapsed, last_verify, _slice_meta()
 
 
 # ---------------------------------------------------------------------------

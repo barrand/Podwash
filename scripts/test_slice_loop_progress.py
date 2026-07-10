@@ -463,6 +463,34 @@ class ProgressFormattingTests(unittest.TestCase):
         self.assertEqual(rel, "docs/slices/slice-06-rss-episode-list.md")
         self.assertIn("RSS", title)
 
+    def test_extract_slice_mission_and_accomplishment(self):
+        from slice_loop_progress import (
+            extract_slice_accomplishment,
+            extract_slice_mission,
+            slice_done_banner,
+            slice_start_banner,
+        )
+
+        repo = os.path.dirname(SCRIPT_DIR)
+        path = "docs/slices/slice-06-rss-episode-list.md"
+        mission = extract_slice_mission(path, repo)
+        self.assertIn("RSS", mission)
+        self.assertIn("parse", mission.lower())
+
+        accomplishment = extract_slice_accomplishment(path, repo)
+        self.assertTrue(accomplishment.startswith("Shipped:"))
+        self.assertIn("RSS", accomplishment)
+
+        start = slice_start_banner(6, "RSS feed + episode list UI", path, mission=mission)
+        self.assertIn("→", start)
+        self.assertIn(mission[:40], start)
+
+        verify = {"exit": "0", "total": "10", "passed": "10", "failed": "0", "skipped": "0"}
+        done = slice_done_banner(
+            6, "RSS feed + episode list UI", verify, 120, accomplishment=accomplishment
+        )
+        self.assertIn("Shipped:", done)
+
     def test_delegate_violation_engineer_path(self):
         hit = delegate_violation("/Users/me/PodWash/PodWash/PodcastDetailView.swift")
         self.assertEqual(hit, ("Engineer", "podwash-engineer"))
@@ -470,15 +498,36 @@ class ProgressFormattingTests(unittest.TestCase):
     def test_delegate_violation_slice_doc_ok(self):
         self.assertIsNone(delegate_violation("docs/slices/slice-09-analysis-ui.md"))
 
-    def test_done_banner_includes_ascii_art_when_green(self):
+    def test_done_banner_is_compact_when_green(self):
         from slice_loop_progress import slice_done_banner
 
         v = {"exit": "0", "total": "10", "passed": "10", "failed": "0", "skipped": "0"}
         banner = slice_done_banner(7, "Test slice", v, 60)
-        self.assertIn("MOUNTAIN", banner)
-        self.assertIn("CONQUERED", banner)
         self.assertIn("ALL TESTS PASSED", banner)
         self.assertIn("Forge gate cleared", banner)
+        self.assertNotIn("MOUNTAIN", banner)
+
+    def test_coordinator_shift_report(self):
+        from factory_narrator import format_coordinator_report
+
+        report = format_coordinator_report(
+            coordinator_name="Kai",
+            slice_id=12,
+            title="Variable speed + sleep timer",
+            elapsed_secs=1800,
+            green=True,
+            mission="Deliver variable speed and a sleep timer.",
+            accomplishment="Shipped: rate API; sleep timer; UI controls",
+            cast_names=["Priya", "Quincy"],
+            murphy_visits=1,
+            verify={"exit": "0", "total": "100", "passed": "100", "skipped": "0"},
+            session=(1, 6),
+        )
+        self.assertIn("Coordinator Kai", report)
+        self.assertIn("shift report", report)
+        self.assertIn("Priya", report)
+        self.assertIn("Shipped:", report)
+        self.assertNotIn("MOUNTAIN", report)
 
     def test_prefix_includes_agent_name(self):
         lines: list[str] = []

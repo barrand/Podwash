@@ -800,6 +800,96 @@ def _section_body(text: str, heading: str) -> str:
     return rest[: nxt.start()] if nxt else rest
 
 
+def _crux_from_table(text: str) -> str:
+    for line in text.splitlines():
+        if "| **Crux** |" in line or "| **Crux**|" in line:
+            parts = [p.strip() for p in line.strip().strip("|").split("|")]
+            if len(parts) >= 2:
+                return parts[1]
+    return ""
+
+
+def _first_paragraph(body: str) -> str:
+    """First non-empty prose line (skip tables, headings, bullets)."""
+    for line in body.splitlines():
+        s = line.strip()
+        if not s or s.startswith("|") or s.startswith("#"):
+            continue
+        if s.startswith("- "):
+            continue
+        return s
+    return ""
+
+
+def _bullet_items(body: str) -> list[str]:
+    items: list[str] = []
+    for line in body.splitlines():
+        s = line.strip()
+        if s.startswith("- "):
+            items.append(s[2:].strip())
+    return items
+
+
+def _shorten_text(text: str, max_len: int) -> str:
+    s = " ".join((text or "").split())
+    if len(s) <= max_len:
+        return s
+    cut = s[: max_len - 1].rsplit(" ", 1)[0]
+    return cut.rstrip(".,;:") + "…"
+
+
+def _friendly_deliverable(line: str) -> str:
+    s = re.sub(r"`([^`]+)`", r"\1", line.strip())
+    if " — " in s:
+        s = s.split(" — ", 1)[0].strip()
+    return _shorten_text(s, 72)
+
+
+def extract_slice_mission(slice_file: str, repo_root: str) -> str:
+    """User-friendly summary of what this slice is trying to accomplish."""
+    text = _read_slice_text(slice_file, repo_root)
+    goal = _first_paragraph(_section_body(text, "Goal"))
+    if goal:
+        return _shorten_text(goal, 220)
+    crux = _crux_from_table(text)
+    if crux:
+        return _shorten_text(crux, 220)
+    title, _ = read_slice_meta(slice_file, repo_root)
+    return title
+
+
+def extract_slice_accomplishment(slice_file: str, repo_root: str) -> str:
+    """Short description of what the slice delivers (for green wrap-up)."""
+    text = _read_slice_text(slice_file, repo_root)
+    bullets = _bullet_items(_section_body(text, "Deliverables"))
+    if bullets:
+        items = [_friendly_deliverable(b) for b in bullets[:3]]
+        tail = "…" if len(bullets) > 3 else ""
+        return "Shipped: " + "; ".join(items) + tail
+    goal = _first_paragraph(_section_body(text, "Goal"))
+    if goal:
+        return "Completed: " + _shorten_text(goal, 200)
+    title, _ = read_slice_meta(slice_file, repo_root)
+    return f"Completed: {title}"
+
+
+def _wrap_banner_text(prefix: str, text: str, *, width: int = 52) -> list[str]:
+    """Wrap ``text`` for ASCII banners with a fixed prefix on the first line."""
+    import textwrap
+
+    if not text:
+        return []
+    body_width = max(20, width - len(prefix))
+    chunks = textwrap.wrap(text, width=body_width)
+    if not chunks:
+        return []
+    lines = [f"  {prefix}{chunks[0]}"]
+    pad = " " * (2 + len(prefix))
+    for chunk in chunks[1:]:
+        lines.append(f"{pad}{chunk}")
+    return lines
+
+
 def _role_artifact_rows(text: str) -> list[dict[str, str]]:
     body = _section_body(text, "Role artifacts")
     rows: list[dict[str, str]] = []
@@ -1162,44 +1252,32 @@ def format_active_tasks(
     return " · ".join(parts)
 
 
-def slice_start_banner(slice_id: int, title: str, slice_file: str) -> str:
+def slice_start_banner(
+    slice_id: int,
+    title: str,
+    slice_file: str,
+    *,
+    mission: str | None = None,
+) -> str:
     line = f"  SLICE {slice_id:02d} — {title}"
     border = "═" * max(54, len(line) + 2)
-    return (
-        f"\n{border}\n"
-        f"{line}\n"
-        f"  {slice_file}\n"
-        f"{border}"
-    )
+    parts = [f"\n{border}", line, f"  {slice_file}"]
+    if mission:
+        parts.extend(_wrap_banner_text("→ ", mission))
+    parts.append(border)
+    return "\n".join(parts)
 
 
 def _banner_line(text: str, width: int = 56) -> str:
     return f"║  {text:<{width}}║"
 
 
-def slice_done_ascii_art() -> str:
-    """Epic summit scene for a green slice — rider, mountain lion, eagle."""
-    return (
-        "                          __/\\__\n"
-        "                         / >  < \\\n"
-        "                        |  \\__/  |\n"
-        "                         \\  ||  /\n"
-        "              ,~~~.       _\\||/_\n"
-        "             /     \\_____/ @ @ \\_____\n"
-        "            |   |\\       /  \\|/  \\       /|\n"
-        "            |   | \\_____/  o o  \\_____/ |\n"
-        "             \\  |  `~ ~`  \\  ^  /  `~ ~`  |\n"
-        "              \\/    ,------+------.    \\/\n"
-        "               \\___/  |\\________/|  \\___/\n"
-        "                    \\ |  |    |  | /\n"
-        "                     \\|_/      \\_|/\n"
-        "                      / `~ ~ ~ ~ ~` \\\n"
-        "                     /  /\\    /\\  \\\n"
-        "                    /__/  \\__/  \\__\\\n"
-        "                   /____/ MOUNTAIN \\____\\\n"
-        "                  /_____  SUMMIT   ______\\\n"
-        "                 /_______ CONQUERED ______\\"
-    )
+def _wrap_done_accomplishment(text: str, width: int = 56) -> list[str]:
+    import textwrap
+
+    if not text:
+        return []
+    return textwrap.wrap(text, width=width)
 
 
 def slice_done_banner(
@@ -1208,6 +1286,8 @@ def slice_done_banner(
     verify: dict[str, str] | None,
     elapsed_secs: int,
     session: tuple[int, int] | None = None,
+    *,
+    accomplishment: str | None = None,
 ) -> str:
     green = verify_is_green(verify)
     if green:
@@ -1223,6 +1303,9 @@ def slice_done_banner(
         _banner_line(headline),
         _banner_line(title),
     ]
+    if accomplishment and green:
+        for wrapped in _wrap_done_accomplishment(accomplishment):
+            lines.append(_banner_line(wrapped))
     if verify:
         detail = (
             f"VERIFY: exit={verify['exit']}  passed={verify['passed']}  "
@@ -1238,8 +1321,6 @@ def slice_done_banner(
         lines.append(_banner_line(""))
         lines.append(_banner_line(f"{emoji}  Forge gate cleared — safe to advance queue."))
     lines.append("╚" + "═" * 58 + "╝")
-    if green:
-        lines.append(slice_done_ascii_art())
     lines.append("")
     return "\n".join(lines)
 
