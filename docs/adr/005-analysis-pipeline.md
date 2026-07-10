@@ -209,8 +209,8 @@ assert AC2/AC3 call counts without live inference.
   `AnalysisPipeline` / `IntervalCache` and wires them into `PlaybackEngine` via
   `IntervalScheduler`. The pipeline's public surface is `analyze(...) → [CensorInterval]`;
   Slice 08 does not re-run ASR.
-- **Slice 11 (queue + resume)** may replace `IntervalCache`'s JSON files with SwiftData
-  or Core Data; the `(episodeID, fingerprint)` key semantics carry forward.
+- **Slice 11 (queue + resume)** may replace `IntervalCache`'s JSON files with Core Data
+  (ADR-007); the `(episodeID, fingerprint)` key semantics carry forward.
 - **Slice 09 (analysis UI)** triggers `analyze(...)` and observes progress; no UI in
   this slice.
 - Fast suite stays **skipped = 0**; slow target remains scheme-disabled.

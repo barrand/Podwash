@@ -18,7 +18,7 @@ Give the analyze-and-clean flow a visible, testable UI surface.
 ## Deliverables
 
 - `AnalysisUIState` enum + `AnalysisUIViewModel` with four states and legal transitions
-- `InMemoryCleaningToggleStore` for channel + per-episode toggle persistence (Slice 11 migrates to SwiftData)
+- `InMemoryCleaningToggleStore` for channel + per-episode toggle persistence (Slice 11 migrates to Core Data, ADR-007)
 - Toggle UI on podcast (channel) header and episode rows; state badges per PRD §3
 - Analysis progress indicator bound to pipeline analyzing state
 - `FixtureAnalysis` launch argument for stubbed instant pipeline in UI tests

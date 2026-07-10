@@ -87,10 +87,10 @@ assert_json "wait: 07 blocked by missing 05 and 02" "$D3" '"action":"wait"' '"id
 
 # ---- case 4: halt (halt-gated slice is next) -------------------------------
 D4="$WORK/case4"; mkdir -p "$D4"
-make_slice "$D4" 3  Done  1 "Player" "Slice 01"
-make_slice "$D4" 6  Done  1 "RSS"    "Slice 01"
-make_slice "$D4" 11 Draft 0 "Queue"  "Slices 03, 06"
-assert_json "halt: slice 11 deps met but halt-gated" "$D4" '"action":"halt"' '"id":11'
+make_slice "$D4" 2  Done  1 "Matching" "Slice 01"
+make_slice "$D4" 11 Done  1 "Queue"    "Slices 03, 06"
+make_slice "$D4" 13 Draft 0 "Settings" "Slices 02, 11"
+assert_json "halt: slice 13 deps met but halt-gated" "$D4" '"action":"halt"' '"id":13'
 
 # ---- case 5: done (everything complete) ------------------------------------
 D5="$WORK/case5"; mkdir -p "$D5"

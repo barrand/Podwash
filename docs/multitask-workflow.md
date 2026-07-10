@@ -76,8 +76,7 @@ parallel groups:
         ├──────────── parallel group B ───────────────┐
         ▼                      ▼                      ▼
 10 Downloads          11 Queue + resume        12 Speed + sleep
- (needs 06)            (needs 03, 06;           (needs 03, 08)
-                        persistence ask)
+ (needs 06)            (needs 03, 06)           (needs 03, 08)
         └──────────────┬──────────────────────────────┘
                        ▼
 13 Settings + word lists (needs 02, 11)
@@ -94,9 +93,8 @@ Post-MVP track (planned, not unowned):
 18 Segmentation spike (needs 07)  →  19 Segmentation integration (needs 08, 09, 13, 18)
 ```
 
-**Parallel groups:** A = slices 02/03/05/06 after 01; B = 10/11/12 after 08 (11
-waits for the persistence decision); C = 15/16/17 after 14 (17 waits for the
-monetization decision). Everything else is sequential per the arrows.
+**Parallel groups:** A = slices 02/03/05/06 after 01; B = 10/11/12 after 08; C = 15/16/17
+after 14 (17 waits for the monetization decision). Everything else is sequential per the arrows.
 
 ## Agent roles and quality gates
 

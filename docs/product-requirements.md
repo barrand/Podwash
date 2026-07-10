@@ -229,7 +229,7 @@ reasons (see Section 8) and should not be built without legal review.
 | Playback | AVFoundation (`AVPlayer`, `AVPlayerItem`, `AVMutableAudioMix`) |
 | Background / lock screen / CarPlay | `MPNowPlayingInfoCenter`, `MPRemoteCommandCenter`; CarPlay framework when ready |
 | On-device ASR | **WhisperKit (Core ML), `tiny.en`** — decided in ADR-003 (SpeechAnalyzer unverifiable in simulator; deferred to real-device) |
-| Local storage | SwiftData or Core Data (TBD) |
+| Local storage | **Core Data** (decided ADR-007, Slice 11) |
 | RSS / feeds | `URLSession` + XML parsing (TBD library) |
 | Purchases | StoreKit 2 |
 | Crash reporting (optional) | Firebase Crashlytics or similar managed SDK |
@@ -370,8 +370,9 @@ coordinator decision protocol in [`multitask-workflow.md`](multitask-workflow.md
   **Minimum iOS version:** unchanged at **26.1** — WhisperKit supports iOS 16+, so a future
   floor *lowering* to widen device support is possible but remains a product decision
   (halt-and-ask), not made here.
-- **Local persistence:** SwiftData vs Core Data for subscriptions, positions, and
-  cached interval lists (surfaces at slice 11).
+- **Local persistence:** ✅ **RESOLVED (ADR-007, Slice 11):** **Core Data** for
+  subscriptions, positions, queue, played state, cleaning toggles, and (optionally)
+  cached interval lists. In-memory `NSPersistentContainer` for unit tests.
 - **Default action per feature** (mute vs skip) and which overlays to ship (beep/quack)
   for the mute action.
 - **When to run the one-time analysis** (on download vs on first play vs on toggle)

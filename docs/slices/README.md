@@ -40,7 +40,7 @@ The dependency graph and parallel groups live in [`multitask-workflow.md`](../mu
 | 08 | `slice-08-playback-integration.md` | Pipeline |
 | 09 | `slice-09-analysis-ui.md` | Pipeline UI |
 | 10 | `slice-10-downloads.md` | Table stakes (parallel group B) |
-| 11 | `slice-11-queue-resume.md` | Table stakes (parallel group B; persistence halt-and-ask) |
+| 11 | `slice-11-queue-resume.md` | Table stakes (parallel group B; Core Data per ADR-007) |
 | 12 | `slice-12-speed-sleep.md` | Table stakes (parallel group B) |
 | 13 | `slice-13-settings.md` | Table stakes |
 | 14 | `slice-14-background-audio.md` | Native polish |

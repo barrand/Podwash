@@ -30,10 +30,13 @@ from sim_hygiene import (  # noqa: E402
     stress_run_count,
 )
 from slice_pipeline import (  # noqa: E402
+    VerifyOutcome,
+    build_tier2_continue_prompt,
     extract_mapped_test_ids,
     tier2_marker_ok,
     write_tier2_marker,
 )
+from failure_packet import FailurePacket  # noqa: E402
 
 
 class SummaryContractTests(unittest.TestCase):
@@ -138,6 +141,121 @@ class MappedTestsAndTierTests(unittest.TestCase):
             self.assertFalse(tier2_marker_ok(tmp, 11))
             write_tier2_marker(tmp, 11)
             self.assertTrue(tier2_marker_ok(tmp, 11))
+
+
+class ArtifactCellTests(unittest.TestCase):
+    def test_multi_backtick_paths(self):
+        from slice_loop_progress import artifact_cell_satisfied, missing_artifact_paths
+
+        cell = (
+            "`docs/adr/007-persistence-core-data.md` (stack) + "
+            "`docs/adr/009-queue-resume.md` (modules/APIs)"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "docs", "adr"), exist_ok=True)
+            open(os.path.join(tmp, "docs", "adr", "007-persistence-core-data.md"), "w").write("x")
+            self.assertFalse(artifact_cell_satisfied(tmp, cell))
+            self.assertEqual(
+                missing_artifact_paths(tmp, cell),
+                ["docs/adr/009-queue-resume.md"],
+            )
+            open(os.path.join(tmp, "docs", "adr", "009-queue-resume.md"), "w").write("y")
+            self.assertTrue(artifact_cell_satisfied(tmp, cell))
+
+
+class SessionBundleTests(unittest.TestCase):
+    def test_writes_halt_artifacts(self):
+        from session_bundle import write_session_bundle
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tr = os.path.join(tmp, "build", "test-results")
+            os.makedirs(tr, exist_ok=True)
+            open(os.path.join(tr, "events-slice-11.jsonl"), "w").write(
+                '{"event":"verify_start"}\n'
+            )
+            open(os.path.join(tr, "ledger-slice-11.jsonl"), "w").write(
+                '{"hypothesis":"x"}\n'
+            )
+            dest = write_session_bundle(
+                repo_root=tmp,
+                slice_id=11,
+                reason="implement tier-2 gate failed after 3 runs",
+                stuck_card="STUCK — Slice 11\nClass: crash\n",
+                verify_result={"exit": "65", "failed": "5", "bundle": "build/x.xcresult"},
+                failures=["crash a"],
+                crashes=["Crash: PodWash"],
+                phase="TIER2-GATE",
+            )
+            self.assertTrue(dest.endswith("session-slice-11"))
+            self.assertTrue(os.path.isfile(os.path.join(dest, "halt.json")))
+            self.assertTrue(os.path.isfile(os.path.join(dest, "stuck-card.txt")))
+            self.assertTrue(os.path.isfile(os.path.join(dest, "events.jsonl")))
+            self.assertTrue(os.path.isfile(os.path.join(dest, "ledger.jsonl")))
+            self.assertTrue(os.path.isfile(os.path.join(dest, "README.md")))
+            self.assertIn("STUCK", open(os.path.join(dest, "stuck-card.txt")).read())
+
+
+class Tier2ContinuePromptTests(unittest.TestCase):
+    """Factory death-run gap: tier-2 continue must not be failures-only."""
+
+    def _make_outcome(self, *, failures, crashes=None, failure_class="crash") -> VerifyOutcome:
+        packet = FailurePacket(
+            raw_failures=failures,
+            crashes=crashes or [],
+            failure_class=failure_class,
+            test_ids=["QueueTests/testAutoAdvanceOnEpisodeEnd()"],
+            signature="sig",
+        )
+        return VerifyOutcome(
+            result={"exit": "65", "failed": "1", "bundle": "build/test-results/x.xcresult"},
+            green=False,
+            failures=failures,
+            crashes=crashes or [],
+            output="\n".join(failures),
+            packet=packet,
+            tier=2,
+        )
+
+    def test_rich_prompt_has_stuck_card_and_packet(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            outcome = self._make_outcome(
+                failures=[
+                    "PodWashTests/testAutoAdvanceOnEpisodeEnd() — "
+                    "Crash: PodWash at QueueTests.testAutoAdvanceOnEpisodeEnd()"
+                ],
+                crashes=["Crash: PodWash at QueueTests.testAutoAdvanceOnEpisodeEnd()"],
+            )
+            prompt = build_tier2_continue_prompt(
+                slice_file="docs/slices/slice-11-queue-resume.md",
+                repo_root=tmp,
+                outcome=outcome,
+                run_i=1,
+                max_runs=3,
+            )
+            self.assertIn("STUCK", prompt)
+            self.assertIn("FailurePacket:", prompt)
+            self.assertIn("hypothesis", prompt.lower())
+            self.assertNotIn("Failing: ['PodWashTests", prompt)
+            self.assertGreater(len(prompt), 800)
+
+    def test_install_failure_gets_packaging_instruction(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            outcome = self._make_outcome(
+                failures=[
+                    "PodWashTests/PodWash encountered an error — "
+                    "missing its bundle executable"
+                ],
+                failure_class="build_error",
+            )
+            prompt = build_tier2_continue_prompt(
+                slice_file="docs/slices/slice-11-queue-resume.md",
+                repo_root=tmp,
+                outcome=outcome,
+                run_i=1,
+                max_runs=3,
+            )
+            self.assertIn("Packaging/install", prompt)
+            self.assertIn("bundle executable", prompt.lower())
 
 
 if __name__ == "__main__":

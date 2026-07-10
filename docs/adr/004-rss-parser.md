@@ -18,7 +18,7 @@ must be duplicated into the app bundle and selected via a launch argument, mirro
 The parser must be deterministic against a hand-transcribed golden JSON, tolerate
 optional fields (artwork, show notes), distinguish malformed XML from an empty-but-valid
 feed, and surface network failures as typed view-model state. Durable persistence
-(SwiftData, Slice 11) is out of scope; an in-memory store stub holds parsed results
+(Core Data, Slice 11 — ADR-007) is out of scope; an in-memory store stub holds parsed results
 for this slice only.
 
 ## Decision
@@ -34,7 +34,7 @@ for this slice only.
 | `PodWash/PodWash/PodcastDetailView.swift` | app | **new** | Podcast title, artwork, description |
 | `PodWash/PodWash/EpisodeListView.swift` | app | **new** | `List` of episodes with stable accessibility identifiers |
 | `PodWash/PodWash/FixtureFeed.swift` | app | **new** | Launch-argument detection (`-UITestFixtureFeed`) and bundled XML resolution |
-| `PodWash/PodWash/InMemoryPodcastStore.swift` | app | **new** | In-memory stub: holds the latest `PodcastFeed`; replaced by SwiftData in Slice 11 |
+| `PodWash/PodWash/InMemoryPodcastStore.swift` | app | **new** | In-memory stub: holds the latest `PodcastFeed`; replaced by Core Data in Slice 11 (ADR-007) |
 | `PodWash/PodWash/RootView.swift` | app | **changed** | Routes fixture-feed mode alongside existing fixture-audio mode |
 | `PodWash/PodWash/Fixtures/feeds/sample_feed.xml` | app | **new** | App-bundle copy of the feed fixture (UI tests) |
 | `PodWash/PodWashTests/Fixtures/feeds/sample_feed.xml` | test | **new** | Unit-test bundle copy of the same feed |
@@ -194,7 +194,7 @@ final class InMemoryPodcastStore {
 }
 ```
 
-No disk I/O, no SwiftData. Slice 11 replaces this with a durable store behind the
+No disk I/O, no Core Data yet. Slice 11 replaces this with a durable store behind the
 same call sites where possible.
 
 ### 8. SwiftUI views and accessibility contract
@@ -280,7 +280,7 @@ and asserts the first three `episodeCell_<index>` labels match golden titles.
 
 - Playback of enclosure URLs (Slice 03 engine is separate; no wiring here)
 - Downloads (Slice 10)
-- SwiftData / Core Data persistence (Slice 11)
+- Core Data persistence (Slice 11, ADR-007)
 - Podcast directory / iTunes search API
 - Profanity toggles on episode rows (Slice 09)
 

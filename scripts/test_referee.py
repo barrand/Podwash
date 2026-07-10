@@ -83,6 +83,42 @@ class ParseRefereeTests(unittest.TestCase):
         self.assertEqual(v.role, "QA")
         self.assertEqual(v.fix_scope, "tests")
 
+    def test_trailing_redacted_still_parses(self):
+        """Death-run: model returned valid JSON then ``\\n\\n[REDACTED]``."""
+        blob = SAMPLE_JSON.rstrip() + "\n\n[REDACTED]"
+        v = parse_referee_reply(blob)
+        self.assertEqual(v.confidence, "high")
+        self.assertEqual(v.role, "Engineer")
+
+    def test_ignores_prompt_skeleton_brace(self):
+        """assistant_text may include the prompt's `{primary_failure, …}` sketch."""
+        blob = (
+            "Return ONLY JSON: {primary_failure, failure_groups, role: Engineer|QA}\n\n"
+            + SAMPLE_JSON
+            + "\n"
+        )
+        v = parse_referee_reply(blob)
+        self.assertEqual(v.role, "Engineer")
+        self.assertIn("cancel fires", v.hypothesis)
+
+    def test_real_slice11_referee_shape(self):
+        blob = (
+            '{"primary_failure":"PodWashTests/QueueTests/testAutoAdvanceOnEpisodeEnd() — '
+            'XCTAssertEqual failed: (\\"2\\") is not equal to (\\"1\\")",'
+            '"failure_groups":[["assertion"]],'
+            '"role":"QA","fix_scope":"tests",'
+            '"files":["PodWash/PodWashTests/QueueTests.swift"],'
+            '"instruction":"Snapshot playCalls before handlePlaybackEnded; assert one new play.",'
+            '"hypothesis":"Test double-counts setup playEpisode plus auto-advance.",'
+            '"confidence":"high",'
+            '"narration":"Assertion is test-side counting."}'
+            "\n\n[REDACTED]"
+        )
+        v = parse_referee_reply(blob)
+        self.assertEqual(v.role, "QA")
+        self.assertEqual(v.fix_scope, "tests")
+        self.assertIn("double-counts", v.hypothesis)
+
 
 class RefereePromptTests(unittest.TestCase):
     def test_prompt_includes_packet_and_ledger(self):

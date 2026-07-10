@@ -64,10 +64,16 @@ Durable entities (names may refine during implementation):
 Exact file names are slice deliverables; boundaries must keep fetch/save logic
 testable without SwiftUI.
 
+## See also
+
+- [ADR-009](009-queue-resume.md) — Slice 11 module boundaries, store/coordinator APIs,
+  schema, played threshold, and reload pattern (builds on this ADR).
+
 ## Consequences
 
-- Slice 11 Architect gate is satisfied by this ADR; Engineer implements against
-  it after QA test spec + Architect test-spec review.
+- This ADR resolves the Core Data stack choice. Slice 11 implementation APIs are
+  specified in ADR-009; Engineer implements against both after QA test spec +
+  Architect test-spec review.
 - Forward-looking references in ADR-004/005 and slice docs that assumed SwiftData
   are updated to Core Data.
 - `scripts/next-slice.sh` **HALT_SLICES** no longer includes slice 11.

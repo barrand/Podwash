@@ -107,20 +107,51 @@ def _extract_json_object(text: str) -> dict[str, Any]:
     # Prefer fenced ```json ... ```
     fence = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL | re.IGNORECASE)
     if fence:
-        raw = fence.group(1)
+        candidates = [fence.group(1)]
     else:
+        candidates = []
+        # Prefer objects that look like a verdict (avoid prompt skeleton `{primary_failure, …}`)
+        for m in re.finditer(r"\{", raw):
+            chunk = raw[m.start() :]
+            if '"primary_failure"' not in chunk[:800] and "'primary_failure'" not in chunk[:800]:
+                if '"hypothesis"' not in chunk[:800]:
+                    continue
+            try:
+                obj, _end = json.JSONDecoder().raw_decode(chunk)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(obj, dict) and (
+                "primary_failure" in obj or "hypothesis" in obj or "confidence" in obj
+            ):
+                return obj
+        # Fallback: first { to last }
         start = raw.find("{")
         end = raw.rfind("}")
         if start == -1 or end == -1 or end <= start:
             raise RefereeError("referee reply has no JSON object")
-        raw = raw[start : end + 1]
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise RefereeError(f"referee JSON parse failed: {exc}") from exc
-    if not isinstance(data, dict):
-        raise RefereeError("referee JSON root must be an object")
-    return data
+        candidates = [raw[start : end + 1]]
+
+    last_err: Exception | None = None
+    for cand in candidates:
+        # Strip illegal control chars inside strings (models sometimes emit raw newlines)
+        cleaned = "".join(
+            ch if (ord(ch) >= 32 or ch in "\n\r\t") else " " for ch in cand
+        )
+        try:
+            data = json.loads(cleaned)
+        except json.JSONDecodeError as exc:
+            last_err = exc
+            # Trailing prose after a valid object
+            try:
+                data, _ = json.JSONDecoder().raw_decode(cleaned.lstrip())
+            except json.JSONDecodeError as exc2:
+                last_err = exc2
+                continue
+        if isinstance(data, dict):
+            return data
+    if last_err is not None:
+        raise RefereeError(f"referee JSON parse failed: {last_err}") from last_err
+    raise RefereeError("referee JSON root must be an object")
 
 
 def _as_str_list(value: Any) -> list[str]:

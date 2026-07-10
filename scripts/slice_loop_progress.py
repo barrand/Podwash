@@ -756,6 +756,27 @@ def _path_exists(repo_root: str, raw: str) -> bool:
     return os.path.isfile(path)
 
 
+def artifact_cell_satisfied(repo_root: str, raw: str) -> bool:
+    """True when every backtick path in a Role-artifacts cell exists on disk.
+
+    Slice tables often list multiple artifacts in one cell, e.g.
+    ``007.md`` (stack) + ``009.md`` (APIs). ``_path_exists`` only checks the
+    first token — use this for gate FSM rows.
+    """
+    paths = _extract_backtick_paths(raw or "")
+    if paths:
+        return all(_path_exists(repo_root, p) for p in paths)
+    return _path_exists(repo_root, raw)
+
+
+def missing_artifact_paths(repo_root: str, raw: str) -> list[str]:
+    """Backtick paths from a cell that are not yet on disk."""
+    paths = _extract_backtick_paths(raw or "")
+    if not paths:
+        return [] if _path_exists(repo_root, raw) else [raw.strip()]
+    return [p for p in paths if not _path_exists(repo_root, p)]
+
+
 def _extract_backtick_paths(text: str) -> list[str]:
     return re.findall(r"`([^`]+)`", text or "")
 

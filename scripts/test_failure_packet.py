@@ -328,6 +328,17 @@ class ClassifyTests(unittest.TestCase):
         )
         self.assertEqual(classify_failure(p), "assertion")
 
+    def test_missing_bundle_executable_is_build_error(self):
+        """Death-run runs 1–2: install failure must not look like a mystery crash."""
+        p = FailurePacket(
+            test_ids=["PodWash encountered an error"],
+            raw_failures=[
+                "PodWashTests/PodWash encountered an error — Failed to install "
+                "or launch: PodWash.app is missing its bundle executable"
+            ],
+        )
+        self.assertEqual(classify_failure(p), "build_error")
+
 
 class DiagnoseMergeTests(unittest.TestCase):
     def test_parse_and_heuristic_wins(self):

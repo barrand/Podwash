@@ -46,6 +46,7 @@ from hypothesis_ledger import (
     load_ledger,
     make_entry,
 )
+from session_bundle import write_session_bundle
 from referee import (
     RefereeError,
     RefereeVerdict,
@@ -74,9 +75,12 @@ from slice_loop_progress import (
     _section_body,
     _status_from_text,
     _verification_mapping_filled,
+    artifact_cell_satisfied,
     detect_simulator_crashes,
     detect_test_failures,
     latest_xcresult_path,
+    summarize_ips_crash,
+    missing_artifact_paths,
     parse_verify_result,
     read_failures_from_xcresult,
     verify_is_green,
@@ -417,7 +421,7 @@ def _role_gate_status(
     if "waiv" in gate:
         return "waived", True
     path = row["path"]
-    if _path_exists(repo_root, path):
+    if artifact_cell_satisfied(repo_root, path):
         return "done", True
     if "accepted" in gate or "(done)" in path.lower():
         return "done", True
@@ -819,6 +823,109 @@ FailurePacket:
 - hierarchy_excerpt (truncated):
 {packet.hierarchy_excerpt[:2000]}
 """
+
+
+def _collect_ips_summaries(repo_root: str, *, limit: int = 3) -> list[str]:
+    """Summarize recent PodWash .ips under build/test-results (tier-2 evidence)."""
+    roots = [
+        os.path.join(repo_root, r) if not os.path.isabs(r) else r
+        for r in default_ips_roots()[:1]
+    ]
+    found: list[tuple[float, str]] = []
+    for root in roots:
+        if not root or not os.path.isdir(root):
+            continue
+        for dirpath, _dirs, files in os.walk(root):
+            for name in files:
+                if not name.endswith(".ips"):
+                    continue
+                path = os.path.join(dirpath, name)
+                try:
+                    found.append((os.path.getmtime(path), path))
+                except OSError:
+                    continue
+    found.sort(reverse=True)
+    out: list[str] = []
+    for _mtime, path in found[:limit]:
+        out.append(f"{summarize_ips_crash(path)} ({path})")
+    return out
+
+
+def build_tier2_continue_prompt(
+    *,
+    slice_file: str,
+    repo_root: str,
+    outcome: VerifyOutcome,
+    run_i: int,
+    max_runs: int,
+) -> str:
+    """Rich continue prompt for tier-2 red — stuck card + packet + IPS, not failures-only."""
+    packet = outcome.packet
+    if packet is None:
+        packet = build_failure_packet(
+            failures=outcome.failures,
+            crashes=outcome.crashes,
+            bundle=(outcome.result or {}).get("bundle"),
+            exit_code=(outcome.result or {}).get("exit"),
+            output=outcome.output,
+            repo_root=repo_root,
+        )
+    card = format_stuck_card(
+        packet,
+        slice_file=slice_file,
+        attempt=run_i,
+        max_attempts=max_runs,
+    )
+    persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
+    ips = _collect_ips_summaries(repo_root)
+    crashes = list(outcome.crashes or packet.crashes or [])
+    for line in ips:
+        if line not in crashes:
+            crashes.append(line)
+    cls = packet.failure_class or "unknown"
+    if cls == "build_error" or any(
+        x in "\n".join(outcome.failures or []).lower()
+        for x in ("missing its bundle executable", "unable to install", "encountered an error")
+    ):
+        instruction = (
+            "Packaging/install failure: restore a valid PodWash.app bundle executable "
+            "(do not delete the app target entry point). Then ensure Core Data queue/resume "
+            "types compile. Do not edit tests."
+        )
+        hypothesis = "App target missing/broken executable or installable product"
+    elif cls == "crash" or crashes:
+        instruction = (
+            "App crash under slice tests: read IPS/stack (TaskLocal / MainActor deinit "
+            "are common). Fix app code only — prefer nonisolated deinit on @MainActor "
+            "types when deinit frees TaskLocal state. Do not edit tests."
+        )
+        hypothesis = packet.hypothesis or "Crash in app deinit/concurrency during test teardown"
+    else:
+        instruction = (
+            "Tier-2 slice tests still red. Minimal app fix for the FailurePacket; "
+            "do not edit tests; do not run verify."
+        )
+        hypothesis = packet.hypothesis or "Slice-mapped tests failing after implement"
+    return build_fix_prompt(
+        "Engineer",
+        slice_file,
+        outcome.failures or packet.raw_failures,
+        crashes,
+        (outcome.result or {}).get("bundle") or packet.bundle,
+        run_i,
+        max_runs,
+        packet=packet,
+        stuck_card=card,
+        referee_instruction=instruction,
+        referee_hypothesis=hypothesis,
+        primary_failure=(outcome.failures or packet.raw_failures or ["(unknown)"])[0],
+        suggested_files=packet.suggested_files
+        or [
+            "PodWash/PodWash/QueueCoordinator.swift",
+            "PodWash/PodWash/PersistenceController.swift",
+            "PodWash/PodWash/PodWashApp.swift",
+        ],
+    )
 
 
 def build_fix_prompt(
@@ -1572,17 +1679,88 @@ def run_fix_loop(
             else:
                 raise RefereeError("no client/referee_fn — cannot route fix")
         except RefereeError as exc:
-            card = format_stuck_card(
-                packet,
-                slice_file=slice_file,
-                attempt=budget.attempts_used,
-                max_attempts=budget.max_attempts,
-                lever=str(exc.reason),
+            reason = str(exc.reason)
+            parseish = (
+                "JSON parse failed" in reason
+                or "no JSON object" in reason
+                or "empty reply" in reason
+                or "role invalid" in reason
             )
-            persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
-            _log(card)
-            narrate_thrash_halt(log=_log)
-            raise ThrashHalt(f"referee halt: {exc.reason}") from exc
+            # #region agent log
+            try:
+                import json as _json
+                _dbg = os.path.join(repo_root, ".cursor", "debug-bdbf4b.log")
+                with open(_dbg, "a", encoding="utf-8") as _df:
+                    _df.write(
+                        _json.dumps(
+                            {
+                                "sessionId": "bdbf4b",
+                                "runId": "referee-error",
+                                "hypothesisId": "H-ref",
+                                "location": "slice_pipeline.py:run_fix_loop:referee",
+                                "message": "referee error — parseish fallback or halt",
+                                "data": {
+                                    "reason": reason[:240],
+                                    "parseish": parseish,
+                                    "will_fallback_heuristic": parseish,
+                                },
+                                "timestamp": int(time.time() * 1000),
+                            }
+                        )
+                        + "\n"
+                    )
+            except Exception:
+                pass
+            # #endregion
+            if parseish:
+                # Do not thrash-halt the whole slice on a bad referee blob —
+                # fall back to heuristic routing and spend a real fix attempt.
+                _log(f"referee parse/format failed — heuristic fallback: {reason}")
+                role = route_fix(
+                    outcome.failures,
+                    outcome.crashes,
+                    packet=packet,
+                )
+                verdict = RefereeVerdict(
+                    primary_failure=(outcome.failures or ["(unknown)"])[0],
+                    role=role,
+                    fix_scope="app" if role == "Engineer" else "tests",
+                    files=list(packet.suggested_files or [])[:6],
+                    instruction=(
+                        "Referee JSON unusable; apply minimal fix for the stuck-card "
+                        f"failure class={packet.failure_class or 'unknown'}."
+                    ),
+                    hypothesis=(
+                        packet.hypothesis
+                        or f"heuristic:{packet.failure_class or 'unknown'}:{sig[:80]}"
+                    ),
+                    confidence="med",
+                    narration="Rhea's JSON was unreadable — routing by heuristic.",
+                )
+            else:
+                card = format_stuck_card(
+                    packet,
+                    slice_file=slice_file,
+                    attempt=budget.attempts_used,
+                    max_attempts=budget.max_attempts,
+                    lever=reason,
+                )
+                persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
+                _log(card)
+                narrate_thrash_halt(log=_log)
+                bundle_dir = write_session_bundle(
+                    repo_root=repo_root,
+                    slice_id=slice_id,
+                    reason=f"referee halt: {reason}",
+                    stuck_card=card,
+                    verify_result=outcome.result,
+                    failures=outcome.failures,
+                    crashes=outcome.crashes,
+                    phase="REFEREE",
+                    extra={"gate": "referee", "reason": reason},
+                )
+                _log(f"session bundle written: {bundle_dir}")
+                raise ThrashHalt(f"referee halt: {reason}") from exc
 
         if hypothesis_seen(ledger, verdict.hypothesis, sig):
             reason = (
@@ -1617,6 +1795,18 @@ def run_fix_loop(
                 repo_root=repo_root,
                 slice_id=slice_id,
             )
+            bundle_dir = write_session_bundle(
+                repo_root=repo_root,
+                slice_id=slice_id,
+                reason=reason,
+                stuck_card=card,
+                verify_result=outcome.result,
+                failures=outcome.failures,
+                crashes=outcome.crashes,
+                phase="HALT",
+                extra={"gate": "ledger_block"},
+            )
+            _log(f"session bundle written: {bundle_dir}")
             raise ThrashHalt(reason)
 
         packet = apply_verdict_to_packet(packet, verdict)
@@ -1824,6 +2014,18 @@ def run_fix_loop(
         f"fix budget exhausted ({budget.max_attempts} attempts); "
         f"still red: {outcome.failures[:3] or outcome.crashes[:2]}"
     )
+    bundle_dir = write_session_bundle(
+        repo_root=repo_root,
+        slice_id=slice_id,
+        reason=reason,
+        stuck_card=card,
+        verify_result=outcome.result,
+        failures=outcome.failures,
+        crashes=outcome.crashes,
+        phase="HALT",
+        extra={"gate": "fix_loop", "attempts": budget.attempts_used},
+    )
+    _log(f"session bundle written: {bundle_dir}")
     raise ThrashHalt(reason)
 
 
@@ -1880,6 +2082,7 @@ def run_tier2_implement_gate(
                 return _verify()
 
     agent = _names.assign("Engineer", slot="implement")
+    ledger = load_ledger(repo_root, slice_id)
     for run_i in range(1, max_runs + 1):
         if _events:
             _events.record(
@@ -1889,6 +2092,62 @@ def run_tier2_implement_gate(
             )
         _log(f"tier-2 implement gate run {run_i}/{max_runs} ({len(slice_tests)} tests)")
         outcome = _tier2()
+        # #region agent log
+        try:
+            import json as _json
+            _dbg = os.path.join(repo_root, ".cursor", "debug-bdbf4b.log")
+            _pkt = outcome.packet
+            _cls = getattr(_pkt, "failure_class", None) if _pkt else None
+            _infra = classify_infra_failure(
+                output=outcome.output or "",
+                exit_code=(outcome.result or {}).get("exit"),
+                files_changed=False,
+            )
+            _blob = "\n".join(
+                (outcome.failures or []) + (outcome.crashes or []) + [(outcome.output or "")[:800]]
+            ).lower()
+            _install = any(
+                x in _blob
+                for x in (
+                    "missing its bundle executable",
+                    "unable to install",
+                    "failed to install or launch",
+                    "podwash encountered an error",
+                )
+            )
+            with open(_dbg, "a", encoding="utf-8") as _df:
+                _df.write(
+                    _json.dumps(
+                        {
+                            "sessionId": "bdbf4b",
+                            "runId": f"tier2-run-{run_i}",
+                            "hypothesisId": "H1-H5",
+                            "location": "slice_pipeline.py:run_tier2_implement_gate",
+                            "message": "tier-2 verify outcome",
+                            "data": {
+                                "run": run_i,
+                                "max_runs": max_runs,
+                                "green": outcome.green,
+                                "failed": (outcome.result or {}).get("failed"),
+                                "exit": (outcome.result or {}).get("exit"),
+                                "failure_class": _cls,
+                                "infra_classified": _infra,
+                                "install_or_packaging_signal": _install,
+                                "failures_head": (outcome.failures or [])[:3],
+                                "crashes_head": (outcome.crashes or [])[:2],
+                                "has_packet": _pkt is not None,
+                                "prompt_uses_referee": False,
+                                "prompt_includes_stuck_card": True,
+                                "budget_remaining_after": max(0, max_runs - run_i),
+                            },
+                            "timestamp": int(time.time() * 1000),
+                        }
+                    )
+                    + "\n"
+                )
+        except Exception:
+            pass
+        # #endregion
         if outcome.green:
             write_tier2_marker(repo_root, slice_id)
             narrate_verify_green(
@@ -1910,19 +2169,98 @@ def run_tier2_implement_gate(
             total=(outcome.result or {}).get("total", "?"),
             log=_log,
         )
+        # Ledger every red tier-2 run (monotonic info even without LLM referee)
+        pkt = outcome.packet
+        sig = (
+            (pkt.signature if pkt else "")
+            or failure_signature(outcome.failures, outcome.crashes)
+        )
+        hyp = (pkt.hypothesis if pkt else "") or (
+            f"tier-2 red class={getattr(pkt, 'failure_class', None) or 'unknown'} "
+            f"run={run_i}"
+        )
+        entry = make_entry(
+            slice_id=slice_id,
+            attempt=run_i,
+            role="Engineer",
+            hypothesis=hyp,
+            signature=sig,
+            files_touched=(pkt.suggested_files if pkt else []) or [],
+            verify_tier=2,
+            outcome="red",
+            primary_failure=(outcome.failures or [""])[0] if outcome.failures else "",
+            instruction="tier-2 continue",
+            agent_name=agent,
+        )
+        append_ledger(entry, repo_root=repo_root, slice_id=slice_id)
+        ledger.append(entry)
+
         if run_i >= max_runs or client is None:
             break
-        # Same worker continues — fresh spawn with narrow mission
+        # Fresh Engineer with FailurePacket + stuck card + IPS (not failures-only)
         narrate_spawn(
             agent, "Engineer",
             f"tier-2 still red — fix slice tests then SUMMARY",
             log=_log,
         )
-        prompt = build_gate_prompt("implement", slice_file, repo_root)
-        prompt += (
-            "\n\nTier-2 slice tests are still red. Fix app code only. "
-            f"Failing: {(outcome.failures or [])[:5]}\n"
+        prompt = build_tier2_continue_prompt(
+            slice_file=slice_file,
+            repo_root=repo_root,
+            outcome=outcome,
+            run_i=run_i,
+            max_runs=max_runs,
         )
+        prompt += "\n\nHypothesis ledger (do not repeat):\n"
+        prompt += format_ledger_for_prompt(ledger)
+        # #region agent log
+        try:
+            import json as _json
+            _dbg = os.path.join(repo_root, ".cursor", "debug-bdbf4b.log")
+            with open(_dbg, "a", encoding="utf-8") as _df:
+                _df.write(
+                    _json.dumps(
+                        {
+                            "sessionId": "bdbf4b",
+                            "runId": f"tier2-continue-{run_i}",
+                            "hypothesisId": "H2-fix",
+                            "location": "slice_pipeline.py:run_tier2_implement_gate:continue",
+                            "message": "tier-2 continue prompt shape",
+                            "data": {
+                                "run": run_i,
+                                "prompt_len": len(prompt),
+                                "has_stuck_card": "STUCK" in prompt,
+                                "has_ips_hint": ".ips" in prompt.lower()
+                                or "EXC_" in prompt
+                                or "TaskLocal" in prompt
+                                or "deinit" in prompt.lower(),
+                                "has_referee": "hypothesis" in prompt.lower(),
+                                "has_failure_packet": "FailurePacket:" in prompt,
+                                "has_ledger": "Hypothesis ledger" in prompt,
+                                "failures_only_tail": False,
+                                "failure_class": getattr(outcome.packet, "failure_class", None),
+                                "ledger_entries": len(ledger),
+                            },
+                            "timestamp": int(time.time() * 1000),
+                        }
+                    )
+                    + "\n"
+                )
+        except Exception:
+            pass
+        # #endregion
+        if _events:
+            _events.record(
+                "TIER2-GATE", "Engineer", "spawn",
+                agent_name=agent,
+                detail={
+                    "run": run_i,
+                    "failure_class": getattr(outcome.packet, "failure_class", None),
+                    "rich_prompt": True,
+                    "ledger_entries": len(ledger),
+                },
+                timeline=True,
+                mission=f"tier-2 continue after run {run_i}",
+            )
         progress = progress_factory("Engineer") if progress_factory else None
         ok, status = run_worker(
             client,
@@ -1940,10 +2278,65 @@ def run_tier2_implement_gate(
         if not ok:
             _log(f"implement continue worker status={status}")
 
-    raise ThrashHalt(
+    reason = (
         f"implement tier-2 gate failed after {max_runs} runs; "
         f"still red: {(outcome.failures or [])[:3]}"
     )
+    card = ""
+    if outcome.packet is not None:
+        card = format_stuck_card(
+            outcome.packet,
+            slice_file=slice_file,
+            attempt=max_runs,
+            max_attempts=max_runs,
+        )
+        persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
+    narrate_thrash_halt(log=_log)
+    bundle_dir = write_session_bundle(
+        repo_root=repo_root,
+        slice_id=slice_id,
+        reason=reason,
+        stuck_card=card,
+        verify_result=outcome.result,
+        failures=outcome.failures,
+        crashes=outcome.crashes,
+        phase="TIER2-GATE",
+        extra={"gate": "tier2", "max_runs": max_runs, "ledger_entries": len(ledger)},
+    )
+    _log(f"session bundle written: {bundle_dir}")
+    # #region agent log
+    try:
+        import json as _json
+        _dbg = os.path.join(repo_root, ".cursor", "debug-bdbf4b.log")
+        with open(_dbg, "a", encoding="utf-8") as _df:
+            _df.write(
+                _json.dumps(
+                    {
+                        "sessionId": "bdbf4b",
+                        "runId": "tier2-halt",
+                        "hypothesisId": "H5-fix",
+                        "location": "slice_pipeline.py:run_tier2_implement_gate:halt",
+                        "message": "tier-2 thrash halt wrote session bundle",
+                        "data": {
+                            "bundle_dir": bundle_dir,
+                            "has_halt_json": os.path.isfile(
+                                os.path.join(bundle_dir, "halt.json")
+                            ),
+                            "has_readme": os.path.isfile(
+                                os.path.join(bundle_dir, "README.md")
+                            ),
+                            "ledger_entries": len(ledger),
+                        },
+                        "timestamp": int(time.time() * 1000),
+                    }
+                )
+                + "\n"
+            )
+    except Exception:
+        pass
+    # #endregion
+    raise ThrashHalt(reason)
+
 
 
 def run_pipeline_slice(
@@ -2010,12 +2403,9 @@ def run_pipeline_slice(
                 break
             if gid in ("verify", "record", "commit"):
                 break
-            # If implement is pending only for missing tier-2 marker but artifacts
-            # exist, leave the authoring loop and run the tier-2 gate.
-            if gid == "implement":
-                text = _read_slice_text(slice_file, repo_root)
-                if _implement_artifacts_exist(text, repo_root):
-                    break
+            # Always spawn implement at least once when pending — even if artifacts
+            # already exist (skipping left tier-2 burning budget on a broken build).
+            # After the worker, the post-gate check breaks into the tier-2 gate.
             if gid in ("adr_review_qa", "adr_review_pm"):
                 ready = [
                     g
@@ -2033,6 +2423,7 @@ def run_pipeline_slice(
                             slice_id, title, slice_file, _log,
                             verbose=verbose, heartbeat_secs=heartbeat_secs,
                             repo_root=repo_root,
+                            forced_role=role,
                         )
                     events.record(
                         "IMPLEMENT", role, "spawn",
@@ -2065,6 +2456,7 @@ def run_pipeline_slice(
                     slice_id, title, slice_file, _log,
                     verbose=verbose, heartbeat_secs=heartbeat_secs,
                     repo_root=repo_root,
+                    forced_role=role,
                 )
             events.record(
                 "IMPLEMENT" if gid == "implement" else gid.upper(),
@@ -2104,7 +2496,16 @@ def run_pipeline_slice(
                     elapsed = int(time.time() - t0)
                     return False, elapsed, last_verify
                 else:
-                    _log(f"gate {gid} still pending after worker — stopping")
+                    hint = ""
+                    if gid in ("architect", "ux"):
+                        rows = _role_artifact_rows(_read_slice_text(slice_file, repo_root))
+                        role_name = "Architect" if gid == "architect" else "UX"
+                        r = _role_row(rows, role_name)
+                        if r:
+                            miss = missing_artifact_paths(repo_root, r["path"])
+                            if miss:
+                                hint = f" missing artifacts: {miss}"
+                    _log(f"gate {gid} still pending after worker — stopping.{hint}")
                     elapsed = int(time.time() - t0)
                     return False, elapsed, last_verify
 

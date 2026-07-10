@@ -21,7 +21,7 @@ Parse a bundled RSS feed client-side and render its episodes in a SwiftUI list, 
 - RSS parser (`URLSession` + `XMLParser`); injectable session / `URLProtocol` stub for tests (PRD §9 client-direct pattern)
 - `Episode` model: at minimum `title`, `pubDate` (normalized `Date` or ISO8601 string), `showNotes` (`String?`), `artworkURL` (`URL?`)
 - Podcast detail + episode list SwiftUI views with stable `accessibilityIdentifier`s: `episodeList`, `episodeCell_<index>` (0-based)
-- In-memory subscription/episode store stub (durable SwiftData/Core Data is Slice 11)
+- In-memory subscription/episode store stub (durable Core Data store is Slice 11, ADR-007)
 - Fixture `PodWash/PodWashTests/Fixtures/feeds/sample_feed.xml` — valid RSS 2.0 with **exactly 5** `<item>` elements; ≥1 item includes artwork + show notes, ≥1 item omits both (provenance in fixture README)
 - Golden `PodWash/PodWashTests/Fixtures/feeds/sample_feed_expected.json` — **hand-transcribed from the fixture XML** (independent provenance; never generated from parser output)
 - **Launch-argument fixture mode** (`-UITestFixtureFeed`): app loads the bundled feed instead of the network — UI tests cannot read the unit-test bundle
@@ -44,7 +44,7 @@ Parse a bundled RSS feed client-side and render its episodes in a SwiftUI list, 
 - Podcast directory search / iTunes Search API (PRD §2 phased; PRD §9)
 - RSS feed URL entry / subscribe flow UI (add-feed screen is a later slice)
 - Playback integration (Slice 08); downloads (Slice 10)
-- Durable SwiftData/Core Data persistence for subscriptions or episodes (Slice 11)
+- Durable Core Data persistence for subscriptions or episodes (Slice 11, ADR-007)
 - Profanity toggles, analysis, or cleaning UI on episodes (Slices 07–09)
 - Background feed polling / new-episode notifications (PRD §9)
 - Server-side proxy or backend of any kind (PRD §9)

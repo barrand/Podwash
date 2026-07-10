@@ -79,7 +79,7 @@ If live ASR drift ever breaks AC4 despite ADR-003 bounds, **do not** loosen the 
 - Progress UI and toggles (Slice 09)
 - Downloads of real episodes (Slice 10)
 - Unrelated-content segmentation (Slices 18–19)
-- Durable SwiftData/Core Data cache (Slice 11)
+- Durable Core Data cache (Slice 11, ADR-007)
 - UI for word-list / category selection (Slice 13)
 
 ## Acceptance criteria

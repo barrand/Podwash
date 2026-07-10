@@ -66,10 +66,11 @@ are hardcoded in the script (`HALT_SLICES`), derived from
 
 | Slice | Decision |
 |-------|----------|
-| 11 | SwiftData vs Core Data (persistence) |
 | 13 | default word/category profile, default action, analysis timing |
 | 15 | CarPlay at MVP vs fast-follow |
 | 17 | monetization model |
+
+Slice 11 persistence (Core Data) was resolved 2026-07-09 — see [ADR-007](adr/007-persistence-core-data.md).
 
 The list is hardcoded (rather than scanning for the phrase "halt-and-ask")
 because some slices mention halt-and-ask for a narrow sub-case only — e.g.
@@ -120,7 +121,7 @@ Exactly one JSON object on stdout. Consumers should branch on `action`.
 
 **halt** — eligible but needs a user decision first:
 ```json
-{"action":"halt","id":11,"file":"docs/slices/slice-11-queue-resume.md","reason":"Slice 11 (Queue + resume) is a halt-and-ask gate — the user must make a product decision before this slice starts."}
+{"action":"halt","id":13,"file":"docs/slices/slice-13-settings.md","reason":"Slice 13 (Settings + word lists) is a halt-and-ask gate — the user must make product decisions before this slice starts."}
 ```
 
 **wait** — every remaining slice is blocked on an unfinished dependency:

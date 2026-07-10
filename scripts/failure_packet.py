@@ -35,7 +35,9 @@ _IDENTIFIER_RE = re.compile(r"identifier:\s*'([^']+)'")
 _BUILD_HINT_RE = re.compile(
     r"(error:|fatal error|compile|linker|undefined symbol|no such module|"
     r"verify\.sh.*lock|another verify|xcodebuild.*failed|"
-    r"BUILD FAILED|Could not resolve|SwiftCompile)",
+    r"BUILD FAILED|Could not resolve|SwiftCompile|"
+    r"missing its bundle executable|unable to install|"
+    r"failed to install or launch|podwash encountered an error)",
     re.IGNORECASE,
 )
 _UI_RACE_RE = re.compile(
@@ -363,6 +365,16 @@ def classify_failure(packet: FailurePacket) -> str:
         + [packet.hierarchy_excerpt[:500]]
     )
     low = blob.lower()
+    # Install/packaging failures before tests run — prefer build_error over crash/unknown
+    if any(
+        x in low
+        for x in (
+            "missing its bundle executable",
+            "unable to install",
+            "failed to install or launch",
+        )
+    ):
+        return "build_error"
     if packet.crashes or "crash:" in low or ".ips" in low:
         return "crash"
     if _looks_buildish(packet.raw_failures, packet.exit_code, blob) and not packet.test_ids:
