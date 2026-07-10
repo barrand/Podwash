@@ -2776,8 +2776,6 @@ def run_pipeline_slice(
     Returns ``(ok, elapsed, last_verify, meta)`` where *meta* may include
     ``cast_names`` and ``murphy_visits`` for the end-of-slice coordinator report.
     """
-    from cursor_sdk import CursorClient
-
     from slice_loop_progress import (
         extract_slice_accomplishment,
         extract_slice_mission,
@@ -2840,7 +2838,9 @@ def run_pipeline_slice(
         path = persist_story_recap(line, repo_root=repo_root, slice_id=slice_id)
         _log(f"story recap written: {path}")
 
-    with CursorClient.launch_bridge(workspace=repo_root) as bridge_client:
+    from cursor_bridge import launch_bridge as launch_cursor_bridge
+
+    with launch_cursor_bridge(workspace=repo_root) as bridge_client:
         client = bridge_client.with_options(
             stream_timeout=stream_to,
             unary_timeout=unary_timeout,

@@ -49,6 +49,7 @@ The dependency graph and parallel groups live in [`multitask-workflow.md`](../mu
 | 17 | `slice-17-storekit.md` | Ship (halt-and-ask on monetization) |
 | 18 | `slice-18-segmentation-spike.md` | Differentiator 2 (post-MVP track) |
 | 19 | `slice-19-segmentation-integration.md` | Differentiator 2 (post-MVP track) |
+| 20 | `slice-20-analysis-timeline.md` | Pipeline UI (Skipper-style timeline; post–Slice 13) |
 
 ## What goes in each slice file
 

@@ -15,6 +15,10 @@ from slice_loop import (  # noqa: E402
     should_retry_bridge_error,
     slice_status,
 )
+from cursor_bridge import (  # noqa: E402
+    bridge_safe_auth_token,
+    is_dash_prefixed_token_argv_error,
+)
 
 
 class _FakeErr(Exception):
@@ -50,6 +54,19 @@ class BridgeTimeoutHelpersTests(unittest.TestCase):
         self.assertEqual(retry_sleep_secs(_FakeErr(), attempt=1), 5.0)
         self.assertEqual(retry_sleep_secs(_FakeErr(), attempt=2), 10.0)
         self.assertEqual(retry_sleep_secs(_FakeErr(), attempt=3), 20.0)
+
+    def test_should_retry_dash_prefixed_token_argv_error(self):
+        err = Exception(
+            "Bridge exited before discovery with status 1: "
+            "Missing value for --tool-callback-auth-token"
+        )
+        self.assertTrue(is_dash_prefixed_token_argv_error(err))
+        self.assertTrue(should_retry_bridge_error(err, attempt=1, max_retries=3))
+        self.assertFalse(should_retry_bridge_error(err, attempt=3, max_retries=3))
+
+    def test_bridge_safe_auth_token_never_starts_with_dash(self):
+        for _ in range(200):
+            self.assertFalse(bridge_safe_auth_token().startswith("-"))
 
     def test_slice_status_and_resume_prompt(self):
         import tempfile

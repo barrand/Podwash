@@ -37,7 +37,7 @@ SLICES_DIR=${PODWASH_SLICES_DIR:-docs/slices}
 # Slices that require a product decision (halt-and-ask) before an agent starts.
 # Hardcoded from docs/slices/README.md to avoid false positives on slices that
 # only mention halt-and-ask for a narrow sub-case (e.g. slice 05's iOS floor).
-HALT_SLICES="13 15 17"
+HALT_SLICES="15 17"
 
 usage() {
     sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'

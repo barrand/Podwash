@@ -89,8 +89,9 @@ assert_json "wait: 07 blocked by missing 05 and 02" "$D3" '"action":"wait"' '"id
 D4="$WORK/case4"; mkdir -p "$D4"
 make_slice "$D4" 2  Done  1 "Matching" "Slice 01"
 make_slice "$D4" 11 Done  1 "Queue"    "Slices 03, 06"
-make_slice "$D4" 13 Draft 0 "Settings" "Slices 02, 11"
-assert_json "halt: slice 13 deps met but halt-gated" "$D4" '"action":"halt"' '"id":13'
+make_slice "$D4" 14 Done  1 "Background" "Slices 03, 11"
+make_slice "$D4" 15 Draft 0 "CarPlay" "Slices 11, 14"
+assert_json "halt: slice 15 deps met but halt-gated" "$D4" '"action":"halt"' '"id":15'
 
 # ---- case 5: done (everything complete) ------------------------------------
 D5="$WORK/case5"; mkdir -p "$D5"
@@ -107,7 +108,7 @@ make_slice "$D6" 2 Draft 0 "Matching"   "Slice 01"
 assert_json "guard: Done-without-green does not advance to 02" "$D6" '"action":"start"' '"id":1'
 
 # ---- case 7: smoke test against the real repo ------------------------------
-assert_json "smoke: real repo -> start slice 05" "$REPO_ROOT/docs/slices" '"action":"start"' '"id":5'
+assert_json "smoke: real repo -> start slice 13" "$REPO_ROOT/docs/slices" '"action":"start"' '"id":13'
 
 # ---- summary ---------------------------------------------------------------
 echo ""

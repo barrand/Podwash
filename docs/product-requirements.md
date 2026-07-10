@@ -141,6 +141,9 @@ Users choose what gets cleaned.
   God's name in vain, plus other common profanity groupings.
 - User-configurable: enable/disable categories and add custom words.
 - Sensible faith/family default profile, fully adjustable.
+- **Default profile (decided 2026-07-10):** F-word, S-word, D-word, and racial/hate
+  slur categories **enabled** on first launch; other category groupings **disabled**
+  until the user enables them. Custom words start empty.
 - Category/word lists are stored on-device (no account required).
 - Matching normalizes casing/variants (e.g. base word plus common inflections).
 - Normalization and matching semantics (exact set membership over enumerated
@@ -374,10 +377,24 @@ coordinator decision protocol in [`multitask-workflow.md`](multitask-workflow.md
   subscriptions, positions, queue, played state, cleaning toggles, and (optionally)
   cached interval lists. In-memory `NSPersistentContainer` for unit tests.
 - **Default action per feature** (mute vs skip) and which overlays to ship (beep/quack)
-  for the mute action.
+  for the mute action: ✅ **RESOLVED (user, 2026-07-10, Slice 13 gate):** **mute** is the
+  default cleaning action for new users; skip remains a user-selectable setting.
+  Skip-at-MVP attorney review remains open for *shipping* skip as a product feature,
+  but the **default** is mute.
 - **When to run the one-time analysis** (on download vs on first play vs on toggle)
-  and the on-device retention policy for cached interval lists.
-- **Default word/category profile** for the faith/family audience.
+  and the on-device retention policy for cached interval lists: ✅ **RESOLVED (user,
+  2026-07-10, Slice 13 gate):** run analysis on **first play with cleaning enabled**
+  (user enables cleaning → play triggers one-time ASR/match → interval list cached).
+  **Retention:** keep cached intervals **until the episode is deleted** (purge with
+  download/cache removal). **Skipper-style episode timeline visualization** (blue =
+  processing, green = ready, yellow = ad/skip segment, grey = not yet processed) is
+  **out of Slice 13** — new slice [`slice-20-analysis-timeline.md`](slices/slice-20-analysis-timeline.md).
+- **Default word/category profile** for the faith/family audience: ✅ **RESOLVED (user,
+  2026-07-10, Slice 13 gate):** **profanity categories (F-word, S-word, D-word) and
+  racial/hate slurs ON by default**; other sensitive categories OFF until the user
+  opts in. Fully adjustable in Settings. Seeded lists remain per
+  [`specs/matching-spec.md`](specs/matching-spec.md) §7; defaults are a profile over
+  those categories, not a separate word list.
 - **Monetization model** (subscription vs one-time vs freemium) via StoreKit 2
   (optionally RevenueCat) — hard halt-and-ask gate at slice 17.
 - **Whether the skip feature ships at MVP** or as a fast follow (pending attorney

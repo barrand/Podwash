@@ -218,9 +218,20 @@ def resolve_stream_timeout(secs: float | None) -> float | None:
 
 
 def should_retry_bridge_error(err: BaseException, attempt: int, max_retries: int) -> bool:
-    """True when a CursorAgentError is marked retryable and attempts remain."""
+    """True when a bridge error is retryable and attempts remain.
+
+    Retries CursorAgentError when ``is_retryable`` is set, and also the
+    cursor-sdk dash-prefixed callback-token argv parse failure (see
+    ``cursor_bridge``).
+    """
     if attempt >= max_retries:
         return False
+    try:
+        from cursor_bridge import is_dash_prefixed_token_argv_error
+    except ImportError:
+        is_dash_prefixed_token_argv_error = lambda _e: False  # noqa: E731
+    if is_dash_prefixed_token_argv_error(err):
+        return True
     return bool(getattr(err, "is_retryable", False))
 
 
@@ -258,9 +269,11 @@ def run_slice_coordinator(
     from cursor_sdk import (
         AgentOptions,
         CursorAgentError,
-        CursorClient,
         LocalAgentOptions,
     )
+    from cursor_sdk.errors import CursorSDKError
+
+    from cursor_bridge import launch_bridge as launch_cursor_bridge
 
     title, _rel = read_slice_meta(slice_file, REPO_ROOT)
     mission = extract_slice_mission(slice_file, REPO_ROOT)
@@ -301,7 +314,7 @@ def run_slice_coordinator(
     while True:
         attempt += 1
         try:
-            with CursorClient.launch_bridge(workspace=REPO_ROOT) as bridge_client:
+            with launch_cursor_bridge(workspace=REPO_ROOT) as bridge_client:
                 client = bridge_client.with_options(
                     stream_timeout=stream_to,
                     unary_timeout=unary_timeout,
@@ -381,7 +394,7 @@ def run_slice_coordinator(
                 return status == "finished", elapsed, last_verify, {}
         except SystemExit:
             raise
-        except CursorAgentError as err:
+        except (CursorAgentError, CursorSDKError) as err:
             progress.stop()
             retryable = should_retry_bridge_error(err, attempt, bridge_retries)
             log(

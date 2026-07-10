@@ -66,7 +66,7 @@ are hardcoded in the script (`HALT_SLICES`), derived from
 
 | Slice | Decision |
 |-------|----------|
-| 13 | default word/category profile, default action, analysis timing |
+| ~~13~~ | ~~default word/category profile, default action, analysis timing~~ **Resolved 2026-07-10** — see PRD §11 and `slice-13-settings.md` § Product decisions |
 | 15 | CarPlay at MVP vs fast-follow |
 | 17 | monetization model |
 
@@ -121,7 +121,7 @@ Exactly one JSON object on stdout. Consumers should branch on `action`.
 
 **halt** — eligible but needs a user decision first:
 ```json
-{"action":"halt","id":13,"file":"docs/slices/slice-13-settings.md","reason":"Slice 13 (Settings + word lists) is a halt-and-ask gate — the user must make product decisions before this slice starts."}
+{"action":"halt","id":15,"file":"docs/slices/slice-15-carplay.md","reason":"Slice 15 (CarPlay) is a halt-and-ask gate — confirm MVP vs fast-follow before this slice starts."}
 ```
 
 **wait** — every remaining slice is blocked on an unfinished dependency:
