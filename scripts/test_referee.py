@@ -42,10 +42,65 @@ class ParseRefereeTests(unittest.TestCase):
         self.assertEqual(v.files[0], "PodWash/PodWash/DownloadManager.swift")
         self.assertEqual(len(v.failure_groups), 2)
 
+    def test_parses_sentinel_wrapped_json(self):
+        from referee import VERDICT_BEGIN, VERDICT_END
+
+        text = f"Some prose\n{VERDICT_BEGIN} {SAMPLE_JSON} {VERDICT_END}\nmore"
+        v = parse_referee_reply(text)
+        self.assertEqual(v.role, "Engineer")
+        self.assertIn("cancel fires", v.hypothesis)
+
+    def test_fence_broken_falls_through_to_valid_outside(self):
+        """Broken fenced JSON must not block a valid object later in the reply."""
+        blob = (
+            "```json\n"
+            '{"\n"primary_failure": "broken"}\n'
+            "```\n\n"
+            + SAMPLE_JSON
+        )
+        v = parse_referee_reply(blob)
+        self.assertEqual(v.confidence, "high")
+        self.assertIn("cancel fires", v.hypothesis)
+
+    def test_unescaped_newline_in_primary_failure(self):
+        blob = (
+            '{\n'
+            '  "primary_failure": "line1\nline2 assertion",\n'
+            '  "failure_groups": [["assertion"]],\n'
+            '  "role": "QA",\n'
+            '  "fix_scope": "tests",\n'
+            '  "files": ["PodWash/PodWashTests/QueueTests.swift"],\n'
+            '  "instruction": "Fix spy counting",\n'
+            '  "hypothesis": "Test double-counts setup play",\n'
+            '  "confidence": "high",\n'
+            '  "narration": "Test-side."\n'
+            "}"
+        )
+        v = parse_referee_reply(blob)
+        self.assertEqual(v.role, "QA")
+        self.assertIn("double-counts", v.hypothesis)
+
     def test_parses_fenced_json(self):
         text = f"Here is my verdict:\n```json\n{SAMPLE_JSON}\n```\n"
         v = parse_referee_reply(text)
         self.assertEqual(v.confidence, "high")
+
+    def test_prompt_requires_sentinels(self):
+        packet = FailurePacket(
+            test_ids=["PodWashTests/Foo/testA()"],
+            assertions=["XCTAssertEqual failed"],
+            signature="PodWashTests/Foo/testA()",
+            actionable=True,
+        )
+        prompt = build_referee_prompt(
+            packet,
+            slice_file="docs/slices/slice-10.md",
+            stuck_card="STUCK CARD HERE",
+            ledger_entries=[],
+        )
+        self.assertIn("VERDICT_JSON_BEGIN", prompt)
+        self.assertIn("VERDICT_JSON_END", prompt)
+        self.assertNotIn("unless required", prompt.lower())
 
     def test_medium_maps_to_med(self):
         blob = SAMPLE_JSON.replace('"high"', '"medium"')
@@ -138,6 +193,7 @@ class RefereePromptTests(unittest.TestCase):
         self.assertIn("STUCK CARD HERE", prompt)
         self.assertIn("PodWashTests/Foo/testA()", prompt)
         self.assertIn("confidence", prompt.lower())
+        self.assertIn("VERDICT_JSON_BEGIN", prompt)
 
 
 class ApplyVerdictTests(unittest.TestCase):

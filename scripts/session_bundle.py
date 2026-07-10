@@ -78,6 +78,7 @@ def write_session_bundle(
                 (f"ledger-slice-{slice_id:02d}.jsonl", "ledger.jsonl"),
                 (f"events-slice-{slice_id:02d}.jsonl", "events.jsonl"),
                 (f"stuck-slice-{slice_id:02d}.txt", "stuck-card-source.txt"),
+                (f"referee-slice-{slice_id:02d}-last.txt", "referee-last.txt"),
             ]
         )
     else:
@@ -85,6 +86,7 @@ def write_session_bundle(
             [
                 ("ledger-slice.jsonl", "ledger.jsonl"),
                 ("events-slice.jsonl", "events.jsonl"),
+                ("referee-last.txt", "referee-last.txt"),
             ]
         )
     for src_name, dest_name in copies:

@@ -52,7 +52,9 @@ from referee import (
     RefereeVerdict,
     apply_verdict_to_packet,
     build_referee_prompt,
+    build_referee_retry_prompt,
     parse_referee_reply,
+    resolve_role_scope_contradiction,
 )
 from sim_hygiene import (
     CrashWatchdog,
@@ -91,7 +93,7 @@ VERIFY_SH = os.path.join(REPO_ROOT_DEFAULT, "scripts", "verify.sh")
 CHECK_ISOLATION = os.path.join(REPO_ROOT_DEFAULT, "scripts", "check-test-isolation.sh")
 AGENTS_DIR = os.path.join(REPO_ROOT_DEFAULT, ".cursor", "agents")
 
-DEFAULT_MAX_FIX_ATTEMPTS = 2
+DEFAULT_MAX_FIX_ATTEMPTS = 3
 DEFAULT_MAX_IMPLEMENT_VERIFY_RUNS = 3
 
 # Exit codes owned by the loop (slice_loop.py mirrors these).
@@ -972,6 +974,11 @@ def build_fix_prompt(
     ledger = ledger_block or "(empty)"
     hyp = referee_hypothesis or (packet.hypothesis if packet else "") or "(none)"
     primary = primary_failure or "(see failing tests)"
+    assertions_block = ""
+    if packet and packet.assertions:
+        assertions_block = "Failing assertions:\n" + "\n".join(
+            f"- {a}" for a in packet.assertions[:8]
+        )
     packet_block = ""
     if packet:
         packet_block = f"""
@@ -1011,6 +1018,7 @@ Hypothesis ledger (do not repeat a prior hypothesis on the same signature):
 {ledger}
 
 {history}
+{assertions_block}
 {packet_block}
 Failing tests:
 {fail_lines}
@@ -1025,6 +1033,42 @@ End with: SUMMARY: <one line of what you changed>
 """
 
 
+def _persist_referee_transcript(
+    text: str,
+    *,
+    repo_root: str,
+    slice_file: str,
+    attempt: int,
+) -> str:
+    """Write raw referee reply for diagnosis. Returns path or empty string."""
+    sid = slice_id_from_path(slice_file)
+    name = (
+        f"referee-slice-{sid:02d}-attempt-{attempt}.txt"
+        if sid is not None
+        else f"referee-attempt-{attempt}.txt"
+    )
+    dest_dir = os.path.join(repo_root, "build", "test-results")
+    try:
+        os.makedirs(dest_dir, exist_ok=True)
+        path = os.path.join(dest_dir, name)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text or "")
+            if text and not text.endswith("\n"):
+                fh.write("\n")
+        # Also keep a stable "last" pointer for operators
+        last = os.path.join(
+            dest_dir,
+            f"referee-slice-{sid:02d}-last.txt" if sid is not None else "referee-last.txt",
+        )
+        with open(last, "w", encoding="utf-8") as fh:
+            fh.write(text or "")
+            if text and not text.endswith("\n"):
+                fh.write("\n")
+        return path
+    except OSError:
+        return ""
+
+
 def call_referee(
     client: Any,
     *,
@@ -1036,9 +1080,16 @@ def call_referee(
     ledger_entries: list[Any] | None = None,
     log: LogFn | None = None,
     progress_factory: Callable[[str], Any] | None = None,
+    attempt: int = 1,
+    telemetry: dict[str, int] | None = None,
 ) -> RefereeVerdict:
-    """Spawn plan-mode Referee worker; parse strict JSON. Raises RefereeError."""
+    """Spawn plan-mode Referee worker; parse strict JSON. Raises RefereeError.
+
+    On first parse failure, re-prompts once (does not burn fix budget) before
+    re-raising so the caller can fall back to heuristic routing.
+    """
     _log = log or (lambda m: None)
+    stats = telemetry if telemetry is not None else {}
     slice_text = ""
     try:
         slice_text = _read_slice_text(slice_file, repo_root)
@@ -1075,9 +1126,76 @@ def call_referee(
     diag_text = ""
     if progress is not None and hasattr(progress, "assistant_text"):
         diag_text = progress.assistant_text or ""
+    path = _persist_referee_transcript(
+        diag_text, repo_root=repo_root, slice_file=slice_file, attempt=attempt
+    )
+    if path:
+        _log(f"referee transcript: {path}")
     if not diag_text and not ok:
+        stats["parse_fail"] = stats.get("parse_fail", 0) + 1
         raise RefereeError(f"referee worker failed (status={status})")
-    return parse_referee_reply(diag_text)
+    try:
+        verdict = parse_referee_reply(diag_text)
+        stats["parse_ok"] = stats.get("parse_ok", 0) + 1
+        return verdict
+    except RefereeError as first_exc:
+        reason = str(first_exc.reason)
+        parseish = (
+            "JSON parse failed" in reason
+            or "no JSON object" in reason
+            or "empty reply" in reason
+        )
+        if not parseish:
+            stats["parse_fail"] = stats.get("parse_fail", 0) + 1
+            raise
+        _log(f"referee parse failed — one free retry: {reason}")
+        stats["parse_retry"] = stats.get("parse_retry", 0) + 1
+        retry_prompt = build_referee_retry_prompt(diag_text)
+        progress2 = progress_factory("Referee") if progress_factory else None
+        ok2, status2 = run_worker(
+            client,
+            role="Referee",
+            prompt=retry_prompt,
+            api_key=api_key,
+            repo_root=repo_root,
+            log=_log,
+            progress=progress2,
+        )
+        diag2 = ""
+        if progress2 is not None and hasattr(progress2, "assistant_text"):
+            diag2 = progress2.assistant_text or ""
+        path2 = _persist_referee_transcript(
+            diag2,
+            repo_root=repo_root,
+            slice_file=slice_file,
+            attempt=attempt,
+        )
+        if path2:
+            # overwrite attempt file with retry; also write -retry suffix
+            try:
+                retry_path = path2.replace(".txt", "-retry.txt")
+                if retry_path != path2:
+                    with open(retry_path, "w", encoding="utf-8") as fh:
+                        fh.write(diag2 or "")
+                        if diag2 and not diag2.endswith("\n"):
+                            fh.write("\n")
+            except OSError:
+                pass
+        if not diag2 and not ok2:
+            stats["parse_fail"] = stats.get("parse_fail", 0) + 1
+            raise RefereeError(
+                f"referee JSON parse failed after retry (status={status2}): {reason}"
+            ) from first_exc
+        try:
+            verdict = parse_referee_reply(diag2)
+            stats["parse_ok"] = stats.get("parse_ok", 0) + 1
+            _log("referee retry parse ok")
+            return verdict
+        except RefereeError as second_exc:
+            stats["parse_fail"] = stats.get("parse_fail", 0) + 1
+            raise RefereeError(
+                f"referee JSON parse failed after retry: {second_exc.reason}"
+            ) from second_exc
 
 
 # ---------------------------------------------------------------------------
@@ -1253,8 +1371,9 @@ def run_worker(
                     assistant_bits.append(text)
                     if on_assistant_text:
                         on_assistant_text(text)
-                    if progress is not None and hasattr(progress, "append_assistant_text"):
-                        progress.append_assistant_text(text)
+                    # Do NOT also append via progress.append_assistant_text —
+                    # progress.handle() already captures assistant text; double
+                    # append corrupts referee JSON with embedded newlines.
             result = run.wait()
         finally:
             if progress is not None:
@@ -1268,12 +1387,12 @@ def run_worker(
             return False, "verify_violation"
         _log(f"worker finished: role={role} status={status}")
         if progress is not None and hasattr(progress, "set_assistant_text"):
-            # Prefer accumulated stream; fall back to joined bits
-            existing = getattr(progress, "assistant_text", "") or ""
-            if not existing.strip() and assistant_bits:
+            # Always prefer the clean stream join when present — never keep a
+            # longer corrupted buffer from dual-capture.
+            if assistant_bits:
                 progress.set_assistant_text("\n".join(assistant_bits))
-            elif assistant_bits and len("\n".join(assistant_bits)) > len(existing):
-                progress.set_assistant_text("\n".join(assistant_bits))
+            elif not (getattr(progress, "assistant_text", "") or "").strip():
+                progress.set_assistant_text("")
         return status == "finished", str(status)
 
 
@@ -1602,6 +1721,11 @@ def run_fix_loop(
     slice_files = extract_slice_swift_paths(slice_text)
     slice_id = slice_id_from_path(slice_file)
     ledger = load_ledger(repo_root, slice_id)
+    referee_telemetry: dict[str, int] = {
+        "parse_ok": 0,
+        "parse_retry": 0,
+        "parse_fail": 0,
+    }
 
     while not budget.exhausted():
         packet = outcome.packet or build_failure_packet(
@@ -1675,6 +1799,8 @@ def run_fix_loop(
                     ledger_entries=ledger,
                     log=_log,
                     progress_factory=progress_factory,
+                    attempt=budget.attempts_used + 1,
+                    telemetry=referee_telemetry,
                 )
             else:
                 raise RefereeError("no client/referee_fn — cannot route fix")
@@ -1686,32 +1812,6 @@ def run_fix_loop(
                 or "empty reply" in reason
                 or "role invalid" in reason
             )
-            # #region agent log
-            try:
-                import json as _json
-                _dbg = os.path.join(repo_root, ".cursor", "debug-bdbf4b.log")
-                with open(_dbg, "a", encoding="utf-8") as _df:
-                    _df.write(
-                        _json.dumps(
-                            {
-                                "sessionId": "bdbf4b",
-                                "runId": "referee-error",
-                                "hypothesisId": "H-ref",
-                                "location": "slice_pipeline.py:run_fix_loop:referee",
-                                "message": "referee error — parseish fallback or halt",
-                                "data": {
-                                    "reason": reason[:240],
-                                    "parseish": parseish,
-                                    "will_fallback_heuristic": parseish,
-                                },
-                                "timestamp": int(time.time() * 1000),
-                            }
-                        )
-                        + "\n"
-                    )
-            except Exception:
-                pass
-            # #endregion
             if parseish:
                 # Do not thrash-halt the whole slice on a bad referee blob —
                 # fall back to heuristic routing and spend a real fix attempt.
@@ -1720,6 +1820,13 @@ def run_fix_loop(
                     outcome.failures,
                     outcome.crashes,
                     packet=packet,
+                    previous_role=budget.last_role,
+                    previous_signature=budget.last_signature,
+                )
+                try_n = budget.attempts_used + 1
+                hyp = (
+                    packet.hypothesis
+                    or f"heuristic:{packet.failure_class or 'unknown'}:{sig[:60]}:try-{try_n}"
                 )
                 verdict = RefereeVerdict(
                     primary_failure=(outcome.failures or ["(unknown)"])[0],
@@ -1730,10 +1837,7 @@ def run_fix_loop(
                         "Referee JSON unusable; apply minimal fix for the stuck-card "
                         f"failure class={packet.failure_class or 'unknown'}."
                     ),
-                    hypothesis=(
-                        packet.hypothesis
-                        or f"heuristic:{packet.failure_class or 'unknown'}:{sig[:80]}"
-                    ),
+                    hypothesis=hyp,
                     confidence="med",
                     narration="Rhea's JSON was unreadable — routing by heuristic.",
                 )
@@ -1757,9 +1861,19 @@ def run_fix_loop(
                     failures=outcome.failures,
                     crashes=outcome.crashes,
                     phase="REFEREE",
-                    extra={"gate": "referee", "reason": reason},
+                    extra={
+                        "gate": "referee",
+                        "reason": reason,
+                        "referee_telemetry": dict(referee_telemetry),
+                    },
                 )
                 _log(f"session bundle written: {bundle_dir}")
+                _log(
+                    "referee telemetry: "
+                    f"ok={referee_telemetry.get('parse_ok', 0)} "
+                    f"retry={referee_telemetry.get('parse_retry', 0)} "
+                    f"fail={referee_telemetry.get('parse_fail', 0)}"
+                )
                 raise ThrashHalt(f"referee halt: {reason}") from exc
 
         if hypothesis_seen(ledger, verdict.hypothesis, sig):
@@ -1767,47 +1881,30 @@ def run_fix_loop(
                 "no new hypothesis — ledger already has this hypothesis "
                 f"on signature={sig[:120]!r}"
             )
-            card = format_stuck_card(
-                packet,
-                slice_file=slice_file,
-                attempt=budget.attempts_used,
-                max_attempts=budget.max_attempts,
-                lever=reason,
-                levers_tried=budget.levers_tried
-                + [f"blocked:{verdict.hypothesis[:60]}"],
+            # Inside the fix loop budget always remains; diversify instead of
+            # quitting with paid-for attempts left on the table.
+            flip = "QA" if (budget.last_role or verdict.role) == "Engineer" else "Engineer"
+            try_n = budget.attempts_used + 1
+            new_hyp = f"ledger-reroute:{flip}:{sig[:50]}:try-{try_n}"
+            _log(
+                f"ledger blocked prior hyp — rerouting to {flip} "
+                f"(budget {budget.attempts_used}/{budget.max_attempts} used); {reason}"
             )
-            persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
-            _log(card)
             narrate_ledger_block(rhea, log=_log)
-            append_ledger(
-                make_entry(
-                    slice_id=slice_id,
-                    attempt=budget.attempts_used + 1,
-                    role=verdict.role,
-                    hypothesis=verdict.hypothesis,
-                    signature=sig,
-                    files_touched=verdict.files,
-                    verify_tier=1,
-                    outcome="halt",
-                    primary_failure=verdict.primary_failure,
-                    instruction=verdict.instruction,
+            verdict = RefereeVerdict(
+                primary_failure=verdict.primary_failure,
+                failure_groups=list(verdict.failure_groups),
+                role=flip,
+                fix_scope="tests" if flip == "QA" else "app",
+                files=list(verdict.files or packet.suggested_files or [])[:6],
+                instruction=(
+                    "Prior theory ledger-blocked; propose an orthogonal fix "
+                    f"as {flip}. Do not repeat: {verdict.hypothesis[:120]}"
                 ),
-                repo_root=repo_root,
-                slice_id=slice_id,
+                hypothesis=new_hyp,
+                confidence="med",
+                narration="Logbook blocked that theory — flipping the wrench.",
             )
-            bundle_dir = write_session_bundle(
-                repo_root=repo_root,
-                slice_id=slice_id,
-                reason=reason,
-                stuck_card=card,
-                verify_result=outcome.result,
-                failures=outcome.failures,
-                crashes=outcome.crashes,
-                phase="HALT",
-                extra={"gate": "ledger_block"},
-            )
-            _log(f"session bundle written: {bundle_dir}")
-            raise ThrashHalt(reason)
 
         packet = apply_verdict_to_packet(packet, verdict)
         suggested = list(
@@ -1823,6 +1920,31 @@ def run_fix_loop(
             role = "QA"
         elif verdict.fix_scope == "app":
             role = "Engineer"
+
+        # Scope-contradiction guard: never send Engineer at test-only files
+        # (or QA at app-only files) — that attempt is structurally wasted.
+        flipped_role, flipped_scope = resolve_role_scope_contradiction(role, suggested)
+        if flipped_role != role:
+            _log(
+                f"scope contradiction: role={role} but files are "
+                f"{'tests' if flipped_role == 'QA' else 'app'} — flipping to {flipped_role}"
+            )
+            role = flipped_role
+            verdict = RefereeVerdict(
+                primary_failure=verdict.primary_failure,
+                failure_groups=list(verdict.failure_groups),
+                role=flipped_role,
+                fix_scope=flipped_scope,
+                files=list(verdict.files),
+                instruction=verdict.instruction,
+                hypothesis=verdict.hypothesis,
+                confidence=verdict.confidence,
+                narration=(
+                    (verdict.narration + " ").strip()
+                    + f"Scope flip → {flipped_role}."
+                ).strip(),
+            )
+            packet = packet.with_updates(fix_scope=flipped_scope)
 
         attempt = budget.attempts_used + 1
         agent = _names.assign(role, slot=f"{role}-{attempt}")
@@ -1980,6 +2102,12 @@ def run_fix_loop(
                 total=(outcome.result or {}).get("total", "?"),
                 log=_log,
             )
+            _log(
+                "referee telemetry: "
+                f"ok={referee_telemetry.get('parse_ok', 0)} "
+                f"retry={referee_telemetry.get('parse_retry', 0)} "
+                f"fail={referee_telemetry.get('parse_fail', 0)}"
+            )
             return outcome
 
         narrate_verify_red(
@@ -2014,6 +2142,11 @@ def run_fix_loop(
         f"fix budget exhausted ({budget.max_attempts} attempts); "
         f"still red: {outcome.failures[:3] or outcome.crashes[:2]}"
     )
+    resume_hint = (
+        f"Resume warm: scripts/slice-loop.sh --max 1  "
+        f"# see build/test-results/session-slice-{(slice_id or 0):02d}/"
+    )
+    _log(resume_hint)
     bundle_dir = write_session_bundle(
         repo_root=repo_root,
         slice_id=slice_id,
@@ -2023,9 +2156,20 @@ def run_fix_loop(
         failures=outcome.failures,
         crashes=outcome.crashes,
         phase="HALT",
-        extra={"gate": "fix_loop", "attempts": budget.attempts_used},
+        extra={
+            "gate": "fix_loop",
+            "attempts": budget.attempts_used,
+            "referee_telemetry": dict(referee_telemetry),
+            "resume_hint": resume_hint,
+        },
     )
     _log(f"session bundle written: {bundle_dir}")
+    _log(
+        "referee telemetry: "
+        f"ok={referee_telemetry.get('parse_ok', 0)} "
+        f"retry={referee_telemetry.get('parse_retry', 0)} "
+        f"fail={referee_telemetry.get('parse_fail', 0)}"
+    )
     raise ThrashHalt(reason)
 
 
@@ -2092,62 +2236,6 @@ def run_tier2_implement_gate(
             )
         _log(f"tier-2 implement gate run {run_i}/{max_runs} ({len(slice_tests)} tests)")
         outcome = _tier2()
-        # #region agent log
-        try:
-            import json as _json
-            _dbg = os.path.join(repo_root, ".cursor", "debug-bdbf4b.log")
-            _pkt = outcome.packet
-            _cls = getattr(_pkt, "failure_class", None) if _pkt else None
-            _infra = classify_infra_failure(
-                output=outcome.output or "",
-                exit_code=(outcome.result or {}).get("exit"),
-                files_changed=False,
-            )
-            _blob = "\n".join(
-                (outcome.failures or []) + (outcome.crashes or []) + [(outcome.output or "")[:800]]
-            ).lower()
-            _install = any(
-                x in _blob
-                for x in (
-                    "missing its bundle executable",
-                    "unable to install",
-                    "failed to install or launch",
-                    "podwash encountered an error",
-                )
-            )
-            with open(_dbg, "a", encoding="utf-8") as _df:
-                _df.write(
-                    _json.dumps(
-                        {
-                            "sessionId": "bdbf4b",
-                            "runId": f"tier2-run-{run_i}",
-                            "hypothesisId": "H1-H5",
-                            "location": "slice_pipeline.py:run_tier2_implement_gate",
-                            "message": "tier-2 verify outcome",
-                            "data": {
-                                "run": run_i,
-                                "max_runs": max_runs,
-                                "green": outcome.green,
-                                "failed": (outcome.result or {}).get("failed"),
-                                "exit": (outcome.result or {}).get("exit"),
-                                "failure_class": _cls,
-                                "infra_classified": _infra,
-                                "install_or_packaging_signal": _install,
-                                "failures_head": (outcome.failures or [])[:3],
-                                "crashes_head": (outcome.crashes or [])[:2],
-                                "has_packet": _pkt is not None,
-                                "prompt_uses_referee": False,
-                                "prompt_includes_stuck_card": True,
-                                "budget_remaining_after": max(0, max_runs - run_i),
-                            },
-                            "timestamp": int(time.time() * 1000),
-                        }
-                    )
-                    + "\n"
-                )
-        except Exception:
-            pass
-        # #endregion
         if outcome.green:
             write_tier2_marker(repo_root, slice_id)
             narrate_verify_green(
@@ -2212,42 +2300,6 @@ def run_tier2_implement_gate(
         )
         prompt += "\n\nHypothesis ledger (do not repeat):\n"
         prompt += format_ledger_for_prompt(ledger)
-        # #region agent log
-        try:
-            import json as _json
-            _dbg = os.path.join(repo_root, ".cursor", "debug-bdbf4b.log")
-            with open(_dbg, "a", encoding="utf-8") as _df:
-                _df.write(
-                    _json.dumps(
-                        {
-                            "sessionId": "bdbf4b",
-                            "runId": f"tier2-continue-{run_i}",
-                            "hypothesisId": "H2-fix",
-                            "location": "slice_pipeline.py:run_tier2_implement_gate:continue",
-                            "message": "tier-2 continue prompt shape",
-                            "data": {
-                                "run": run_i,
-                                "prompt_len": len(prompt),
-                                "has_stuck_card": "STUCK" in prompt,
-                                "has_ips_hint": ".ips" in prompt.lower()
-                                or "EXC_" in prompt
-                                or "TaskLocal" in prompt
-                                or "deinit" in prompt.lower(),
-                                "has_referee": "hypothesis" in prompt.lower(),
-                                "has_failure_packet": "FailurePacket:" in prompt,
-                                "has_ledger": "Hypothesis ledger" in prompt,
-                                "failures_only_tail": False,
-                                "failure_class": getattr(outcome.packet, "failure_class", None),
-                                "ledger_entries": len(ledger),
-                            },
-                            "timestamp": int(time.time() * 1000),
-                        }
-                    )
-                    + "\n"
-                )
-        except Exception:
-            pass
-        # #endregion
         if _events:
             _events.record(
                 "TIER2-GATE", "Engineer", "spawn",
@@ -2304,37 +2356,6 @@ def run_tier2_implement_gate(
         extra={"gate": "tier2", "max_runs": max_runs, "ledger_entries": len(ledger)},
     )
     _log(f"session bundle written: {bundle_dir}")
-    # #region agent log
-    try:
-        import json as _json
-        _dbg = os.path.join(repo_root, ".cursor", "debug-bdbf4b.log")
-        with open(_dbg, "a", encoding="utf-8") as _df:
-            _df.write(
-                _json.dumps(
-                    {
-                        "sessionId": "bdbf4b",
-                        "runId": "tier2-halt",
-                        "hypothesisId": "H5-fix",
-                        "location": "slice_pipeline.py:run_tier2_implement_gate:halt",
-                        "message": "tier-2 thrash halt wrote session bundle",
-                        "data": {
-                            "bundle_dir": bundle_dir,
-                            "has_halt_json": os.path.isfile(
-                                os.path.join(bundle_dir, "halt.json")
-                            ),
-                            "has_readme": os.path.isfile(
-                                os.path.join(bundle_dir, "README.md")
-                            ),
-                            "ledger_entries": len(ledger),
-                        },
-                        "timestamp": int(time.time() * 1000),
-                    }
-                )
-                + "\n"
-            )
-    except Exception:
-        pass
-    # #endregion
     raise ThrashHalt(reason)
 
 

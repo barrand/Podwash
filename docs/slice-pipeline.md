@@ -80,8 +80,10 @@ Applies to **both** coordinator and pipeline modes via shared `run_fix_loop`.
 loop-owned verify.sh tier 3 (red)
   → FailurePacket (summary testFailures + exported attachments)
   → print + persist stuck card (build/test-results/stuck-slice-NN.txt)
-  → LLM referee (plan mode, cheap model, strict JSON verdict)
-  → ledger gate: reject repeat hypothesis on same signature → halt exit 5
+  → LLM referee (plan mode, cheap model, sentinel-wrapped JSON verdict)
+  → on parse fail: one free referee retry, then heuristic fallback (try-N)
+  → ledger gate: same hyp+sig → reroute opposite role (does not halt while budget remains)
+  → scope-contradiction guard (Engineer+test-only files → QA, and vice versa)
   → Engineer|QA fix worker (fresh context, verify banned, ledger in prompt)
   → tier 1 re-verify (failed tests only)
   → if green → tier 3 full suite
@@ -104,29 +106,31 @@ Human-readable card printed on every red loop-owned verify and thrash halt, also
 
 ### LLM referee (replaces diagnose + playbooks as router)
 
-`scripts/referee.py` — plan-mode worker (`composer-2.5`) returns **only** JSON:
+`scripts/referee.py` — plan-mode worker (`composer-2.5`) returns a **sentinel-wrapped** compact JSON line:
 
-```json
-{
-  "primary_failure": "…",
-  "failure_groups": [["unit …"], ["UI …"]],
-  "role": "Engineer",
-  "fix_scope": "app",
-  "files": ["PodWash/PodWash/…"],
-  "instruction": "≤2 sentences",
-  "hypothesis": "…",
-  "confidence": "high|med|low",
-  "narration": "≤25 words"
-}
+```text
+VERDICT_JSON_BEGIN {"primary_failure":"…","role":"Engineer",…} VERDICT_JSON_END
 ```
 
-Python enforces: parse failure or `confidence=low` → **halt** (never guess). `fix_scope=app` → Engineer; `tests` → QA. Prefer unit assertion/crash over UITest waits as primary (prompt rule).
+Required keys: `primary_failure`, `failure_groups`, `role`, `fix_scope`, `files`, `instruction`, `hypothesis`, `confidence`, `narration`.
+
+Python enforces:
+
+| Outcome | Behavior |
+|---------|----------|
+| Parse fail | One free referee retry; then heuristic fallback with `heuristic:{class}:{sig}:try-N` (does **not** halt) |
+| `confidence=low` / missing hypothesis | Halt (stuck card) |
+| `fix_scope=app` / `role=Engineer` | Engineer |
+| `fix_scope=tests` / `role=QA` | QA |
+| Engineer + only test files (or QA + only app files) | Scope flip before spawn |
+
+Raw referee transcripts are persisted to `build/test-results/referee-slice-NN-attempt-N.txt` (and `…-last.txt`). Session telemetry logs `parse_ok` / `parse_retry` / `parse_fail`.
 
 Legacy `fix_playbooks.py` / diagnose helpers remain in-tree for tests but are **not** consulted by `run_fix_loop`.
 
 ### Hypothesis ledger
 
-`build/test-results/ledger-slice-NN.jsonl` — durable across bridge death. Each attempt appends `{ts, attempt, role, hypothesis, files_touched, result_signature, verify_tier, outcome}`. Before spawning a fix worker, Python rejects any referee verdict whose **hypothesis + signature** matches a prior entry → stuck card + exit 5 (“no new hypothesis”). Repeat signatures always get a **fresh** fix worker (new agent context) with the ledger attached.
+`build/test-results/ledger-slice-NN.jsonl` — durable across bridge death. Each attempt appends `{ts, attempt, role, hypothesis, files_touched, result_signature, verify_tier, outcome}`. Before spawning a fix worker, if the referee verdict's **hypothesis + signature** matches a prior entry, Python **reroutes to the opposite role** with a fresh `ledger-reroute:…:try-N` hypothesis (never pays for the same theory twice, never leaves budget on the table). Halt on ledger only after the fix budget is exhausted. Repeat signatures always get a **fresh** fix worker (new agent context) with the ledger attached.
 
 ### Verify ban (fix workers)
 
@@ -138,12 +142,15 @@ Fix-worker `RunProgress` uses `fix_worker=True` + `forced_role=` so logs show `[
 |--------|--------|
 | Referee `fix_scope=app` / `role=Engineer` | Engineer (`PodWash/PodWash/**`) |
 | Referee `fix_scope=tests` / `role=QA` | QA (tests only) |
-| Referee `confidence=low` or unparseable JSON | Halt (stuck card) |
-| Ledger hit (same hyp + signature) | Halt (no new hypothesis) |
+| Scope contradiction (role vs suggested files) | Flip role before spawn |
+| Referee `confidence=low` | Halt (stuck card) |
+| Unparseable referee JSON | Retry once → heuristic fallback (`try-N`) |
+| Ledger hit (same hyp + signature) | Reroute opposite role while budget remains |
+| Fix budget exhausted | Halt exit 5 (+ resume hint) |
 
-Shared budget: `--max-fix-attempts` (default 2) → exit **5** on exhaustion.
+Shared budget: `--max-fix-attempts` (default **3**) → exit **5** on exhaustion.
 Budget **persists** across bridge retries. Flake cold-retry does **not** burn budget.
-Referee calls do **not** burn budget (routing only).
+Referee calls (including one parse retry) do **not** burn budget (routing only).
 
 ## Partial-failure policy
 

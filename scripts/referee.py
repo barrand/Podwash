@@ -19,6 +19,21 @@ VALID_ROLES = frozenset({"Engineer", "QA"})
 VALID_SCOPES = frozenset({"app", "tests"})
 VALID_CONFIDENCE = frozenset({"high", "med", "low"})
 
+VERDICT_BEGIN = "VERDICT_JSON_BEGIN"
+VERDICT_END = "VERDICT_JSON_END"
+
+# Compact one-line example for the prompt (models copy this shape).
+VERDICT_EXAMPLE = (
+    f'{VERDICT_BEGIN} '
+    '{"primary_failure":"PodWashTests/Foo/testA() — XCTAssertEqual failed",'
+    '"failure_groups":[["assertion"]],"role":"QA","fix_scope":"tests",'
+    '"files":["PodWash/PodWashTests/FooTests.swift"],'
+    '"instruction":"Snapshot spy count before the event; assert one new call.",'
+    '"hypothesis":"Test double-counts setup play plus the event under test.",'
+    '"confidence":"high","narration":"Assertion is test-side counting."}'
+    f' {VERDICT_END}'
+)
+
 
 class RefereeError(Exception):
     """Parse failure or low-confidence verdict — caller must halt (never guess)."""
@@ -47,9 +62,6 @@ class RefereeVerdict:
 
 REFEREE_PROMPT_SKELETON = """You are the fix referee. Evidence: stuck card + FailurePacket JSON + ledger entries.
 Slice: {slice_file}
-Return ONLY JSON: {{primary_failure, failure_groups, role: Engineer|QA,
-fix_scope: app|tests, files[], instruction (<=2 sentences), hypothesis, confidence: high|med|low,
-narration (<=25 words, shift-supervisor voice)}}.
 Rules: prefer unit assertion/crash over UITest waits as primary; never propose
 weakening tests; if evidence is insufficient say confidence: low.
 """
@@ -62,8 +74,9 @@ def build_referee_prompt(
     stuck_card: str,
     ledger_entries: list[LedgerEntry] | None = None,
     slice_deliverables: str = "",
+    retry_hint: str = "",
 ) -> str:
-    """Plan-mode prompt: evidence in, strict JSON out."""
+    """Plan-mode prompt: evidence in, sentinel-wrapped compact JSON out."""
     packet_json = {
         "test_ids": packet.test_ids,
         "assertions": packet.assertions,
@@ -79,11 +92,14 @@ def build_referee_prompt(
     }
     ledger_block = format_ledger_for_prompt(ledger_entries or [])
     deliverables = slice_deliverables.strip() or "(see slice file)"
+    retry_block = ""
+    if retry_hint.strip():
+        retry_block = f"\nRETRY: {retry_hint.strip()}\n"
     return f"""You are the PodWash fix referee (SDK plan mode — readonly).
 Do NOT edit files. Do NOT run verify.sh or xcodebuild.
 
 {REFEREE_PROMPT_SKELETON.format(slice_file=slice_file)}
-
+{retry_block}
 Slice deliverables / Role artifacts (hint):
 {deliverables}
 
@@ -96,59 +112,132 @@ FailurePacket JSON:
 Hypothesis ledger (prior attempts — do NOT repeat a hypothesis on the same signature):
 {ledger_block}
 
-Return ONLY a single JSON object. No markdown fences unless required; no prose outside JSON.
+Reply with EXACTLY one line in this form (no markdown fences, no prose outside the markers):
+{VERDICT_BEGIN} {{compact single-line JSON}} {VERDICT_END}
+
+Required JSON keys: primary_failure, failure_groups, role (Engineer|QA),
+fix_scope (app|tests), files (array), instruction (<=2 sentences), hypothesis,
+confidence (high|med|low), narration (<=25 words, shift-supervisor voice).
+Escape any newlines inside string values as \\n. Do not pretty-print.
+
+Example:
+{VERDICT_EXAMPLE}
 """
+
+
+def build_referee_retry_prompt(previous_text: str) -> str:
+    """Short re-prompt after a parse failure (does not burn fix budget)."""
+    excerpt = (previous_text or "")[:800]
+    return (
+        "Your previous reply was not parseable as a referee verdict. "
+        f"Reply with ONLY one line: {VERDICT_BEGIN} {{compact JSON}} {VERDICT_END}. "
+        "No markdown fences, no prose. Escape newlines in strings as \\n.\n\n"
+        f"Previous reply (truncated):\n{excerpt}"
+    )
+
+
+def _escape_raw_newlines_in_strings(text: str) -> str:
+    """Replace raw newlines/CRs that appear inside JSON string literals with \\n.
+
+    Models often copy multi-line assertion text into primary_failure without
+    escaping; json.loads then fails with 'Invalid control character'.
+    """
+    out: list[str] = []
+    in_string = False
+    escape = False
+    for ch in text:
+        if escape:
+            out.append(ch)
+            escape = False
+            continue
+        if ch == "\\" and in_string:
+            out.append(ch)
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            out.append(ch)
+            continue
+        if in_string and ch in "\n\r":
+            out.append("\\n")
+            continue
+        out.append(ch)
+    return "".join(out)
+
+
+def _try_load_json(cand: str) -> dict[str, Any] | None:
+    cleaned = "".join(
+        ch if (ord(ch) >= 32 or ch in "\n\r\t") else " " for ch in cand
+    )
+    cleaned = _escape_raw_newlines_in_strings(cleaned)
+    try:
+        data = json.loads(cleaned)
+    except json.JSONDecodeError:
+        try:
+            data, _ = json.JSONDecoder().raw_decode(cleaned.lstrip())
+        except json.JSONDecodeError:
+            return None
+    return data if isinstance(data, dict) else None
+
+
+def _scan_verdict_objects(raw: str) -> dict[str, Any] | None:
+    """Scan for brace-started objects that look like a referee verdict."""
+    for m in re.finditer(r"\{", raw):
+        chunk = raw[m.start() :]
+        head = chunk[:800]
+        if '"primary_failure"' not in head and "'primary_failure'" not in head:
+            if '"hypothesis"' not in head:
+                continue
+        data = _try_load_json(chunk)
+        if data is not None and (
+            "primary_failure" in data or "hypothesis" in data or "confidence" in data
+        ):
+            return data
+    return None
 
 
 def _extract_json_object(text: str) -> dict[str, Any]:
     if not text or not text.strip():
         raise RefereeError("referee returned empty reply")
     raw = text.strip()
-    # Prefer fenced ```json ... ```
-    fence = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL | re.IGNORECASE)
-    if fence:
-        candidates = [fence.group(1)]
-    else:
-        candidates = []
-        # Prefer objects that look like a verdict (avoid prompt skeleton `{primary_failure, …}`)
-        for m in re.finditer(r"\{", raw):
-            chunk = raw[m.start() :]
-            if '"primary_failure"' not in chunk[:800] and "'primary_failure'" not in chunk[:800]:
-                if '"hypothesis"' not in chunk[:800]:
-                    continue
-            try:
-                obj, _end = json.JSONDecoder().raw_decode(chunk)
-            except json.JSONDecodeError:
-                continue
-            if isinstance(obj, dict) and (
-                "primary_failure" in obj or "hypothesis" in obj or "confidence" in obj
-            ):
-                return obj
-        # Fallback: first { to last }
-        start = raw.find("{")
-        end = raw.rfind("}")
-        if start == -1 or end == -1 or end <= start:
-            raise RefereeError("referee reply has no JSON object")
-        candidates = [raw[start : end + 1]]
-
     last_err: Exception | None = None
-    for cand in candidates:
-        # Strip illegal control chars inside strings (models sometimes emit raw newlines)
-        cleaned = "".join(
-            ch if (ord(ch) >= 32 or ch in "\n\r\t") else " " for ch in cand
-        )
-        try:
-            data = json.loads(cleaned)
-        except json.JSONDecodeError as exc:
-            last_err = exc
-            # Trailing prose after a valid object
-            try:
-                data, _ = json.JSONDecoder().raw_decode(cleaned.lstrip())
-            except json.JSONDecodeError as exc2:
-                last_err = exc2
-                continue
-        if isinstance(data, dict):
+
+    # 1) Sentinel-wrapped verdict (preferred)
+    begin = raw.find(VERDICT_BEGIN)
+    end = raw.find(VERDICT_END)
+    if begin != -1 and end != -1 and end > begin:
+        inner = raw[begin + len(VERDICT_BEGIN) : end].strip()
+        data = _try_load_json(inner)
+        if data is not None:
             return data
+        # Fall through — maybe valid JSON exists elsewhere
+
+    # 2) Fenced ```json ... ``` — try, but fall through on failure
+    for fence in re.finditer(
+        r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL | re.IGNORECASE
+    ):
+        data = _try_load_json(fence.group(1))
+        if data is not None:
+            return data
+
+    # 3) Multi-{ scanner for verdict-shaped objects
+    scanned = _scan_verdict_objects(raw)
+    if scanned is not None:
+        return scanned
+
+    # 4) Fallback: first { to last }
+    start = raw.find("{")
+    end_brace = raw.rfind("}")
+    if start == -1 or end_brace == -1 or end_brace <= start:
+        raise RefereeError("referee reply has no JSON object")
+    cand = raw[start : end_brace + 1]
+    data = _try_load_json(cand)
+    if data is not None:
+        return data
+    try:
+        json.loads(_escape_raw_newlines_in_strings(cand))
+    except json.JSONDecodeError as exc:
+        last_err = exc
     if last_err is not None:
         raise RefereeError(f"referee JSON parse failed: {last_err}") from last_err
     raise RefereeError("referee JSON root must be an object")
@@ -263,3 +352,45 @@ def verdict_to_dict(verdict: RefereeVerdict) -> dict[str, Any]:
         "confidence": verdict.confidence,
         "narration": verdict.narration,
     }
+
+
+def is_test_path(path: str) -> bool:
+    p = (path or "").replace("\\", "/")
+    return any(
+        tok in p
+        for tok in (
+            "/PodWashTests/",
+            "/PodWashUITests/",
+            "/PodWashSlowTests/",
+            "PodWashTests/",
+            "PodWashUITests/",
+            "PodWashSlowTests/",
+        )
+    )
+
+
+def is_app_path(path: str) -> bool:
+    p = (path or "").replace("\\", "/")
+    if is_test_path(p):
+        return False
+    return "/PodWash/PodWash/" in f"/{p}" or p.startswith("PodWash/PodWash/")
+
+
+def resolve_role_scope_contradiction(
+    role: str,
+    files: list[str],
+) -> tuple[str, str]:
+    """Flip role when every suggested file contradicts the worker's edit scope.
+
+    Returns (role, fix_scope). No-op when files are mixed/empty/ambiguous.
+    """
+    paths = [f for f in files if f and f.strip()]
+    if not paths:
+        return role, ("app" if role == "Engineer" else "tests")
+    testish = all(is_test_path(p) for p in paths)
+    appish = all(is_app_path(p) for p in paths)
+    if role == "Engineer" and testish and not appish:
+        return "QA", "tests"
+    if role == "QA" and appish and not testish:
+        return "Engineer", "app"
+    return role, ("app" if role == "Engineer" else "tests")

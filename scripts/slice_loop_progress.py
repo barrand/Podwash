@@ -1619,23 +1619,31 @@ class RunProgress:
                 self._assistant_typed(message)
 
     def _capture_assistant_typed(self, message) -> None:
+        parts: list[str] = []
         for block in getattr(getattr(message, "message", None), "content", []) or []:
             if getattr(block, "type", None) == "text":
                 text = getattr(block, "text", "") or ""
                 if text:
-                    self.append_assistant_text(str(text))
+                    parts.append(str(text))
+        if parts:
+            self.append_assistant_text("\n".join(parts))
+            return
         direct = getattr(message, "text", None)
         if isinstance(direct, str) and direct.strip():
             self.append_assistant_text(direct)
 
     def _capture_assistant_dict(self, message: dict) -> None:
+        parts: list[str] = []
         msg = message.get("message") or {}
         if isinstance(msg, dict):
             for block in msg.get("content") or []:
                 if isinstance(block, dict) and block.get("type") == "text":
                     text = block.get("text") or ""
                     if text:
-                        self.append_assistant_text(str(text))
+                        parts.append(str(text))
+        if parts:
+            self.append_assistant_text("\n".join(parts))
+            return
         direct = message.get("text")
         if isinstance(direct, str) and direct.strip():
             self.append_assistant_text(direct)

@@ -219,7 +219,8 @@ class FixRouterTests(unittest.TestCase):
         self.assertTrue(out.green)
         self.assertEqual(budget.attempts_used, 0)
 
-    def test_ledger_blocks_repeat_hypothesis(self):
+    def test_ledger_reroutes_repeat_hypothesis_while_budget_remains(self):
+        """Same hyp+sig no longer thrash-halts; flips role and spends an attempt."""
         from failure_packet import FailurePacket
         from referee import RefereeVerdict
 
@@ -228,6 +229,7 @@ class FixRouterTests(unittest.TestCase):
             test_ids=["PodWashTests/Foo/testA()"],
             signature="PodWashTests/Foo/testA()",
             raw_failures=["PodWashTests/Foo/testA() — fail"],
+            suggested_files=["PodWash/PodWashTests/FooTests.swift"],
             actionable=True,
         )
         red = VerifyOutcome(
@@ -237,20 +239,24 @@ class FixRouterTests(unittest.TestCase):
             packet=packet,
         )
         hyp = "cancel fires before bytes flushed"
+        roles: list[str] = []
 
         def fake_referee(**_kw):
             return RefereeVerdict(
                 primary_failure="PodWashTests/Foo/testA()",
                 role="Engineer",
                 fix_scope="app",
-                files=[],
+                files=["PodWash/PodWashTests/FooTests.swift"],
                 instruction="Fix cancel gate",
                 hypothesis=hyp,
                 confidence="high",
             )
 
+        def capture_worker(client, role, prompt, **_kw):
+            roles.append(role)
+            return True, "finished"
+
         with tempfile.TemporaryDirectory() as tmp:
-            # Seed ledger with the same hypothesis+signature
             from hypothesis_ledger import append_ledger, make_entry
 
             append_ledger(
@@ -265,18 +271,87 @@ class FixRouterTests(unittest.TestCase):
                 repo_root=tmp,
                 slice_id=9,
             )
-            with self.assertRaises(ThrashHalt) as ctx:
-                run_fix_loop(
-                    client=object(),
-                    slice_file="docs/slices/slice-09.md",
-                    repo_root=tmp,
-                    api_key="k",
-                    budget=budget,
-                    verify_fn=lambda **_kw: red,
-                    referee_fn=fake_referee,
-                )
-            self.assertIn("no new hypothesis", str(ctx.exception.reason).lower())
-            self.assertEqual(budget.attempts_used, 0)
+            with mock.patch("slice_pipeline.run_worker", side_effect=capture_worker):
+                with self.assertRaises(ThrashHalt) as ctx:
+                    run_fix_loop(
+                        client=object(),
+                        slice_file="docs/slices/slice-09.md",
+                        repo_root=tmp,
+                        api_key="k",
+                        budget=budget,
+                        verify_fn=lambda **_kw: red,
+                        referee_fn=fake_referee,
+                    )
+            # Budget exhausted after reroutes — not an immediate ledger halt
+            self.assertIn("exhausted", str(ctx.exception.reason).lower())
+            self.assertEqual(budget.attempts_used, 2)
+            self.assertTrue(any(r == "QA" for r in roles), roles)
+
+    def test_heuristic_parse_fail_allows_full_budget(self):
+        """Referee JSON parse fail → heuristic try-N; must spend all attempts."""
+        from failure_packet import FailurePacket
+        from referee import RefereeError
+
+        budget = FixBudget(max_attempts=2)
+        packet = FailurePacket(
+            test_ids=["PodWashTests/QueueTests/testAutoAdvanceOnEpisodeEnd()"],
+            signature="PodWashTests/QueueTests/testAutoAdvanceOnEpisodeEnd()",
+            raw_failures=[
+                'PodWashTests/QueueTests/testAutoAdvanceOnEpisodeEnd() — '
+                'XCTAssertEqual failed: ("2") is not equal to ("1")'
+            ],
+            failure_class="assertion",
+            fix_scope="app",
+            suggested_files=["PodWash/PodWashTests/QueueTests.swift"],
+            actionable=True,
+        )
+        red = VerifyOutcome(
+            result={"exit": "65", "failed": "1", "passed": "0", "skipped": "0", "total": "1"},
+            green=False,
+            failures=packet.raw_failures,
+            packet=packet,
+        )
+        roles: list[str] = []
+
+        def fake_referee(**_kw):
+            raise RefereeError("referee JSON parse failed: Invalid control character")
+
+        def capture_worker(client, role, prompt, **_kw):
+            roles.append(role)
+            return True, "finished"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch("slice_pipeline.run_worker", side_effect=capture_worker):
+                with self.assertRaises(ThrashHalt) as ctx:
+                    run_fix_loop(
+                        client=object(),
+                        slice_file="docs/slices/slice-11-queue-resume.md",
+                        repo_root=tmp,
+                        api_key="k",
+                        budget=budget,
+                        verify_fn=lambda **_kw: red,
+                        referee_fn=fake_referee,
+                    )
+        self.assertIn("exhausted", str(ctx.exception.reason).lower())
+        self.assertEqual(budget.attempts_used, 2)
+        # Scope contradiction: Engineer + test files → QA on attempt 1
+        self.assertEqual(roles[0], "QA", roles)
+
+    def test_scope_contradiction_flips_engineer_to_qa(self):
+        from referee import resolve_role_scope_contradiction
+
+        role, scope = resolve_role_scope_contradiction(
+            "Engineer",
+            ["PodWash/PodWashTests/QueueTests.swift", "PodWash/PodWashTests/ResumePositionTests.swift"],
+        )
+        self.assertEqual(role, "QA")
+        self.assertEqual(scope, "tests")
+        role2, scope2 = resolve_role_scope_contradiction(
+            "QA",
+            ["PodWash/PodWash/QueueCoordinator.swift"],
+        )
+        self.assertEqual(role2, "Engineer")
+        self.assertEqual(scope2, "app")
 
     def test_tier1_then_tier3_on_fix_green(self):
         from failure_packet import FailurePacket
