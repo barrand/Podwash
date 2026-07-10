@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 11 |
 | **Title** | Queue + resume |
-| **Status** | Ready |
+| **Status** | Done |
 | **Crux** | After a Core Data container reload (simulating app relaunch), up-next queue order and per-episode playback position + played state match the last saved values — provable with fixture episode IDs `fixture-ep-001`…`005` and in-memory store configuration per ADR-007. |
 
 ## Persistence decision (resolved 2026-07-09)
@@ -102,7 +102,7 @@ scripts/verify.sh
 > A slice without a recorded full-suite green artifact is not Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=50 passed=50 failed=0 skipped=0 filtered=0 bundle=build/test-results/verify-20260710-124027.xcresult tier=3
 ```
 
 ## Plan review record (coordinator fills before downstream roles)

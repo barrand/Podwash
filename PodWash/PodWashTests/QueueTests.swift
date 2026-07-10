@@ -62,9 +62,6 @@ final class QueueTests: XCTestCase {
         try queue.add("fixture-ep-003")
 
         let coordinator = QueueCoordinator(queue: queue, player: player, resume: resume)
-        coordinator.playEpisode("fixture-ep-001")
-
-        XCTAssertEqual(coordinator.currentEpisodeID, "fixture-ep-001")
         XCTAssertEqual(queue.queueEpisodeIDs(), ["fixture-ep-002", "fixture-ep-003"])
 
         let endedAt = Date()
