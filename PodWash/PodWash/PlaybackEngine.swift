@@ -8,17 +8,9 @@
 import AVFoundation
 import Foundation
 
-enum AudioSessionConfigurator {
-    static func activatePlaybackSession() {
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .default)
-        try? session.setActive(true)
-    }
-}
-
 @MainActor
 @Observable
-final class PlaybackEngine: PlaybackPausing {
+final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     /// Discrete playback rates supported by the speed control (Slice 12).
     /// Nonisolated so SettingsStore (nonisolated) can snap default rates.
     nonisolated static let supportedRates: [Float] = [0.75, 1.0, 1.25, 1.5, 2.0, 3.0]
@@ -39,6 +31,7 @@ final class PlaybackEngine: PlaybackPausing {
     private let title: String
     private let artist: String
     private let nowPlayingUpdater: any NowPlayingInfoUpdating
+    private let audioSessionConfigurator: any AudioSessionConfiguring
 
     /// Boundary time observer token for `.skip` intervals; removed on re-apply/deinit.
     /// `nonisolated(unsafe)`: only mutated on the main actor, but `deinit` (nonisolated)
@@ -61,7 +54,8 @@ final class PlaybackEngine: PlaybackPausing {
         url: URL,
         title: String,
         artist: String,
-        nowPlayingUpdater: (any NowPlayingInfoUpdating)? = nil
+        nowPlayingUpdater: (any NowPlayingInfoUpdating)? = nil,
+        audioSessionConfigurator: (any AudioSessionConfiguring)? = nil
     ) {
         let item = AVPlayerItem(url: url)
         player = AVPlayer(playerItem: item)
@@ -71,6 +65,7 @@ final class PlaybackEngine: PlaybackPausing {
         self.title = title
         self.artist = artist
         self.nowPlayingUpdater = nowPlayingUpdater ?? MPNowPlayingInfoCenterUpdater()
+        self.audioSessionConfigurator = audioSessionConfigurator ?? AVAudioSessionPlaybackConfigurator()
 
         Task {
             await loadDuration(from: item.asset)
@@ -78,7 +73,7 @@ final class PlaybackEngine: PlaybackPausing {
     }
 
     func play() {
-        AudioSessionConfigurator.activatePlaybackSession()
+        audioSessionConfigurator.activatePlaybackSession()
         player.playImmediately(atRate: selectedRate)
         refreshCurrentTime()
         touchUI()
@@ -89,6 +84,7 @@ final class PlaybackEngine: PlaybackPausing {
         player.pause()
         refreshCurrentTime()
         touchUI()
+        updateNowPlaying()
     }
 
     // MARK: - Playback rate (Slice 12)
@@ -158,6 +154,7 @@ final class PlaybackEngine: PlaybackPausing {
                 if finished {
                     self.refreshCurrentTime()
                     self.touchUI()
+                    self.updateNowPlaying()
                 }
                 completion?()
             }
@@ -231,6 +228,7 @@ final class PlaybackEngine: PlaybackPausing {
                 if finished {
                     self.refreshCurrentTime()
                     self.touchUI()
+                    self.updateNowPlaying()
                 }
             }
         }

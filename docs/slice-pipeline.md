@@ -80,7 +80,9 @@ Authoring and fix loops emit **chapter beats** instead of stacking mechanical
 noise:
 
 - Chapter open: `── Slice 12 · 4/9 test spec · QA Quincy ──`
-- Shift open: `Hi — Coordinator Kai here. I'm opening the Forge shift for slice 13: … Today's goal: … Hopefully we don't see or smell Murphy on the floor.`
+- Shift open: `════ SLICE 13 ════` banner, then LLM coordinator check-in (or template fallback). `FORGE_LLM_NARRATION=0` disables all floor LLM beats.
+- Verify green: one creative LLM sentence from the agent who ran verify (e.g. Edison on 6/6) — no template pool; minimal `✓ … all green (6/6)` fallback if LLM is off.
+- Verify red / failure detail / thrash halt: Murphy + 🐒 only when tests we expected green go red.
 - Clear: `✓ Quincy cleared test spec (2m) — next: …`
 - Stuck: `✗ story stuck — … Unblock: …`
 - Failure detail: `from Edison: Murphy got into the wrench drawer. I was on FooTests/testBar() — tried … Got … instead.`

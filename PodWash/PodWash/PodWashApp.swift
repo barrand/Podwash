@@ -19,13 +19,19 @@ struct PodWashApp: App {
     /// resume types live in the same model).
     private let persistence: PersistenceController
 
+    /// Lock-screen / Control Center transport (ADR-011). Activated once at launch.
+    private let remoteCommands: RemoteCommandCoordinator
+
     init() {
         persistence = PersistenceController.production()
+        let commands = RemoteCommandCoordinator(commands: MPRemoteCommandCenterAdapter())
+        commands.activate()
+        remoteCommands = commands
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(persistence: persistence)
+            RootView(persistence: persistence, remoteCommands: remoteCommands)
         }
     }
 }

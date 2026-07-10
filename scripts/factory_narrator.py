@@ -346,17 +346,13 @@ def narrate_verify_green(
     log: LogFn | None = None,
     voice: StoryVoice | None = None,
 ) -> str:
-    v = voice or _default_voice
-    who = (name or "").strip() or "Forge"
-    line = v.format(
-        "verify_green",
-        VERIFY_GREEN_LINES,
-        name=who,
-        passed=str(passed),
-        total=str(total),
+    """Legacy entry — prefer factory_floor_llm.narrate_verify_green_dynamic."""
+    del voice  # floor green voice is LLM-authored or minimal fallback
+    from factory_floor_llm import narrate_verify_green_minimal
+
+    return narrate_verify_green_minimal(
+        name, passed=passed, total=total, log=log
     )
-    _emit(line, log)
-    return line
 
 
 def narrate_referee(

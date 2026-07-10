@@ -31,6 +31,8 @@ from factory_narrator import (  # noqa: E402
     narrate_role_report,
     extract_gate_stuck_body,
     narrate_coordinator_shift_open,
+    narrate_coordinator_shift_prose,
+    parse_shift_narration_lines,
     narrate_slice_recap,
     narrate_spawn,
     narrate_thrash_halt,
@@ -101,7 +103,6 @@ class NarratorTests(unittest.TestCase):
         self.assertEqual(FACTORY_NAME, "Forge")
         banner = factory_session_banner()
         self.assertIn("Forge", banner)
-        self.assertIn("Murphy", banner)
         self.assertLessEqual(banner.count("\n"), 14)
 
     def test_story_beats(self):
@@ -173,22 +174,33 @@ class NarratorTests(unittest.TestCase):
             coordinator_name="Kai",
             slice_id=12,
             title="Variable speed + sleep timer",
+            slice_file="docs/slices/slice-12-speed-sleep.md",
             mission="Deliver variable speed and a sleep timer on the player.",
             log=lines.append,
         )
         self.assertIn("Coordinator Kai", mission_line)
         self.assertIn("slice 12", mission_line)
         self.assertIn("variable speed", mission_line)
-        self.assertIn("Murphy", mission_line)
+        self.assertNotIn("Murphy", mission_line)
 
-    def test_murphy_only_in_narration(self):
+    def test_murphy_only_on_verify_failure(self):
         lines: list[str] = []
+        narrate_coordinator_shift_prose(
+            coordinator_name="Kai",
+            slice_id=12,
+            title="Test slice",
+            mission="Ship the thing.",
+            log=lines.append,
+        )
+        self.assertFalse(any("Murphy" in ln or "🐒" in ln for ln in lines))
         narrate_verify_red("Quinn", passed=43, total=45, log=lines.append)
-        self.assertIn("🐒", lines[0])
-        self.assertIn("Murphy", lines[0])
+        red_line = next(ln for ln in lines if "43/45" in ln or "Quinn" in ln and "🐒" in ln)
+        self.assertIn("🐒", red_line)
+        self.assertIn("Murphy", red_line)
         narrate_exoneration(cause="cancel gate fires early", owner="Edison", log=lines.append)
-        self.assertIn("Murphy", lines[1])
-        self.assertIn("Edison", lines[1])
+        exoneration = lines[-1]
+        self.assertIn("Murphy", exoneration)
+        self.assertIn("Edison", exoneration)
         from failure_packet import FailurePacket
 
         pkt = FailurePacket(

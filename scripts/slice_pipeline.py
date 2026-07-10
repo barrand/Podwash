@@ -48,9 +48,12 @@ from factory_narrator import (
     extract_gate_stuck_body,
     narrate_slice_recap,
     narrate_thrash_halt,
-    narrate_verify_green,
     narrate_verify_red,
     narrate_worker_done,
+)
+from factory_floor_llm import (
+    narrate_verify_green_dynamic,
+    try_coordinator_shift_llm,
 )
 from hypothesis_ledger import (
     append_ledger,
@@ -580,6 +583,29 @@ def _narrate_verify_failure(
     narrate_failure_detail(name, packet, log=log, voice=voice)
     if cast is not None:
         cast.note_murphy()
+
+
+def _report_verify_green(
+    client: Any,
+    name: str,
+    outcome: VerifyOutcome,
+    *,
+    role: str,
+    api_key: str,
+    repo_root: str,
+    log: LogFn,
+) -> str:
+    return narrate_verify_green_dynamic(
+        client,
+        name,
+        passed=(outcome.result or {}).get("passed", "?"),
+        total=(outcome.result or {}).get("total", "?"),
+        role=role,
+        api_key=api_key,
+        repo_root=repo_root,
+        log=log,
+        run_worker=run_worker,
+    )
 
 
 def explain_gate_pending(gid: GateId, slice_file: str, repo_root: str) -> str:
@@ -2122,22 +2148,24 @@ def run_fix_loop(
                 "FULL-VERIFY", "loop", "verify_end",
                 detail={"tier": 3, "exit": 0, "failed": 0},
             )
-        narrate_verify_green(
+        _report_verify_green(
+            client,
             "Quinn",
-            passed=(outcome.result or {}).get("passed", "?"),
-            total=(outcome.result or {}).get("total", "?"),
+            outcome,
+            role="QA",
+            api_key=api_key,
+            repo_root=repo_root,
             log=_log,
-            voice=_voice,
         )
         return outcome
 
-    _cast.note_murphy()
     _narrate_verify_failure(
         "Quinn",
         outcome,
         repo_root=repo_root,
         log=_log,
         voice=_voice,
+        cast=_cast,
     )
     fresh_ips = watchdog.new_crashes()
     if fresh_ips:
@@ -2576,12 +2604,14 @@ def run_fix_loop(
             )
 
         if outcome.green:
-            narrate_verify_green(
+            _report_verify_green(
+                client,
                 agent,
-                passed=(outcome.result or {}).get("passed", "?"),
-                total=(outcome.result or {}).get("total", "?"),
+                outcome,
+                role=role,
+                api_key=api_key,
+                repo_root=repo_root,
                 log=_log,
-                voice=_voice,
             )
             _log(
                 "referee telemetry: "
@@ -2597,8 +2627,8 @@ def run_fix_loop(
             repo_root=repo_root,
             log=_log,
             voice=_voice,
+            cast=_cast,
         )
-        _cast.note_murphy()
         if outcome.packet is None:
             outcome.packet = build_failure_packet(
                 failures=outcome.failures,
@@ -2772,12 +2802,14 @@ def run_tier2_implement_gate(
             outcome = _tier2()
         if outcome.green:
             write_tier2_marker(repo_root, slice_id)
-            narrate_verify_green(
+            _report_verify_green(
+                client,
                 agent_hint,
-                passed=(outcome.result or {}).get("passed", "?"),
-                total=(outcome.result or {}).get("total", "?"),
+                outcome,
+                role="Engineer",
+                api_key=api_key,
+                repo_root=repo_root,
                 log=_log,
-                voice=_voice,
             )
             if _events:
                 _events.record(
@@ -3070,13 +3102,11 @@ def run_pipeline_slice(
     if session_voice is not None:
         cast.voice = session_voice
     coordinator = (coordinator_name or "").strip() or names.assign("Coordinator", slot="session")
-    narrate_coordinator_shift_open(
-        coordinator_name=coordinator,
+    print_coordinator_shift_banner(
         slice_id=slice_id,
         title=title,
+        slice_file=slice_file,
         mission=mission,
-        log=_log,
-        voice=_voice,
     )
     events = EventLog(repo_root, slice_id, log=_log)
 
@@ -3117,6 +3147,25 @@ def run_pipeline_slice(
             stream_timeout=stream_to,
             unary_timeout=unary_timeout,
         )
+        if not try_coordinator_shift_llm(
+            client,
+            coordinator_name=coordinator,
+            slice_id=slice_id,
+            title=title,
+            mission=mission,
+            api_key=api_key,
+            repo_root=repo_root,
+            log=_log,
+            run_worker=run_worker,
+        ):
+            narrate_coordinator_shift_prose(
+                coordinator_name=coordinator,
+                slice_id=slice_id,
+                title=title,
+                mission=mission,
+                log=_log,
+                voice=_voice,
+            )
 
         # Authoring gates until implement artifacts exist (tier-2 is separate)
         while True:

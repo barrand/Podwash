@@ -9,6 +9,7 @@ import SwiftUI
 
 struct RootView: View {
     let persistence: PersistenceController
+    let remoteCommands: RemoteCommandCoordinator
 
     @State private var fixtureEngine: PlaybackEngine?
     @State private var fixtureFeedViewModel: EpisodeListViewModel?
@@ -17,8 +18,12 @@ struct RootView: View {
     @State private var queueStore: QueueStore?
     @State private var fixtureSettingsStore: SettingsStore?
 
-    init(persistence: PersistenceController) {
+    init(
+        persistence: PersistenceController,
+        remoteCommands: RemoteCommandCoordinator
+    ) {
         self.persistence = persistence
+        self.remoteCommands = remoteCommands
     }
 
     var body: some View {
@@ -71,11 +76,13 @@ struct RootView: View {
     private func loadFixtureAudioIfNeeded() async {
         guard FixtureAudio.isEnabled, fixtureEngine == nil else { return }
         guard let url = FixtureAudio.bundledURL() else { return }
-        fixtureEngine = PlaybackEngine(
+        let engine = PlaybackEngine(
             url: url,
             title: FixtureAudio.fixtureTitle,
             artist: FixtureAudio.fixtureArtist
         )
+        fixtureEngine = engine
+        remoteCommands.bind(engine)
     }
 
     private func loadFixtureFeedIfNeeded() async {

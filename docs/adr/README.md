@@ -27,3 +27,4 @@ from the relevant slice file's Role artifacts table.
 | [008](008-episode-downloads.md) | Episode downloads: sandbox layout, session injection, source resolution | Accepted |
 | [009](009-queue-resume.md) | Queue + resume: stores, coordinator, reload | Accepted |
 | [010](010-settings-word-lists.md) | Settings + word-list management: categories, UserDefaults store, matcher seam | Accepted |
+| [011](011-remote-commands-background-audio.md) | Remote commands + background audio: MPRemoteCommandCenter doubles, spokenAudio session, UIBackgroundModes | Accepted |
