@@ -17,11 +17,21 @@ from factory_events import (  # noqa: E402
     parse_summary_line,
 )
 from factory_narrator import (  # noqa: E402
+    FACTORY_NAME,
+    CastLog,
     NameAssigner,
+    factory_session_banner,
+    format_agent_label,
+    format_slice_recap,
+    narrate_chapter_open,
     narrate_exoneration,
+    narrate_gate_cleared,
+    narrate_gate_stuck,
+    narrate_slice_recap,
     narrate_spawn,
     narrate_thrash_halt,
     narrate_verify_red,
+    persist_story_recap,
 )
 from sim_hygiene import (  # noqa: E402
     CrashWatchdog,
@@ -65,6 +75,7 @@ class EventLogTests(unittest.TestCase):
             self.assertTrue(any("REFEREE" in x for x in lines))
             banner = format_phase_banner("FIX-1", role="Engineer", agent_name="Edison")
             self.assertIn("Edison", banner)
+            self.assertIn("Engineer Edison", banner)
 
 
 class NarratorTests(unittest.TestCase):
@@ -75,6 +86,87 @@ class NarratorTests(unittest.TestCase):
         self.assertEqual(a, "Edison")
         self.assertEqual(b, "Elena")
         self.assertEqual(n.assign("Referee"), "Rhea")
+
+    def test_format_agent_label(self):
+        self.assertEqual(format_agent_label("QA", "Quincy"), "QA Quincy")
+        self.assertEqual(format_agent_label("Engineer", "Edison"), "Engineer Edison")
+        self.assertEqual(format_agent_label("QA", None), "QA")
+        self.assertEqual(format_agent_label("", "Rhea"), "Rhea")
+
+    def test_factory_session_banner(self):
+        self.assertEqual(FACTORY_NAME, "Forge")
+        banner = factory_session_banner()
+        self.assertIn("Forge", banner)
+        self.assertIn("Murphy", banner)
+        self.assertLessEqual(banner.count("\n"), 14)
+
+    def test_story_beats(self):
+        lines: list[str] = []
+        open_line = narrate_chapter_open(
+            slice_id=12,
+            gate_label="test spec",
+            role="QA",
+            name="Quincy",
+            act=4,
+            total=9,
+            log=lines.append,
+        )
+        self.assertIn("Slice 12", open_line)
+        self.assertIn("4/9 test spec", open_line)
+        self.assertIn("QA Quincy", open_line)
+        self.assertTrue(open_line.startswith("\n──"))
+
+        clear = narrate_gate_cleared(
+            "Quincy",
+            "test spec",
+            next_label="test-spec review",
+            next_name="Ada",
+            elapsed_secs=120,
+            log=lines.append,
+        )
+        self.assertIn("✓ Quincy cleared test spec", clear)
+        self.assertIn("2m", clear)
+        self.assertIn("Ada", clear)
+
+        stuck = narrate_gate_stuck(
+            "story",
+            "gate story still pending after worker — stopping. "
+            "(Status=Draft) unblock: set Status to Ready",
+            log=lines.append,
+        )
+        self.assertIn("✗ story stuck", stuck)
+        self.assertIn("Ready", stuck)
+
+        cast = CastLog()
+        cast.add("PM", "Priya", "story")
+        cast.add("QA", "Quincy", "test_spec")
+        cast.note_murphy()
+        recap = format_slice_recap(
+            slice_id=12, elapsed_secs=1080, cast=cast, outcome="green"
+        )
+        self.assertIn("Forge recap", recap)
+        self.assertIn("Priya", recap)
+        self.assertIn("Murphy ×1", recap)
+        self.assertIn("green", recap)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = persist_story_recap(recap, repo_root=tmp, slice_id=12)
+            self.assertTrue(os.path.isfile(path))
+            self.assertIn("story-slice-12.txt", path)
+            with open(path, encoding="utf-8") as fh:
+                self.assertEqual(fh.read().strip(), recap)
+
+        fix_open = narrate_chapter_open(
+            slice_id=12,
+            gate_label="fix",
+            role="Engineer",
+            name="Edison",
+            fix_attempt=1,
+            fix_max=3,
+            log=lines.append,
+        )
+        self.assertIn("fix 1/3", fix_open)
+        self.assertIn("Engineer Edison", fix_open)
 
     def test_murphy_only_in_narration(self):
         lines: list[str] = []

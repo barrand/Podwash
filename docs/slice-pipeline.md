@@ -20,23 +20,26 @@
 | Sim pre-boot / crash watch / stress | `sim_hygiene.py` |
 | Red → fix budget | `--max-fix-attempts` (default 2); flake cold-retry is free; exit 5 thrash / 6 infra |
 | `VERIFY RESULT` + Status Done | Deterministic doc writer |
+| Status Ready after story content | Deterministic doc writer (`set_slice_status`) |
 | Split commits + isolation + push | Loop (pipeline mode) |
 | Story / UX / ADR / tests / app / reviews | One visible SDK worker per gate |
 
 ## Orchestrator modes
 
 ```bash
-scripts/slice-loop.sh --orchestrator coordinator   # default — Phase 1
-scripts/slice-loop.sh --orchestrator pipeline       # gate FSM — Phase 2+
+scripts/slice-loop.sh                              # default — pipeline (unattended)
+scripts/slice-loop.sh --orchestrator pipeline       # explicit gate FSM
+scripts/slice-loop.sh --orchestrator coordinator   # legacy attended authoring LLM
 scripts/slice-loop.sh --orchestrator pipeline --dry-run
 ```
 
-**Coordinator (default):** one authoring LLM; **must not** run `verify.sh`. After it
-returns, the loop runs verify and spawns visible fix workers.
+**Pipeline (default):** Python drives `story → … → implement → verify → record → commit`
+with `run_worker()` per gate. Reviewers use SDK `mode=plan`. There is no LLM
+“QA verify” gate — the loop owns the suite. Authoring gates must **not** run
+`verify.sh` (TDD compile-red is expected until Engineer implements).
 
-**Pipeline:** Python drives `story → … → implement → verify → record → commit` with
-`run_worker()` per gate. Reviewers use SDK `mode=plan`. There is no LLM “QA verify”
-gate — the loop owns the suite.
+**Coordinator (legacy):** one authoring LLM; **must not** run `verify.sh`. After it
+returns, the loop runs verify and spawns visible fix workers.
 
 Dual-path is **time-boxed**. After pipeline is trusted, delete the coordinator path.
 
@@ -57,7 +60,41 @@ story ─┬─► architect ─┐
 
 `assess_gate_state()` is the FSM state function (strict artifact contracts).
 `assess_slice_gates()` in `slice_loop_progress.py` remains a **progress heuristic**
-for heartbeats only — do not treat it as the FSM.
+for heartbeats only — do not treat it as the FSM. **Story uses the same
+predicate in both** (`_story_done`: Crux + AC checkboxes **and** Status Ready+).
+A filled Crux while Status is still `Draft` is **not** story-done (Slice 12
+failure mode: progress showed `next: ux` while the FSM halted on story).
+
+### Forge (factory brand)
+
+The unattended loop is branded **Forge** (`FACTORY_NAME` in `factory_narrator.py`).
+Session start prints a compact ASCII title once; green Done banners say
+“Forge gate cleared.” Worker progress lines show **Role Name** (e.g.
+`[slice 12][QA Quincy]`) so it is obvious who is speaking. Harness lines keep
+the `[slice-loop]` prefix. Murphy remains the failure mascot in narrated red
+lines only — not in the brand.
+
+### Story log
+
+Authoring and fix loops emit **chapter beats** instead of stacking mechanical
+noise:
+
+- Chapter open: `── Slice 12 · 4/9 test spec · QA Quincy ──`
+- Clear: `✓ Quincy cleared test spec (2m) — next: …`
+- Stuck: `✗ story stuck — … Unblock: …`
+- Recap: `Forge recap · slice 12 · 18m · Priya, Quincy · Murphy ×1 · green`
+  (also written to `build/test-results/story-slice-NN.txt`)
+
+`worker start` / `worker finished` / duplicate `SUMMARY:` lines are verbose-only.
+Heartbeats say `Forge · slice 12 · QA Quincy · 4m` when a named agent is on stage.
+
+### Story → Ready handoff
+
+PM writes Crux / ACs; the harness owns Status. After a successful story-gate
+worker, if `_story_content_ok` and Status is still Draft/empty, the pipeline
+calls `set_slice_status(..., "Ready")` (same deterministic-writer pattern as
+Status Done after green verify). Halt lines from `explain_gate_pending` print
+failed predicates + an unblock hint when a gate stays pending after its worker.
 
 ## Verify tiers (P0)
 
@@ -70,7 +107,26 @@ for heartbeats only — do not treat it as the FSM.
 | 2 | `test` / `test-without-building` | slice-mapped + smoke (`VERIFY_SLICE_TESTS` / CLI) | implement exit gate (P1) |
 | 3 | `test` (unfiltered) | none | **Done gate** — `VERIFY RESULT:` contract unchanged (+ optional `tier=3`) |
 
+`VERIFY RESULT` includes `class=build|tests`: `build` when `exit!=0` and 0 tests
+ran (compile/link); `tests` otherwise. Consumers (`parse_verify_result`,
+`RunProgress`, FailurePacket) use this instead of re-deriving build-vs-test.
+
 `VERIFY_DRY_RUN=1` prints the resolved argv and exits 0 (unit tests: `scripts/test-verify-tiers.sh`).
+
+## Authoring vs post-implement red policy
+
+The factory distinguishes three red states:
+
+| Phase | Policy |
+|-------|--------|
+| **TDD compile-red during authoring** (`story`…`test_review`) | Never counted toward thrash; `verify.sh` / `xcodebuild test` cancelled (ban, no budget burn) |
+| **Build-red after implement** | `class=build` / `build_error: …` signature → Engineer with compile text |
+| **Test-red after implement** | Assertion class → referee routes Engineer\|QA with fix budget |
+
+Red-verify thrash (`max_red_verifies=2`) applies only to coordinator-monitored /
+post-implement grinding — **not** authoring-gate TDD compile-red. After
+`test_spec` + `test_review` clear, the pipeline auto-commits test paths as
+`slice-NN: test spec` so a later halt never orphans authored tests.
 
 ## Fix path (FailurePacket → stuck card → referee → ledger → fix)
 
@@ -132,9 +188,17 @@ Legacy `fix_playbooks.py` / diagnose helpers remain in-tree for tests but are **
 
 `build/test-results/ledger-slice-NN.jsonl` — durable across bridge death. Each attempt appends `{ts, attempt, role, hypothesis, files_touched, result_signature, verify_tier, outcome}`. Before spawning a fix worker, if the referee verdict's **hypothesis + signature** matches a prior entry, Python **reroutes to the opposite role** with a fresh `ledger-reroute:…:try-N` hypothesis (never pays for the same theory twice, never leaves budget on the table). Halt on ledger only after the fix budget is exhausted. Repeat signatures always get a **fresh** fix worker (new agent context) with the ledger attached.
 
-### Verify ban (fix workers)
+### Verify ban (fix workers + authoring gates)
 
-Fix-worker `RunProgress` uses `fix_worker=True` + `forced_role=` so logs show `[Engineer]` / `[QA]`, nested red-verify thrash is disabled (`max_red_verifies=0`), and shell `verify.sh` / `xcodebuild … test` is cancelled. First violation → re-prompt; second → attempt burned.
+Fix-worker `RunProgress` uses `fix_worker=True` + `forced_role=` so logs show
+`[Engineer]` / `[QA]`, nested red-verify thrash is disabled (`max_red_verifies=0`),
+and shell `verify.sh` / `xcodebuild … test` is cancelled. First violation →
+re-prompt; second → attempt burned.
+
+Authoring-gate `RunProgress` uses `authoring_gate=True`: red verifies are ignored
+(TDD compile-red expected), and verify shells are cancelled **without** burning
+budget. The `test_spec` prompt also bans verify in text; the cancel is the hard
+guarantee.
 
 ## Fix routing (P0)
 
@@ -171,7 +235,7 @@ Referee calls (including one parse retry) do **not** burn budget (routing only).
 ```bash
 python3 -m unittest scripts.test_factory_p1 scripts.test_referee \
   scripts.test_hypothesis_ledger scripts.test_slice_pipeline \
-  scripts.test_failure_packet -q
+  scripts.test_slice_loop_progress scripts.test_failure_packet -q
 ./scripts/test-verify-tiers.sh
 scripts/slice-loop.sh --orchestrator pipeline --max 1   # unattended default
 ```

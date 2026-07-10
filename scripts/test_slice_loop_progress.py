@@ -3,6 +3,7 @@
 
 import os
 import sys
+import tempfile
 import unittest
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -440,6 +441,22 @@ class ProgressFormattingTests(unittest.TestCase):
         self.assertEqual(info["done"], info["total"])
         self.assertEqual(info["next"], "done")
 
+    def test_draft_full_crux_story_not_done(self):
+        """Progress must not treat Draft+Crux as story-done (align with FSM)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "slice.md")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(
+                    "| **Status** | Draft |\n"
+                    "| **Crux** | Prove something |\n\n"
+                    "## Acceptance criteria\n\n"
+                    "- [ ] 1. AC\n"
+                )
+            info = assess_slice_gates(path, tmp)
+            story = next(g for g in info["gates"] if g["id"] == "story")
+            self.assertFalse(story["done"])
+            self.assertEqual(info["next"], "story")
+
     def test_read_slice_meta_from_repo(self):
         repo = os.path.dirname(SCRIPT_DIR)
         title, rel = read_slice_meta("docs/slices/slice-06-rss-episode-list.md", repo)
@@ -461,6 +478,192 @@ class ProgressFormattingTests(unittest.TestCase):
         self.assertIn("MOUNTAIN", banner)
         self.assertIn("CONQUERED", banner)
         self.assertIn("ALL TESTS PASSED", banner)
+        self.assertIn("Forge gate cleared", banner)
+
+    def test_prefix_includes_agent_name(self):
+        lines: list[str] = []
+        progress = RunProgress(
+            12,
+            "Speed",
+            "docs/slices/slice-12.md",
+            lines.append,
+            forced_role="QA",
+            agent_name="Quincy",
+        )
+        self.assertEqual(progress.prefix(), "[slice 12][QA Quincy]")
+        bare = RunProgress(12, "Speed", "docs/slices/slice-12.md", lines.append, forced_role="QA")
+        self.assertEqual(bare.prefix(), "[slice 12][QA]")
+
+    def test_heartbeat_forge_voice_when_named(self):
+        import time
+        from unittest import mock
+
+        lines: list[str] = []
+        progress = RunProgress(
+            12,
+            "Speed",
+            "docs/slices/slice-12.md",
+            lines.append,
+            forced_role="QA",
+            agent_name="Quincy",
+        )
+        progress.last_activity = time.time() - 90
+        with mock.patch(
+            "slice_loop_progress.sniff_background_build", return_value=None
+        ):
+            status = progress.format_work_status()
+        self.assertIn("Forge", status)
+        self.assertIn("QA Quincy", status)
+        self.assertNotIn("coordinator quiet", status)
+
+
+class AuthoringGateThrashTests(unittest.TestCase):
+    """Factory authoring-phase thrash fix (slice 12 TDD compile-red)."""
+
+    _BUILD_BLOB = (
+        "/Users/me/PodWash/PodWashTests/SleepTimerTests.swift:12:24: "
+        "error: cannot find type 'MonotonicClock' in scope\n"
+        "/Users/me/PodWash/PodWashTests/SleepTimerTests.swift:18:8: "
+        "error: cannot find type 'SleepTimer' in scope\n"
+        "** BUILD FAILED **\n"
+        "Testing cancelled because the build failed.\n"
+        "** TEST FAILED **\n"
+        "VERIFY RESULT: exit=65 total=0 passed=0 failed=0 skipped=0 "
+        "filtered=1 bundle=build/test-results/verify-x.xcresult tier=2 class=build\n"
+    )
+
+    def test_authoring_gate_red_verify_does_not_halt(self):
+        lines: list[str] = []
+        progress = RunProgress(
+            12,
+            "Speed + sleep",
+            "docs/slices/slice-12-speed-sleep.md",
+            lines.append,
+            max_red_verifies=2,
+            authoring_gate=True,
+            gate_id="test_spec",
+            forced_role="QA",
+        )
+        verify = {
+            "exit": "65",
+            "total": "0",
+            "passed": "0",
+            "failed": "0",
+            "skipped": "0",
+            "class": "build",
+        }
+        for _ in range(3):
+            progress._record_red_verify(
+                ["build_error: cannot find type 'MonotonicClock' in scope"],
+                cmd="scripts/verify.sh",
+                blob=self._BUILD_BLOB,
+                verify=verify,
+            )
+        self.assertEqual(progress._red_verify_count, 0)
+        self.assertFalse(progress.halted)
+        self.assertTrue(
+            any("authoring-phase red verify ignored" in l for l in lines)
+        )
+        # Log once only
+        self.assertEqual(
+            sum(1 for l in lines if "authoring-phase red verify ignored" in l),
+            1,
+        )
+
+    def test_coordinator_path_still_halts_at_two(self):
+        lines: list[str] = []
+        with tempfile.TemporaryDirectory() as tmp:
+            progress = RunProgress(
+                12,
+                "Speed + sleep",
+                "docs/slices/slice-12-speed-sleep.md",
+                lines.append,
+                max_red_verifies=2,
+                authoring_gate=False,
+                repo_root=tmp,
+            )
+            progress._tool(
+                "c1",
+                "shell",
+                "completed",
+                {"command": "scripts/verify.sh"},
+                self._BUILD_BLOB,
+            )
+            self.assertEqual(progress._red_verify_count, 1)
+            with self.assertRaises(ThrashHalt):
+                progress._tool(
+                    "c2",
+                    "shell",
+                    "completed",
+                    {"command": "scripts/verify.sh"},
+                    self._BUILD_BLOB,
+                )
+            self.assertTrue(progress.halted)
+            self.assertTrue(any("session bundle" in l for l in lines))
+            stuck = os.path.join(tmp, "build", "test-results", "stuck-slice-12.txt")
+            self.assertTrue(os.path.isfile(stuck))
+            bundle = os.path.join(tmp, "build", "test-results", "session-slice-12")
+            self.assertTrue(os.path.isdir(bundle))
+
+    def test_authoring_verify_ban_cancels_without_burn(self):
+        lines: list[str] = []
+        cancelled: list[bool] = []
+
+        class FakeRun:
+            def supports(self, cap: str) -> bool:
+                return cap == "cancel"
+
+            def cancel(self) -> None:
+                cancelled.append(True)
+
+        progress = RunProgress(
+            12,
+            "Speed + sleep",
+            "docs/slices/slice-12-speed-sleep.md",
+            lines.append,
+            authoring_gate=True,
+            gate_id="test_spec",
+            forced_role="QA",
+        )
+        progress.bind_run(FakeRun())
+        progress._tool(
+            "v1",
+            "shell",
+            "running",
+            {"command": "scripts/verify.sh -only-testing:PodWashTests"},
+            None,
+        )
+        self.assertEqual(progress._verify_violations, 1)
+        self.assertFalse(progress.verify_violation_burned)
+        self.assertTrue(cancelled)
+        self.assertTrue(any("AUTHORING VERIFY BAN" in l for l in lines))
+        # Second ban still does not burn
+        progress._handle_verify_ban("xcodebuild test -scheme PodWash")
+        self.assertEqual(progress._verify_violations, 2)
+        self.assertFalse(progress.verify_violation_burned)
+
+    def test_detect_build_error_from_compile_blob(self):
+        from slice_loop_progress import extract_build_error
+
+        failures = detect_test_failures(self._BUILD_BLOB)
+        self.assertTrue(any(f.startswith("build_error:") for f in failures))
+        self.assertTrue(any("MonotonicClock" in f for f in failures))
+        self.assertFalse(any(f == "xcodebuild — TEST FAILED" for f in failures))
+        be = extract_build_error(self._BUILD_BLOB)
+        self.assertIsNotNone(be)
+        self.assertIn("MonotonicClock", be or "")
+
+    def test_parse_verify_result_class_build(self):
+        v = parse_verify_result(
+            "VERIFY RESULT: exit=65 total=0 passed=0 failed=0 skipped=0 "
+            "filtered=1 bundle=b.xcresult tier=2 class=build"
+        )
+        self.assertIsNotNone(v)
+        assert v is not None
+        self.assertEqual(v.get("class"), "build")
+        self.assertEqual(v.get("exit"), "65")
+        self.assertEqual(v.get("tier"), "2")
+        self.assertFalse(verify_is_green(v))
 
 
 if __name__ == "__main__":

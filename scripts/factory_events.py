@@ -10,6 +10,8 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable
 
+from factory_narrator import format_agent_label
+
 LogFn = Callable[[str], None]
 
 SUMMARY_RE = re.compile(r"(?im)^\s*SUMMARY:\s*(.+)$")
@@ -109,7 +111,7 @@ def format_phase_banner(
 ) -> str:
     """One-line Cursor-like phase banner for the terminal timeline."""
     label = phase.upper().replace("_", "-")
-    who = agent_name or role or "loop"
+    who = format_agent_label(role, agent_name) if (role or agent_name) else "loop"
     bits = [f"══ {label} ══", who]
     if mission:
         bits.append(mission[:100])

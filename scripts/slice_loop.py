@@ -277,7 +277,7 @@ def run_slice_coordinator(
         f"anti-thrash: loop-owned verify; halt after {max_fix_attempts} fix "
         f"attempts (legacy shell red budget={max_red_verifies})"
     )
-    log("progress lines: [slice NN][Role] action — use --verbose for full agent text")
+    log("progress lines: [slice NN][Role Name] action — use --verbose for full agent text")
     log("handoff: coordinator must NOT run verify.sh — loop owns verify + fix workers")
 
     progress = RunProgress(
@@ -332,7 +332,7 @@ def run_slice_coordinator(
                 # Phase 1: loop owns verify (+ fix workers) AFTER coordinator agent
                 # is disposed — sequential only; never parallel with authoring verify.
                 if should_loop_own_verify(slice_file, REPO_ROOT):
-                    def progress_factory(role: str):
+                    def progress_factory(role: str, agent_name: str | None = None):
                         return RunProgress(
                             slice_id,
                             title,
@@ -343,6 +343,7 @@ def run_slice_coordinator(
                             repo_root=REPO_ROOT,
                             max_red_verifies=max_red_verifies,
                             forced_role=role,
+                            agent_name=agent_name,
                             fix_worker=role in ("Engineer", "QA"),
                         )
 
@@ -555,6 +556,10 @@ def main():
     if not api_key:
         log("CURSOR_API_KEY is not set. Export it before running (see the SDK docs).")
         return EXIT_STARTUP
+
+    from factory_narrator import factory_session_banner
+
+    print(factory_session_banner(), flush=True)
 
     ran = 0
     last_started = None

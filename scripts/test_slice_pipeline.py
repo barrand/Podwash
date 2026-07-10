@@ -13,11 +13,18 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPT_DIR)
 
 from slice_loop_progress import parse_verify_result, verify_is_green  # noqa: E402
+from slice_loop_progress import (  # noqa: E402
+    _story_content_ok,
+    _story_done,
+    assess_slice_gates,
+    story_pending_reasons,
+)
 from slice_pipeline import (  # noqa: E402
     FixBudget,
     adr_reviewer_cleared,
     assess_gate_state,
     build_fix_prompt,
+    explain_gate_pending,
     failure_signature,
     format_verify_result_line,
     gates_ready_for_parallel,
@@ -496,6 +503,53 @@ class GateStateTests(unittest.TestCase):
             self.assertEqual(state.gate("story").status, "pending")
             self.assertEqual(next_gate(state), "story")
 
+    def test_draft_with_full_content_story_pending_both_checkers(self):
+        """Filled Crux+ACs while Draft must keep story pending in FSM and progress."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "slice-12-like.md")
+            body = (
+                "# Slice 12\n\n"
+                "| Field | Value |\n"
+                "|-------|-------|\n"
+                "| **Status** | Draft |\n"
+                "| **Crux** | Prove rate + sleep timer |\n\n"
+                "## Acceptance criteria\n\n"
+                "- [ ] 1. numeric AC\n\n"
+                "## Role artifacts\n\n"
+                "| Role | Gate | Artifact path |\n"
+                "|------|------|---------------|\n"
+                "| Architect | Waived | — |\n"
+                "| UX | Waived | — |\n"
+            )
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(body)
+            self.assertTrue(_story_content_ok(body))
+            self.assertFalse(_story_done(body))
+            reasons = story_pending_reasons(body)
+            self.assertTrue(any("Draft" in r for r in reasons), reasons)
+
+            state = assess_gate_state(path, tmp)
+            self.assertEqual(state.gate("story").status, "pending")
+            self.assertEqual(next_gate(state), "story")
+
+            heuristic = assess_slice_gates(path, tmp)
+            story_h = next(g for g in heuristic["gates"] if g["id"] == "story")
+            self.assertFalse(story_h["done"], heuristic["summary"])
+            self.assertEqual(heuristic["next"], "story")
+
+            msg = explain_gate_pending("story", path, tmp)
+            self.assertIn("still pending", msg)
+            self.assertIn("Draft", msg)
+            self.assertIn("Ready", msg)
+
+            set_slice_status(path, tmp, "Ready")
+            after = assess_gate_state(path, tmp)
+            self.assertEqual(after.gate("story").status, "done")
+            self.assertNotEqual(next_gate(after), "story")
+            heuristic2 = assess_slice_gates(path, tmp)
+            story_h2 = next(g for g in heuristic2["gates"] if g["id"] == "story")
+            self.assertTrue(story_h2["done"], heuristic2["summary"])
+
     def test_adr_fork_parallel_ready(self):
         with tempfile.TemporaryDirectory() as tmp:
             adr = os.path.join(tmp, "docs", "adr")
@@ -617,6 +671,44 @@ class SplitCommitTests(unittest.TestCase):
         self.assertEqual(tests, ["PodWash/PodWashTests/FooTests.swift"])
         self.assertEqual(apps, ["PodWash/PodWash/Foo.swift"])
         self.assertEqual(other, ["docs/slices/slice-01.md"])
+
+
+class AuthoringGatePromptTests(unittest.TestCase):
+    def test_test_spec_prompt_bans_verify(self):
+        from slice_pipeline import AUTHORING_GATES, build_gate_prompt
+
+        prompt = build_gate_prompt(
+            "test_spec",
+            "docs/slices/slice-12-speed-sleep.md",
+            REPO,
+        )
+        self.assertIn("Do NOT run scripts/verify.sh", prompt)
+        self.assertIn("fail to compile", prompt)
+        self.assertIn("test_spec", AUTHORING_GATES)
+        self.assertNotIn("implement", AUTHORING_GATES)
+
+    def test_parse_verify_result_class_build(self):
+        v = parse_verify_result(
+            "VERIFY RESULT: exit=65 total=0 passed=0 failed=0 skipped=0 "
+            "filtered=1 bundle=b.xcresult tier=2 class=build"
+        )
+        self.assertIsNotNone(v)
+        assert v is not None
+        self.assertEqual(v.get("class"), "build")
+        self.assertFalse(verify_is_green(v))
+
+    def test_format_verify_result_line_includes_class(self):
+        line = format_verify_result_line(
+            {
+                "exit": "65",
+                "total": "0",
+                "passed": "0",
+                "failed": "0",
+                "skipped": "0",
+                "class": "build",
+            }
+        )
+        self.assertIn("class=build", line)
 
 
 if __name__ == "__main__":

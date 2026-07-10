@@ -27,17 +27,22 @@ from failure_packet import (
 )
 from factory_events import EventLog, parse_summary_line
 from factory_narrator import (
+    CastLog,
     NameAssigner,
+    narrate_chapter_open,
     narrate_crash,
     narrate_exoneration,
     narrate_flake_confirmed,
+    narrate_gate_cleared,
+    narrate_gate_stuck,
     narrate_ledger_block,
     narrate_referee,
-    narrate_spawn,
+    narrate_slice_recap,
     narrate_thrash_halt,
     narrate_verify_green,
     narrate_verify_red,
     narrate_worker_done,
+    persist_story_recap,
 )
 from hypothesis_ledger import (
     append_ledger,
@@ -76,6 +81,8 @@ from slice_loop_progress import (
     _role_artifact_rows,
     _section_body,
     _status_from_text,
+    _story_content_ok,
+    _story_done,
     _verification_mapping_filled,
     artifact_cell_satisfied,
     detect_simulator_crashes,
@@ -85,6 +92,7 @@ from slice_loop_progress import (
     missing_artifact_paths,
     parse_verify_result,
     read_failures_from_xcresult,
+    story_pending_reasons,
     verify_is_green,
 )
 
@@ -195,6 +203,19 @@ GATE_ROLE: dict[GateId, str] = {
     "test_review": "Architect review",
     "implement": "Engineer",
 }
+
+# Pre-implement gates: TDD compile-red expected; red-verify thrash + verify ban apply.
+AUTHORING_GATES: frozenset[GateId] = frozenset(
+    {
+        "story",
+        "architect",
+        "ux",
+        "adr_review_qa",
+        "adr_review_pm",
+        "test_spec",
+        "test_review",
+    }
+)
 
 LogFn = Callable[[str], None]
 
@@ -482,20 +503,85 @@ def adr_reviewer_cleared(block: str, reviewer: Literal["qa", "pm"]) -> bool:
     return False
 
 
-def _story_done(text: str) -> bool:
-    status = _status_from_text(text).lower()
-    if status in ("", "draft"):
-        return False
-    if not re.search(r"^\| \*\*Crux\*\* \|.+\|", text, re.MULTILINE):
-        return False
-    body = ""
-    # Prefer Acceptance criteria section
-    from slice_loop_progress import _section_body
+def _act_position(state: GateState, gid: GateId) -> tuple[int, int]:
+    """1-based act index for gid among applicable gates, and total count."""
+    apps = state.applicable_gates
+    total = len(apps) or 1
+    for i, g in enumerate(apps):
+        if g.id == gid:
+            return i + 1, total
+    return min(state.done_count + 1, total), total
 
-    body = _section_body(text, "Acceptance criteria")
-    if not re.search(r"^- \[[ xX]\]", body, re.MULTILINE):
-        return False
-    return True
+
+def _log_stuck_card_path(
+    card: str,
+    *,
+    repo_root: str,
+    slice_file: str,
+    log: LogFn,
+    printed: set[str] | None = None,
+) -> str:
+    """Persist stuck card; print full body once per path, then path-only."""
+    path = persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
+    seen = printed if printed is not None else set()
+    if path not in seen:
+        seen.add(path)
+        log(f"stuck card written: {path}")
+    else:
+        log(f"stuck card updated: {path}")
+    return path
+
+
+def explain_gate_pending(gid: GateId, slice_file: str, repo_root: str) -> str:
+    """Actionable halt line when a gate stays pending after its worker."""
+    text = _read_slice_text(slice_file, repo_root)
+    status = _status_from_text(text)
+    bits: list[str] = [f"Status={status or '(empty)'}"]
+    hints: list[str] = []
+
+    if gid == "story":
+        reasons = story_pending_reasons(text)
+        if reasons:
+            bits.append("predicates: " + "; ".join(reasons))
+        if _story_content_ok(text) and status.lower() in ("", "draft"):
+            hints.append("set Status to Ready (harness auto-flips after PM when content is ok)")
+        elif not _story_content_ok(text):
+            hints.append("fill Crux + Acceptance criteria checkboxes")
+    elif gid in ("architect", "ux"):
+        rows = _role_artifact_rows(text)
+        role_name = "Architect" if gid == "architect" else "UX"
+        r = _role_row(rows, role_name)
+        if r:
+            miss = missing_artifact_paths(repo_root, r["path"])
+            if miss:
+                bits.append(f"missing artifacts: {miss}")
+                hints.append(
+                    f"create {miss[0]}"
+                    if len(miss) == 1
+                    else f"create missing artifacts or mark {role_name} Waived"
+                )
+            elif "waiv" not in (r.get("gate") or "").lower():
+                hints.append(
+                    f"ensure {role_name} artifact path exists or mark Gate Waived"
+                )
+    elif gid == "test_spec":
+        if not _verification_mapping_filled(text):
+            bits.append("verification mapping incomplete")
+        if not _mapped_test_files_exist(text, repo_root):
+            bits.append("mapped test files missing on disk")
+            hints.append("QA must write mapped test files under PodWashTests/UITests")
+    elif gid == "test_review":
+        bits.append("Test spec review not cleared")
+        hints.append("Architect must clear test-spec review (or record cleared outcome)")
+    elif gid == "implement":
+        if not _implement_artifacts_exist(text, repo_root):
+            bits.append("implement artifacts missing")
+            hints.append("Engineer must land app sources listed in Deliverables")
+
+    msg = f"gate {gid} still pending after worker — stopping. ({'; '.join(bits)})"
+    if hints:
+        msg += f" unblock: {'; '.join(hints)}"
+    return msg
 
 
 def assess_gate_state(slice_file: str, repo_root: str) -> GateState:
@@ -707,9 +793,10 @@ def run_verify(
             attempt=0,
             max_attempts=0,
         )
-        path = persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
-        _log(f"stuck card:\n{card}")
-        _log(f"stuck card written: {path}")
+        path = _log_stuck_card_path(
+            card, repo_root=repo_root, slice_file=slice_file, log=_log
+        )
+        del path  # path logged inside helper
     _log(
         f"loop-owned verify done: tier={tier} green={green} "
         f"exit={(result or {}).get('exit')} failed={(result or {}).get('failed')} "
@@ -1236,7 +1323,9 @@ def build_gate_prompt(gate_id: GateId, slice_file: str, repo_root: str) -> str:
     tasks = {
         "story": (
             "Write/refine the slice story: Crux, Goal, Deliverables, numeric ACs, "
-            "out-of-scope, verification commands. Edit only this slice markdown."
+            "out-of-scope, verification commands. Edit only this slice markdown. "
+            "When Crux + Acceptance criteria checkboxes are complete, the harness "
+            "sets Status to Ready — you may leave Status as Draft."
         ),
         "architect": (
             "Author the ADR / design note for this slice. Edit only docs/adr/** "
@@ -1256,7 +1345,10 @@ def build_gate_prompt(gate_id: GateId, slice_file: str, repo_root: str) -> str:
         ),
         "test_spec": (
             "Author the test spec: map every AC to a test method, write failing "
-            "tests/fixtures under PodWashTests/UITests. Do NOT edit app Swift."
+            "tests/fixtures under PodWashTests/UITests. Do NOT edit app Swift. "
+            "Do NOT run scripts/verify.sh or xcodebuild test — the loop owns "
+            "verification after Engineer. Your tests are expected to fail to "
+            "compile until app code exists."
         ),
         "test_review": (
             "Readonly test-spec review vs ADR-000 + slice ADR. Do not edit files. "
@@ -1342,7 +1434,9 @@ def run_worker(
     _log = log or (lambda m: None)
     model = model_for_role(role)
     mode = mode_for_role(role)
-    _log(f"worker start: role={role} model={model} mode={mode}")
+    # Mechanical start/finish lines are verbose-only — chapter beats carry the story.
+    if progress is not None and getattr(progress, "verbose", False):
+        _log(f"worker start: role={role} model={model} mode={mode}")
 
     options = AgentOptions(
         api_key=api_key,
@@ -1352,10 +1446,11 @@ def run_worker(
     )
     with client.create_agent(options) as agent:
         run = agent.send(prompt)
-        _log(
-            f"worker agent_id={getattr(agent, 'agent_id', '?')} "
-            f"run_id={getattr(run, 'id', '?')}"
-        )
+        if progress is not None and getattr(progress, "verbose", False):
+            _log(
+                f"worker agent_id={getattr(agent, 'agent_id', '?')} "
+                f"run_id={getattr(run, 'id', '?')}"
+            )
         if progress is not None:
             # Expose run for verify-ban cancel
             if hasattr(progress, "bind_run"):
@@ -1385,7 +1480,8 @@ def run_worker(
         if progress is not None and getattr(progress, "verify_violation_burned", False):
             _log("WORKER VIOLATION: verify owned by loop (attempt burned)")
             return False, "verify_violation"
-        _log(f"worker finished: role={role} status={status}")
+        if progress is not None and getattr(progress, "verbose", False):
+            _log(f"worker finished: role={role} status={status}")
         if progress is not None and hasattr(progress, "set_assistant_text"):
             # Always prefer the clean stream join when present — never keep a
             # longer corrupted buffer from dual-capture.
@@ -1413,6 +1509,10 @@ def format_verify_result_line(result: dict[str, str]) -> str:
         parts.append(f"filtered={result['filtered']}")
     if "bundle" in result:
         parts.append(f"bundle={result['bundle']}")
+    if "tier" in result:
+        parts.append(f"tier={result['tier']}")
+    if "class" in result:
+        parts.append(f"class={result['class']}")
     return "VERIFY RESULT: " + " ".join(parts)
 
 
@@ -1585,6 +1685,36 @@ def run_git(repo_root: str, args: list[str], log: LogFn | None = None) -> int:
     return proc.returncode
 
 
+def commit_test_spec_changes(
+    slice_id: int,
+    repo_root: str,
+    *,
+    log: LogFn | None = None,
+) -> bool:
+    """Commit only test paths as ``slice-NN: test spec`` (no push).
+
+    Called after test_spec + test_review clear so a later halt never orphans
+    authored tests on disk.
+    """
+    _log = log or (lambda m: None)
+    nn = f"{slice_id:02d}"
+    paths = git_paths_changed(repo_root)
+    tests, _apps, _other = split_paths_for_commits(paths)
+    if not tests:
+        _log("commit test spec: no test paths changed")
+        return True
+    if run_git(repo_root, ["add", "--", *tests], log=_log) != 0:
+        return False
+    if not check_test_isolation(repo_root, staged=True):
+        _log("check-test-isolation.sh --staged FAILED — aborting test-spec commit")
+        run_git(repo_root, ["reset", "HEAD"], log=_log)
+        return False
+    ok = run_git(repo_root, ["commit", "-m", f"slice-{nn}: test spec"], log=_log) == 0
+    if ok:
+        _log(f"committed slice-{nn}: test spec ({len(tests)} path(s))")
+    return ok
+
+
 def commit_slice_changes(
     slice_id: int,
     repo_root: str,
@@ -1637,11 +1767,12 @@ def run_fix_loop(
     api_key: str,
     budget: FixBudget,
     log: LogFn | None = None,
-    progress_factory: Callable[[str], Any] | None = None,
+    progress_factory: Callable[..., Any] | None = None,
     verify_fn: Callable[..., VerifyOutcome] | None = None,
     referee_fn: Callable[..., RefereeVerdict] | None = None,
     event_log: EventLog | None = None,
     names: NameAssigner | None = None,
+    cast: CastLog | None = None,
 ) -> VerifyOutcome:
     """Loop-owned verify + LLM referee + bounded Engineer|QA fix workers.
 
@@ -1652,7 +1783,10 @@ def run_fix_loop(
     """
     _log = log or (lambda m: None)
     _names = names or NameAssigner()
+    _cast = cast if cast is not None else CastLog()
     _events = event_log
+    _stuck_printed: set[str] = set()
+    sid = slice_id_from_path(slice_file) or 0
     _verify = verify_fn or (
         lambda **kw: run_verify(repo_root, log=_log, slice_file=slice_file, **kw)
     )
@@ -1693,6 +1827,7 @@ def run_fix_loop(
         )
         return outcome
 
+    _cast.note_murphy()
     fresh_ips = watchdog.new_crashes()
     if fresh_ips:
         narrate_crash(log=_log)
@@ -1745,8 +1880,13 @@ def run_fix_loop(
                 packet, slice_file=slice_file, attempt=budget.attempts_used,
                 max_attempts=budget.max_attempts,
             )
-            persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
-            _log(card)
+            _log_stuck_card_path(
+                card,
+                repo_root=repo_root,
+                slice_file=slice_file,
+                log=_log,
+                printed=_stuck_printed,
+            )
             narrate_thrash_halt(log=_log)
             raise ThrashHalt(packet.halt_reason or "no actionable evidence")
 
@@ -1849,8 +1989,13 @@ def run_fix_loop(
                     max_attempts=budget.max_attempts,
                     lever=reason,
                 )
-                persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
-                _log(card)
+                _log_stuck_card_path(
+                    card,
+                    repo_root=repo_root,
+                    slice_file=slice_file,
+                    log=_log,
+                    printed=_stuck_printed,
+                )
                 narrate_thrash_halt(log=_log)
                 bundle_dir = write_session_bundle(
                     repo_root=repo_root,
@@ -1961,7 +2106,16 @@ def run_fix_loop(
             owner=agent,
             log=_log,
         )
-        narrate_spawn(agent, role, verdict.instruction, log=_log)
+        narrate_chapter_open(
+            slice_id=sid,
+            gate_label="fix",
+            role=role,
+            name=agent,
+            fix_attempt=attempt,
+            fix_max=budget.max_attempts,
+            log=_log,
+        )
+        _cast.add(role, agent, f"fix-{attempt}")
 
         bundle = (outcome.result or {}).get("bundle") or latest_xcresult_path(repo_root)
         card = format_stuck_card(
@@ -1973,8 +2127,13 @@ def run_fix_loop(
             lever=f"{verdict.instruction} ({role})",
             levers_tried=budget.levers_tried,
         )
-        persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
-        _log(card)
+        _log_stuck_card_path(
+            card,
+            repo_root=repo_root,
+            slice_file=slice_file,
+            log=_log,
+            printed=_stuck_printed,
+        )
 
         ledger_block = format_ledger_for_prompt(ledger)
         prompt = build_fix_prompt(
@@ -2008,7 +2167,7 @@ def run_fix_loop(
                 agent_name=agent, timeline=True,
                 mission=verdict.instruction[:80],
             )
-        progress = progress_factory(role) if progress_factory else None
+        progress = progress_factory(role, agent) if progress_factory else None
         ok, status = run_worker(
             client,
             role=role,
@@ -2023,7 +2182,6 @@ def run_fix_loop(
             summary = parse_summary_line(progress.assistant_text or "") or ""
         if summary:
             narrate_worker_done(agent, summary, log=_log)
-            _log(f"SUMMARY: {summary}")
         note = (
             f"attempt {attempt}: role={role} agent={agent} "
             f"hyp={verdict.hypothesis[:60] or 'n/a'} status={status}"
@@ -2116,6 +2274,7 @@ def run_fix_loop(
             total=(outcome.result or {}).get("total", "?"),
             log=_log,
         )
+        _cast.note_murphy()
         if outcome.packet is None:
             outcome.packet = build_failure_packet(
                 failures=outcome.failures,
@@ -2135,8 +2294,13 @@ def run_fix_loop(
         max_attempts=budget.max_attempts,
         levers_tried=budget.levers_tried,
     )
-    persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
-    _log(card)
+    _log_stuck_card_path(
+        card,
+        repo_root=repo_root,
+        slice_file=slice_file,
+        log=_log,
+        printed=_stuck_printed,
+    )
     narrate_thrash_halt(log=_log)
     reason = (
         f"fix budget exhausted ({budget.max_attempts} attempts); "
@@ -2286,9 +2450,13 @@ def run_tier2_implement_gate(
         if run_i >= max_runs or client is None:
             break
         # Fresh Engineer with FailurePacket + stuck card + IPS (not failures-only)
-        narrate_spawn(
-            agent, "Engineer",
-            f"tier-2 still red — fix slice tests then SUMMARY",
+        narrate_chapter_open(
+            slice_id=slice_id or 0,
+            gate_label="tier-2",
+            role="Engineer",
+            name=agent,
+            fix_attempt=run_i,
+            fix_max=max_runs,
             log=_log,
         )
         prompt = build_tier2_continue_prompt(
@@ -2313,7 +2481,7 @@ def run_tier2_implement_gate(
                 timeline=True,
                 mission=f"tier-2 continue after run {run_i}",
             )
-        progress = progress_factory("Engineer") if progress_factory else None
+        progress = progress_factory("Engineer", agent) if progress_factory else None
         ok, status = run_worker(
             client,
             role="Engineer",
@@ -2397,6 +2565,7 @@ def run_pipeline_slice(
     t0 = time.time()
     last_verify: dict[str, str] | None = None
     names = NameAssigner()
+    cast = CastLog()
     events = EventLog(repo_root, slice_id, log=_log)
 
     if preboot_sim:
@@ -2409,6 +2578,17 @@ def run_pipeline_slice(
                 detail={"udid": udid}, timeline=True, mission="pre-boot simulator",
             )
 
+    def _emit_recap(outcome: str, elapsed: int) -> None:
+        line = narrate_slice_recap(
+            slice_id=slice_id,
+            elapsed_secs=elapsed,
+            cast=cast,
+            outcome=outcome,
+            log=_log,
+        )
+        path = persist_story_recap(line, repo_root=repo_root, slice_id=slice_id)
+        _log(f"story recap written: {path}")
+
     with CursorClient.launch_bridge(workspace=repo_root) as bridge_client:
         client = bridge_client.with_options(
             stream_timeout=stream_to,
@@ -2418,7 +2598,6 @@ def run_pipeline_slice(
         # Authoring gates until implement artifacts exist (tier-2 is separate)
         while True:
             state = assess_gate_state(slice_file, repo_root)
-            _log(state.summary)
             gid = next_gate(state)
             if gid is None:
                 break
@@ -2436,7 +2615,18 @@ def run_pipeline_slice(
                 for rg in ready or [gid]:
                     role = GATE_ROLE[rg]
                     agent = names.assign(role, slot=rg)
-                    narrate_spawn(agent, role, f"gate {rg}", log=_log)
+                    act, total = _act_position(state, rg)
+                    label = GATE_LABELS.get(rg, rg)
+                    narrate_chapter_open(
+                        slice_id=slice_id,
+                        gate_label=label,
+                        role=role,
+                        name=agent,
+                        act=act,
+                        total=total,
+                        log=_log,
+                    )
+                    cast.add(role, agent, rg)
                     prompt = build_gate_prompt(rg, slice_file, repo_root)
                     prog = None
                     if progress_cls:
@@ -2445,11 +2635,16 @@ def run_pipeline_slice(
                             verbose=verbose, heartbeat_secs=heartbeat_secs,
                             repo_root=repo_root,
                             forced_role=role,
+                            agent_name=agent,
+                            authoring_gate=rg in AUTHORING_GATES,
+                            gate_id=rg,
+                            event_log=events,
                         )
                     events.record(
                         "IMPLEMENT", role, "spawn",
                         agent_name=agent, timeline=True, mission=f"gate {rg}",
                     )
+                    t_gate = time.time()
                     ok, _ = run_worker(
                         client, role=role, prompt=prompt, api_key=api_key,
                         repo_root=repo_root, log=_log, progress=prog,
@@ -2462,6 +2657,15 @@ def run_pipeline_slice(
                             kind=kind,
                             outcome=f"{who} cleared — pipeline worker finished",
                         )
+                        narrate_gate_cleared(
+                            agent, label,
+                            elapsed_secs=time.time() - t_gate,
+                            log=_log,
+                        )
+                        if prog is not None and hasattr(prog, "log_gate_progress"):
+                            prog.log_gate_progress(force=True)
+                        else:
+                            _log(assess_gate_state(slice_file, repo_root).summary)
                 continue
 
             role = GATE_ROLE.get(gid)
@@ -2469,7 +2673,18 @@ def run_pipeline_slice(
                 _log(f"no worker for gate {gid} — stopping")
                 break
             agent = names.assign(role, slot=gid)
-            narrate_spawn(agent, role, f"gate {gid}", log=_log)
+            act, total = _act_position(state, gid)
+            label = GATE_LABELS.get(gid, gid)
+            narrate_chapter_open(
+                slice_id=slice_id,
+                gate_label=label,
+                role=role,
+                name=agent,
+                act=act,
+                total=total,
+                log=_log,
+            )
+            cast.add(role, agent, gid)
             prompt = build_gate_prompt(gid, slice_file, repo_root)
             prog = None
             if progress_cls:
@@ -2478,66 +2693,107 @@ def run_pipeline_slice(
                     verbose=verbose, heartbeat_secs=heartbeat_secs,
                     repo_root=repo_root,
                     forced_role=role,
+                    agent_name=agent,
+                    authoring_gate=gid in AUTHORING_GATES,
+                    gate_id=gid,
+                    event_log=events,
                 )
             events.record(
                 "IMPLEMENT" if gid == "implement" else gid.upper(),
                 role, "spawn",
                 agent_name=agent, timeline=True, mission=f"gate {gid}",
             )
+            t_gate = time.time()
             ok, status = run_worker(
                 client, role=role, prompt=prompt, api_key=api_key,
                 repo_root=repo_root, log=_log, progress=prog,
             )
+            gate_secs = time.time() - t_gate
             if prog is not None and hasattr(prog, "assistant_text"):
                 summary = parse_summary_line(prog.assistant_text or "")
                 if summary:
                     narrate_worker_done(agent, summary, log=_log)
-                    _log(f"SUMMARY: {summary}")
             if gid == "test_review" and ok:
                 append_plan_review_outcome(
                     slice_file, repo_root,
                     kind="Test spec review",
                     outcome="Architect cleared — pipeline worker finished",
                 )
+                # Durability: commit authored tests so a later halt never orphans them.
+                if not commit_test_spec_changes(slice_id, repo_root, log=_log):
+                    _log("test-spec commit failed (continuing — artifacts remain on disk)")
+            # Deterministic Ready flip: PM owns content; harness owns Status.
+            if gid == "story" and ok:
+                text = _read_slice_text(slice_file, repo_root)
+                if _story_content_ok(text):
+                    st = _status_from_text(text).lower()
+                    if st in ("", "draft"):
+                        set_slice_status(slice_file, repo_root, "Ready")
+                        _log("story content ok — set Status Ready")
             if not ok:
-                _log(f"gate {gid} worker failed (status={status})")
+                explain = explain_gate_pending(gid, slice_file, repo_root)
+                narrate_gate_stuck(label, explain, log=_log)
                 elapsed = int(time.time() - t0)
+                _emit_recap("halt", elapsed)
                 return False, elapsed, last_verify
 
             after = assess_gate_state(slice_file, repo_root)
             if after.gate(gid).applicable and not after.gate(gid).satisfied:
                 if gid in ("adr_review_qa", "adr_review_pm", "test_review"):
-                    pass
+                    # Review outcomes written above; treat as cleared for story.
+                    narrate_gate_cleared(
+                        agent, label, elapsed_secs=gate_secs, log=_log,
+                    )
+                    if prog is not None and hasattr(prog, "log_gate_progress"):
+                        prog.log_gate_progress(force=True)
                 elif gid == "implement":
                     # Artifacts may exist now — tier-2 gate handles the rest
                     text = _read_slice_text(slice_file, repo_root)
                     if _implement_artifacts_exist(text, repo_root):
+                        narrate_gate_cleared(
+                            agent, label, elapsed_secs=gate_secs, log=_log,
+                        )
                         break
-                    _log(f"gate {gid} still pending after worker — stopping")
+                    explain = explain_gate_pending(gid, slice_file, repo_root)
+                    narrate_gate_stuck(label, explain, log=_log)
                     elapsed = int(time.time() - t0)
+                    _emit_recap("halt", elapsed)
                     return False, elapsed, last_verify
                 else:
-                    hint = ""
-                    if gid in ("architect", "ux"):
-                        rows = _role_artifact_rows(_read_slice_text(slice_file, repo_root))
-                        role_name = "Architect" if gid == "architect" else "UX"
-                        r = _role_row(rows, role_name)
-                        if r:
-                            miss = missing_artifact_paths(repo_root, r["path"])
-                            if miss:
-                                hint = f" missing artifacts: {miss}"
-                    _log(f"gate {gid} still pending after worker — stopping.{hint}")
+                    explain = explain_gate_pending(gid, slice_file, repo_root)
+                    narrate_gate_stuck(label, explain, log=_log)
                     elapsed = int(time.time() - t0)
+                    _emit_recap("halt", elapsed)
                     return False, elapsed, last_verify
+            else:
+                nxt = next_gate(after)
+                next_label = GATE_LABELS.get(nxt, nxt) if nxt else None
+                next_name = None
+                if nxt and nxt in GATE_ROLE:
+                    next_name = names.assign(GATE_ROLE[nxt], slot=nxt)
+                narrate_gate_cleared(
+                    agent,
+                    label,
+                    next_label=next_label,
+                    next_name=next_name,
+                    elapsed_secs=gate_secs,
+                    log=_log,
+                )
+                if prog is not None and hasattr(prog, "log_gate_progress"):
+                    prog.log_gate_progress(force=True)
+                else:
+                    _log(after.summary)
 
-        def progress_factory(role: str) -> Any:
+        def progress_factory(role: str, agent_name: str | None = None) -> Any:
             if not progress_cls:
                 return None
+            label = agent_name or names.assign(role, slot=f"progress-{role}")
             return progress_cls(
                 slice_id, title, slice_file, _log,
                 verbose=verbose, heartbeat_secs=heartbeat_secs,
                 repo_root=repo_root,
                 forced_role=role,
+                agent_name=label,
                 fix_worker=role in ("Engineer", "QA"),
             )
 
@@ -2560,6 +2816,8 @@ def run_pipeline_slice(
                 )
             except ThrashHalt as thrash:
                 _log(f"TIER2 HALT: {thrash.reason}")
+                elapsed = int(time.time() - t0)
+                _emit_recap("halt", elapsed)
                 raise
 
         try:
@@ -2573,17 +2831,23 @@ def run_pipeline_slice(
                 progress_factory=progress_factory,
                 event_log=events,
                 names=names,
+                cast=cast,
             )
         except InfraHalt as infra:
             _log(f"INFRA HALT: {infra.reason}")
+            elapsed = int(time.time() - t0)
+            _emit_recap("halt", elapsed)
             raise
         except ThrashHalt as thrash:
             _log(f"THRASH HALT: {thrash.reason}")
+            elapsed = int(time.time() - t0)
+            _emit_recap("halt", elapsed)
             raise
 
         last_verify = outcome.result
         if not outcome.green or not outcome.result:
             elapsed = int(time.time() - t0)
+            _emit_recap("red", elapsed)
             return False, elapsed, last_verify
 
         events.record("RECORD", "loop", "record_start", timeline=True, mission="VERIFY RESULT")
@@ -2597,9 +2861,11 @@ def run_pipeline_slice(
             ):
                 _log("commit/push failed")
                 elapsed = int(time.time() - t0)
+                _emit_recap("halt", elapsed)
                 return False, elapsed, last_verify
 
     elapsed = int(time.time() - t0)
+    _emit_recap("green", elapsed)
     return True, elapsed, last_verify
 
 

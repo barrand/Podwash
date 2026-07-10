@@ -12,8 +12,37 @@ VERIFY_RESULT_RE = re.compile(
     r"failed=([^\s]+)\s+skipped=([^\s]+)"
     r"(?:\s+filtered=([^\s]+))?"
     r"(?:\s+bundle=([^\s]+))?"
-    r"(?:\s+tier=([^\s]+))?",
+    r"(?:\s+tier=([^\s]+))?"
+    r"(?:\s+class=([^\s]+))?",
     re.IGNORECASE,
+)
+
+# Compile/build failure hints (aligned with failure_packet._BUILD_HINT_RE).
+_BUILD_HINT_RE = re.compile(
+    r"(error:|fatal error|compile|linker|undefined symbol|no such module|"
+    r"verify\.sh.*lock|another verify|xcodebuild.*failed|"
+    r"BUILD FAILED|Could not resolve|SwiftCompile|"
+    r"missing its bundle executable|unable to install|"
+    r"failed to install or launch|podwash encountered an error|"
+    r"Testing cancelled because the build failed|cannot find)",
+    re.IGNORECASE,
+)
+_COMPILE_ERROR_RE = re.compile(
+    r"(?:^|\n)(?:[^\n]*?:\d+:\d+:\s*)?error:\s*(.+)",
+    re.IGNORECASE,
+)
+
+# Pre-implement pipeline gates — TDD compile-red is expected.
+AUTHORING_GATE_IDS = frozenset(
+    {
+        "story",
+        "architect",
+        "ux",
+        "adr_review_qa",
+        "adr_review_pm",
+        "test_spec",
+        "test_review",
+    }
 )
 
 SLICE_HEADING_RE = re.compile(
@@ -290,7 +319,57 @@ def parse_verify_result(text: str) -> dict[str, str] | None:
         out["bundle"] = m.group(7)
     if m.lastindex and m.lastindex >= 8 and m.group(8) is not None:
         out["tier"] = m.group(8)
+    if m.lastindex and m.lastindex >= 9 and m.group(9) is not None:
+        out["class"] = m.group(9)
     return out
+
+
+def extract_build_error(text: str) -> str | None:
+    """Return ``build_error: <detail>`` when output looks like a compile/build fail."""
+    if not text:
+        return None
+    for m in _COMPILE_ERROR_RE.finditer(text):
+        detail = (m.group(1) or "").strip()
+        # Skip XCTest assertion noise that also uses "error:"
+        if not detail or detail.lower().startswith("xctassert"):
+            continue
+        if len(detail) > 100:
+            detail = detail[:97] + "…"
+        return f"build_error: {detail}"
+    if (
+        "** BUILD FAILED **" in text
+        or "Testing cancelled because the build failed" in text
+        or _BUILD_HINT_RE.search(text)
+    ):
+        # Only claim build when there is a strong build signal (not mere "error:")
+        if (
+            "** BUILD FAILED **" in text
+            or "Testing cancelled because the build failed" in text
+            or "SwiftCompile" in text
+            or "cannot find" in text.lower()
+        ):
+            return "build_error: BUILD FAILED"
+    return None
+
+
+def looks_like_build_failure(
+    text: str, verify: dict[str, str] | None = None
+) -> bool:
+    """True when verify/xcodebuild failed with no tests executed (compile-red)."""
+    if verify and verify.get("class") == "build":
+        return True
+    if verify:
+        try:
+            exit_code = int(verify.get("exit") or "0")
+            total = verify.get("total") or "?"
+            failed = verify.get("failed") or "?"
+            total_n = int(total) if str(total).isdigit() else -1
+            failed_n = int(failed) if str(failed).isdigit() else -1
+            if exit_code != 0 and total_n == 0 and failed_n == 0:
+                return True
+        except ValueError:
+            pass
+    return extract_build_error(text) is not None
 
 
 def verify_is_green(v: dict[str, str] | None) -> bool:
@@ -377,8 +456,20 @@ def detect_test_failures(text: str, *, limit: int = 8) -> list[str]:
         if failed > 0:
             add(f"summary — {failed} failure(s) in run")
 
-    if len(found) < limit and "** TEST FAILED **" in text:
-        add("xcodebuild — TEST FAILED")
+    if len(found) < limit:
+        build = extract_build_error(text)
+        if build:
+            add(build)
+            return found[:limit]
+
+    if len(found) < limit and (
+        "** TEST FAILED **" in text or ("TEST FAILED" in text and "TEST SUCCEEDED" not in text)
+    ):
+        # Opaque TEST FAILED with 0 executed tests → prefer build classification
+        if "Executed 0 tests" in text or "Testing cancelled because the build failed" in text:
+            add("build_error: BUILD FAILED")
+        else:
+            add("xcodebuild — TEST FAILED")
 
     return found[:limit]
 
@@ -731,6 +822,45 @@ def _plan_review_line(text: str, prefix: str) -> str:
     return ""
 
 
+def _story_content_ok(text: str) -> bool:
+    """True when Crux is non-empty and Acceptance criteria has checklist items.
+
+    Does **not** require Status Ready+ — that is the harness/coordinator flip.
+    """
+    if not re.search(r"^\| \*\*Crux\*\* \|.+\|", text, re.MULTILINE):
+        return False
+    # Reject empty Crux cells like "| **Crux** | |" / "| **Crux** |  |"
+    m = re.search(r"^\| \*\*Crux\*\* \|([^|]*)\|", text, re.MULTILINE)
+    if not m or not m.group(1).strip():
+        return False
+    body = _section_body(text, "Acceptance criteria")
+    return bool(re.search(r"^- \[[ xX]\]", body, re.MULTILINE))
+
+
+def _story_done(text: str) -> bool:
+    """Story gate satisfied: content ok and Status is Ready or later (not Draft)."""
+    status = _status_from_text(text).lower()
+    if status in ("", "draft"):
+        return False
+    return _story_content_ok(text)
+
+
+def story_pending_reasons(text: str) -> list[str]:
+    """Human-readable predicates that keep the story gate pending."""
+    reasons: list[str] = []
+    status = _status_from_text(text)
+    status_l = status.lower()
+    if status_l in ("", "draft"):
+        reasons.append(f"Status is {status or '(empty)'} (need Ready+)")
+    m = re.search(r"^\| \*\*Crux\*\* \|([^|]*)\|", text, re.MULTILINE)
+    if not m or not m.group(1).strip():
+        reasons.append("missing or empty Crux")
+    body = _section_body(text, "Acceptance criteria")
+    if not re.search(r"^- \[[ xX]\]", body, re.MULTILINE):
+        reasons.append("no Acceptance criteria checkboxes")
+    return reasons
+
+
 def _review_cleared(value: str) -> bool:
     v = (value or "").strip().lower()
     if not v or v in ("(pending)", "pending"):
@@ -917,9 +1047,9 @@ def assess_slice_gates(slice_file: str, repo_root: str) -> dict[str, Any]:
     tsr_line = _plan_review_line(text, "Test spec review")
     test_review_done = _review_cleared(tsr_line)
 
-    story_done = status_l in ("ready", "in progress", "verify", "done") or bool(
-        re.search(r"^\| \*\*Crux\*\* \|.+\|", text, re.MULTILINE)
-    )
+    # Same predicate as assess_gate_state / _story_done — never show next:ux
+    # while Status is still Draft.
+    story_done = _story_done(text)
     implement_done = _implement_artifacts_exist(text, repo_root) or status_l in (
         "verify",
         "done",
@@ -1106,7 +1236,7 @@ def slice_done_banner(
         lines.append(_banner_line(f"session: {session[0]}/{session[1]} slices this run"))
     if green:
         lines.append(_banner_line(""))
-        lines.append(_banner_line(f"{emoji}  Dark factory gate cleared — safe to advance queue."))
+        lines.append(_banner_line(f"{emoji}  Forge gate cleared — safe to advance queue."))
     lines.append("╚" + "═" * 58 + "╝")
     if green:
         lines.append(slice_done_ascii_art())
@@ -1128,7 +1258,11 @@ class RunProgress:
         repo_root: str | None = None,
         max_red_verifies: int = DEFAULT_MAX_RED_VERIFIES,
         forced_role: str | None = None,
+        agent_name: str | None = None,
         fix_worker: bool = False,
+        authoring_gate: bool = False,
+        gate_id: str | None = None,
+        event_log: Any | None = None,
     ):
         self.slice_id = slice_id
         self.slice_title = slice_title
@@ -1143,7 +1277,11 @@ class RunProgress:
         else:
             self.max_red_verifies = max(1, int(max_red_verifies))
         self.forced_role = (forced_role or "").strip() or None
+        self.agent_name = (agent_name or "").strip() or None
         self.fix_worker = bool(fix_worker)
+        self.authoring_gate = bool(authoring_gate)
+        self.gate_id = (gate_id or "").strip() or None
+        self._event_log = event_log
         self.last_activity = 0.0
         self.last_label = "coordinator starting"
         self._seen_starts: set[str] = set()
@@ -1171,11 +1309,12 @@ class RunProgress:
         self._halt_reason: str | None = None
         self._wrong_role_warned: set[str] = set()
         self.halted = False
-        # Verify-ban (fix workers)
+        # Verify-ban (fix workers + authoring gates)
         self._bound_run: Any = None
         self._verify_violations = 0
         self.verify_violation_burned = False
         self._reprompt_pending = False
+        self._authoring_red_logged = False
         self.assistant_text = ""
         self._files_touched: list[str] = []
 
@@ -1252,7 +1391,15 @@ class RunProgress:
         return f"{primary} (+{len(others)} parallel)"
 
     def prefix(self) -> str:
-        return f"[{self.slice_tag()}][{self.active_role()}]"
+        role = self.active_role()
+        if self.agent_name:
+            from factory_narrator import format_agent_label
+
+            base = self.forced_role or role.split(" (+")[0]
+            label = format_agent_label(base, self.agent_name)
+        else:
+            label = role
+        return f"[{self.slice_tag()}][{label}]"
 
     def _primary_active_task(self) -> dict[str, Any] | None:
         if not self._active_tasks:
@@ -1314,6 +1461,14 @@ class RunProgress:
             fail_bit = f" · ❌ {self._known_failing_test}{streak}"
         if quiet < 30:
             return f"last: {self.last_label}{fail_bit}"
+        if self.agent_name and self.forced_role:
+            from factory_narrator import FACTORY_NAME, format_agent_label
+
+            who = format_agent_label(self.forced_role, self.agent_name)
+            return (
+                f"{FACTORY_NAME} · {self.slice_tag()} · {who} · "
+                f"{format_elapsed(quiet)}{fail_bit}"
+            )
         return (
             f"coordinator quiet {format_elapsed(quiet)} · "
             f"last: {self.last_label}{fail_bit}"
@@ -1324,7 +1479,7 @@ class RunProgress:
 
         self.last_activity = time.time()
         self._run_started_at = self.last_activity
-        self.log_gate_progress(force=True, detail=True)
+        # Gate bar is a story checkpoint after clear — not on every worker start.
         if self.heartbeat_secs > 0:
             self._stop = threading.Event()
             self._thread = threading.Thread(target=self._heartbeat, daemon=True)
@@ -1333,7 +1488,7 @@ class RunProgress:
     def stop(self):
         if self._stop:
             self._stop.set()
-        self.log_gate_progress(force=True)
+        # Gate bar printed by pipeline after clear — not on every stop.
 
     def _heartbeat(self):
         import time
@@ -1345,20 +1500,12 @@ class RunProgress:
                 self.log_gate_progress()
             role_label = self.active_roles_label()
             work = self.format_work_status()
-            gates = self._last_gate_summary or ""
-            gate_bit = f" · {gates}" if gates else ""
-            has_workers = bool(self._active_tasks or self._active_shell or sniff_background_build())
-            if has_workers:
-                self.log(
-                    f"⏳ [{self.slice_tag()}][{role_label}] {work}{gate_bit}"
-                )
-            else:
-                quiet = int(time.time() - self.last_activity)
-                self.log(
-                    f"still running ({quiet}s quiet) — "
-                    f"[{self.slice_tag()}][{role_label}] {work}{gate_bit}"
-                )
+            # Don't re-print the gates bar every heartbeat — chapter/clear owns that.
+            self.log(f"⏳ [{self.slice_tag()}][{role_label}] {work}")
             now = time.time()
+            has_workers = bool(
+                self._active_tasks or self._active_shell or sniff_background_build()
+            )
             # Warn when a single subagent has been quiet a very long time.
             primary = self._primary_active_task()
             if primary:
@@ -1376,7 +1523,7 @@ class RunProgress:
                 if quiet >= 600 and (now - self._last_long_idle_warn) >= 600:
                     self._last_long_idle_warn = now
                     self.log(
-                        f"⏳ [{self.slice_tag()}] coordinator quiet {format_elapsed(quiet)} — "
+                        f"⏳ [{self.slice_tag()}] Forge quiet {format_elapsed(quiet)} — "
                         f"no subagent Task open. Last: {self.last_label}"
                     )
 
@@ -1446,6 +1593,15 @@ class RunProgress:
         # Fix workers: loop owns thrash budget — never nest halt here.
         if self.fix_worker or self.max_red_verifies <= 0:
             return
+        # Authoring gates: TDD compile-red is expected — never count or halt.
+        if self.authoring_gate:
+            if not self._authoring_red_logged:
+                self._authoring_red_logged = True
+                self.log(
+                    f"ℹ {self.prefix()} authoring-phase red verify ignored "
+                    "(TDD compile-red expected until Engineer implements)"
+                )
+            return
 
         if verify and verify_is_green(verify):
             self._clear_failure_streak()
@@ -1479,31 +1635,31 @@ class RunProgress:
             )
             return
 
+        pre_implement = bool(
+            self.authoring_gate
+            or (self.gate_id and self.gate_id in AUTHORING_GATE_IDS)
+        )
+        if pre_implement:
+            next_hint = (
+                "Next: complete test-spec review, then Engineer implement "
+                "(do not blind-reverify TDD compile-red)."
+            )
+        else:
+            next_hint = (
+                "Next: kill any leftover xcodebuild, inspect the failing test, spawn "
+                "podwash-engineer (app Swift) or podwash-qa (test edits) in a fresh "
+                "session, then re-run scripts/slice-loop.sh."
+            )
         self._halt_for_thrash(
             "HALT: red verify limit reached "
             f"({self._red_verify_count}/{self.max_red_verifies}). "
             f"Stuck on: {sig}. "
             "What happened: the same (or successive) verify/xcodebuild runs stayed "
             "RED without reaching Done. The loop stops so agents cannot grind "
-            "filtered UI tests for hours. "
-            "Next: kill any leftover xcodebuild, inspect the failing test, spawn "
-            "podwash-engineer (app Swift) or podwash-qa (test edits) in a fresh "
-            "session, then re-run scripts/slice-loop.sh."
+            f"filtered UI tests for hours. {next_hint}"
         )
 
-    def _handle_verify_ban(self, cmd: str) -> bool:
-        """If fix worker runs verify, cancel + re-prompt once; burn on 2nd.
-
-        Returns True if the shell event was handled as a violation.
-        """
-        if not self.fix_worker or not is_verify_run(cmd):
-            return False
-        self._verify_violations += 1
-        self.log(
-            f"⚠ {self.prefix()} WORKER VIOLATION: verify owned by loop — "
-            f"do not run verify.sh / xcodebuild test (violation "
-            f"{self._verify_violations})"
-        )
+    def _cancel_bound_run(self) -> None:
         run = self._bound_run
         if run is not None and hasattr(run, "supports") and run.supports("cancel"):
             try:
@@ -1516,14 +1672,44 @@ class RunProgress:
             except Exception as exc:  # noqa: BLE001
                 self.log(f"   {self.prefix()} cancel failed: {exc}")
 
+    def _handle_verify_ban(self, cmd: str) -> bool:
+        """Cancel verify during fix workers / authoring gates.
+
+        Fix workers: first violation re-prompts; second burns the attempt.
+        Authoring gates: cancel and continue — never burn budget (TDD red expected).
+
+        Returns True if the shell event was handled as a violation.
+        """
+        if not is_verify_run(cmd):
+            return False
+        if not (self.fix_worker or self.authoring_gate):
+            return False
+
+        self._verify_violations += 1
+
+        if self.authoring_gate:
+            self.log(
+                f"⚠ {self.prefix()} AUTHORING VERIFY BAN: TDD red is expected — "
+                f"do not verify during test-spec; end your turn when tests are "
+                f"written (violation {self._verify_violations})"
+            )
+            self._cancel_bound_run()
+            # Never burn authoring budget — cancel and let the worker finish.
+            return True
+
+        self.log(
+            f"⚠ {self.prefix()} WORKER VIOLATION: verify owned by loop — "
+            f"do not run verify.sh / xcodebuild test (violation "
+            f"{self._verify_violations})"
+        )
+        self._cancel_bound_run()
+
         if self._verify_violations == 1:
             self._reprompt_pending = True
             self.log(
                 f"   {self.prefix()} re-prompt: continue the fix without verifying; "
                 f"loop will verify after you end your turn"
             )
-            # First violation does not burn the attempt by itself; caller may
-            # continue. If the run was cancelled, run_worker will see non-finished.
             return True
 
         self.verify_violation_burned = True
@@ -1531,12 +1717,60 @@ class RunProgress:
             f"   {self.prefix()} second verify violation — attempt burned"
         )
         return True
+
     def _halt_for_thrash(self, reason: str) -> None:
-        """Log a clear halt explanation and raise ThrashHalt for the driver."""
+        """Log a clear halt explanation, leave artifacts, raise ThrashHalt."""
         if self.halted:
             raise ThrashHalt(self._halt_reason or reason)
         self.halted = True
         self._halt_reason = reason
+        sig = self._known_failing_test or self._last_failure_sig or ""
+        gate = self.gate_id or ("authoring" if self.authoring_gate else "post-implement")
+
+        card = (
+            f"THRASH HALT — Slice {self.slice_id:02d}\n"
+            f"Gate: {gate}\n"
+            f"Signature: {sig or '(unknown)'}\n"
+            f"{reason}\n"
+        )
+        try:
+            from failure_packet import persist_stuck_card
+            from session_bundle import write_session_bundle
+
+            persist_stuck_card(
+                card, repo_root=self.repo_root, slice_file=self.slice_file
+            )
+            bundle_dir = write_session_bundle(
+                repo_root=self.repo_root,
+                slice_id=self.slice_id,
+                reason=reason,
+                stuck_card=card,
+                verify_result=self._last_verify,
+                failures=[sig] if sig else [],
+                phase="HALT",
+                extra={"gate": gate, "signature": sig},
+            )
+            self.log(f"   {self.prefix()} session bundle: {bundle_dir}")
+        except Exception as exc:  # noqa: BLE001 — halt must still raise
+            self.log(f"   {self.prefix()} halt artifact write failed: {exc}")
+
+        if self._event_log is not None:
+            try:
+                self._event_log.record(
+                    "HALT",
+                    self.active_role(),
+                    "thrash_halt",
+                    detail={
+                        "reason": reason,
+                        "gate": gate,
+                        "signature": sig,
+                    },
+                    timeline=True,
+                    mission="thrash halt",
+                )
+            except Exception as exc:  # noqa: BLE001
+                self.log(f"   {self.prefix()} HALT event log failed: {exc}")
+
         self.log(f"🛑 [{self.slice_tag()}] {reason}")
         self.log(
             f"🛑 [{self.slice_tag()}] loop stopping — disk work is preserved; "
@@ -1554,6 +1788,7 @@ class RunProgress:
             or "xcresulttool" in cmd
             or "** TEST FAILED **" in blob
             or "TEST FAILED" in blob
+            or "** BUILD FAILED **" in blob
         )
         if not redish:
             return []
@@ -1676,7 +1911,11 @@ class RunProgress:
             self._seen_starts.add(call_id)
             self._warn_delegate_violation(norm, args)
             cmd_early = arg_shell_command(args if isinstance(args, dict) else {})
-            if norm == "shell" and self.fix_worker and is_verify_run(cmd_early):
+            if (
+                norm == "shell"
+                and (self.fix_worker or self.authoring_gate)
+                and is_verify_run(cmd_early)
+            ):
                 self._handle_verify_ban(cmd_early)
                 self.log(f"→ {self.prefix()} blocked verify: {label}")
                 self.note(f"blocked verify: {label}")
@@ -1695,7 +1934,11 @@ class RunProgress:
             self.log(f"{mark} {self.prefix()} {label}")
             self.note(f"{mark} {label}")
             cmd = arg_shell_command(args if isinstance(args, dict) else {})
-            if norm == "shell" and self.fix_worker and is_verify_run(cmd):
+            if (
+                norm == "shell"
+                and (self.fix_worker or self.authoring_gate)
+                and is_verify_run(cmd)
+            ):
                 self._handle_verify_ban(cmd)
                 return
             blob = _result_blob(result)
@@ -1710,6 +1953,17 @@ class RunProgress:
                     self._announce_crashes(crashes, source="verify/xcodebuild")
                 failures = self._collect_test_failures(blob, cmd)
                 v = parse_verify_result(blob) if "verify.sh" in cmd else None
+                if looks_like_build_failure(blob, v):
+                    if not any(f.startswith("build_error:") for f in failures):
+                        be = extract_build_error(blob) or (
+                            f"build_error: exit={v.get('exit') if v else '?'} "
+                            "(0 tests executed)"
+                        )
+                        failures = [be] + list(failures)
+                    self.log(
+                        f"   {self.prefix()} likely compile/build failure "
+                        "(0 tests executed)"
+                    )
                 if failures:
                     # Inspection (xcresulttool) may refine the failure name without
                     # counting as another red verify attempt.
