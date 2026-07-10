@@ -91,10 +91,17 @@ parallel groups:
 
 Post-MVP track (planned, not unowned):
 18 Segmentation spike (needs 07)  →  19 Segmentation integration (needs 08, 09, 13, 18)
+20 Analysis timeline (needs 07, 09, 13) — Skipper-style segment colors; parallel with 14–16 once deps met
+
+Native polish (chrome / brand — parallel once player + list exist):
+21 Visual identity & branding (needs 03, 06) — display name, App Icon, color tokens;
+   parallel with 14, 15, 16, 20 once 03 + 06 Done; serialize if same SwiftUI chrome files
 ```
 
 **Parallel groups:** A = slices 02/03/05/06 after 01; B = 10/11/12 after 08; C = 15/16/17
-after 14 (17 waits for the monetization decision). Everything else is sequential per the arrows.
+after 14 (17 waits for the monetization decision). Slices **20** and **21** parallelize with
+group C and each other once their `Depends on` slices are Done (serialize on shared view files).
+Everything else is sequential per the arrows.
 
 ## Agent roles and quality gates
 

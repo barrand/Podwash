@@ -2,7 +2,7 @@
 //  RootView.swift
 //  PodWash
 //
-//  Slice 03/06/09 — Routes fixture-mode UI tests to player or episode-list shells.
+//  Slice 03/06/09/13 — Routes fixture-mode UI tests to player, feed, or settings shells.
 //
 
 import SwiftUI
@@ -15,6 +15,7 @@ struct RootView: View {
     @State private var fixtureAnalysisViewModel: AnalysisUIViewModel?
     @State private var fixtureDownloadManager: DownloadManager?
     @State private var queueStore: QueueStore?
+    @State private var fixtureSettingsStore: SettingsStore?
 
     init(persistence: PersistenceController) {
         self.persistence = persistence
@@ -22,7 +23,16 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if FixtureAudio.isEnabled {
+            if FixtureSettings.isEnabled {
+                if let fixtureSettingsStore {
+                    NavigationStack {
+                        SettingsView(store: fixtureSettingsStore)
+                    }
+                } else {
+                    ProgressView()
+                        .accessibilityIdentifier("settings.loading")
+                }
+            } else if FixtureAudio.isEnabled {
                 if let fixtureEngine {
                     PlaybackControlsView(engine: fixtureEngine)
                 } else {
@@ -46,9 +56,16 @@ struct RootView: View {
             }
         }
         .task {
+            loadFixtureSettingsIfNeeded()
             await loadFixtureAudioIfNeeded()
             await loadFixtureFeedIfNeeded()
         }
+    }
+
+    private func loadFixtureSettingsIfNeeded() {
+        guard FixtureSettings.isEnabled, fixtureSettingsStore == nil else { return }
+        FixtureSettings.prepareFreshDefaults()
+        fixtureSettingsStore = SettingsStore()
     }
 
     private func loadFixtureAudioIfNeeded() async {

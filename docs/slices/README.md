@@ -50,6 +50,7 @@ The dependency graph and parallel groups live in [`multitask-workflow.md`](../mu
 | 18 | `slice-18-segmentation-spike.md` | Differentiator 2 (post-MVP track) |
 | 19 | `slice-19-segmentation-integration.md` | Differentiator 2 (post-MVP track) |
 | 20 | `slice-20-analysis-timeline.md` | Pipeline UI (Skipper-style timeline; post–Slice 13) |
+| 21 | `slice-21-visual-identity.md` | Native polish (brand tokens, icon, display name; needs 03 + 06) |
 
 ## What goes in each slice file
 

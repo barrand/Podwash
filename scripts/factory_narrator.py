@@ -18,12 +18,12 @@ LogFn = Callable[[str], None]
 
 FACTORY_NAME = "Forge"
 
-# Session taglines — one picked when the banner prints.
+# Session taglines — one picked when the Forge ASCII banner prints (verbose).
 SESSION_TAGLINES: tuple[str, ...] = (
-    "Murphy on the floor. Green or halt.",
-    "Named crew on shift. Murphy freelances.",
+    "Green or halt.",
+    "Named crew on shift.",
     "Green sheet or halt card — pick one.",
-    "The line runs. The monkey watches.",
+    "The line runs.",
 )
 
 VERIFY_RED_TAILS: tuple[str, ...] = (
@@ -36,11 +36,10 @@ VERIFY_RED_TAILS: tuple[str, ...] = (
 )
 
 VERIFY_GREEN_LINES: tuple[str, ...] = (
-    "{name} signs the sheet: {passed}/{total}. Not a monkey in sight.",
-    "Green from {name} — {passed}/{total}. Murphy's off the clock.",
+    "{name} signs the sheet: {passed}/{total}. All clear.",
+    "Green from {name} — {passed}/{total}.",
     "{passed}/{total} on {name}'s tally. Floor's quiet.",
-    "{name} sends Murphy home early: {passed}/{total}.",
-    "All {total} accounted for. {name} locked the cage.",
+    "All {total} accounted for. {name} closed the book.",
 )
 
 GATE_CLEARED_LINES: tuple[str, ...] = (
@@ -69,9 +68,9 @@ EXONERATION_LINES: tuple[str, ...] = (
 )
 
 FLAKE_LINES: tuple[str, ...] = (
-    "Murphy shrugged. Ran green untouched. Logging the flake.",
-    "Flake, not sabotage — Murphy wanders off. Logged.",
-    "Green on rerun. Murphy was bored, not broken.",
+    "Flake on rerun — green untouched. Logged.",
+    "Green on cold retry without a code change. Logged.",
+    "Second pass green with no edits. Logged as flake.",
 )
 
 THRASH_HALT_LINES: tuple[str, ...] = (
@@ -81,9 +80,9 @@ THRASH_HALT_LINES: tuple[str, ...] = (
 )
 
 INFRA_HALT_LINES: tuple[str, ...] = (
-    "🐒 Something knocked the line over (infra). Murphy denies everything. (exit=6)",
-    "🐒 Infra wobble — not code. Murphy blames the power strip. (exit=6)",
-    "🐒 The line tripped. Murphy was in the break room. (exit=6)",
+    "Something knocked the line over (infra). Halting for retry. (exit=6)",
+    "Infra wobble — not code. Halting for retry. (exit=6)",
+    "The line tripped on tooling. Halting for retry. (exit=6)",
 )
 
 CRASH_LINES: tuple[str, ...] = (
@@ -129,6 +128,18 @@ ROLE_REPORT_LINES: tuple[str, ...] = (
     "from {name} on the floor: {detail}",
 )
 
+COORDINATOR_SHIFT_GREETING_LINES: tuple[str, ...] = (
+    "Hi — Coordinator {name} here. I'm opening the Forge shift for slice {slice_id}: {title}.",
+    "Hello — Coordinator {name} checking in for slice {slice_id}: {title}.",
+    "Coordinator {name} on the floor — slice {slice_id}, {title}.",
+)
+
+COORDINATOR_SHIFT_GOAL_LINES: tuple[str, ...] = (
+    "Today's goal: {mission}",
+    "What we're after today: {mission}",
+    "The shift target: {mission}",
+)
+
 GATE_STUCK_LINES: tuple[str, ...] = (
     "✗ {gate} stuck — {body}",
     "✗ {gate} won't budge — {body}",
@@ -146,7 +157,7 @@ COORDINATOR_REPORT_OPENERS: tuple[str, ...] = (
 COORDINATOR_REPORT_CLOSERS: tuple[str, ...] = (
     "Forge gate cleared — safe to advance the queue when you're ready.",
     "That's a green sheet from this shift. Re-run the loop for the next slice.",
-    "Floor's clean. Murphy didn't get the last word this time.",
+    "Floor's clean. Safe to advance the queue.",
     "All accounted for — queue can move on.",
 )
 
@@ -675,6 +686,100 @@ def narrate_gate_stuck(
         )
     _emit(line, log)
     return line
+
+
+def print_coordinator_shift_banner(
+    *,
+    slice_id: int,
+    title: str,
+    slice_file: str,
+    mission: str,
+) -> str:
+    """Scannable ═══ banner printed once at slice kickoff (stdout, no log prefix)."""
+    from slice_loop_progress import slice_start_banner
+
+    banner = slice_start_banner(slice_id, title, slice_file, mission=mission)
+    print(banner, flush=True)
+    return banner
+
+
+def narrate_coordinator_shift_prose(
+    *,
+    coordinator_name: str,
+    slice_id: int,
+    title: str,
+    mission: str,
+    log: LogFn | None = None,
+    voice: StoryVoice | None = None,
+) -> str:
+    """Template coordinator check-in below the banner (no Murphy — pre-failure)."""
+    v = voice or _default_voice
+    name = (coordinator_name or "Coordinator").strip() or "Coordinator"
+    goal = (mission or "").strip() or "advance the product"
+    if len(goal) > 240:
+        goal = goal[:237].rstrip() + "…"
+    greeting = v.format(
+        "coord_shift_greeting",
+        COORDINATOR_SHIFT_GREETING_LINES,
+        name=name,
+        slice_id=str(slice_id),
+        title=title,
+    )
+    goal_line = v.format(
+        "coord_shift_goal",
+        COORDINATOR_SHIFT_GOAL_LINES,
+        mission=goal,
+    )
+    for part in (greeting, goal_line):
+        _emit(part, log)
+    return "\n".join((greeting, goal_line))
+
+
+def narrate_coordinator_shift_open(
+    *,
+    coordinator_name: str,
+    slice_id: int,
+    title: str,
+    slice_file: str,
+    mission: str,
+    log: LogFn | None = None,
+    voice: StoryVoice | None = None,
+) -> str:
+    """Banner + template coordinator check-in."""
+    print_coordinator_shift_banner(
+        slice_id=slice_id,
+        title=title,
+        slice_file=slice_file,
+        mission=mission,
+    )
+    return narrate_coordinator_shift_prose(
+        coordinator_name=coordinator_name,
+        slice_id=slice_id,
+        title=title,
+        mission=mission,
+        log=log,
+        voice=voice,
+    )
+
+
+def parse_shift_narration_lines(text: str, *, max_lines: int = 3) -> list[str]:
+    """Split LLM shift copy into console lines."""
+    raw = (text or "").strip()
+    if not raw:
+        return []
+    chunks = re.split(r"(?<=[.!?])\s+", raw)
+    lines = [c.strip() for c in chunks if c.strip()]
+    return lines[:max_lines]
+
+
+def narrate_coordinator_shift_llm(
+    lines: list[str],
+    *,
+    log: LogFn | None = None,
+) -> str:
+    for line in lines:
+        _emit(line.strip(), log)
+    return "\n".join(lines)
 
 
 def narrate_slice_mission(

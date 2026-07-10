@@ -80,6 +80,7 @@ Authoring and fix loops emit **chapter beats** instead of stacking mechanical
 noise:
 
 - Chapter open: `── Slice 12 · 4/9 test spec · QA Quincy ──`
+- Shift open: `Hi — Coordinator Kai here. I'm opening the Forge shift for slice 13: … Today's goal: … Hopefully we don't see or smell Murphy on the floor.`
 - Clear: `✓ Quincy cleared test spec (2m) — next: …`
 - Stuck: `✗ story stuck — … Unblock: …`
 - Failure detail: `from Edison: Murphy got into the wrench drawer. I was on FooTests/testBar() — tried … Got … instead.`
@@ -122,14 +123,29 @@ ran (compile/link); `tests` otherwise. Consumers (`parse_verify_result`,
 
 ## Authoring vs post-implement red policy
 
-The factory distinguishes four red states:
+The factory distinguishes four red states with an **exclusive priority lattice**:
+
+```
+build  >  test_failure  >  infra/flake
+```
 
 | Phase | Policy |
 |-------|--------|
 | **TDD compile-red during authoring** (`story`…`test_review`) | Never counted toward thrash; `verify.sh` / `xcodebuild test` cancelled (ban, no budget burn) |
-| **Sim install/launch/bootstrap (tier-2)** | Infra cold-retry + `ensure_sim_booted` — **does not** burn Engineer/QA fix budget (slice 12 death-run) |
-| **Build-red after implement** | `class=build` / missing bundle executable → Engineer; not SBMainWorkspace launch |
+| **Sim install/launch/bootstrap (tier-2)** | Infra cold-retry + `ensure_sim_booted` — **does not** burn Engineer/QA fix budget (slice 12 death-run). Identical failure signature on a cold retry aborts further retries (deterministic ≠ flake). |
+| **Build-red after implement** | `class=build` / `build_error:` / missing bundle executable → Engineer; **never** infra cold-retry (slice 13: CoreSimulator in stdout must not override `class=build`) |
 | **Test-red after implement** | Assertion / harness → Engineer\|QA (`resolve_tier2_continue`: XCTestExpectation double-fulfill → QA; same hyp+sig escalates to predicate-wait lever) |
+
+**Invariants (enforced in Python + `test_factory_hardening.py`):**
+
+1. `VERIFY RESULT class=build` or `failure_class=build_error` ⇒ `is_tier2_infra_failure` is False.
+2. Infra classification uses **curated** failure text only (never full xcodebuild stdout).
+3. Phrase-level infra markers only — never bare `dns` / `lock` / `coresimulator`.
+4. Structured vs heuristic disagreement logs `CLASSIFIER DISAGREEMENT` and prefers structured.
+5. After every fix worker, tier-0 (`build-for-testing`) runs; compile-red becomes the next pending outcome (skips tier-2 until build-green).
+6. When failure class changes after the normal fix budget would halt, one **class-transition credit** grants a spawn (cap 1 per gate; total spawns ≤ `max_runs + 1`).
+
+`verify.sh` also writes `build/test-results/verify-result.json` (machine-readable contract). Raw verify stdout is persisted as `verify-output-*.txt` / `verify-output-latest.txt` and copied into the session bundle on halt.
 
 Red-verify thrash (`max_red_verifies=2`) applies only to coordinator-monitored /
 post-implement grinding — **not** authoring-gate TDD compile-red. After

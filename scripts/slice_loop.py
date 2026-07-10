@@ -443,7 +443,8 @@ def run_slice(
     Returns ``(finished, elapsed, last_verify, meta)``.
     """
     if orchestrator == "pipeline":
-        log(f"orchestrator=pipeline (gate FSM)")
+        if verbose:
+            log("orchestrator=pipeline (gate FSM)")
         try:
             return run_pipeline_slice(
                 slice_id,
@@ -584,15 +585,12 @@ def main():
     from factory_narrator import (
         NameAssigner,
         StoryVoice,
-        factory_session_banner,
         format_coordinator_report,
     )
 
     session_voice = StoryVoice()
     session_names = NameAssigner()
     coordinator = session_names.assign("Coordinator", slot="session")
-    print(factory_session_banner(voice=session_voice), flush=True)
-    log(f"Forge coordinator on shift: {coordinator}")
 
     ran = 0
     last_started = None

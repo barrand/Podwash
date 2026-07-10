@@ -35,3 +35,22 @@ scripts/slice-loop.sh --max 1
 
 Expect: tier-2 detects newer sources → incremental `test` build → predicate wait
 runs → green → full suite → Done.
+
+## Follow-up: slice 13 hardening (build vs infra lanes)
+
+Slice 13 thrash-halted when Edison introduced a MainActor compile error. The loop
+misclassified it as infra (`coresimulator` / soft `"lock"` ⊂ `"block"` on full
+xcodebuild stdout), burned both cold retries, then halted without spawning on
+`build_error`.
+
+**Landed** (see `docs/slice-pipeline.md` § Authoring vs post-implement +
+`scripts/test_factory_hardening.py`):
+
+1. Exclusive lanes: `build > test > infra`
+2. Curated-blob infra classification + phrase-level markers
+3. Identical-signature cold-retry abort
+4. Classifier disagreement alarm
+5. `verify-result.json` + persisted verify stdout in session bundles
+6. Post-edit tier-0 gate
+7. Capped class-transition credit (1 per gate)
+

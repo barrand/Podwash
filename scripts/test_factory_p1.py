@@ -30,8 +30,8 @@ from factory_narrator import (  # noqa: E402
     narrate_failure_detail,
     narrate_role_report,
     extract_gate_stuck_body,
+    narrate_coordinator_shift_open,
     narrate_slice_recap,
-    narrate_slice_mission,
     narrate_spawn,
     narrate_thrash_halt,
     narrate_verify_red,
@@ -169,13 +169,17 @@ class NarratorTests(unittest.TestCase):
         self.assertIn("fix 1/3", fix_open)
         self.assertIn("Engineer Edison", fix_open)
 
-        mission_line = narrate_slice_mission(
+        mission_line = narrate_coordinator_shift_open(
+            coordinator_name="Kai",
             slice_id=12,
+            title="Variable speed + sleep timer",
             mission="Deliver variable speed and a sleep timer on the player.",
             log=lines.append,
         )
-        self.assertIn("Slice 12", mission_line)
+        self.assertIn("Coordinator Kai", mission_line)
+        self.assertIn("slice 12", mission_line)
         self.assertIn("variable speed", mission_line)
+        self.assertIn("Murphy", mission_line)
 
     def test_murphy_only_in_narration(self):
         lines: list[str] = []
@@ -527,8 +531,10 @@ class Tier2InfraColdRetryTests(unittest.TestCase):
         def verify_fn(**_kw):
             calls["n"] += 1
             if calls["n"] <= 2:
+                # Distinct signatures so identical-sig abort does not fire early.
                 failures = [
-                    "Failed to install or launch the test runner (SBMainWorkspace)"
+                    f"Failed to install or launch the test runner "
+                    f"(SBMainWorkspace) wave-{calls['n']}"
                 ]
                 return VerifyOutcome(
                     result={"exit": "65", "failed": "1", "tier": "2"},
@@ -584,6 +590,8 @@ class Tier2InfraColdRetryTests(unittest.TestCase):
                     max_runs=1,
                     max_infra_retries=2,
                 )
-            infra_logs = [l for l in logs if "infra cold retry" in l]
+            infra_logs = [
+                l for l in logs if "infra cold retry" in l and "aborted" not in l
+            ]
             self.assertEqual(len(infra_logs), 2)
             self.assertGreaterEqual(calls["n"], 3)

@@ -10,7 +10,8 @@
 import Foundation
 
 /// Token normalization and exact set-membership matching per matching-spec §3–4.
-enum WordMatcher {
+/// Nonisolated: pure functions used from nonisolated stores (SettingsStore) and tests.
+nonisolated enum WordMatcher {
 
     /// Normalize a raw ASR token per matching-spec §3.
     ///

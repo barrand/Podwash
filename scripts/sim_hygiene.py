@@ -181,6 +181,24 @@ _SIM_LAUNCH_INFRA_MARKERS = (
     "no restart will be attempted",
 )
 
+# Phrase-level only — never bare "dns" / "lock" / "coresimulator"
+# (slice 13: "coresimulator" in xcodebuild stdout + "lock" ⊂ "block" false-positives).
+_INFRA_PHRASE_MARKERS = (
+    "failed to launch bridge",
+    "connection reset",
+    "could not connect",
+    "dns lookup",
+    "timed out waiting for lock",
+    "holds the lock",
+    "waiting for lock",
+    "simulator was lost",
+    "unable to boot",
+    "xcodebuild: error: unable to find a destination",
+    "the device is not configured",
+    ".verify.lock",
+    *_SIM_LAUNCH_INFRA_MARKERS,
+)
+
 
 def classify_infra_failure(
     *,
@@ -192,28 +210,19 @@ def classify_infra_failure(
 
     Attempt should not be burned when this returns True (exit 6 path / tier-2
     cold retry). Includes SBMainWorkspace install/launch and bootstrap exits.
+
+    Callers must pass **curated** failure text (FailurePacket / failure lines),
+    not full xcodebuild stdout — environment noise (CoreSimulator paths) must
+    not classify as infra.
     """
     if files_changed:
         return False
     blob = (output or "").lower()
-    markers = (
-        "failed to launch bridge",
-        "connection reset",
-        "could not connect",
-        "dns",
-        "timed out waiting for lock",
-        "simulator was lost",
-        "coresimulator",
-        "unable to boot",
-        "xcodebuild: error: unable to find a destination",
-        "the device is not configured",
-        *_SIM_LAUNCH_INFRA_MARKERS,
-    )
-    if any(m in blob for m in markers):
+    if any(m in blob for m in _INFRA_PHRASE_MARKERS):
         return True
-    # Soft signal: no test ids in output and non-zero exit with empty failures
+    # Soft signal: verify lock contention only (phrase-level; never bare "lock")
     if exit_code not in (None, "0", 0) and "test case" not in blob and "xctassert" not in blob:
-        if "verify.sh: another verify" in blob or "lock" in blob:
+        if "verify.sh: another verify" in blob:
             return True
     return False
 

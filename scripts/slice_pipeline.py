@@ -30,6 +30,11 @@ from factory_events import EventLog, parse_summary_line
 from factory_narrator import (
     CastLog,
     NameAssigner,
+    narrate_coordinator_shift_open,
+    narrate_coordinator_shift_prose,
+    narrate_coordinator_shift_llm,
+    parse_shift_narration_lines,
+    print_coordinator_shift_banner,
     narrate_chapter_open,
     narrate_crash,
     narrate_exoneration,
@@ -42,7 +47,6 @@ from factory_narrator import (
     narrate_role_report,
     extract_gate_stuck_body,
     narrate_slice_recap,
-    narrate_slice_mission,
     narrate_thrash_halt,
     narrate_verify_green,
     narrate_verify_red,
@@ -94,6 +98,7 @@ from slice_loop_progress import (
     detect_simulator_crashes,
     detect_test_failures,
     latest_xcresult_path,
+    looks_like_build_failure,
     summarize_ips_crash,
     missing_artifact_paths,
     parse_verify_result,
@@ -111,6 +116,9 @@ DEFAULT_MAX_FIX_ATTEMPTS = 3
 DEFAULT_MAX_IMPLEMENT_VERIFY_RUNS = 3
 # Sim install/launch/bootstrap cold retries — do not burn Engineer/QA fix budget.
 DEFAULT_MAX_TIER2_INFRA_RETRIES = 2
+# One extra spawn when failure class changes after budget would otherwise halt
+# (slice 13: crash→UI burned 2/3, then build_error never got a worker).
+DEFAULT_MAX_CLASS_TRANSITION_CREDITS = 1
 
 # Exit codes owned by the loop (slice_loop.py mirrors these).
 EXIT_THRASH = 5
@@ -127,6 +135,7 @@ ROLE_MODELS: dict[str, str] = {
     "QA review": "composer-2.5",
     "Architect review": "grok-4.5",
     "Referee": "composer-2.5",
+    "Coordinator": "composer-2.5",
 }
 
 ROLE_AGENT_FILES: dict[str, str] = {
@@ -142,7 +151,9 @@ ROLE_AGENT_FILES: dict[str, str] = {
 }
 
 # Reviewers + referee run in SDK plan mode (read-only). Authors/fixers use agent mode.
-PLAN_MODE_ROLES = frozenset({"PM review", "QA review", "Architect review", "Referee"})
+PLAN_MODE_ROLES = frozenset(
+    {"PM review", "QA review", "Architect review", "Referee", "Coordinator"}
+)
 
 GateId = Literal[
     "story",
@@ -547,8 +558,9 @@ def _narrate_verify_failure(
     repo_root: str,
     log: LogFn,
     voice: Any = None,
+    cast: CastLog | None = None,
 ) -> None:
-    """Red verify tally plus in-character test/intent/got detail."""
+    """Red verify tally plus in-character test/intent/got detail (Murphy paths)."""
     narrate_verify_red(
         name,
         passed=(outcome.result or {}).get("passed", "?"),
@@ -566,6 +578,8 @@ def _narrate_verify_failure(
         export_attachments=False,
     )
     narrate_failure_detail(name, packet, log=log, voice=voice)
+    if cast is not None:
+        cast.note_murphy()
 
 
 def explain_gate_pending(gid: GateId, slice_file: str, repo_root: str) -> str:
@@ -788,6 +802,32 @@ def run_verify(
     elapsed = time.time() - t0
     output = (proc.stdout or "") + "\n" + (proc.stderr or "")
     result = parse_verify_result(output)
+    # Prefer machine-readable contract when verify.sh wrote it.
+    json_path = os.path.join(repo_root, "build", "test-results", "verify-result.json")
+    if os.path.isfile(json_path):
+        try:
+            with open(json_path, encoding="utf-8") as fh:
+                import json as _json
+
+                j = _json.load(fh)
+            if isinstance(j, dict) and j.get("exit") is not None:
+                merged = dict(result or {})
+                for k in (
+                    "exit",
+                    "total",
+                    "passed",
+                    "failed",
+                    "skipped",
+                    "filtered",
+                    "bundle",
+                    "tier",
+                    "class",
+                ):
+                    if k in j and j[k] is not None and str(j[k]) != "":
+                        merged[k] = str(j[k])
+                result = merged
+        except (OSError, ValueError, TypeError):
+            pass
     if result is None and proc.returncode != 0:
         result = {
             "exit": str(proc.returncode),
@@ -811,6 +851,23 @@ def run_verify(
     if result and bundle and "bundle" not in result:
         result = dict(result)
         result["bundle"] = bundle
+    # Persist raw verify output for post-mortems / replay corpus.
+    try:
+        tr = os.path.join(repo_root, "build", "test-results")
+        os.makedirs(tr, exist_ok=True)
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        out_path = os.path.join(tr, f"verify-output-t{tier}-{stamp}.txt")
+        with open(out_path, "w", encoding="utf-8") as fh:
+            fh.write(output)
+        # Keep a stable "latest" pointer for the session bundle.
+        latest = os.path.join(tr, "verify-output-latest.txt")
+        with open(latest, "w", encoding="utf-8") as fh:
+            fh.write(output)
+        if result is not None:
+            result = dict(result)
+            result["output_path"] = os.path.relpath(out_path, repo_root)
+    except OSError:
+        pass
     packet: FailurePacket | None = None
     if not green:
         packet = build_failure_packet(
@@ -977,6 +1034,7 @@ def _collect_ips_summaries(repo_root: str, *, limit: int = 3) -> list[str]:
 
 
 def _tier2_failure_blob(outcome: VerifyOutcome) -> str:
+    """Full blob including stdout — for expectation/API scans only, not infra."""
     parts = list(outcome.failures or []) + list(outcome.crashes or [])
     if outcome.output:
         parts.append(outcome.output)
@@ -987,20 +1045,93 @@ def _tier2_failure_blob(outcome: VerifyOutcome) -> str:
     return "\n".join(parts)
 
 
-def is_tier2_infra_failure(outcome: VerifyOutcome) -> bool:
-    """Sim install/launch/bootstrap — cold-retry; do not spawn a fix worker."""
-    blob = _tier2_failure_blob(outcome)
-    if is_missing_bundle_executable(blob):
+def _tier2_curated_blob(outcome: VerifyOutcome) -> str:
+    """Failures / crashes / packet only — never full xcodebuild stdout.
+
+    Infra classification must not see CoreSimulator paths or other environment
+    noise that appears on every sim destination run (slice 13 false-positive).
+    """
+    parts = list(outcome.failures or []) + list(outcome.crashes or [])
+    if outcome.packet:
+        parts.extend(outcome.packet.raw_failures or [])
+        parts.extend(outcome.packet.assertions or [])
+        parts.extend(outcome.packet.crashes or [])
+    return "\n".join(parts)
+
+
+def is_build_lane(outcome: VerifyOutcome) -> bool:
+    """True when structured signals say compile/link red (beats infra lane)."""
+    result = outcome.result or {}
+    if result.get("class") == "build":
+        return True
+    failures = list(outcome.failures or [])
+    if any((f or "").startswith("build_error:") for f in failures):
+        return True
+    pkt = outcome.packet
+    if pkt and pkt.failure_class == "build_error":
+        return True
+    curated = _tier2_curated_blob(outcome)
+    if looks_like_build_failure(curated, result):
+        return True
+    return False
+
+
+def outcome_failure_class(outcome: VerifyOutcome) -> str:
+    """Stable class label for budget / transition accounting."""
+    if is_build_lane(outcome):
+        return "build_error"
+    pkt = outcome.packet
+    if pkt and pkt.failure_class:
+        return str(pkt.failure_class)
+    if outcome.crashes:
+        return "crash"
+    if outcome.failures:
+        return "unknown"
+    return "unknown"
+
+
+def is_tier2_infra_failure(
+    outcome: VerifyOutcome,
+    *,
+    log: LogFn | None = None,
+) -> bool:
+    """Sim install/launch/bootstrap — cold-retry; do not spawn a fix worker.
+
+    Exclusive lane: ``class=build`` / ``build_error`` always wins over infra.
+    """
+    _log = log or (lambda m: None)
+    curated = _tier2_curated_blob(outcome)
+    result = outcome.result or {}
+    exit_code = result.get("exit")
+
+    # Exclusive lane — build beats infra (slice 13 invariant).
+    if is_build_lane(outcome):
+        # Disagreement alarm: heuristic on full stdout would have said infra.
+        full = _tier2_failure_blob(outcome)
+        if classify_infra_failure(
+            output=full, exit_code=exit_code, files_changed=False
+        ):
+            _log(
+                "CLASSIFIER DISAGREEMENT: structured=build but heuristic=infra "
+                "on full stdout — preferring build lane"
+            )
         return False
+
+    if is_missing_bundle_executable(curated) or is_missing_bundle_executable(
+        outcome.output or ""
+    ):
+        return False
+
     if classify_infra_failure(
-        output=blob,
-        exit_code=(outcome.result or {}).get("exit"),
+        output=curated,
+        exit_code=exit_code,
         files_changed=False,
     ):
         return True
+
     pkt = outcome.packet
     if pkt and pkt.failure_class == "flake":
-        low = blob.lower()
+        low = curated.lower()
         if any(
             m in low
             for m in (
@@ -2016,8 +2147,10 @@ def run_fix_loop(
                 "FULL-VERIFY", "loop", "crash", detail={"ips": fresh_ips[:3]}
             )
 
-    if classify_infra_failure(
-        output=outcome.output,
+    if is_build_lane(outcome):
+        pass  # never InfraHalt on compile-red
+    elif classify_infra_failure(
+        output=_tier2_curated_blob(outcome) or (outcome.output or ""),
         exit_code=(outcome.result or {}).get("exit"),
         files_changed=False,
     ) and not (outcome.packet and outcome.packet.test_ids):
@@ -2593,13 +2726,27 @@ def run_tier2_implement_gate(
             except TypeError:
                 return _verify()
 
+    def _tier0() -> VerifyOutcome:
+        try:
+            return _verify(tier=0, slice_file=slice_file)
+        except TypeError:
+            try:
+                return _verify(tier=0)
+            except TypeError:
+                return VerifyOutcome(result={"exit": "0"}, green=True, tier=0)
+
     ledger = load_ledger(repo_root, slice_id)
     fix_attempt = 0
     infra_retries = 0
     verify_n = 0
+    transition_credits_used = 0
+    spawned_classes: set[str] = set()
+    last_infra_sig: str | None = None
+    pending_outcome: VerifyOutcome | None = None
     outcome = VerifyOutcome(result={}, green=False, tier=2)
+    hard_cap = max_runs + DEFAULT_MAX_CLASS_TRANSITION_CREDITS
 
-    while fix_attempt < max_runs:
+    while fix_attempt < hard_cap:
         verify_n += 1
         agent_hint = _names.assign("Engineer", slot="implement")
         if _events:
@@ -2614,7 +2761,15 @@ def run_tier2_implement_gate(
             f"tier-2 implement gate verify={verify_n} "
             f"fix={fix_attempt}/{max_runs} ({len(slice_tests)} tests)"
         )
-        outcome = _tier2()
+        if pending_outcome is not None:
+            outcome = pending_outcome
+            pending_outcome = None
+            _log(
+                "tier-2 using pending post-edit outcome "
+                f"(class={(outcome.result or {}).get('class') or outcome_failure_class(outcome)})"
+            )
+        else:
+            outcome = _tier2()
         if outcome.green:
             write_tier2_marker(repo_root, slice_id)
             narrate_verify_green(
@@ -2641,36 +2796,86 @@ def run_tier2_implement_gate(
         )
 
         # Infra cold-retry: sim launch/bootstrap — do not burn fix budget.
-        if is_tier2_infra_failure(outcome) and infra_retries < max_infra_retries:
-            infra_retries += 1
-            _log(
-                f"tier-2 infra cold retry {infra_retries}/{max_infra_retries} "
-                f"(sim launch/bootstrap — no fix budget)"
-            )
-            if _events:
-                _events.record(
-                    "TIER2-GATE", "loop", "infra_retry",
-                    detail={
-                        "infra_retry": infra_retries,
-                        "failures": (outcome.failures or [])[:2],
-                    },
-                    timeline=True,
-                    mission="sim hygiene before re-verify",
+        # Identical signature on retry ⇒ deterministic, not flake — abort retries.
+        if is_tier2_infra_failure(outcome, log=_log) and infra_retries < max_infra_retries:
+            sig_now = failure_signature(outcome.failures, outcome.crashes)
+            if (
+                last_infra_sig is not None
+                and normalize_signature(sig_now) == normalize_signature(last_infra_sig)
+            ):
+                _log(
+                    "tier-2 infra cold retry aborted — identical signature "
+                    "(deterministic; routing to fix worker)"
                 )
-            udid = resolve_sim_udid(log=_log)
-            if udid:
-                ensure_sim_booted(udid, log=_log)
-            continue
+            else:
+                last_infra_sig = sig_now
+                infra_retries += 1
+                _log(
+                    f"tier-2 infra cold retry {infra_retries}/{max_infra_retries} "
+                    f"(sim launch/bootstrap — no fix budget)"
+                )
+                if _events:
+                    _events.record(
+                        "TIER2-GATE", "loop", "infra_retry",
+                        detail={
+                            "infra_retry": infra_retries,
+                            "failures": (outcome.failures or [])[:2],
+                        },
+                        timeline=True,
+                        mission="sim hygiene before re-verify",
+                    )
+                udid = resolve_sim_udid(log=_log)
+                if udid:
+                    ensure_sim_booted(udid, log=_log)
+                continue
 
-        fix_attempt += 1
+        fail_cls = outcome_failure_class(outcome)
+        next_attempt = fix_attempt + 1
+        if next_attempt > max_runs:
+            if (
+                fail_cls in spawned_classes
+                or transition_credits_used >= DEFAULT_MAX_CLASS_TRANSITION_CREDITS
+            ):
+                fix_attempt = next_attempt
+                pkt = outcome.packet
+                sig = (
+                    (pkt.signature if pkt else "")
+                    or failure_signature(outcome.failures, outcome.crashes)
+                )
+                entry = make_entry(
+                    slice_id=slice_id,
+                    attempt=fix_attempt,
+                    role="Engineer",
+                    hypothesis=(
+                        f"tier-2 red class={fail_cls} run={fix_attempt}"
+                    ),
+                    signature=sig,
+                    files_touched=(pkt.suggested_files if pkt else []) or [],
+                    verify_tier=2,
+                    outcome="red",
+                    primary_failure=(
+                        (outcome.failures or [""])[0] if outcome.failures else ""
+                    ),
+                    instruction="tier-2 halt",
+                    agent_name=agent_hint,
+                )
+                append_ledger(entry, repo_root=repo_root, slice_id=slice_id)
+                ledger.append(entry)
+                break
+            transition_credits_used += 1
+            _log(
+                f"class-transition credit {transition_credits_used}/"
+                f"{DEFAULT_MAX_CLASS_TRANSITION_CREDITS} for class={fail_cls}"
+            )
+
+        fix_attempt = next_attempt
         pkt = outcome.packet
         sig = (
             (pkt.signature if pkt else "")
             or failure_signature(outcome.failures, outcome.crashes)
         )
         hyp_hint = (pkt.hypothesis if pkt else "") or (
-            f"tier-2 red class={getattr(pkt, 'failure_class', None) or 'unknown'} "
-            f"run={fix_attempt}"
+            f"tier-2 red class={fail_cls} run={fix_attempt}"
         )
         # Escalate expectation recipe when this signature already failed once.
         escalate = False
@@ -2717,8 +2922,9 @@ def run_tier2_implement_gate(
         )
         append_ledger(entry, repo_root=repo_root, slice_id=slice_id)
         ledger.append(entry)
+        spawned_classes.add(fail_cls)
 
-        if fix_attempt >= max_runs or client is None:
+        if client is None:
             break
 
         agent = _names.assign(role, slot="implement" if role == "Engineer" else "fix")
@@ -2741,11 +2947,12 @@ def run_tier2_implement_gate(
                 detail={
                     "run": fix_attempt,
                     "role": role,
-                    "failure_class": getattr(outcome.packet, "failure_class", None),
+                    "failure_class": fail_cls,
                     "rich_prompt": True,
                     "ledger_entries": len(ledger),
                     "infra_retries": infra_retries,
                     "escalate_expectation": escalate,
+                    "transition_credits_used": transition_credits_used,
                 },
                 timeline=True,
                 mission=f"tier-2 continue after fix attempt {fix_attempt}",
@@ -2766,6 +2973,15 @@ def run_tier2_implement_gate(
                 narrate_worker_done(agent, summary, log=_log, voice=_voice)
         if not ok:
             _log(f"implement continue worker status={status}")
+
+        # Post-edit tier-0: catch compile-red before another expensive tier-2.
+        t0 = _tier0()
+        if not t0.green:
+            _log(
+                "post-edit tier-0 RED — worker left tree unbuildable; "
+                "routing as build_error (skip tier-2 until compile-green)"
+            )
+            pending_outcome = t0
 
     reason = (
         f"implement tier-2 gate failed after {max_runs} runs; "
@@ -2795,6 +3011,8 @@ def run_tier2_implement_gate(
             "max_runs": max_runs,
             "infra_retries": infra_retries,
             "ledger_entries": len(ledger),
+            "transition_credits_used": transition_credits_used,
+            "spawned_classes": sorted(spawned_classes),
         },
     )
     _log(f"session bundle written: {bundle_dir}")
@@ -2831,7 +3049,6 @@ def run_pipeline_slice(
         extract_slice_accomplishment,
         extract_slice_mission,
         read_slice_meta,
-        slice_start_banner,
     )
 
     def _resolve_stream_timeout(secs: float | None) -> float | None:
@@ -2842,8 +3059,6 @@ def run_pipeline_slice(
     _log = log or (lambda m: print(f"[slice-pipeline] {m}", flush=True))
     title, _ = read_slice_meta(slice_file, repo_root)
     mission = extract_slice_mission(slice_file, repo_root)
-    print(slice_start_banner(slice_id, title, slice_file, mission=mission), flush=True)
-    narrate_slice_mission(slice_id=slice_id, mission=mission, log=_log)
 
     budget = FixBudget(max_attempts=max_fix_attempts)
     stream_to = _resolve_stream_timeout(stream_timeout)
@@ -2855,6 +3070,14 @@ def run_pipeline_slice(
     if session_voice is not None:
         cast.voice = session_voice
     coordinator = (coordinator_name or "").strip() or names.assign("Coordinator", slot="session")
+    narrate_coordinator_shift_open(
+        coordinator_name=coordinator,
+        slice_id=slice_id,
+        title=title,
+        mission=mission,
+        log=_log,
+        voice=_voice,
+    )
     events = EventLog(repo_root, slice_id, log=_log)
 
     def _slice_meta() -> dict[str, Any]:

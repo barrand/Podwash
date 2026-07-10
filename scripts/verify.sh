@@ -188,6 +188,19 @@ if [ "${VERIFY_DRY_RUN:-0}" = "1" ]; then
         echo "verify.sh: DRY_RUN argv: xcodebuild $XCODE_ACTION -project $PROJECT -scheme $SCHEME -destination $DESTINATION -derivedDataPath $DERIVED_DATA -resultBundlePath $RESULT_BUNDLE -retry-tests-on-failure -test-iterations 2 -quiet $ONLY_FLAGS $*"
     fi
     echo "VERIFY RESULT: exit=0 total=0 passed=0 failed=0 skipped=0 filtered=$FILTERED bundle=$RESULT_BUNDLE tier=$VERIFY_TIER class=tests"
+    /usr/bin/python3 -c "
+import json, os
+path = os.path.join('$RESULTS_DIR', 'verify-result.json')
+os.makedirs('$RESULTS_DIR', exist_ok=True)
+with open(path, 'w', encoding='utf-8') as fh:
+    json.dump({
+        'exit': 0, 'total': 0, 'passed': 0, 'failed': 0, 'skipped': 0,
+        'filtered': int('$FILTERED') if str('$FILTERED').isdigit() else 0,
+        'bundle': '$RESULT_BUNDLE' or None, 'tier': int('$VERIFY_TIER') if str('$VERIFY_TIER').isdigit() else 3,
+        'class': 'tests',
+    }, fh, indent=2)
+    fh.write('\n')
+" 2>/dev/null || true
     exit 0
 fi
 
@@ -290,5 +303,28 @@ if [ -n "${RESULT_BUNDLE:-}" ]; then
 else
     echo "VERIFY RESULT: exit=$FINAL_EXIT total=${TOTAL:-?} passed=${PASSED:-?} failed=${FAILED:-?} skipped=${SKIPPED:-?} filtered=$FILTERED tier=$VERIFY_TIER class=$VERIFY_CLASS"
 fi
+
+# Machine-readable contract for the factory (classifiers must prefer this over stdout sniffing).
+/usr/bin/python3 -c "
+import json, os, sys
+path = os.path.join('$RESULTS_DIR', 'verify-result.json')
+payload = {
+    'exit': int('$FINAL_EXIT') if str('$FINAL_EXIT').lstrip('-').isdigit() else '$FINAL_EXIT',
+    'total': '$TOTAL' if '$TOTAL' != '' else None,
+    'passed': '$PASSED' if '$PASSED' != '' else None,
+    'failed': '$FAILED' if '$FAILED' != '' else None,
+    'skipped': '$SKIPPED' if '$SKIPPED' != '' else None,
+    'filtered': int('$FILTERED') if str('$FILTERED').isdigit() else '$FILTERED',
+    'bundle': '''$RESULT_BUNDLE''' or None,
+    'tier': int('$VERIFY_TIER') if str('$VERIFY_TIER').isdigit() else '$VERIFY_TIER',
+    'class': '$VERIFY_CLASS',
+}
+# Normalize empty bundle
+if not payload['bundle']:
+    payload['bundle'] = None
+with open(path, 'w', encoding='utf-8') as fh:
+    json.dump(payload, fh, indent=2)
+    fh.write('\n')
+" 2>/dev/null || true
 
 exit "$FINAL_EXIT"

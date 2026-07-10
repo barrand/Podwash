@@ -56,16 +56,19 @@ final class AnalysisUIViewModel {
 
     @ObservationIgnored private let analyzer: InstantEpisodeAnalyzer
     @ObservationIgnored private let autoAnalyzeEpisodeEnable: Bool
+    @ObservationIgnored private let settingsStore: SettingsStore
     @ObservationIgnored var onAnalyzingEpisodeIDChanged: (() -> Void)?
 
     init(
         store: any CleaningToggleStoring,
         analyzer: InstantEpisodeAnalyzer,
-        autoAnalyzeOnEpisodeEnable: Bool = false
+        autoAnalyzeOnEpisodeEnable: Bool = false,
+        settingsStore: SettingsStore = SettingsStore()
     ) {
         self.store = store
         self.analyzer = analyzer
         self.autoAnalyzeEpisodeEnable = autoAnalyzeOnEpisodeEnable
+        self.settingsStore = settingsStore
         syncStateFromStore()
     }
 
@@ -168,7 +171,7 @@ final class AnalysisUIViewModel {
         _ = try? await analyzer.analyze(
             episode: identity,
             audioURL: audioURL,
-            targetWords: [],
+            targetWords: settingsStore.activeNormalizedTargetSet(),
             injectedTranscript: []
         )
 

@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 13 |
 | **Title** | Settings + word-list management |
-| **Status** | Ready |
+| **Status** | Done |
 | **Crux** | `SettingsStore` (injectable `UserDefaults`) persists the PRD default profile, category toggles, custom words, and playback/cleaning defaults; the composed normalized target set it exposes to `WordMatcher` changes predictably when categories toggle — all assertable without network, ASR, or manual review. |
 
 ## PRD / spec references
@@ -123,7 +123,7 @@ scripts/verify.sh
 > A slice without a recorded full-suite green artifact is not Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=61 passed=61 failed=0 skipped=0 filtered=0 bundle=build/test-results/verify-20260710-150418.xcresult tier=3 class=tests
 ```
 
 ## Plan review record (coordinator fills before downstream roles)
@@ -133,8 +133,8 @@ VERIFY RESULT: (pending)
 > See [`multitask-workflow.md`](../multitask-workflow.md) § Plan review gates.
 
 ```
-ADR review: (pending)
-Test spec review: (pending)
+ADR review (2026-07-10): (pending) QA cleared — pipeline worker finished PM cleared — pipeline worker finished
+Test spec review (2026-07-10): Architect cleared — pipeline worker finished
 ```
 
 ## Done gate

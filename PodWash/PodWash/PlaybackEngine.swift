@@ -20,7 +20,8 @@ enum AudioSessionConfigurator {
 @Observable
 final class PlaybackEngine: PlaybackPausing {
     /// Discrete playback rates supported by the speed control (Slice 12).
-    static let supportedRates: [Float] = [0.75, 1.0, 1.25, 1.5, 2.0, 3.0]
+    /// Nonisolated so SettingsStore (nonisolated) can snap default rates.
+    nonisolated static let supportedRates: [Float] = [0.75, 1.0, 1.25, 1.5, 2.0, 3.0]
 
     private(set) var currentTime: TimeInterval = 0
     private(set) var duration: TimeInterval = 0
@@ -125,7 +126,8 @@ final class PlaybackEngine: PlaybackPausing {
         setRate(next)
     }
 
-    static func accessibilityValue(for rate: Float) -> String {
+    /// Accessibility value for the speed control (`"0.75"` … `"3.0"`).
+    nonisolated static func accessibilityValue(for rate: Float) -> String {
         switch rate {
         case 0.75: return "0.75"
         case 1.0: return "1.0"

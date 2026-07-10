@@ -112,6 +112,14 @@ def write_session_bundle(
     with open(os.path.join(dest, "xcresult-path.txt"), "w", encoding="utf-8") as fh:
         fh.write((bundle or "(none)") + "\n")
 
+    # Persist latest verify stdout for post-mortems / classifier replay.
+    latest_out = os.path.join(tr, "verify-output-latest.txt")
+    if os.path.isfile(latest_out):
+        shutil.copy2(latest_out, os.path.join(dest, "verify-output.txt"))
+    json_contract = os.path.join(tr, "verify-result.json")
+    if os.path.isfile(json_contract):
+        shutil.copy2(json_contract, os.path.join(dest, "verify-result.json"))
+
     lines = [
         f"# Session bundle — slice {slice_id if slice_id is not None else '?'}",
         "",
@@ -126,6 +134,8 @@ def write_session_bundle(
         "- `ledger.jsonl` — hypothesis ledger copy (if available)",
         "- `events.jsonl` — factory event log copy (if available)",
         "- `xcresult-path.txt` — path to latest/relevant `.xcresult`",
+        "- `verify-result.json` — machine-readable VERIFY RESULT (if available)",
+        "- `verify-output.txt` — raw verify stdout/stderr (if available)",
         "",
     ]
     with open(os.path.join(dest, "README.md"), "w", encoding="utf-8") as fh:
