@@ -29,8 +29,13 @@ from failure_packet import (
     slice_id_from_path,
 )
 from fix_lanes import (
+    FIX_WORKER_ROLES,
+    alternate_fix_role,
     classify_fix_lane,
+    extract_adr_citation_hint,
+    extract_adr_doc_paths,
     filter_paths_for_role,
+    fix_scope_for_role,
     format_attempt_note,
     git_delta,
     opposite_role,
@@ -1000,8 +1005,8 @@ def route_fix(
     packet: FailurePacket | None = None,
     lever_role: str = "",
 ) -> str:
-    """Return 'Engineer' or 'QA' for the next fix worker."""
-    if lever_role in ("Engineer", "QA"):
+    """Return 'Engineer', 'QA', or 'Architect' for the next fix worker."""
+    if lever_role in FIX_WORKER_ROLES:
         return lever_role
     blob = "\n".join(list(failures or []) + list(crashes or []))
     if packet is not None:
@@ -1250,6 +1255,12 @@ def _suggested_files_for_lane(
     slice_files: list[str],
 ) -> list[str]:
     """Pick suggested edit paths for a deterministic lane."""
+    if lane_id == "adr_citation" or role == "Architect":
+        blob = " ".join(
+            list(packet.raw_failures or [])
+            + list(packet.assertions or [])
+        )
+        return extract_adr_doc_paths(blob, slice_files) or ["docs/adr/"]
     src = list(packet.suggested_files or []) + list(slice_files)
     if role == "QA" or lane_id in ("expectation_api", "artifact_fixture"):
         picked = [f for f in src if "Tests" in f or "Fixtures" in f]
@@ -1323,7 +1334,8 @@ def resolve_tier2_continue(
             fix_scope=lane.fix_scope,
             failure_class=(
                 "assertion"
-                if lane.lane_id in ("expectation_api", "artifact_fixture")
+                if lane.lane_id
+                in ("expectation_api", "artifact_fixture", "adr_citation")
                 else packet.failure_class or "build_error"
             ),
             hypothesis=hypothesis or packet.hypothesis,
@@ -1431,11 +1443,20 @@ def build_fix_prompt(
     primary_failure: str = "",
 ) -> str:
     persona = load_persona(role)
-    scope = (
-        "PodWash/PodWash/** only (no tests)"
-        if role == "Engineer"
-        else "PodWash/{PodWashTests,PodWashUITests,PodWashSlowTests}/** + fixtures only"
-    )
+    if role == "Architect":
+        scope = (
+            "docs/adr/** only — fill § Benchmark results from committed fixture "
+            "(±0.001); do not edit app or tests"
+        )
+        docs_guard = ""
+    elif role == "Engineer":
+        scope = "PodWash/PodWash/** only (no tests)"
+        docs_guard = (
+            "Do NOT edit docs/adr/** (Architect owns decision artifacts). "
+        )
+    else:
+        scope = "PodWash/{PodWashTests,PodWashUITests,PodWashSlowTests}/** + fixtures only"
+        docs_guard = "Do NOT edit docs except if QA needs a fixture README note.\n"
     fail_lines = "\n".join(f"- {f}" for f in (failures or ["(unknown failure)"]))
     crash_lines = "\n".join(f"- {c}" for c in crashes) if crashes else "(none)"
     bundle_line = bundle or "(none — check build/test-results/)"
@@ -1482,8 +1503,7 @@ Slice file: {slice_file}
 **Edit scope (hard):** {scope}
 Do NOT run scripts/verify.sh or `xcodebuild … test` — the outer loop owns verification.
 If you need failure detail, read the stuck card / xcresult attachments already provided.
-Do NOT edit docs except if QA needs a fixture README note.
-
+{docs_guard}
 Stuck card:
 {card_block}
 
@@ -1511,7 +1531,7 @@ xcresult bundle: {bundle_line}
 Diagnose, make the minimal fix in scope, then end your turn. Do not verify.
 End with:
 SUMMARY: <one line of what you changed>
-HANDOFF: scope=ok|out_of_scope; route=loop|QA|Engineer; applied=yes|no
+HANDOFF: scope=ok|out_of_scope; route=loop|QA|Engineer|Architect; applied=yes|no
 """
 
 
@@ -2347,8 +2367,22 @@ def run_fix_loop(
                 )
                 if hint:
                     _log(f"hint: {hint}")
-            use_role = forced_role if forced_role in ("Engineer", "QA") else lane.role
-            if forced_role and forced_role != lane.role:
+            elif lane.lane_id == "adr_citation":
+                _log(f"hint: {extract_adr_citation_hint(_tier2_failure_blob(outcome))}")
+            use_role = (
+                forced_role if forced_role in FIX_WORKER_ROLES else lane.role
+            )
+            if (
+                forced_role
+                and forced_role != lane.role
+                and lane.lane_id == "adr_citation"
+            ):
+                _log(
+                    f"LANE override: {lane.lane_id} → {lane.role} "
+                    f"(ignoring handoff flip {forced_role})"
+                )
+                use_role = lane.role
+            elif forced_role and forced_role != lane.role:
                 _log(
                     f"HANDOFF FLIP applied: forcing role={forced_role} "
                     f"(lane chose {lane.role})"
@@ -2356,7 +2390,7 @@ def run_fix_loop(
             verdict = RefereeVerdict(
                 primary_failure=(outcome.failures or ["(unknown)"])[0],
                 role=use_role,
-                fix_scope="tests" if use_role == "QA" else "app",
+                fix_scope=fix_scope_for_role(use_role),
                 files=_suggested_files_for_lane(
                     lane.lane_id, use_role, packet, slice_files
                 )[:6],
@@ -2476,23 +2510,35 @@ def run_fix_loop(
                     )
                     raise ThrashHalt(f"referee halt: {reason}") from exc
 
-        if forced_role in ("Engineer", "QA"):
-            _log(f"HANDOFF FLIP applied: forcing role={forced_role}")
-            verdict = RefereeVerdict(
-                primary_failure=verdict.primary_failure,
-                failure_groups=list(verdict.failure_groups),
-                role=forced_role,
-                fix_scope="tests" if forced_role == "QA" else "app",
-                files=list(verdict.files or packet.suggested_files or [])[:6],
-                instruction=verdict.instruction,
-                hypothesis=(
-                    f"ledger-reroute:no-edit:{forced_role}:{sig[:50]}"
-                    if "no-edit" not in (verdict.hypothesis or "")
-                    else verdict.hypothesis
-                ),
-                confidence="med",
-                narration=f"Prior attempt no-edit/out-of-scope — {forced_role} takes over.",
-            )
+        if forced_role in FIX_WORKER_ROLES:
+            if (
+                lane is not None
+                and lane.lane_id == "adr_citation"
+                and forced_role != lane.role
+            ):
+                _log(
+                    f"LANE override: {lane.lane_id} → {lane.role} "
+                    f"(ignoring handoff flip {forced_role})"
+                )
+            else:
+                _log(f"HANDOFF FLIP applied: forcing role={forced_role}")
+                verdict = RefereeVerdict(
+                    primary_failure=verdict.primary_failure,
+                    failure_groups=list(verdict.failure_groups),
+                    role=forced_role,
+                    fix_scope=fix_scope_for_role(forced_role),
+                    files=list(verdict.files or packet.suggested_files or [])[:6],
+                    instruction=verdict.instruction,
+                    hypothesis=(
+                        f"ledger-reroute:no-edit:{forced_role}:{sig[:50]}"
+                        if "no-edit" not in (verdict.hypothesis or "")
+                        else verdict.hypothesis
+                    ),
+                    confidence="med",
+                    narration=(
+                        f"Prior attempt no-edit/out-of-scope — {forced_role} takes over."
+                    ),
+                )
 
         if hypothesis_seen(ledger, verdict.hypothesis, sig):
             reason = (
@@ -2533,9 +2579,11 @@ def run_fix_loop(
             )
         )
         packet = packet.with_updates(suggested_files=suggested)
-        role = verdict.role if verdict.role in ("Engineer", "QA") else "Engineer"
+        role = verdict.role if verdict.role in FIX_WORKER_ROLES else "Engineer"
         if verdict.fix_scope == "tests":
             role = "QA"
+        elif verdict.fix_scope == "docs":
+            role = "Architect"
         elif verdict.fix_scope == "app":
             role = "Engineer"
 
@@ -2681,7 +2729,12 @@ def run_fix_loop(
 
         if not in_scope:
             if not budget.forced_next_role:
-                budget.forced_next_role = opposite_role(role)
+                lane_hint = classify_fix_lane(
+                    blob=_tier2_failure_blob(outcome),
+                    packet=packet,
+                    is_build=is_build_lane(outcome),
+                )
+                budget.forced_next_role = alternate_fix_role(role, lane=lane_hint)
                 _log(
                     f"NO-EDIT: empty in-scope delta — next role="
                     f"{budget.forced_next_role} "
@@ -3161,6 +3214,8 @@ def run_tier2_implement_gate(
                 hint = extract_artifact_regeneration_hint(tier2_blob)
                 if hint:
                     _log(f"hint: {hint}")
+            elif lane_pre.lane_id == "adr_citation":
+                _log(f"hint: {extract_adr_citation_hint(tier2_blob)}")
 
         role, prompt = resolve_tier2_continue(
             slice_file=slice_file,
@@ -3170,26 +3225,30 @@ def run_tier2_implement_gate(
             max_runs=max_runs,
             escalate_expectation=escalate,
         )
-        if forced_next_role in ("Engineer", "QA") and forced_next_role != role:
-            _log(
-                f"HANDOFF FLIP applied: forcing role={forced_next_role} "
-                f"(lane chose {role})"
-            )
-            # Re-resolve with packet scope nudged so prompt matches forced role
-            if outcome.packet is not None:
-                outcome.packet = outcome.packet.with_updates(
-                    fix_scope="tests" if forced_next_role == "QA" else "app",
+        if forced_next_role in FIX_WORKER_ROLES and forced_next_role != role:
+            if lane_pre is not None and lane_pre.lane_id == "adr_citation":
+                _log(
+                    f"LANE override: {lane_pre.lane_id} → {lane_pre.role} "
+                    f"(ignoring handoff flip {forced_next_role})"
                 )
-            role, prompt = resolve_tier2_continue(
-                slice_file=slice_file,
-                repo_root=repo_root,
-                outcome=outcome,
-                run_i=fix_attempt,
-                max_runs=max_runs,
-                escalate_expectation=escalate,
-            )
-            # Deterministic lanes may still win — honor forced role in spawn
-            role = forced_next_role
+            else:
+                _log(
+                    f"HANDOFF FLIP applied: forcing role={forced_next_role} "
+                    f"(lane chose {role})"
+                )
+                if outcome.packet is not None:
+                    outcome.packet = outcome.packet.with_updates(
+                        fix_scope=fix_scope_for_role(forced_next_role),
+                    )
+                role, prompt = resolve_tier2_continue(
+                    slice_file=slice_file,
+                    repo_root=repo_root,
+                    outcome=outcome,
+                    run_i=fix_attempt,
+                    max_runs=max_runs,
+                    escalate_expectation=escalate,
+                )
+                role = forced_next_role
         forced_next_role = ""
         hyp = (
             f"ledger-escalate:predicate-wait:{sig[:50]}"
@@ -3288,7 +3347,12 @@ def run_tier2_implement_gate(
 
         if not in_scope:
             if not forced_next_role:
-                forced_next_role = opposite_role(role)
+                lane_hint = classify_fix_lane(
+                    blob=tier2_blob,
+                    packet=outcome.packet,
+                    is_build=is_build_lane(outcome),
+                )
+                forced_next_role = alternate_fix_role(role, lane=lane_hint)
                 _log(
                     f"NO-EDIT: empty in-scope delta — next role="
                     f"{forced_next_role} (ledger-reroute:no-edit)"
@@ -3747,7 +3811,7 @@ def run_pipeline_slice(
                 repo_root=repo_root,
                 forced_role=role,
                 agent_name=label,
-                fix_worker=role in ("Engineer", "QA"),
+                fix_worker=role in FIX_WORKER_ROLES,
             )
 
         # P1: implement exit = tier-2 green

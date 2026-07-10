@@ -21,11 +21,19 @@ from failure_packet import (
 from sim_hygiene import is_missing_bundle_executable
 
 DETERMINISTIC_LANES = frozenset(
-    {"packaging", "expectation_api", "artifact_fixture", "build"}
+    {"packaging", "expectation_api", "artifact_fixture", "adr_citation", "build"}
+)
+
+FIX_WORKER_ROLES = frozenset({"Engineer", "QA", "Architect"})
+
+_ADR_CITATION_RE = re.compile(
+    r"ADR-\d+.*must cite|must cite committed (?:precision|recall|benchmark)|"
+    r"decision artifact|ADR-\d+\s+missing",
+    re.IGNORECASE,
 )
 
 _HANDOFF_RE = re.compile(
-    r"^HANDOFF:\s*scope=(ok|out_of_scope);\s*route=(loop|QA|Engineer);\s*"
+    r"^HANDOFF:\s*scope=(ok|out_of_scope);\s*route=(loop|QA|Engineer|Architect);\s*"
     r"applied=(yes|no)\s*$",
     re.IGNORECASE | re.MULTILINE,
 )
@@ -36,17 +44,58 @@ class FixLane:
     """Deterministic routing decision — skip referee when present."""
 
     lane_id: str
-    role: str  # Engineer | QA
+    role: str  # Engineer | QA | Architect
     instruction: str
     hypothesis: str
-    fix_scope: str  # app | tests
+    fix_scope: str  # app | tests | docs
 
 
 @dataclass(frozen=True)
 class WorkerHandoff:
     scope: str  # ok | out_of_scope
-    route: str  # loop | QA | Engineer
+    route: str  # loop | QA | Engineer | Architect
     applied: str  # yes | no
+
+
+def is_adr_citation_failure(blob: str) -> bool:
+    """True when verify failed because an ADR lacks committed benchmark numbers."""
+    return bool(_ADR_CITATION_RE.search(blob or ""))
+
+
+def extract_adr_citation_hint(blob: str) -> str:
+    """Console hint for adr_citation lane."""
+    m = re.search(r"ADR-(\d+)", blob or "", re.IGNORECASE)
+    if m:
+        num = int(m.group(1))
+        return (
+            f"fill docs/adr/{num:03d}-*.md § Benchmark results from committed "
+            "fixture (±0.001); do not edit app/tests"
+        )
+    return (
+        "fill docs/adr/NNN § Benchmark results from committed fixture "
+        "(±0.001); do not edit app/tests"
+    )
+
+
+def extract_adr_doc_paths(blob: str, slice_files: list[str]) -> list[str]:
+    """Suggest ADR paths for adr_citation fixes."""
+    from_slice = [f for f in slice_files if f.startswith("docs/adr/")]
+    if from_slice:
+        return from_slice
+    m = re.search(r"ADR-(\d+)", blob or "", re.IGNORECASE)
+    if m:
+        num = int(m.group(1))
+        prefix = f"docs/adr/{num:03d}-"
+        return [f"{prefix}*.md"]
+    return ["docs/adr/"]
+
+
+def fix_scope_for_role(role: str) -> str:
+    if role == "QA":
+        return "tests"
+    if role == "Architect":
+        return "docs"
+    return "app"
 
 
 def _packet_blob(packet: FailurePacket | None) -> str:
@@ -68,7 +117,7 @@ def classify_fix_lane(
 ) -> FixLane | None:
     """Return a deterministic FixLane, or None when the referee should decide.
 
-    Priority: packaging → expectation_api → artifact_fixture → build.
+    Priority: packaging → expectation_api → artifact_fixture → adr_citation → build.
     """
     combined = "\n".join(
         p for p in (blob, _packet_blob(packet)) if p
@@ -140,6 +189,25 @@ def classify_fix_lane(
             fix_scope="tests",
         )
 
+    if is_adr_citation_failure(combined):
+        hint = extract_adr_citation_hint(combined)
+        return FixLane(
+            lane_id="adr_citation",
+            role="Architect",
+            instruction=(
+                "ADR citation lane: the slice decision artifact (ADR) must cite "
+                "committed benchmark precision/recall (±0.001) and the approach "
+                "string from the fixture. Edit only docs/adr/** — update "
+                f"§ Benchmark results. {hint}. Do not edit app or test code. "
+                "Do not run verify."
+            ),
+            hypothesis=(
+                pkt_hyp
+                or "ADR benchmark table still pending — fill from committed artifact"
+            ),
+            fix_scope="docs",
+        )
+
     if is_build:
         return FixLane(
             lane_id="build",
@@ -164,7 +232,9 @@ def filter_paths_for_role(paths: Iterable[str], role: str) -> list[str]:
         p = (p or "").strip()
         if not p or p in seen:
             continue
-        if role == "Engineer":
+        if role == "Architect":
+            ok = p.startswith("docs/adr/") or "/docs/adr/" in p.replace("\\", "/")
+        elif role == "Engineer":
             # App target only — PodWash/PodWashTests does not match this prefix.
             ok = p.startswith("PodWash/PodWash/")
         else:
@@ -205,6 +275,8 @@ def normalize_handoff(h: WorkerHandoff) -> WorkerHandoff:
         route = "QA"
     elif route_raw.lower() == "engineer":
         route = "Engineer"
+    elif route_raw.lower() == "architect":
+        route = "Architect"
     else:
         route = "loop"
     return WorkerHandoff(
@@ -232,19 +304,40 @@ def resolve_handoff_flip(
             f"({', '.join(in_scope_delta[:5])})"
         )
     if h.scope == "out_of_scope":
-        flip = "QA" if current_role == "Engineer" else "Engineer"
-        if h.route in ("QA", "Engineer"):
+        flip = alternate_fix_role(current_role)
+        if h.route in ("QA", "Engineer", "Architect"):
             flip = h.route
         if flip == current_role:
-            flip = "QA" if current_role == "Engineer" else "Engineer"
+            flip = alternate_fix_role(current_role, skip=current_role)
         return flip, f"HANDOFF FLIP: out_of_scope → {flip}"
-    if h.route in ("QA", "Engineer") and h.route != current_role:
+    if h.route in ("QA", "Engineer", "Architect") and h.route != current_role:
         return h.route, f"HANDOFF FLIP: route={h.route}"
     return None, ""
 
 
 def opposite_role(role: str) -> str:
     return "QA" if role == "Engineer" else "Engineer"
+
+
+def alternate_fix_role(
+    role: str,
+    *,
+    skip: str | None = None,
+    lane: FixLane | None = None,
+) -> str:
+    """Next fix worker when flipping after no-edit or out-of-scope handoff."""
+    if lane is not None and lane.lane_id == "adr_citation":
+        return "Architect"
+    order = ("Engineer", "QA", "Architect")
+    try:
+        idx = order.index(role)
+    except ValueError:
+        return opposite_role(role)
+    for offset in (1, 2):
+        candidate = order[(idx + offset) % len(order)]
+        if candidate != skip:
+            return candidate
+    return "Engineer"
 
 
 def format_attempt_note(

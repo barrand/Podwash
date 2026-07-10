@@ -376,6 +376,11 @@ def is_app_path(path: str) -> bool:
     return "/PodWash/PodWash/" in f"/{p}" or p.startswith("PodWash/PodWash/")
 
 
+def is_docs_path(path: str) -> bool:
+    p = (path or "").replace("\\", "/")
+    return p.startswith("docs/adr/") or "/docs/adr/" in f"/{p}"
+
+
 def resolve_role_scope_contradiction(
     role: str,
     files: list[str],
@@ -386,11 +391,22 @@ def resolve_role_scope_contradiction(
     """
     paths = [f for f in files if f and f.strip()]
     if not paths:
+        if role == "Architect":
+            return role, "docs"
         return role, ("app" if role == "Engineer" else "tests")
+    docsish = all(is_docs_path(p) for p in paths)
     testish = all(is_test_path(p) for p in paths)
     appish = all(is_app_path(p) for p in paths)
+    if role == "Architect" or docsish:
+        return "Architect", "docs"
     if role == "Engineer" and testish and not appish:
         return "QA", "tests"
     if role == "QA" and appish and not testish:
         return "Engineer", "app"
-    return role, ("app" if role == "Engineer" else "tests")
+    if role == "Engineer" and docsish:
+        return "Architect", "docs"
+    if role == "Architect":
+        return role, "docs"
+    if role == "QA":
+        return role, "tests"
+    return role, "app"
