@@ -131,12 +131,11 @@ nonisolated final class PodcastStore: @unchecked Sendable {
             let key = feedURL.absoluteString
             let podcast: CDPodcast
             if let existing = self.fetchPodcast(feedURLString: key) {
-                if let existingEpisodes = existing.episodes?.array as? [CDEpisode] {
-                    for row in existingEpisodes {
-                        self.context.delete(row)
-                    }
-                }
                 podcast = existing
+            } else if let legacy = self.fetchLegacyUnkeyedPodcast() {
+                // Reclaim pre–Slice 22 rows that migrated with empty feedURLString.
+                legacy.feedURLString = key
+                podcast = legacy
             } else {
                 podcast = CDPodcast(context: self.context)
                 podcast.feedURLString = key
@@ -150,6 +149,22 @@ nonisolated final class PodcastStore: @unchecked Sendable {
             podcast.feedDescription = feed.description
             if let collectionId {
                 podcast.collectionId = NSNumber(value: collectionId)
+            }
+
+            // CDEpisode.id is globally unique (ADR-009/014). Drop any existing rows with
+            // these IDs — including this podcast's prior set and collisions left by other
+            // fixture subscriptions — before inserting replacements.
+            let incomingIDs = feed.episodes.map(\.id).filter { !$0.isEmpty }
+            if !incomingIDs.isEmpty {
+                let conflictRequest = CDEpisode.fetchRequest()
+                conflictRequest.predicate = NSPredicate(format: "id IN %@", incomingIDs)
+                for row in try self.context.fetch(conflictRequest) {
+                    self.context.delete(row)
+                }
+            } else if let existingEpisodes = podcast.episodes?.array as? [CDEpisode] {
+                for row in existingEpisodes {
+                    self.context.delete(row)
+                }
             }
 
             let ordered = NSMutableOrderedSet()
@@ -177,6 +192,14 @@ nonisolated final class PodcastStore: @unchecked Sendable {
     private func fetchPodcast(feedURLString: String) -> CDPodcast? {
         let request = CDPodcast.fetchRequest()
         request.predicate = NSPredicate(format: "feedURLString == %@", feedURLString)
+        request.fetchLimit = 1
+        return try? context.fetch(request).first
+    }
+
+    /// Single legacy row from before multi-sub keyed by `feedURLString` (default `""`).
+    private func fetchLegacyUnkeyedPodcast() -> CDPodcast? {
+        let request = CDPodcast.fetchRequest()
+        request.predicate = NSPredicate(format: "feedURLString == %@ OR feedURLString == nil", "")
         request.fetchLimit = 1
         return try? context.fetch(request).first
     }

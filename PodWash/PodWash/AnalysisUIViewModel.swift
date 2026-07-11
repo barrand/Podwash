@@ -138,17 +138,23 @@ final class AnalysisUIViewModel {
     }
 
     func setEpisodeCleaning(episodeID: String, enabled: Bool) async {
+        if enabled && shouldAutoAnalyzeOnEpisodeEnable {
+            store.setEpisodeCleaning(episodeID, enabled: enabled)
+            primeEpisodeCleaningToggle(episodeID: episodeID)
+            await completePrimedEpisodeAnalysis(episodeID: episodeID)
+            return
+        }
+        applyEpisodeCleaningWithoutAnalysis(episodeID: episodeID, enabled: enabled)
+    }
+
+    /// Non-auto toggle path used by UITests that assert badges on post-tap idle.
+    func applyEpisodeCleaningWithoutAnalysis(episodeID: String, enabled: Bool) {
         store.setEpisodeCleaning(episodeID, enabled: enabled)
         if enabled {
-            if shouldAutoAnalyzeOnEpisodeEnable {
-                primeEpisodeCleaningToggle(episodeID: episodeID)
-                await completePrimedEpisodeAnalysis(episodeID: episodeID)
-            } else {
-                analyzingEpisodeID = nil
-                _ = transition(to: .episodeOn)
-                syncStateFromStore()
-                markContentChanged()
-            }
+            analyzingEpisodeID = nil
+            _ = transition(to: .episodeOn)
+            syncStateFromStore()
+            markContentChanged()
         } else {
             analyzingEpisodeID = nil
             if store.isChannelCleaningEnabled {

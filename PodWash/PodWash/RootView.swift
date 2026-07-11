@@ -129,6 +129,9 @@ struct RootView: View {
 
         let context = persistence.viewContext
         let store = PodcastStore(context: context)
+        // Wipe prior UITest subscriptions (e.g. Discover) so fixture episode IDs
+        // do not collide with CDEpisode's global uniqueness constraint.
+        try? store.clear()
         let feedViewModel = EpisodeListViewModel(parser: RSSParser(), store: store)
         let cleaningStore = CleaningToggleStore(context: context)
         let analysisViewModel = AnalysisUIViewModel(
@@ -158,6 +161,7 @@ struct RootView: View {
     private func loadFixtureDiscoverIfNeeded() {
         guard FixtureDiscover.isEnabled, discoverViewModel == nil else { return }
         let store = PodcastStore(context: persistence.viewContext)
+        try? store.clear()
         discoverViewModel = DiscoverViewModel(
             searchClient: FixtureDiscover.makeSearchClient(),
             parser: FixtureDiscover.makeParser(),

@@ -247,10 +247,13 @@ private final class EpisodeTableViewController: UITableViewController {
                     self.refreshAnalysisDisplayOnVisibleRows()
                 }
             } else {
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    await self.analysisViewModel.setEpisodeCleaning(episodeID: episodeID, enabled: enabled)
-                }
+                // Publish badge synchronously so XCTest's post-tap idle sees
+                // `cleaningBadge_episodeOn` (a detached Task can miss the window).
+                self.analysisViewModel.applyEpisodeCleaningWithoutAnalysis(
+                    episodeID: episodeID,
+                    enabled: enabled
+                )
+                self.refreshAnalysisDisplayOnVisibleRows()
             }
         }
     }
@@ -448,6 +451,8 @@ private final class EpisodeTableViewCell: UITableViewCell {
             queueAddButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
         ])
 
+        cleaningSwitch.isAccessibilityElement = true
+
         accessoryStack.axis = .horizontal
         accessoryStack.spacing = 8
         accessoryStack.alignment = .center
@@ -479,6 +484,13 @@ private final class EpisodeTableViewCell: UITableViewCell {
         contentView.bringSubviewToFront(accessoryStack)
 
         cleaningSwitch.addTarget(self, action: #selector(switchChanged), for: .valueChanged)
+        // Baseline AX children so switches/buttons stay queryable before any
+        // progress/badge host is published.
+        updateAccessibilityElements(
+            showsAnalysisProgress: false,
+            showsDownloadProgress: false,
+            showsBadge: false
+        )
     }
 
     func configure(
@@ -643,9 +655,12 @@ private final class EpisodeTableViewCell: UITableViewCell {
         showsDownloadProgress: Bool,
         showsBadge: Bool
     ) {
-        // Keep progress/badge on contentView. Accessory buttons/switch stay separate
-        // interactive elements — do not fold them into this list.
-        var axChildren: [UIView] = []
+        // Publish AX children on the *cell* (not contentView). After Slice 22 moved
+        // accessories into contentView, assigning only progress/badge to
+        // `contentView.accessibilityElements` left `analysisProgress` /
+        // `cleaningBadge_episodeOn` invisible to XCTest descendant queries even
+        // when the hosts were on-screen (see AnalysisProgressUITests recording).
+        var axChildren: [UIView] = [queueAddButton, downloadButton, cleaningSwitch]
         if showsDownloadProgress {
             axChildren.append(downloadProgressAccessibilityHost)
         }
@@ -655,7 +670,8 @@ private final class EpisodeTableViewCell: UITableViewCell {
         if showsBadge {
             axChildren.append(badgeLabel)
         }
-        contentView.accessibilityElements = axChildren.isEmpty ? nil : axChildren
+        accessibilityElements = axChildren
+        contentView.accessibilityElements = nil
     }
 
     private func setCleaningSwitch(isOn: Bool) {

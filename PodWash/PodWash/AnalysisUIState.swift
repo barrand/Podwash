@@ -20,7 +20,9 @@ enum AnalysisUIState: String, Equatable, CaseIterable {
         case .off:
             [.channelOn, .episodeOn]
         case .channelOn:
-            [.off, .analyzing]
+            // Episode cleaning can turn on while channel cleaning stays on
+            // (both badges visible — slice-09-ux). Also allow analyzing / off.
+            [.off, .episodeOn, .analyzing]
         case .episodeOn:
             [.off, .analyzing]
         case .analyzing:

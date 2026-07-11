@@ -57,7 +57,10 @@ final class DiscoverStubURLProtocol: URLProtocol {
 
         if url.host == "fixture.podwash.tests" {
             if url.path.contains("/feeds/") || url.path.contains("sample-feed") {
-                let payload = try bundledData(name: "sample_feed", extension: "xml", subdirectory: "Fixtures/feeds")
+                // Distinct episode IDs across feeds (ADR-014 §4) — popular-beta uses
+                // the one-episode stub; all other fixture feed URLs use sample_feed.
+                let feedName = url.path.hasSuffix("popular-beta") ? "second_feed" : "sample_feed"
+                let payload = try bundledData(name: feedName, extension: "xml", subdirectory: "Fixtures/feeds")
                 let response = HTTPURLResponse(
                     url: url,
                     statusCode: 200,
