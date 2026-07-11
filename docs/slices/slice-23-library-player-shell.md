@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 23 |
 | **Title** | Library & player shell |
-| **Status** | Ready |
+| **Status** | Done |
 | **Crux** | Production `RootView` (no fixture args) exposes Library + Discover tabs; subscribed shows list from multi-sub `PodcastStore`; tapping a show opens `PodcastDetailView`, tapping an episode starts playback and surfaces a **mini-player** bar — wired through `PlaybackCoordinator` / `QueueCoordinator`, assertable via `-UITestFixtureLibrary` and store seeding. |
 
 > **Placement:** MVP app shell insert **before CarPlay (Slice 15)** — historically scoped as **"14b"**. Requires Slice 22 (multi-subscribe + Discover).
