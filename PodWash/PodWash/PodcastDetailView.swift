@@ -176,6 +176,16 @@ struct PodcastDetailView: View {
                 .accessibilityLabel("Channel cleaning")
                 .accessibilityValue(analysisViewModel.isChannelCleaningEnabled ? "on" : "off")
 
+                Toggle(isOn: channelUnrelatedContentBinding) {
+                    Text("Skip unrelated on channel")
+                        .font(.caption)
+                }
+                .labelsHidden()
+                .accessibilityIdentifier("channelUnrelatedContentToggle")
+                .accessibilityLabel("Channel unrelated content")
+                .accessibilityValue(analysisViewModel.isChannelUnrelatedContentEnabled ? "1" : "0")
+                .accessibilityHint("Enables unrelated-content handling for this podcast when on.")
+
                 if analysisViewModel.isChannelCleaningEnabled {
                     Text("Channel on")
                         .font(.caption2)
@@ -196,6 +206,13 @@ struct PodcastDetailView: View {
         Binding(
             get: { analysisViewModel.isChannelCleaningEnabled },
             set: { analysisViewModel.setChannelCleaning($0) }
+        )
+    }
+
+    private var channelUnrelatedContentBinding: Binding<Bool> {
+        Binding(
+            get: { analysisViewModel.isChannelUnrelatedContentEnabled },
+            set: { analysisViewModel.setChannelUnrelatedContent($0) }
         )
     }
 

@@ -26,6 +26,8 @@ nonisolated final class SettingsStore: @unchecked Sendable {
         static let defaultPlaybackRate = "podwash.settings.defaultPlaybackRate"
         static let autoDownloadEnabled = "podwash.settings.autoDownloadEnabled"
         static let autoDeleteAfterPlayedEnabled = "podwash.settings.autoDeleteAfterPlayedEnabled"
+        static let unrelatedContentEnabled = "podwash.settings.unrelatedContentEnabled"
+        static let unrelatedContentAction = "podwash.settings.unrelatedContentAction"
 
         static let all: [String] = [
             enabledCategories,
@@ -34,6 +36,8 @@ nonisolated final class SettingsStore: @unchecked Sendable {
             defaultPlaybackRate,
             autoDownloadEnabled,
             autoDeleteAfterPlayedEnabled,
+            unrelatedContentEnabled,
+            unrelatedContentAction,
         ]
     }
 
@@ -61,6 +65,14 @@ nonisolated final class SettingsStore: @unchecked Sendable {
     }
     var autoDeleteAfterPlayedEnabled: Bool {
         didSet { userDefaults.set(autoDeleteAfterPlayedEnabled, forKey: Keys.autoDeleteAfterPlayedEnabled) }
+    }
+    /// Global unrelated-content handling (Differentiator 2). Fresh default: off.
+    var unrelatedContentEnabled: Bool {
+        didSet { userDefaults.set(unrelatedContentEnabled, forKey: Keys.unrelatedContentEnabled) }
+    }
+    /// Action for unrelated-content intervals when enabled. Fresh default: skip.
+    var unrelatedContentAction: SettingsCleaningAction {
+        didSet { persistUnrelatedContentAction() }
     }
 
     init(userDefaults: UserDefaults = .standard) {
@@ -103,6 +115,19 @@ nonisolated final class SettingsStore: @unchecked Sendable {
             autoDeleteAfterPlayedEnabled = userDefaults.bool(forKey: Keys.autoDeleteAfterPlayedEnabled)
         } else {
             autoDeleteAfterPlayedEnabled = false
+        }
+
+        if userDefaults.object(forKey: Keys.unrelatedContentEnabled) != nil {
+            unrelatedContentEnabled = userDefaults.bool(forKey: Keys.unrelatedContentEnabled)
+        } else {
+            unrelatedContentEnabled = false
+        }
+
+        if let raw = userDefaults.string(forKey: Keys.unrelatedContentAction),
+           let action = SettingsCleaningAction(rawValue: raw) {
+            unrelatedContentAction = action
+        } else {
+            unrelatedContentAction = .skip
         }
     }
 
@@ -165,8 +190,19 @@ nonisolated final class SettingsStore: @unchecked Sendable {
         }
     }
 
+    func unrelatedCensorAction() -> CensorAction {
+        switch unrelatedContentAction {
+        case .mute: return .mute
+        case .skip: return .skip
+        }
+    }
+
     private func persistAction() {
         userDefaults.set(defaultCleaningAction.rawValue, forKey: Keys.defaultCleaningAction)
+    }
+
+    private func persistUnrelatedContentAction() {
+        userDefaults.set(unrelatedContentAction.rawValue, forKey: Keys.unrelatedContentAction)
     }
 
     private func persistRate() {

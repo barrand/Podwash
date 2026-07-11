@@ -12,9 +12,11 @@ import UIKit
 @MainActor
 protocol CleaningToggleStoring: AnyObject {
     var isChannelCleaningEnabled: Bool { get }
+    var isChannelUnrelatedContentEnabled: Bool { get }
     var enabledEpisodeIDs: Set<String> { get }
     func isEpisodeCleaningEnabled(_ episodeID: String) -> Bool
     func setChannelCleaning(_ enabled: Bool)
+    func setChannelUnrelatedContent(_ enabled: Bool)
     func setEpisodeCleaning(_ episodeID: String, enabled: Bool)
 }
 
@@ -31,6 +33,7 @@ final class CleaningToggleStoreAdapter: CleaningToggleStoring {
     nonisolated deinit {}
 
     var isChannelCleaningEnabled: Bool { store.isChannelCleaningEnabled }
+    var isChannelUnrelatedContentEnabled: Bool { store.isChannelUnrelatedContentEnabled }
     var enabledEpisodeIDs: Set<String> { store.enabledEpisodeIDs }
 
     func isEpisodeCleaningEnabled(_ episodeID: String) -> Bool {
@@ -39,6 +42,10 @@ final class CleaningToggleStoreAdapter: CleaningToggleStoring {
 
     func setChannelCleaning(_ enabled: Bool) {
         try? store.setChannelCleaning(enabled)
+    }
+
+    func setChannelUnrelatedContent(_ enabled: Bool) {
+        try? store.setChannelUnrelatedContent(enabled)
     }
 
     func setEpisodeCleaning(_ episodeID: String, enabled: Bool) {
@@ -50,6 +57,7 @@ final class CleaningToggleStoreAdapter: CleaningToggleStoring {
 final class AnalysisUIViewModel {
     private(set) var state: AnalysisUIState = .off
     private(set) var isChannelCleaningEnabled = false
+    private(set) var isChannelUnrelatedContentEnabled = false
     @ObservationIgnored let store: any CleaningToggleStoring
     private(set) var analyzingEpisodeID: String?
     private(set) var contentGeneration = 0
@@ -95,6 +103,7 @@ final class AnalysisUIViewModel {
 
     func syncStateFromStore() {
         isChannelCleaningEnabled = store.isChannelCleaningEnabled
+        isChannelUnrelatedContentEnabled = store.isChannelUnrelatedContentEnabled
         let newState: AnalysisUIState
         if analyzingEpisodeID != nil {
             newState = .analyzing
@@ -119,6 +128,12 @@ final class AnalysisUIViewModel {
             _ = transition(to: .off)
         }
         syncStateFromStore()
+        markContentChanged()
+    }
+
+    func setChannelUnrelatedContent(_ enabled: Bool) {
+        store.setChannelUnrelatedContent(enabled)
+        isChannelUnrelatedContentEnabled = enabled
         markContentChanged()
     }
 
@@ -168,11 +183,17 @@ final class AnalysisUIViewModel {
 
         let identity = EpisodeIdentity(id: episodeID)
         let audioURL = URL(string: "https://fixture.podwash.tests/episode-audio")!
+        let effectiveUnrelated = UnrelatedContentOptions(
+            enabled: settingsStore.unrelatedContentEnabled && store.isChannelUnrelatedContentEnabled,
+            action: settingsStore.unrelatedCensorAction()
+        )
         _ = try? await analyzer.analyze(
             episode: identity,
             audioURL: audioURL,
             targetWords: settingsStore.activeNormalizedTargetSet(),
-            injectedTranscript: []
+            injectedTranscript: [],
+            profanityAction: settingsStore.censorAction(),
+            unrelatedContent: effectiveUnrelated
         )
 
         analyzingEpisodeID = nil

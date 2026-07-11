@@ -59,7 +59,8 @@ struct IntervalCache: Sendable {
     // MARK: - Private
 
     private func cacheFileURL(episodeID: String, targetWords: Set<String>) -> URL {
-        let fp = Self.fingerprint(for: targetWords)
+        // ADR-013 §3.4 — format token so sourced unions do not collide with v1 payloads.
+        let fp = Self.fingerprint(for: targetWords) + "\n" + "interval-format:v2"
         let digest = SHA256.hash(data: Data(fp.utf8))
         let hash = digest.map { String(format: "%02x", $0) }.joined()
         let filename = "\(episodeID)__\(hash).json"

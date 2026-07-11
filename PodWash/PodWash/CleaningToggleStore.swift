@@ -31,6 +31,10 @@ final class CleaningToggleStore {
         fetchPodcast()?.channelCleaningEnabled ?? false
     }
 
+    var isChannelUnrelatedContentEnabled: Bool {
+        fetchPodcast()?.channelUnrelatedContentEnabled ?? false
+    }
+
     /// Episode IDs with cleaning enabled (AnalysisUIViewModel / legacy tests).
     var enabledEpisodeIDs: Set<String> {
         let request = CDEpisode.fetchRequest()
@@ -46,6 +50,12 @@ final class CleaningToggleStore {
     func setChannelCleaning(_ enabled: Bool) throws {
         let podcast = requirePodcast()
         podcast.channelCleaningEnabled = enabled
+        try context.save()
+    }
+
+    func setChannelUnrelatedContent(_ enabled: Bool) throws {
+        let podcast = requirePodcast()
+        podcast.channelUnrelatedContentEnabled = enabled
         try context.save()
     }
 
@@ -75,6 +85,7 @@ final class CleaningToggleStore {
         let podcast = CDPodcast(context: context)
         podcast.title = ""
         podcast.channelCleaningEnabled = false
+        podcast.channelUnrelatedContentEnabled = false
         return podcast
     }
 
@@ -110,6 +121,7 @@ final class InMemoryCleaningToggleStore: CleaningToggleStoring {
     nonisolated deinit {}
 
     var isChannelCleaningEnabled: Bool { store.isChannelCleaningEnabled }
+    var isChannelUnrelatedContentEnabled: Bool { store.isChannelUnrelatedContentEnabled }
     var enabledEpisodeIDs: Set<String> { store.enabledEpisodeIDs }
 
     func isEpisodeCleaningEnabled(_ episodeID: String) -> Bool {
@@ -118,6 +130,10 @@ final class InMemoryCleaningToggleStore: CleaningToggleStoring {
 
     func setChannelCleaning(_ enabled: Bool) {
         try? store.setChannelCleaning(enabled)
+    }
+
+    func setChannelUnrelatedContent(_ enabled: Bool) {
+        try? store.setChannelUnrelatedContent(enabled)
     }
 
     func setEpisodeCleaning(_ episodeID: String, enabled: Bool) {

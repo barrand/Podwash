@@ -16,16 +16,51 @@ enum CensorAction: String, Codable, Equatable {
     case skip
 }
 
+/// Discriminant so profanity and unrelated-content intervals keep independent
+/// actions and can be filtered without re-running ASR (ADR-013 §3.2).
+enum IntervalSource: String, Codable, Equatable, Sendable {
+    case profanity
+    case unrelatedContent
+}
+
 /// A padded, mergeable censor interval in seconds from episode start.
 struct CensorInterval: Codable, Equatable {
     var start: Double
     var end: Double
     var action: CensorAction
+    var source: IntervalSource
 
-    init(start: Double, end: Double, action: CensorAction = .mute) {
+    init(
+        start: Double,
+        end: Double,
+        action: CensorAction = .mute,
+        source: IntervalSource = .profanity
+    ) {
         self.start = start
         self.end = end
         self.action = action
+        self.source = source
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case start, end, action, source
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        start = try container.decode(Double.self, forKey: .start)
+        end = try container.decode(Double.self, forKey: .end)
+        action = try container.decode(CensorAction.self, forKey: .action)
+        // Missing `source` (pre–Slice 19 cache) decodes as `.profanity`.
+        source = try container.decodeIfPresent(IntervalSource.self, forKey: .source) ?? .profanity
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(start, forKey: .start)
+        try container.encode(end, forKey: .end)
+        try container.encode(action, forKey: .action)
+        try container.encode(source, forKey: .source)
     }
 }
 
@@ -60,7 +95,7 @@ enum IntervalBuilder {
             paddedEnd = midpoint + halfDuration
         }
 
-        return CensorInterval(start: paddedStart, end: paddedEnd, action: action)
+        return CensorInterval(start: paddedStart, end: paddedEnd, action: action, source: .profanity)
     }
 
     // MARK: - Sort-and-merge (spec §6)
@@ -102,6 +137,20 @@ enum IntervalBuilder {
             }
             return paddedInterval(wordStart: word.start, wordEnd: word.end, action: action)
         }
-        return merge(padded)
+        // IntervalBuilder emits profanity-only; unrelated spans are never merged here.
+        return merge(padded).map {
+            CensorInterval(start: $0.start, end: $0.end, action: $0.action, source: .profanity)
+        }
+    }
+}
+
+/// Options for unrelated-content (Differentiator 2) intervals in analyze / playback.
+struct UnrelatedContentOptions: Equatable, Sendable {
+    var enabled: Bool
+    var action: CensorAction
+
+    init(enabled: Bool = false, action: CensorAction = .skip) {
+        self.enabled = enabled
+        self.action = action
     }
 }

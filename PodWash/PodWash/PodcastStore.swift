@@ -35,6 +35,7 @@ nonisolated final class PodcastStore: @unchecked Sendable {
             podcast.artworkURLString = feed.artworkURL?.absoluteString
             podcast.feedDescription = feed.description
             podcast.channelCleaningEnabled = false
+            podcast.channelUnrelatedContentEnabled = false
 
             let ordered = NSMutableOrderedSet()
             for episode in feed.episodes {

@@ -3,21 +3,27 @@
 //  PodWash
 //
 //  Slice 07 — Analyze-episode pipeline. ASR → WordMatcher/IntervalBuilder →
-//  persisted interval list (ADR-005 §2). Transcript injection bypasses ASR for
-//  fast tests; production uses ASRTranscribing (Slice 05 stack).
+//  persisted interval list (ADR-005 §2). Slice 19 merges ContentSegmenting
+//  intervals with independent actions (ADR-013 §3.3).
 //
 
 import Foundation
 
-/// ASR → matcher → cache pipeline.
+/// ASR → matcher → segmenter → cache pipeline.
 final class AnalysisPipeline: @unchecked Sendable {
 
     private let transcriber: any ASRTranscribing
     private let cache: IntervalCache
+    private let segmenter: any ContentSegmenting
 
-    init(transcriber: any ASRTranscribing, cache: IntervalCache) {
+    init(
+        transcriber: any ASRTranscribing,
+        cache: IntervalCache,
+        segmenter: any ContentSegmenting = HeuristicContentSegmenter()
+    ) {
         self.transcriber = transcriber
         self.cache = cache
+        self.segmenter = segmenter
     }
 
     /// Full path: check cache → ASR (if miss) → build intervals → persist → return.
@@ -30,7 +36,9 @@ final class AnalysisPipeline: @unchecked Sendable {
             episode: episode,
             audioURL: audioURL,
             targetWords: targetWords,
-            injectedTranscript: nil
+            injectedTranscript: nil,
+            profanityAction: .mute,
+            unrelatedContent: UnrelatedContentOptions()
         )
     }
 
@@ -41,19 +49,94 @@ final class AnalysisPipeline: @unchecked Sendable {
         targetWords: Set<String>,
         injectedTranscript: [TimedWord]?
     ) async throws -> [CensorInterval] {
+        try await analyze(
+            episode: episode,
+            audioURL: audioURL,
+            targetWords: targetWords,
+            injectedTranscript: injectedTranscript,
+            profanityAction: .mute,
+            unrelatedContent: UnrelatedContentOptions()
+        )
+    }
+
+    /// Analyze with independent profanity / unrelated-content actions (ADR-013 §3.3).
+    func analyze(
+        episode: EpisodeIdentity,
+        audioURL: URL,
+        targetWords: Set<String>,
+        injectedTranscript: [TimedWord]?,
+        profanityAction: CensorAction,
+        unrelatedContent: UnrelatedContentOptions
+    ) async throws -> [CensorInterval] {
+        let union: [CensorInterval]
         if let cached = cache.load(episodeID: episode.id, targetWords: targetWords) {
-            return cached
-        }
-
-        let transcript: [TimedWord]
-        if let injected = injectedTranscript {
-            transcript = injected
+            union = cached
         } else {
-            transcript = try await transcriber.transcribe(fileURL: audioURL)
+            let transcript: [TimedWord]
+            if let injected = injectedTranscript {
+                transcript = injected
+            } else {
+                transcript = try await transcriber.transcribe(fileURL: audioURL)
+            }
+
+            let profanity = IntervalBuilder.buildIntervals(
+                from: transcript,
+                targetSet: targetWords,
+                action: profanityAction
+            ).map {
+                CensorInterval(
+                    start: $0.start,
+                    end: $0.end,
+                    action: profanityAction,
+                    source: .profanity
+                )
+            }
+
+            // Always segment on cache miss; enablement is a return/playback filter.
+            let segmentIntervals = segmenter.segments(in: transcript).map { segment in
+                CensorInterval(
+                    start: segment.start,
+                    end: segment.end,
+                    action: unrelatedContent.action,
+                    source: .unrelatedContent
+                )
+            }
+
+            union = (profanity + segmentIntervals).sorted { $0.start < $1.start }
+            try cache.store(union, episodeID: episode.id, targetWords: targetWords)
         }
 
-        let intervals = IntervalBuilder.buildIntervals(from: transcript, targetSet: targetWords)
-        try cache.store(intervals, episodeID: episode.id, targetWords: targetWords)
-        return intervals
+        return Self.project(
+            union: union,
+            profanityAction: profanityAction,
+            unrelatedContent: unrelatedContent
+        )
+    }
+
+    /// Remap actions by source; drop unrelated when disabled.
+    private static func project(
+        union: [CensorInterval],
+        profanityAction: CensorAction,
+        unrelatedContent: UnrelatedContentOptions
+    ) -> [CensorInterval] {
+        union.compactMap { interval in
+            switch interval.source {
+            case .profanity:
+                return CensorInterval(
+                    start: interval.start,
+                    end: interval.end,
+                    action: profanityAction,
+                    source: .profanity
+                )
+            case .unrelatedContent:
+                guard unrelatedContent.enabled else { return nil }
+                return CensorInterval(
+                    start: interval.start,
+                    end: interval.end,
+                    action: unrelatedContent.action,
+                    source: .unrelatedContent
+                )
+            }
+        }
     }
 }

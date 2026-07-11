@@ -38,8 +38,33 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     /// must read it to tear the observer down.
     private nonisolated(unsafe) var skipObserverToken: Any?
 
+    /// Fired after an unrelated-content `.skip` boundary seek completes (ADR-013 §3.6).
+    /// `skippedSeconds` = end − start (for banner accessibilityValue rounding).
+    var onUnrelatedContentSkip: ((CensorInterval, Double) -> Void)?
+
+    /// Skip intervals the user has overridden (or that already fired) until schedule rebuild.
+    private var overriddenSkipKeys: Set<SkipOverrideKey> = []
+
+    /// When `play()` races ahead of `AVPlayerItem.readyToPlay`, retry once the item is ready.
+    /// Needed because `automaticallyWaitsToMinimizeStalling = false` makes
+    /// `playImmediately` a no-op if the item is not yet ready.
+    private var pendingPlayWhenReady = false
+    private var itemStatusObservation: NSKeyValueObservation?
+
     /// Exposed for unit tests that observe `timeControlStatus` via KVO.
     var avPlayer: AVPlayer { player }
+
+    private struct SkipOverrideKey: Hashable {
+        let start: Double
+        let end: Double
+        let source: IntervalSource
+
+        init(_ interval: CensorInterval) {
+            start = interval.start
+            end = interval.end
+            source = interval.source
+        }
+    }
 
     var isPlaying: Bool {
         player.timeControlStatus == .playing
@@ -67,6 +92,12 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         self.nowPlayingUpdater = nowPlayingUpdater ?? MPNowPlayingInfoCenterUpdater()
         self.audioSessionConfigurator = audioSessionConfigurator ?? AVAudioSessionPlaybackConfigurator()
 
+        itemStatusObservation = item.observe(\.status, options: [.new]) { [weak self] observed, _ in
+            Task { @MainActor [weak self] in
+                self?.handleItemStatusChange(observed.status)
+            }
+        }
+
         Task {
             await loadDuration(from: item.asset)
         }
@@ -74,14 +105,37 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
 
     func play() {
         audioSessionConfigurator.activatePlaybackSession()
-        player.playImmediately(atRate: selectedRate)
+        startOrPendPlayback()
         refreshCurrentTime()
         touchUI()
         updateNowPlaying()
     }
 
     func pause() {
+        pendingPlayWhenReady = false
         player.pause()
+        refreshCurrentTime()
+        touchUI()
+        updateNowPlaying()
+    }
+
+    /// Starts playback immediately when the item is ready; otherwise arms a one-shot
+    /// retry so `playImmediately` is not lost under `automaticallyWaitsToMinimizeStalling = false`.
+    private func startOrPendPlayback() {
+        if player.currentItem?.status == .readyToPlay {
+            pendingPlayWhenReady = false
+            player.playImmediately(atRate: selectedRate)
+            return
+        }
+        pendingPlayWhenReady = true
+        // Best-effort: some items accept playImmediately while still `.unknown`.
+        player.playImmediately(atRate: selectedRate)
+    }
+
+    private func handleItemStatusChange(_ status: AVPlayerItem.Status) {
+        guard pendingPlayWhenReady, status == .readyToPlay else { return }
+        pendingPlayWhenReady = false
+        player.playImmediately(atRate: selectedRate)
         refreshCurrentTime()
         touchUI()
         updateNowPlaying()
@@ -173,6 +227,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     /// calling it again rebuilds/replaces the mix and re-arms the observer.
     func applySchedule(_ schedule: IntervalSchedule) async {
         removeSkipObserver()
+        overriddenSkipKeys.removeAll()
 
         if let item = player.currentItem {
             let mix = try? await IntervalScheduler.makeAudioMix(
@@ -201,27 +256,18 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         activeSchedule = schedule
     }
 
-    /// Boundary fired at a `.skip` start: seek past the interval end (ADR-002 §5).
-    private func handleSkipBoundary(skips: [CensorInterval]) {
-        let now = player.currentTime().seconds
-        guard let skip = skips.first(where: { now >= $0.start - 0.05 && now < $0.end }) else {
-            return
-        }
-        skipSeek(to: skip.end)
-    }
-
-    /// Skip seek variant (ADR-002 §5): lands `currentTime` in `[end − 0.1, end]`
-    /// (`toleranceBefore = 0.1 s`, `toleranceAfter = .zero`) so it never overshoots,
-    /// and does NOT pause, so `timeControlStatus` stays `.playing` (AC4). Additive —
-    /// the public `seek(to:completion:)` signature/behavior is untouched.
-    private func skipSeek(to seconds: TimeInterval) {
+    /// Seek to interval.start (tolerance → [start ± 0.05]) and suppress that
+    /// interval’s skip until schedule re-applied (ADR-013 §3.6).
+    func overrideUnrelatedContentSkip(_ interval: CensorInterval) {
+        overriddenSkipKeys.insert(SkipOverrideKey(interval))
         let upperBound = duration > 0 ? duration : .greatestFiniteMagnitude
-        let clamped = max(0, min(upperBound, seconds))
+        let clamped = max(0, min(upperBound, interval.start))
         let time = CMTime(seconds: clamped, preferredTimescale: 600)
+        let tolerance = CMTime(seconds: 0.05, preferredTimescale: 600)
         player.seek(
             to: time,
-            toleranceBefore: CMTime(seconds: 0.1, preferredTimescale: 600),
-            toleranceAfter: .zero
+            toleranceBefore: tolerance,
+            toleranceAfter: tolerance
         ) { [weak self] finished in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -230,6 +276,73 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
                     self.touchUI()
                     self.updateNowPlaying()
                 }
+                // Keep playing after override seek (AC3).
+                if self.player.timeControlStatus != .playing {
+                    self.startOrPendPlayback()
+                }
+            }
+        }
+    }
+
+    /// Boundary fired at a `.skip` start: seek past the interval end (ADR-002 §5).
+    private func handleSkipBoundary(skips: [CensorInterval]) {
+        let now = player.currentTime().seconds
+        // Drop override keys once playback has passed the segment end.
+        overriddenSkipKeys = overriddenSkipKeys.filter { now < $0.end }
+
+        guard let skip = skips.first(where: { now >= $0.start - 0.05 && now < $0.end }) else {
+            return
+        }
+        let key = SkipOverrideKey(skip)
+        guard !overriddenSkipKeys.contains(key) else { return }
+
+        // Suppress re-entry for this span until playback passes end / schedule rebuild
+        // (ADR-013 §3.6 — after a skip fires or the user overrides).
+        overriddenSkipKeys.insert(key)
+
+        skipSeek(to: skip.end) { [weak self] in
+            guard let self else { return }
+            if skip.source == .unrelatedContent {
+                let skippedSeconds = skip.end - skip.start
+                self.onUnrelatedContentSkip?(skip, skippedSeconds)
+            }
+        }
+    }
+
+    /// Skip seek variant (ADR-002 §5): lands `currentTime` in `[end − 0.1, end]`
+    /// (`toleranceBefore = 0.1 s`, `toleranceAfter = .zero`) so it never overshoots,
+    /// and does NOT pause, so `timeControlStatus` stays `.playing` (AC4). Additive —
+    /// the public `seek(to:completion:)` signature/behavior is untouched.
+    private func skipSeek(to seconds: TimeInterval, completion: (() -> Void)? = nil) {
+        // Seeking exactly to asset duration often cancels (`finished == false`) or
+        // ends the item; prefer a target still inside ADR-002's [end − 0.1, end]
+        // window when `seconds` is at/past EOF.
+        var target = seconds
+        if duration > 0.1, target >= duration - 0.001 {
+            // Only nudge off EOF — do not clamp mid-file skip ends.
+            target = min(target, duration - 0.05)
+        }
+        target = max(0, target)
+        let time = CMTime(seconds: target, preferredTimescale: 600)
+        player.seek(
+            to: time,
+            toleranceBefore: CMTime(seconds: 0.1, preferredTimescale: 600),
+            toleranceAfter: .zero
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else {
+                    completion?()
+                    return
+                }
+                // Always sample the playhead — EOF seeks may report !finished while
+                // still landing inside the allowed window.
+                self.refreshCurrentTime()
+                self.touchUI()
+                self.updateNowPlaying()
+                if self.player.timeControlStatus != .playing {
+                    self.startOrPendPlayback()
+                }
+                completion?()
             }
         }
     }

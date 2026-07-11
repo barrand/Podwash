@@ -22,18 +22,34 @@ struct SettingsView: View {
         // ScrollView + VStack (not Form/List): Form lazily materializes cells, so
         // off-screen identifiers like categoryToggle_sWord / customWordTextField
         // are absent from the AX tree on short/landscape windows.
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                cleaningDefaultsSection
-                wordCategoriesSection
-                customWordsSection
-                episodeBehaviorSection
+        //
+        // UITest sims often launch landscape (~402pt tall). Slice 19's unrelated
+        // section pushes sWord below the fold with a zero/stale AX frame — taps
+        // no-op. ScrollViewReader centers sWord in fixture mode; Button rows
+        // accept AX activate without a decorative UISwitch stealing hits.
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    cleaningDefaultsSection
+                    unrelatedContentSection
+                    wordCategoriesSection
+                    customWordsSection
+                    episodeBehaviorSection
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .onAppear {
+                guard FixtureSettings.isEnabled else { return }
+                // Center sWord after first layout so XCTest gets a non-zero frame.
+                DispatchQueue.main.async {
+                    proxy.scrollTo("scroll_category_sWord", anchor: .center)
+                }
+            }
         }
         .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
         // `.contain` keeps child controls queryable while still exposing settingsRoot
         // (same pattern as feed.error / queueList).
         .accessibilityElement(children: .contain)
@@ -55,7 +71,7 @@ struct SettingsView: View {
                     Text(store.defaultCleaningAction.rawValue.capitalized)
                         .foregroundStyle(.secondary)
                 }
-                .padding(.vertical, 12)
+                .padding(.vertical, 8)
                 .padding(.horizontal, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
@@ -73,7 +89,7 @@ struct SettingsView: View {
                     Text(PlaybackEngine.accessibilityValue(for: store.defaultPlaybackRate) + "×")
                         .foregroundStyle(.secondary)
                 }
-                .padding(.vertical, 12)
+                .padding(.vertical, 8)
                 .padding(.horizontal, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
@@ -86,21 +102,60 @@ struct SettingsView: View {
         }
     }
 
-    private var wordCategoriesSection: some View {
+    private var unrelatedContentSection: some View {
         VStack(alignment: .leading, spacing: 8) {
+            Text("Unrelated content")
+                .font(.headline)
+
+            Toggle(isOn: $store.unrelatedContentEnabled) {
+                Text("Skip unrelated content")
+            }
+            .padding(.vertical, 2)
+            .padding(.horizontal, 12)
+            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+            .accessibilityIdentifier("unrelatedContentToggle")
+            .accessibilityLabel("Skip unrelated content")
+            .accessibilityValue(store.unrelatedContentEnabled ? "1" : "0")
+            .accessibilityHint("Skips or mutes segments that seem unrelated to the story.")
+
+            if store.unrelatedContentEnabled {
+                Button(action: cycleUnrelatedContentAction) {
+                    HStack {
+                        Text("Unrelated content action")
+                        Spacer()
+                        Text(store.unrelatedContentAction.rawValue.capitalized)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("unrelatedContentActionControl")
+                .accessibilityLabel("Unrelated content action")
+                .accessibilityValue(store.unrelatedContentAction.rawValue)
+                .accessibilityHint("Chooses skip or mute for unrelated segments.")
+            }
+        }
+    }
+
+    private var wordCategoriesSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
             Text("Word categories")
                 .font(.headline)
 
-            // Eager (non-lazy) two-column rows: keeps every categoryToggle_* in the AX
-            // tree and keeps categoryToggle_sWord on-screen in landscape short windows.
-            // ScrollView+single-column left sWord off-screen — XCTest found the AX node
-            // but taps missed the switch, leaving accessibilityValue stuck at "1".
+            // Eager (non-lazy) two-column rows: every categoryToggle_* stays in the AX
+            // tree. Fixture ScrollViewReader centers sWord so landscape (~402pt) taps
+            // hit a real frame; Button+Image (no UISwitch) so AX activate flips state.
             let ids = WordCategories.allIDs
             ForEach(Array(stride(from: 0, to: ids.count, by: 2)), id: \.self) { start in
-                HStack(alignment: .top, spacing: 8) {
+                HStack(alignment: .top, spacing: 6) {
                     categoryToggle(ids[start])
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     if start + 1 < ids.count {
                         categoryToggle(ids[start + 1])
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
                         Color.clear.frame(maxWidth: .infinity)
                     }
@@ -110,27 +165,27 @@ struct SettingsView: View {
     }
 
     private func categoryToggle(_ categoryID: String) -> some View {
-        // Button (not Toggle): XCTest activates the control action on tap even when
-        // hit-testing a SwiftUI Switch is flaky; visual switch is display-only.
+        // Force body refresh when token bumps (Observation on nonisolated store is quiet).
+        let _ = categoryChangeToken
         let enabled = store.isCategoryEnabled(categoryID)
         return Button {
             store.setCategoryEnabled(categoryID, !store.isCategoryEnabled(categoryID))
             categoryChangeToken &+= 1
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: 4) {
                 Text(WordCategories.displayTitle(for: categoryID))
-                    .font(.body)
+                    .font(.subheadline)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Toggle("", isOn: .constant(enabled))
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .allowsHitTesting(false)
+                Image(systemName: enabled ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(enabled ? Color.accentColor : Color.secondary)
+                    .imageScale(.medium)
                     .accessibilityHidden(true)
             }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 10)
-            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+            .padding(.vertical, 6)
+            .padding(.horizontal, 8)
+            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
@@ -139,8 +194,8 @@ struct SettingsView: View {
         .accessibilityValue(enabled ? "1" : "0")
         .accessibilityHint(categoryHint(for: categoryID))
         .accessibilityAddTraits(.isButton)
-        // Recreate after tap so XCTest observes the updated accessibilityValue.
-        .id("categoryToggle_\(categoryID)_\(enabled)_\(categoryChangeToken)")
+        // Stable scroll id (not tied to enabled) for ScrollViewReader / fixture centering.
+        .id("scroll_category_\(categoryID)")
     }
 
     private var customWordsSection: some View {
@@ -226,6 +281,10 @@ struct SettingsView: View {
 
     private func cycleCleaningAction() {
         store.defaultCleaningAction = store.defaultCleaningAction == .mute ? .skip : .mute
+    }
+
+    private func cycleUnrelatedContentAction() {
+        store.unrelatedContentAction = store.unrelatedContentAction == .skip ? .mute : .skip
     }
 
     private func cyclePlaybackRate() {

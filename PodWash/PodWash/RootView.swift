@@ -2,7 +2,8 @@
 //  RootView.swift
 //  PodWash
 //
-//  Slice 03/06/09/13 — Routes fixture-mode UI tests to player, feed, or settings shells.
+//  Slice 03/06/09/13/19 — Routes fixture-mode UI tests to player, feed, settings,
+//  or skip-override shells.
 //
 
 import SwiftUI
@@ -28,7 +29,14 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if FixtureSettings.isEnabled {
+            if FixtureSkipOverride.isEnabled {
+                if let fixtureEngine {
+                    SkipOverridePlaybackView(engine: fixtureEngine)
+                } else {
+                    ProgressView()
+                        .accessibilityIdentifier("playback.loading")
+                }
+            } else if FixtureSettings.isEnabled {
                 if let fixtureSettingsStore {
                     NavigationStack {
                         SettingsView(store: fixtureSettingsStore)
@@ -61,10 +69,28 @@ struct RootView: View {
             }
         }
         .task {
+            await loadFixtureSkipOverrideIfNeeded()
             loadFixtureSettingsIfNeeded()
             await loadFixtureAudioIfNeeded()
             await loadFixtureFeedIfNeeded()
         }
+    }
+
+    private func loadFixtureSkipOverrideIfNeeded() async {
+        guard FixtureSkipOverride.isEnabled, fixtureEngine == nil else { return }
+        guard let url = FixtureSkipOverride.bundledURL() else { return }
+        let engine = PlaybackEngine(
+            url: url,
+            title: FixtureSkipOverride.fixtureTitle,
+            artist: FixtureSkipOverride.fixtureArtist
+        )
+        await engine.applySchedule(
+            IntervalSchedule(intervals: [FixtureSkipOverride.stubSkipInterval])
+        )
+        fixtureEngine = engine
+        remoteCommands.bind(engine)
+        // Auto-play is started from SkipOverridePlaybackView.onAppear after the
+        // skip-override callback is wired (avoids a nil-handler race at t=2.0 s).
     }
 
     private func loadFixtureSettingsIfNeeded() {
