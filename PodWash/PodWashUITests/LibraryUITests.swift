@@ -154,8 +154,15 @@ final class LibraryUITests: XCTestCase {
         let app = launchLibraryApp()
         waitForLibraryRoot(app)
 
-        let settings = element("settingsButton", in: app)
+        // Query as Button — shell mounts a content-tree Button (not toolbar chrome).
+        let settings = app.buttons["settingsButton"]
         XCTAssertTrue(settings.waitForExistence(timeout: fixtureTimeout))
+
+        // Wait for layout to publish a hittable hit target (ui_race on first paint).
+        let predicate = NSPredicate(format: "isHittable == true")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: settings)
+        let result = XCTWaiter().wait(for: [expectation], timeout: fixtureTimeout)
+        XCTAssertEqual(result, .completed, "settingsButton must be hittable from Library tab")
         XCTAssertTrue(settings.isHittable, "settingsButton must be hittable from Library tab")
     }
 
