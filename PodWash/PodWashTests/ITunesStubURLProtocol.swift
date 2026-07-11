@@ -41,7 +41,7 @@ final class ITunesStubURLProtocol: URLProtocol {
     }
 
     /// Default handler: popular JSON, search JSON for `fixture-query`, RSS by feed URL.
-    static func defaultHandler() -> (URLRequest) throws -> (HTTPURLResponse, Data) {
+    static func defaultHandler() throws -> (URLRequest) throws -> (HTTPURLResponse, Data) {
         let popularData = try ITunesGoldenFixtures.fixtureData("itunes_popular_response", extension: "json")
         let searchData = try ITunesGoldenFixtures.fixtureData("itunes_search_response", extension: "json")
 
