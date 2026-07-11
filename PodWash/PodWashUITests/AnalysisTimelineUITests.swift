@@ -19,16 +19,28 @@ final class AnalysisTimelineUITests: XCTestCase {
     @MainActor
     func testTimelineAppearsWithFirstSnapshot() throws {
         let app = launchTimelineFixtureApp()
+        let expected = "ready:3,processing:1,pending:8"
+        let firstSnapshot = expectation(description: "first timeline snapshot \(expected)")
+        firstSnapshot.assertForOverFulfill = false
+
+        // Poll on `.common` so we observe AX updates during XCUIElement.tap()'s
+        // idle wait (default RunLoop.mode timers do not fire there). Predicates
+        // registered via expectation(for:) only evaluate during explicit waits,
+        // so ready:3 that appears solely inside tap() was previously missed.
+        var sawFirst = false
+        let timer = Timer(timeInterval: 0.05, repeats: true) { timer in
+            guard !sawFirst, Self.timelineAccessibilityValue(in: app) == expected else { return }
+            sawFirst = true
+            timer.invalidate()
+            firstSnapshot.fulfill()
+        }
+        RunLoop.current.add(timer, forMode: .common)
+
         enableCleaningOnRow0(in: app)
 
-        let timeline = Self.analysisTimelineElement(in: app)
-        XCTAssertTrue(timeline.waitForExistence(timeout: 2))
-
-        let firstSnapshot = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "value == %@", "ready:3,processing:1,pending:8"),
-            object: timeline
-        )
-        XCTAssertEqual(XCTWaiter().wait(for: [firstSnapshot], timeout: 2), .completed)
+        defer { timer.invalidate() }
+        wait(for: [firstSnapshot], timeout: 2)
+        XCTAssertTrue(Self.analysisTimelineElement(in: app).exists)
     }
 
     // MARK: - AC4
@@ -36,16 +48,23 @@ final class AnalysisTimelineUITests: XCTestCase {
     @MainActor
     func testTimelineCompletesAndRetiresProgress() throws {
         let app = launchTimelineFixtureApp()
+        let expected = "ready:12,processing:0,pending:0"
+        let terminalSnapshot = expectation(description: "terminal timeline snapshot")
+        terminalSnapshot.assertForOverFulfill = false
+
+        var sawTerminal = false
+        let timer = Timer(timeInterval: 0.05, repeats: true) { timer in
+            guard !sawTerminal, Self.timelineAccessibilityValue(in: app) == expected else { return }
+            sawTerminal = true
+            timer.invalidate()
+            terminalSnapshot.fulfill()
+        }
+        RunLoop.current.add(timer, forMode: .common)
+
         enableCleaningOnRow0(in: app)
 
-        let timeline = Self.analysisTimelineElement(in: app)
-        XCTAssertTrue(timeline.waitForExistence(timeout: 2))
-
-        let terminalSnapshot = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "value == %@", "ready:12,processing:0,pending:0"),
-            object: timeline
-        )
-        XCTAssertEqual(XCTWaiter().wait(for: [terminalSnapshot], timeout: 5), .completed)
+        defer { timer.invalidate() }
+        wait(for: [terminalSnapshot], timeout: 5)
 
         XCTAssertFalse(app.descendants(matching: .any)["analysisProgress"].exists)
 
@@ -58,22 +77,34 @@ final class AnalysisTimelineUITests: XCTestCase {
     @MainActor
     func testTimelineMidRunSnapshot() throws {
         let app = launchTimelineFixtureApp()
+        let midExpected = "ready:6,processing:1,pending:5"
+        let terminalExpected = "ready:12,processing:0,pending:0"
+        let midRunSnapshot = expectation(description: "mid-run timeline snapshot")
+        let terminalSnapshot = expectation(description: "terminal timeline snapshot")
+        midRunSnapshot.assertForOverFulfill = false
+        terminalSnapshot.assertForOverFulfill = false
+
+        var sawMid = false
+        var sawTerminal = false
+        let timer = Timer(timeInterval: 0.05, repeats: true) { timer in
+            let value = Self.timelineAccessibilityValue(in: app)
+            if !sawMid, value == midExpected {
+                sawMid = true
+                midRunSnapshot.fulfill()
+            }
+            if !sawTerminal, value == terminalExpected {
+                sawTerminal = true
+                timer.invalidate()
+                terminalSnapshot.fulfill()
+            }
+        }
+        RunLoop.current.add(timer, forMode: .common)
+
         enableCleaningOnRow0(in: app)
 
-        let timeline = Self.analysisTimelineElement(in: app)
-        XCTAssertTrue(timeline.waitForExistence(timeout: 2))
-
-        let midRunSnapshot = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "value == %@", "ready:6,processing:1,pending:5"),
-            object: timeline
-        )
-        XCTAssertEqual(XCTWaiter().wait(for: [midRunSnapshot], timeout: 5), .completed)
-
-        let terminalSnapshot = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "value == %@", "ready:12,processing:0,pending:0"),
-            object: timeline
-        )
-        XCTAssertEqual(XCTWaiter().wait(for: [terminalSnapshot], timeout: 5), .completed)
+        defer { timer.invalidate() }
+        wait(for: [midRunSnapshot], timeout: 5)
+        wait(for: [terminalSnapshot], timeout: 5)
     }
 
     // MARK: - Launch + interaction
@@ -98,12 +129,26 @@ final class AnalysisTimelineUITests: XCTestCase {
             predicate: NSPredicate(format: "isHittable == true"),
             object: episodeToggle
         )
+        // Hittable is usually false until after launch settle — safe for XCTWaiter.
         XCTAssertEqual(XCTWaiter().wait(for: [toggleHittable], timeout: 3), .completed)
 
         episodeToggle.tap()
     }
 
-    /// Slice-20 UX: `analysisTimeline` identifier on analyzing row; label `Analysis timeline`.
+    /// Current `analysisTimeline` accessibilityValue, or nil if missing.
+    private static func timelineAccessibilityValue(in app: XCUIApplication) -> String? {
+        let timeline = analysisTimelineElement(in: app)
+        guard timeline.exists else { return nil }
+        if let string = timeline.value as? String {
+            return string
+        }
+        if let nsString = timeline.value as? NSString {
+            return nsString as String
+        }
+        return nil
+    }
+
+    /// Slice-20 UX: prefer row-0 scope; fall back to global id / label.
     private static func analysisTimelineElement(in app: XCUIApplication) -> XCUIElement {
         let cell = app.cells["episodeCell_0"]
         let scoped = cell.descendants(matching: .any)["analysisTimeline"]
