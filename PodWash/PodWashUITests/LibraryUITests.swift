@@ -1,0 +1,198 @@
+//
+//  LibraryUITests.swift
+//  PodWashUITests
+//
+//  Slice 23 — Library & player shell UI tests (slice-23-ux.md). AC2–AC7.
+//
+//  Golden titles hand-transcribed from Fixtures/itunes/itunes_popular_response.json
+//  (independent provenance). Launch with -UITestFixtureLibrary / -UITestFixtureLibraryEmpty
+//  only — no -UITestFixtureFeed, -UITestFixtureAudio, or -UITestFixtureDiscover.
+//  Until FixtureLibrary + AppShellView exist (Engineer), these tests fail at runtime.
+//
+
+import XCTest
+
+final class LibraryUITests: XCTestCase {
+
+    // Hand-transcribed from itunes_popular_response.json entries 0–1 (independent golden).
+    private let goldenTitle0 = "Fixture Popular Alpha"
+    private let goldenTitle1 = "Fixture Popular Beta"
+
+    private let fixtureTimeout: TimeInterval = 5
+
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+    }
+
+    // MARK: - Launch helpers
+
+    private func launchLibraryApp(empty: Bool = false) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments.append(empty ? "-UITestFixtureLibraryEmpty" : "-UITestFixtureLibrary")
+        app.launch()
+        return app
+    }
+
+    private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)[identifier]
+    }
+
+    private func waitForLibraryRoot(_ app: XCUIApplication, timeout: TimeInterval = 5) {
+        let root = element("libraryRoot", in: app)
+        XCTAssertTrue(root.waitForExistence(timeout: timeout), "libraryRoot must appear within \(timeout)s")
+    }
+
+    private func navigateToEpisodeList(_ app: XCUIApplication) {
+        waitForLibraryRoot(app)
+        let showCell = element("libraryCell_0", in: app)
+        XCTAssertTrue(showCell.waitForExistence(timeout: fixtureTimeout))
+        showCell.tap()
+        let episodeList = element("episodeList", in: app)
+        XCTAssertTrue(episodeList.waitForExistence(timeout: fixtureTimeout), "episodeList must appear within \(fixtureTimeout)s")
+    }
+
+    private func playFirstEpisodeAndWaitForMiniPlayer(_ app: XCUIApplication) {
+        navigateToEpisodeList(app)
+        let episodeCell = element("episodeCell_0", in: app)
+        XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
+        episodeCell.tap()
+        let miniPlayer = element("miniPlayer", in: app)
+        XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout), "miniPlayer must appear within \(fixtureTimeout)s")
+    }
+
+    /// Tap bar chrome away from trailing `miniPlayerPlayPause` (slice-23-ux.md AC#4b).
+    private func tapMiniPlayerBar(_ app: XCUIApplication) {
+        let bar = element("miniPlayer", in: app)
+        XCTAssertTrue(bar.waitForExistence(timeout: fixtureTimeout))
+        bar.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).tap()
+    }
+
+    private func waitForAccessibilityValue(
+        _ expected: String,
+        identifier: String,
+        in app: XCUIApplication,
+        timeout: TimeInterval,
+        message: String
+    ) {
+        let control = element(identifier, in: app)
+        let predicate = NSPredicate(format: "value == %@", expected)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: control)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(result, .completed, message)
+        XCTAssertEqual(control.value as? String, expected)
+    }
+
+    // MARK: - AC2: seeded library renders golden titles
+
+    @MainActor
+    func testLibraryRendersSeededSubscriptions() throws {
+        let app = launchLibraryApp()
+        waitForLibraryRoot(app)
+
+        let cell0 = element("libraryCell_0", in: app)
+        let cell1 = element("libraryCell_1", in: app)
+        XCTAssertTrue(cell0.waitForExistence(timeout: fixtureTimeout))
+        XCTAssertTrue(cell1.waitForExistence(timeout: fixtureTimeout))
+
+        XCTAssertTrue(cell0.label.contains(goldenTitle0), "libraryCell_0 label must contain \(goldenTitle0); got: \(cell0.label)")
+        XCTAssertTrue(cell1.label.contains(goldenTitle1), "libraryCell_1 label must contain \(goldenTitle1); got: \(cell1.label)")
+    }
+
+    // MARK: - AC3: tap show opens episode list
+
+    @MainActor
+    func testTapShowOpensEpisodeList() throws {
+        let app = launchLibraryApp()
+        navigateToEpisodeList(app)
+
+        for index in 0 ..< 3 {
+            let cell = element("episodeCell_\(index)", in: app)
+            XCTAssertTrue(cell.waitForExistence(timeout: fixtureTimeout), "episodeCell_\(index) missing")
+        }
+    }
+
+    // MARK: - AC4: episode play surfaces mini-player and plays
+
+    @MainActor
+    func testTapEpisodeShowsMiniPlayerAndPlays() throws {
+        let app = launchLibraryApp()
+        playFirstEpisodeAndWaitForMiniPlayer(app)
+
+        let playPause = element("miniPlayerPlayPause", in: app)
+        XCTAssertTrue(playPause.waitForExistence(timeout: fixtureTimeout))
+        playPause.tap()
+
+        waitForAccessibilityValue(
+            "playing",
+            identifier: "miniPlayerPlayPause",
+            in: app,
+            timeout: fixtureTimeout,
+            message: "miniPlayerPlayPause must report playing within \(fixtureTimeout)s"
+        )
+    }
+
+    // MARK: - AC4b: mini-player expands to full controls
+
+    @MainActor
+    func testMiniPlayerExpandsToFullControls() throws {
+        let app = launchLibraryApp()
+        playFirstEpisodeAndWaitForMiniPlayer(app)
+
+        tapMiniPlayerBar(app)
+
+        let fullPlayPause = element("playback.playPause", in: app)
+        XCTAssertTrue(
+            fullPlayPause.waitForExistence(timeout: fixtureTimeout),
+            "playback.playPause must appear within \(fixtureTimeout)s after expanding mini-player"
+        )
+    }
+
+    // MARK: - AC5: settings reachable from Library
+
+    @MainActor
+    func testSettingsReachableFromLibrary() throws {
+        let app = launchLibraryApp()
+        waitForLibraryRoot(app)
+
+        let settings = element("settingsButton", in: app)
+        XCTAssertTrue(settings.waitForExistence(timeout: fixtureTimeout))
+        XCTAssertTrue(settings.isHittable, "settingsButton must be hittable from Library tab")
+    }
+
+    // MARK: - AC6: Discover tab entry
+
+    @MainActor
+    func testDiscoverEntryFromLibrary() throws {
+        let app = launchLibraryApp()
+        waitForLibraryRoot(app)
+
+        let discoverTab = element("tabDiscover", in: app)
+        XCTAssertTrue(discoverTab.waitForExistence(timeout: fixtureTimeout))
+        discoverTab.tap()
+
+        let discoverRoot = element("discoverRoot", in: app)
+        XCTAssertTrue(discoverRoot.waitForExistence(timeout: fixtureTimeout), "discoverRoot must appear within \(fixtureTimeout)s")
+    }
+
+    // MARK: - AC7: empty library prompts Discover navigation
+
+    @MainActor
+    func testEmptyLibraryShowsDiscoverPrompt() throws {
+        let app = launchLibraryApp(empty: true)
+        waitForLibraryRoot(app)
+
+        let emptyState = element("libraryEmptyState", in: app)
+        XCTAssertTrue(emptyState.waitForExistence(timeout: fixtureTimeout))
+        XCTAssertTrue(
+            emptyState.label.contains("Discover"),
+            "libraryEmptyState label must contain Discover (case-sensitive); got: \(emptyState.label)"
+        )
+
+        let discoverCTA = element("libraryEmptyDiscoverButton", in: app)
+        XCTAssertTrue(discoverCTA.waitForExistence(timeout: fixtureTimeout))
+        discoverCTA.tap()
+
+        let discoverRoot = element("discoverRoot", in: app)
+        XCTAssertTrue(discoverRoot.waitForExistence(timeout: fixtureTimeout), "discoverRoot must appear within \(fixtureTimeout)s")
+    }
+}
