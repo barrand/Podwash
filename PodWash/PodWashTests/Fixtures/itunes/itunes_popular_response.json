@@ -1,0 +1,29 @@
+{
+  "resultCount": 3,
+  "results": [
+    {
+      "wrapperType": "track",
+      "kind": "podcast",
+      "collectionId": 10001,
+      "collectionName": "Fixture Popular Alpha",
+      "feedUrl": "https://fixture.podwash.tests/feeds/popular-alpha",
+      "artworkUrl600": "https://fixture.podwash.tests/artwork/alpha.png"
+    },
+    {
+      "wrapperType": "track",
+      "kind": "podcast",
+      "collectionId": 10002,
+      "collectionName": "Fixture Popular Beta",
+      "feedUrl": "https://fixture.podwash.tests/feeds/popular-beta",
+      "artworkUrl600": "https://fixture.podwash.tests/artwork/beta.png"
+    },
+    {
+      "wrapperType": "track",
+      "kind": "podcast",
+      "collectionId": 10003,
+      "collectionName": "Fixture Popular Gamma",
+      "feedUrl": "https://fixture.podwash.tests/feeds/popular-gamma",
+      "artworkUrl600": "https://fixture.podwash.tests/artwork/gamma.png"
+    }
+  ]
+}
