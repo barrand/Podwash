@@ -55,6 +55,14 @@ final class AnalysisProgressUITests: XCTestCase {
         let episodeCell = app.cells["episodeCell_0"]
         XCTAssertTrue(episodeCell.waitForExistence(timeout: 5))
 
+        // CarPlay multi-scene can leave a non-key empty window; wait until the
+        // UIKit switch is hittable so the tap lands on the content WindowGroup.
+        let toggleHittable = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"),
+            object: episodeToggle
+        )
+        XCTAssertEqual(XCTWaiter().wait(for: [toggleHittable], timeout: 3), .completed)
+
         // Register before tap so XCTest observes accessibility updates during the
         // toggle action (progress can appear and vanish before post-tap idle ends).
         let progressAppeared = expectation(

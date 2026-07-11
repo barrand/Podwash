@@ -43,6 +43,10 @@ final class CPListTemplateRecorder: CarPlayListPresenting {
     private(set) var itemsByListKey: [String: [RecordedRow]] = [:]
     private var selectionHandlers: [String: [Int: () -> Void]] = [:]
 
+    // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION
+    // (XCTest teardown otherwise SIGABRT via swift_task_deinitOnExecutorImpl).
+    nonisolated deinit {}
+
     func setItems(_ items: [CarPlayListItemModel], listKey: String) {
         itemsByListKey[listKey] = items.map { model in
             RecordedRow(
@@ -103,6 +107,10 @@ final class CPListTemplateRecorder: CarPlayListPresenting {
 final class CPNowPlayingTemplateDouble: CarPlayNowPlayingPresenting {
     private(set) var playbackStateUpdates: [CarPlayPlaybackState] = []
     private(set) var lastTitle: String?
+
+    // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION
+    // (XCTest teardown otherwise SIGABRT via swift_task_deinitOnExecutorImpl).
+    nonisolated deinit {}
 
     func updatePlaybackState(_ state: CarPlayPlaybackState) {
         playbackStateUpdates.append(state)

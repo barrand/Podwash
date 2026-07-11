@@ -23,13 +23,18 @@ import XCTest
 
 @MainActor
 private final class CarPlayStoreTemplateBuilder: CarPlayTemplateBuilding {
-    private let store: PodcastStore
-    private let queue: QueueStore
+    // nonisolated(unsafe): avoid MainActor TaskLocal hop when releasing in deinit
+    // (XCTest teardown otherwise SIGABRT via swift_task_deinitOnExecutorImpl).
+    nonisolated(unsafe) private let store: PodcastStore
+    nonisolated(unsafe) private let queue: QueueStore
 
     init(store: PodcastStore, queue: QueueStore) {
         self.store = store
         self.queue = queue
     }
+
+    // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION.
+    nonisolated deinit {}
 
     func libraryListItems() -> [CarPlayListItemModel] {
         CarPlayLibraryDataSource(store: store).listItems()
