@@ -28,6 +28,7 @@ nonisolated final class SettingsStore: @unchecked Sendable {
         static let autoDeleteAfterPlayedEnabled = "podwash.settings.autoDeleteAfterPlayedEnabled"
         static let unrelatedContentEnabled = "podwash.settings.unrelatedContentEnabled"
         static let unrelatedContentAction = "podwash.settings.unrelatedContentAction"
+        static let muteOverlayMode = "podwash.settings.muteOverlayMode"
 
         static let all: [String] = [
             enabledCategories,
@@ -38,6 +39,7 @@ nonisolated final class SettingsStore: @unchecked Sendable {
             autoDeleteAfterPlayedEnabled,
             unrelatedContentEnabled,
             unrelatedContentAction,
+            muteOverlayMode,
         ]
     }
 
@@ -73,6 +75,10 @@ nonisolated final class SettingsStore: @unchecked Sendable {
     /// Action for unrelated-content intervals when enabled. Fresh default: skip.
     var unrelatedContentAction: SettingsCleaningAction {
         didSet { persistUnrelatedContentAction() }
+    }
+    /// Sound during mute intervals. Fresh default: off (silent-first, ADR-017).
+    var muteOverlayMode: MuteOverlayMode {
+        didSet { persistMuteOverlayMode() }
     }
 
     init(userDefaults: UserDefaults = .standard) {
@@ -128,6 +134,13 @@ nonisolated final class SettingsStore: @unchecked Sendable {
             unrelatedContentAction = action
         } else {
             unrelatedContentAction = .skip
+        }
+
+        if let raw = userDefaults.string(forKey: Keys.muteOverlayMode),
+           let mode = MuteOverlayMode(rawValue: raw) {
+            muteOverlayMode = mode
+        } else {
+            muteOverlayMode = .off
         }
     }
 
@@ -203,6 +216,10 @@ nonisolated final class SettingsStore: @unchecked Sendable {
 
     private func persistUnrelatedContentAction() {
         userDefaults.set(unrelatedContentAction.rawValue, forKey: Keys.unrelatedContentAction)
+    }
+
+    private func persistMuteOverlayMode() {
+        userDefaults.set(muteOverlayMode.rawValue, forKey: Keys.muteOverlayMode)
     }
 
     private func persistRate() {

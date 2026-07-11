@@ -4,6 +4,7 @@
 //
 //  Slice 08 — Wires cached/pipeline intervals into PlaybackEngine with a swappable
 //  action setting (ADR-006). Slice 19 remaps actions by IntervalSource (ADR-013 §3.5).
+//  Slice 16 — mute overlay via OverlayEngine (ADR-017).
 //
 
 import Foundation
@@ -14,15 +15,33 @@ final class PlaybackCoordinator {
 
     private let pipeline: any EpisodeAnalyzing
     private let engine: PlaybackEngine
+    private let settingsStore: SettingsStore?
+    private let overlayEngine: OverlayEngine
 
     private(set) var cachedIntervals: [CensorInterval] = []
     private(set) var currentAction: CensorAction = .mute
     private(set) var unrelatedContentEnabled: Bool = false
     private(set) var unrelatedContentAction: CensorAction = .skip
 
-    init(pipeline: any EpisodeAnalyzing, engine: PlaybackEngine) {
+    init(
+        pipeline: any EpisodeAnalyzing,
+        engine: PlaybackEngine,
+        settingsStore: SettingsStore? = nil,
+        eventRecorder: (any OverlayEventRecording)? = nil,
+        overlayAssetBundle: Bundle = .main
+    ) {
         self.pipeline = pipeline
         self.engine = engine
+        self.settingsStore = settingsStore
+        self.overlayEngine = OverlayEngine(
+            player: engine.avPlayer,
+            eventRecorder: eventRecorder,
+            assetBundle: overlayAssetBundle
+        )
+
+        engine.onSeekCompleted = { [weak self] time in
+            self?.overlayEngine.handleSeekCompleted(currentTime: time)
+        }
     }
 
     /// Forwards `PlaybackEngine.onUnrelatedContentSkip` for banner / UI wiring (ADR-013 §3.5–3.6).
@@ -81,6 +100,13 @@ final class PlaybackCoordinator {
         await applyCurrentSchedule()
     }
 
+    /// Re-applies overlay from the current settings store mode without re-analysis.
+    func refreshOverlayFromSettings() {
+        applyOverlay(to: lastScheduledIntervals)
+    }
+
+    private var lastScheduledIntervals: [CensorInterval] = []
+
     private func applyCurrentSchedule() async {
         let scheduled = cachedIntervals
             .filter { $0.source != .unrelatedContent || unrelatedContentEnabled }
@@ -102,6 +128,16 @@ final class PlaybackCoordinator {
                     )
                 }
             }
+        lastScheduledIntervals = scheduled
         await engine.applySchedule(IntervalSchedule(intervals: scheduled))
+        applyOverlay(to: scheduled)
+    }
+
+    private func applyOverlay(to scheduled: [CensorInterval]) {
+        let mode = settingsStore?.muteOverlayMode ?? .off
+        let muteIntervals = scheduled
+            .filter { $0.action == .mute }
+            .map { (start: $0.start, end: $0.end) }
+        overlayEngine.apply(muteIntervals: muteIntervals, mode: mode)
     }
 }

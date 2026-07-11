@@ -82,6 +82,24 @@ struct SettingsView: View {
             .accessibilityValue(store.defaultCleaningAction.rawValue)
             .accessibilityHint("Changes the default action for new cleaning sessions.")
 
+            Button(action: cycleMuteOverlayMode) {
+                HStack {
+                    Text("Mute overlay sound")
+                    Spacer()
+                    Text(muteOverlayDisplayName(store.muteOverlayMode))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("muteOverlayControl")
+            .accessibilityLabel("Mute overlay sound")
+            .accessibilityValue(store.muteOverlayMode.rawValue)
+            .accessibilityHint("Changes the sound played during muted words. Off is silent.")
+
             Button(action: cyclePlaybackRate) {
                 HStack {
                     Text("Default playback speed")
@@ -281,6 +299,22 @@ struct SettingsView: View {
 
     private func cycleCleaningAction() {
         store.defaultCleaningAction = store.defaultCleaningAction == .mute ? .skip : .mute
+    }
+
+    private func cycleMuteOverlayMode() {
+        switch store.muteOverlayMode {
+        case .off: store.muteOverlayMode = .beep
+        case .beep: store.muteOverlayMode = .quack
+        case .quack: store.muteOverlayMode = .off
+        }
+    }
+
+    private func muteOverlayDisplayName(_ mode: MuteOverlayMode) -> String {
+        switch mode {
+        case .off: return "Off"
+        case .beep: return "Beep"
+        case .quack: return "Quack"
+        }
     }
 
     private func cycleUnrelatedContentAction() {

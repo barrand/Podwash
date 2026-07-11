@@ -18,6 +18,11 @@ protocol NowPlayingInfoUpdating: AnyObject {
 }
 
 final class MPNowPlayingInfoCenterUpdater: NowPlayingInfoUpdating {
+    // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION
+    // (XCTest teardown otherwise SIGABRT via swift_task_deinitOnExecutorImpl when
+    // PlaybackEngine releases this updater — OverlaySyncTests crash class).
+    nonisolated deinit {}
+
     func updateNowPlayingInfo(
         title: String,
         artist: String,

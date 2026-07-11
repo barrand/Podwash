@@ -67,7 +67,8 @@ final class AppShellModel {
         )
         let coordinator = PlaybackCoordinator(
             pipeline: InstantEpisodeAnalyzer(),
-            engine: newEngine
+            engine: newEngine,
+            settingsStore: settingsStore
         )
 
         let player = LibraryEpisodePlayer(engine: newEngine)

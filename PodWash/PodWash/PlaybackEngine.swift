@@ -49,6 +49,10 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     /// `skippedSeconds` = end − start (for banner accessibilityValue rounding).
     var onUnrelatedContentSkip: ((CensorInterval, Double) -> Void)?
 
+    /// Fired after a public `seek(to:completion:)` finishes (ADR-017 overlay resync).
+    /// `nonisolated(unsafe)`: cleared from `nonisolated deinit` without a MainActor hop.
+    nonisolated(unsafe) var onSeekCompleted: ((TimeInterval) -> Void)?
+
     /// Skip intervals the user has overridden (or that already fired) until schedule rebuild.
     private var overriddenSkipKeys: Set<SkipOverrideKey> = []
 
@@ -218,6 +222,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
                     self.refreshCurrentTime()
                     self.touchUI()
                     self.updateNowPlaying()
+                    self.onSeekCompleted?(self.currentTime)
                 }
                 completion?()
             }
@@ -366,6 +371,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     // Avoid MainActor/TaskLocal deinit crash (same pattern as QueueCoordinator).
     nonisolated deinit {
         onPlayPauseIntent = nil
+        onSeekCompleted = nil
         if let token = skipObserverToken {
             player.removeTimeObserver(token)
             skipObserverToken = nil
