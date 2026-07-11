@@ -263,6 +263,11 @@ private final class EpisodeTableViewController: UITableViewController {
                 // already cleared. `Task.sleep` inside the view model suspends
                 // without blocking idleness, leaving `analysisProgress` visible.
                 self.analysisViewModel.primeEpisodeCleaningToggle(episodeID: episodeID)
+                // Keep the UISwitch visually on even if a later representable
+                // refresh races setCleaningSwitch from a momentarily stale read.
+                if let cell = self.tableView.cellForRow(at: indexPath) as? EpisodeTableViewCell {
+                    cell.forceCleaningSwitchOnForAnalysis()
+                }
                 self.refreshAnalysisDisplayOnVisibleRows()
                 Task { @MainActor [weak self] in
                     guard let self else { return }
@@ -744,9 +749,17 @@ private final class EpisodeTableViewCell: UITableViewCell {
         cleaningSwitch.removeTarget(self, action: #selector(switchChanged), for: .valueChanged)
         cleaningSwitch.setOn(isOn, animated: false)
         cleaningSwitch.addTarget(self, action: #selector(switchChanged), for: .valueChanged)
+        cleaningSwitch.accessibilityValue = isOn ? "on" : "off"
+    }
+
+    /// Keeps the episode switch on while fixture analysis progress is published,
+    /// without re-entering `switchChanged` (avoids double-prime / toggle races).
+    func forceCleaningSwitchOnForAnalysis() {
+        setCleaningSwitch(isOn: true)
     }
 
     @objc private func switchChanged() {
+        cleaningSwitch.accessibilityValue = cleaningSwitch.isOn ? "on" : "off"
         onToggle?(cleaningSwitch.isOn)
     }
 

@@ -33,6 +33,13 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     private let nowPlayingUpdater: any NowPlayingInfoUpdating
     private let audioSessionConfigurator: any AudioSessionConfiguring
 
+    /// Title pushed to Now Playing / CarPlay seams (Slice 15).
+    var nowPlayingTitle: String { title }
+
+    /// Synchronous play (`true`) / pause (`false`) intent for CarPlay now-playing updater (ADR-016 §6).
+    /// `nonisolated(unsafe)`: cleared/released from `nonisolated deinit` without a MainActor TaskLocal hop.
+    nonisolated(unsafe) var onPlayPauseIntent: ((Bool) -> Void)?
+
     /// Boundary time observer token for `.skip` intervals; removed on re-apply/deinit.
     /// `nonisolated(unsafe)`: only mutated on the main actor, but `deinit` (nonisolated)
     /// must read it to tear the observer down.
@@ -109,6 +116,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         refreshCurrentTime()
         touchUI()
         updateNowPlaying()
+        onPlayPauseIntent?(true)
     }
 
     func pause() {
@@ -117,6 +125,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         refreshCurrentTime()
         touchUI()
         updateNowPlaying()
+        onPlayPauseIntent?(false)
     }
 
     /// Starts playback immediately when the item is ready; otherwise arms a one-shot
@@ -356,6 +365,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
 
     // Avoid MainActor/TaskLocal deinit crash (same pattern as QueueCoordinator).
     nonisolated deinit {
+        onPlayPauseIntent = nil
         if let token = skipObserverToken {
             player.removeTimeObserver(token)
             skipObserverToken = nil

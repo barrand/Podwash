@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct RootView: View {
     let persistence: PersistenceController
@@ -82,6 +83,11 @@ struct RootView: View {
                     .accessibilityIdentifier("shell.loading")
             }
         }
+        // CarPlay Info.plist declares phone UIWindowScene + CPTemplateApplicationScene
+        // (ADR-016). An empty system window can become key while SwiftUI's WindowGroup
+        // stays visible-but-not-key; XCTest then synthesizes taps that miss UIKit
+        // UISwitch controls (AnalysisProgressUITests recording: toggle stays off).
+        .background(KeyWindowActivator())
         .task {
             await loadFixtureSkipOverrideIfNeeded()
             loadFixtureSettingsIfNeeded()
@@ -192,5 +198,44 @@ struct RootView: View {
             try? FixtureLibrary.prepareEmptyStore(model.podcastStore)
         }
         appShellModel = model
+    }
+}
+
+/// Promotes the SwiftUI content window to key when CarPlay multi-scene manifests
+/// leave an empty `UIWindowScene` as key (XCTest hit delivery otherwise misses
+/// UIKit controls that are only visible in the non-key WindowGroup).
+private struct KeyWindowActivator: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+        view.isUserInteractionEnabled = false
+        view.isAccessibilityElement = false
+        DispatchQueue.main.async {
+            Self.activateKeyWindow(from: view)
+        }
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        DispatchQueue.main.async {
+            Self.activateKeyWindow(from: uiView)
+        }
+    }
+
+    private static func activateKeyWindow(from view: UIView) {
+        if let window = view.window {
+            if !window.isKeyWindow {
+                window.makeKeyAndVisible()
+            }
+            return
+        }
+        // Fallback before the representable is attached: pick the phone scene window
+        // that already hosts a root view controller (skip empty system scenes).
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        for scene in scenes where scene.session.role == .windowApplication {
+            if let window = scene.windows.first(where: { $0.rootViewController != nil }) {
+                window.makeKeyAndVisible()
+                return
+            }
+        }
     }
 }

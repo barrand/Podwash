@@ -45,10 +45,14 @@ final class AppShellModel {
             downloadsDirectory: DownloadPaths.productionDownloadsDirectory,
             stateStore: InMemoryDownloadStateStore(backing: downloadStateStore)
         )
+        CarPlayDependencies.register(self)
     }
 
     // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION.
     nonisolated deinit {}
+
+    var carPlayEpisodePlayer: (any EpisodePlaying)? { self }
+    var carPlayPlaybackEngine: PlaybackEngine? { engine }
 
     /// Library / detail entry: resolve audio, prepare engine + coordinators, show mini-player paused.
     /// Playback starts when the user taps `miniPlayerPlayPause` (AC4).
@@ -128,5 +132,32 @@ final class AppShellModel {
             downloadsDirectory: DownloadPaths.productionDownloadsDirectory
         )
         return resolver.playbackURL(for: episode)
+    }
+}
+
+// MARK: - CarPlay (ADR-016)
+
+extension AppShellModel: CarPlayDependencyProviding {}
+
+extension AppShellModel: EpisodePlaying {
+    func play(episodeID: String) {
+        for summary in podcastStore.allSubscriptions() {
+            guard
+                let feed = podcastStore.subscription(forFeedURL: summary.feedURL),
+                let episode = feed.episodes.first(where: { $0.id == episodeID })
+            else { continue }
+            playEpisode(episode, podcastTitle: summary.title)
+            // CarPlay selection starts playback immediately (phone mini-player stays paused until tap).
+            engine?.play()
+            return
+        }
+    }
+
+    func pause() {
+        engine?.pause()
+    }
+
+    func seek(to seconds: TimeInterval) {
+        engine?.seek(to: seconds)
     }
 }
