@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 22 |
 | **Title** | Discovery & subscribe |
-| **Status** | Ready |
+| **Status** | Done |
 | **Crux** | Stubbed iTunes Search API JSON drives a Discover screen (popular list + search); subscribing fetches RSS via injectable `URLSession`, persists **multiple** subscriptions in Core Data without clear-on-save, and survives container reload — all assertable with `URLProtocol` fixtures, never live network. |
 
 > **Placement:** MVP app shell insert **before CarPlay (Slice 15)** — historically scoped as **"14a"**. Slice 23 completes the production navigation shell ("14b").
@@ -137,7 +137,7 @@ scripts/verify.sh
 > A slice without a recorded full-suite green artifact is not Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=85 passed=85 failed=0 skipped=0 filtered=0 bundle=build/test-results/verify-20260710-233236.xcresult tier=3 class=tests
 ```
 
 ## Plan review record (coordinator fills before downstream roles)
