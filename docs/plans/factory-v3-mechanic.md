@@ -131,16 +131,20 @@ Replace count budgets with a **progress rule**:
   contract above.
 - **Continue** while there is progress, regardless of how many cycles that takes.
 - **Halt (exit 5)** when there is no progress for **2 consecutive cycles**
-  (true thrash), or at a sanity hard cap (**8 Mechanic spawns** or **45 min**
-  in the fix loop, whichever first) to bound spend.
+  (true thrash), or at a sanity hard cap (**8 Mechanic spawns** or **45 min of
+  Mechanic agent time**, whichever first) to bound LLM spend. **`verify.sh`
+  wall clock is excluded** from the minute budget — pause the Mechanic timer
+  around every verify (initial + tier-1/2/3 + stress). Hard-cap halts use
+  `halt_kind=hard_cap` and a `HARD CAP:` message (not `no progress 0/2`).
 - **Stress-flake thrash:** green → stress-red is a `stress_flake` signature
   family (not a failed attempt). After the dedicated determinism recipe is
   applied, **2 consecutive `stress_flake` cycles with no in-scope harness
   delta** (test wait/query/setup edits) count as no progress and halt — do not
   burn the full 8/45 cap on unbounded flake churn.
-- Free (never counted toward the spawn cap): infra cold-retries, flake
-  cold-retry, stress *confirmation* repeats after green, tier-0 compile
-  checks, test-diff / ADR-diff reviews.
+- Free (never counted toward the spawn cap **or** the Mechanic minute budget):
+  infra cold-retries, flake cold-retry, stress *confirmation* repeats after
+  green, tier-0 compile checks, test-diff / ADR-diff reviews, and **all
+  `verify.sh` runs**.
 
 Under this rule, slices 09, 12, 13, 19a/b/c complete; slice 11's genuine
 same-signature thrash still halts, one cycle earlier than today.
@@ -152,6 +156,7 @@ PROGRESS: signature changed (3 failures → 1) — continuing (cycle 4, cap 8)
 NO PROGRESS 1/2: identical signature after Mechanic cycle
 NO PROGRESS 1/2: signature seen in window (oscillation)
 THRASH HALT: no progress 2/2 on sig=…; cycles=5/8; last=stress-flake after green
+HARD CAP: fix loop mechanic 44m / 45m limit — verify consumed 60m, mechanic spawns 1/8; denying spawn 2/8
 ```
 
 ### Phase 3 — continuity: resume, don't respawn
@@ -216,7 +221,7 @@ Do not reintroduce role routing behind a feature flag.
 | Review ping-pong | Cap: 2 consecutive blocked reviews → exit 5 |
 | Progress rule loops on oscillating signatures (A→B→A→B) | Oscillation window N=4: seen-before signature = no-progress |
 | Unbounded stress_flake churn | 2 stress_flake cycles with no harness delta → thrash halt |
-| Hard cap too generous (spend) | 8 spawns / 45 min is a ceiling, not a target; thrash rule usually fires first |
+| Hard cap too generous (spend) | 8 spawns / 45 min **Mechanic agent time** is a ceiling, not a target; thrash rule usually fires first; verify wall clock excluded |
 | Resume keeps a confused agent alive (v2 fresh-context tension) | Resume only on stable family **and** last cycle had in-scope delta; stall twice → fresh spawn |
 | Mixed app+tests commit | Loop auto-splits commits; `check-test-isolation.sh` still enforced |
 | One worker loses adversarial tension | Tension preserved at authoring (QA writes tests first) and at Done (readonly verify); fix loop was never adversarial — it was ping-pong |

@@ -163,6 +163,12 @@ class PacketBuilderTests(unittest.TestCase):
         card = format_stuck_card(packet, slice_file="docs/slices/slice-09-x.md")
         self.assertIn("testProgressIndicatorLifecycle", card)
         self.assertIn("STUCK — Slice 09", card)
+        capped = format_stuck_card(
+            packet,
+            slice_file="docs/slices/slice-09-x.md",
+            cap_line="Cap: hard_cap (1/8 spawns, 5m agent / 60m verify)",
+        )
+        self.assertIn("Cap: hard_cap (1/8 spawns, 5m agent / 60m verify)", capped)
 
     def test_wait_timeout_infers_query_without_hierarchy(self):
         summary = {

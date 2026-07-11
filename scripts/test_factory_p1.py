@@ -35,6 +35,7 @@ from factory_narrator import (  # noqa: E402
     parse_shift_narration_lines,
     narrate_slice_recap,
     narrate_spawn,
+    narrate_hard_cap_halt,
     narrate_thrash_halt,
     narrate_verify_red,
     StoryVoice,
@@ -220,6 +221,14 @@ class NarratorTests(unittest.TestCase):
         self.assertTrue(any("from Ada:" in ln for ln in lines))
         narrate_thrash_halt(log=lines.append)
         self.assertIn("exit=5", lines[-1])
+        self.assertIn("Murphy", lines[-1])
+        narrate_hard_cap_halt(log=lines.append)
+        self.assertIn("exit=5", lines[-1])
+        self.assertNotIn("Murphy", lines[-1])
+        self.assertTrue(
+            any(w in lines[-1].lower() for w in ("hard cap", "ceiling", "spend cap")),
+            lines[-1],
+        )
         narrate_spawn("Edison", "Engineer", "fix DownloadManager", log=lines.append)
         self.assertIn("Edison", lines[-1])
 

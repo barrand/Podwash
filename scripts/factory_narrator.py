@@ -79,6 +79,12 @@ THRASH_HALT_LINES: tuple[str, ...] = (
     "🐒 That's the budget. Murphy's grinning. Stuck card filed. (exit=5)",
 )
 
+HARD_CAP_HALT_LINES: tuple[str, ...] = (
+    "Hard cap — Mechanic time/spawn budget spent (verify time doesn't count). Stuck card filed. (exit=5)",
+    "Ceiling hit: Mechanic minutes or spawns, not thrash. Halt and stuck card on the desk. (exit=5)",
+    "Spend cap tripped (agent time / spawn count). Verify wall clock excluded. Halting. (exit=5)",
+)
+
 INFRA_HALT_LINES: tuple[str, ...] = (
     "Something knocked the line over (infra). Halting for retry. (exit=6)",
     "Infra wobble — not code. Halting for retry. (exit=6)",
@@ -440,6 +446,18 @@ def narrate_thrash_halt(
 ) -> str:
     v = voice or _default_voice
     line = v.pick("thrash_halt", THRASH_HALT_LINES)
+    _emit(line, log)
+    return line
+
+
+def narrate_hard_cap_halt(
+    *,
+    log: LogFn | None = None,
+    voice: StoryVoice | None = None,
+) -> str:
+    """Spend ceiling — not Murphy/thrash. Distinct from narrate_thrash_halt."""
+    v = voice or _default_voice
+    line = v.pick("hard_cap_halt", HARD_CAP_HALT_LINES)
     _emit(line, log)
     return line
 

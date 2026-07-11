@@ -257,7 +257,12 @@ def is_harness_delta(paths: Iterable[str]) -> bool:
 
 @dataclass
 class ProgressTracker:
-    """Progress-based stop rule for the Mechanic fix loop."""
+    """Progress-based stop rule for the Mechanic fix loop.
+
+    ``max_minutes`` bounds **Mechanic agent time only**. Call
+    ``pause_for_verify`` / ``resume_after_verify`` around every ``verify.sh``
+    run so tier-1/2/3 wall clock does not burn the 45-minute spend cap.
+    """
 
     max_spawns: int = DEFAULT_MAX_MECHANIC_SPAWNS
     max_minutes: float = DEFAULT_FIX_LOOP_MINUTES
@@ -265,7 +270,14 @@ class ProgressTracker:
     no_progress_limit: int = NO_PROGRESS_HALT
 
     spawns_used: int = 0
-    started_at: float = 0.0
+    started_at: float | None = None
+    # Accumulated billable Mechanic seconds (verify excluded).
+    mechanic_elapsed_secs: float = 0.0
+    verify_elapsed_secs: float = 0.0
+    # Segment bookkeeping: running Mechanic wall vs paused-for-verify.
+    # None = inactive (do not use 0.0 — epoch timestamps are valid).
+    _segment_started_at: float | None = None
+    _pause_started_at: float | None = None
     signature_history: list[str] = field(default_factory=list)
     consecutive_no_progress: int = 0
     consecutive_stress_flake_no_harness: int = 0
@@ -280,17 +292,62 @@ class ProgressTracker:
 
     def start(self, now: float) -> None:
         self.started_at = now
+        self.mechanic_elapsed_secs = 0.0
+        self.verify_elapsed_secs = 0.0
+        self._segment_started_at = now
+        self._pause_started_at = None
 
-    def elapsed_minutes(self, now: float) -> float:
-        if not self.started_at:
+    def pause_for_verify(self, now: float) -> None:
+        """Freeze Mechanic timer; accumulate wall time as verify instead."""
+        if self._pause_started_at is not None:
+            return
+        if self._segment_started_at is not None:
+            self.mechanic_elapsed_secs += max(0.0, now - self._segment_started_at)
+            self._segment_started_at = None
+        self._pause_started_at = now
+
+    def resume_after_verify(self, now: float) -> None:
+        """End verify pause and resume Mechanic-billable time."""
+        if self._pause_started_at is None:
+            return
+        self.verify_elapsed_secs += max(0.0, now - self._pause_started_at)
+        self._pause_started_at = None
+        self._segment_started_at = now
+
+    def mechanic_elapsed_minutes(self, now: float) -> float:
+        secs = self.mechanic_elapsed_secs
+        if self._segment_started_at is not None and self._pause_started_at is None:
+            secs += max(0.0, now - self._segment_started_at)
+        return secs / 60.0
+
+    def verify_elapsed_minutes(self, now: float) -> float:
+        secs = self.verify_elapsed_secs
+        if self._pause_started_at is not None:
+            secs += max(0.0, now - self._pause_started_at)
+        return secs / 60.0
+
+    def wall_elapsed_minutes(self, now: float) -> float:
+        if self.started_at is None:
             return 0.0
         return (now - self.started_at) / 60.0
+
+    def elapsed_minutes(self, now: float) -> float:
+        """Mechanic-billable minutes (verify excluded). Alias for hard-cap checks."""
+        return self.mechanic_elapsed_minutes(now)
 
     def at_hard_cap(self, now: float) -> bool:
         return (
             self.spawns_used >= self.max_spawns
-            or self.elapsed_minutes(now) >= self.max_minutes
+            or self.mechanic_elapsed_minutes(now) >= self.max_minutes
         )
+
+    def hard_cap_reason(self, now: float) -> str:
+        """Which hard-cap lever tripped (empty if under budget)."""
+        if self.spawns_used >= self.max_spawns:
+            return "spawns"
+        if self.mechanic_elapsed_minutes(now) >= self.max_minutes:
+            return "mechanic time"
+        return ""
 
     def record_spawn(self) -> int:
         self.spawns_used += 1
@@ -405,10 +462,59 @@ def thrash_halt_message(
     *,
     last: str = "",
 ) -> str:
+    """No-progress / oscillation thrash (not hard-cap)."""
     sig = tracker.last_signature
     return (
         f"THRASH HALT: no progress {tracker.consecutive_no_progress}/"
         f"{tracker.no_progress_limit} on sig={sig[:80]}; "
         f"cycles={tracker.spawns_used}/{tracker.max_spawns}"
         + (f"; last={last}" if last else "")
+    )
+
+
+def hard_cap_halt_message(
+    tracker: ProgressTracker,
+    *,
+    now: float,
+    last: str = "",
+) -> str:
+    """Spend ceiling: spawn count or Mechanic-agent minutes (verify excluded)."""
+    mech_m = tracker.mechanic_elapsed_minutes(now)
+    verify_m = tracker.verify_elapsed_minutes(now)
+    lever = tracker.hard_cap_reason(now) or "hard cap"
+    denom = (
+        f"{tracker.max_spawns} spawns"
+        if lever == "spawns"
+        else f"{tracker.max_minutes:.0f}m mechanic"
+    )
+    line = (
+        f"HARD CAP: mechanic {mech_m:.0f}m / {tracker.max_minutes:.0f}m "
+        f"(verify {verify_m:.0f}m excluded); "
+        f"spawns={tracker.spawns_used}/{tracker.max_spawns}; "
+        f"limit={denom}"
+    )
+    if last:
+        line += f"; last={last}"
+    return line
+
+
+def hard_cap_console_line(tracker: ProgressTracker, *, now: float) -> str:
+    """Exact console shape before denying the next Mechanic spawn."""
+    next_spawn = tracker.spawns_used + 1
+    return (
+        f"HARD CAP: fix loop mechanic "
+        f"{tracker.mechanic_elapsed_minutes(now):.0f}m / "
+        f"{tracker.max_minutes:.0f}m limit — verify consumed "
+        f"{tracker.verify_elapsed_minutes(now):.0f}m, mechanic spawns "
+        f"{tracker.spawns_used}/{tracker.max_spawns}; "
+        f"denying spawn {next_spawn}/{tracker.max_spawns}"
+    )
+
+
+def hard_cap_stuck_line(tracker: ProgressTracker, *, now: float) -> str:
+    """Stuck-card Cap: line for hard-cap halts."""
+    return (
+        f"Cap: hard_cap ({tracker.spawns_used}/{tracker.max_spawns} spawns, "
+        f"{tracker.mechanic_elapsed_minutes(now):.0f}m agent / "
+        f"{tracker.verify_elapsed_minutes(now):.0f}m verify)"
     )

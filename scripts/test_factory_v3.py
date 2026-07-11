@@ -14,6 +14,9 @@ sys.path.insert(0, SCRIPT_DIR)
 from factory_progress import (  # noqa: E402
     ProgressTracker,
     classify_fix_paths,
+    hard_cap_console_line,
+    hard_cap_halt_message,
+    hard_cap_stuck_line,
     is_no_progress,
     is_progress,
     make_failure_signature,
@@ -159,6 +162,89 @@ class ProgressTrackerMatrixTests(unittest.TestCase):
         self.assertIn("THRASH HALT:", msg)
         self.assertIn("cycles=5/8", msg)
         self.assertIn("stress-flake", msg)
+
+
+class HardCapBudgetTests(unittest.TestCase):
+    """Slice 15 regression: verify wall clock must not burn Mechanic minutes."""
+
+    def test_verify_time_excluded_from_mechanic_budget(self):
+        t = ProgressTracker(max_spawns=8, max_minutes=45)
+        t0 = 1_000_000.0
+        t.start(t0)
+        t.pause_for_verify(t0)
+        # 60 minutes of full-suite verify (the slice-15 failure mode)
+        t.resume_after_verify(t0 + 60 * 60)
+        t.record_spawn()
+        # 5 minutes of Mechanic agent work after verify
+        now = t0 + 60 * 60 + 5 * 60
+        self.assertFalse(
+            t.at_hard_cap(now),
+            "60m verify + 5m mechanic must not hard-cap a 45m mechanic budget",
+        )
+        self.assertAlmostEqual(t.mechanic_elapsed_minutes(now), 5.0, places=1)
+        self.assertAlmostEqual(t.verify_elapsed_minutes(now), 60.0, places=1)
+        self.assertAlmostEqual(t.wall_elapsed_minutes(now), 65.0, places=1)
+
+    def test_old_wall_clock_bug_would_have_halted(self):
+        """Document the pre-fix semantics: wall clock ≥ 45m with 1 spawn."""
+        t = ProgressTracker(max_spawns=8, max_minutes=45)
+        t0 = 0.0
+        t.start(t0)
+        t.pause_for_verify(t0)
+        t.resume_after_verify(t0 + 60 * 60)
+        t.record_spawn()
+        now = t0 + 60 * 60 + 1.0
+        # Wall is 60m but mechanic billable is ~0 — must allow spawn 2
+        self.assertGreater(t.wall_elapsed_minutes(now), 45.0)
+        self.assertFalse(t.at_hard_cap(now))
+        self.assertEqual(t.spawns_used, 1)
+
+    def test_mechanic_time_hits_hard_cap(self):
+        t = ProgressTracker(max_spawns=8, max_minutes=45)
+        t.start(0.0)
+        t.record_spawn()
+        self.assertTrue(t.at_hard_cap(45 * 60))
+        self.assertEqual(t.hard_cap_reason(45 * 60), "mechanic time")
+
+    def test_spawn_cap_hits_hard_cap(self):
+        t = ProgressTracker(max_spawns=2, max_minutes=45)
+        t.start(0.0)
+        t.record_spawn()
+        t.record_spawn()
+        self.assertTrue(t.at_hard_cap(10.0))
+        self.assertEqual(t.hard_cap_reason(10.0), "spawns")
+
+    def test_hard_cap_message_not_no_progress(self):
+        t = ProgressTracker(max_spawns=8, max_minutes=45)
+        t0 = 0.0
+        t.start(t0)
+        t.pause_for_verify(t0)
+        t.resume_after_verify(t0 + 3600)
+        t.record_spawn()
+        # Force mechanic-time cap with accumulated secs
+        t.mechanic_elapsed_secs = 45 * 60
+        t._segment_started_at = None
+        now = t0 + 3600 + 1
+        msg = hard_cap_halt_message(t, now=now, last="hard cap")
+        self.assertIn("HARD CAP:", msg)
+        self.assertIn("verify", msg.lower())
+        self.assertNotIn("no progress", msg)
+        console = hard_cap_console_line(t, now=now)
+        self.assertIn("denying spawn 2/8", console)
+        self.assertIn("verify consumed", console)
+        stuck = hard_cap_stuck_line(t, now=now)
+        self.assertTrue(stuck.startswith("Cap: hard_cap"))
+        self.assertIn("1/8 spawns", stuck)
+
+    def test_pause_resume_nested_is_idempotent(self):
+        t = ProgressTracker(max_spawns=8, max_minutes=45)
+        t.start(100.0)
+        t.pause_for_verify(110.0)
+        t.pause_for_verify(120.0)  # no-op
+        t.resume_after_verify(200.0)
+        t.resume_after_verify(210.0)  # no-op
+        self.assertAlmostEqual(t.verify_elapsed_secs, 90.0, places=1)
+        self.assertAlmostEqual(t.mechanic_elapsed_secs, 10.0, places=1)
 
 
 class AntiCheatPathTests(unittest.TestCase):

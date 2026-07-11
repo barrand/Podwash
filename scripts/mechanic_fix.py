@@ -29,6 +29,7 @@ from factory_narrator import (
     narrate_exoneration,
     narrate_failure_detail,
     narrate_flake_confirmed,
+    narrate_hard_cap_halt,
     narrate_role_report,
     narrate_thrash_halt,
     narrate_worker_done,
@@ -36,6 +37,9 @@ from factory_narrator import (
 from factory_progress import (
     DEFAULT_MAX_MECHANIC_SPAWNS,
     ProgressTracker,
+    hard_cap_console_line,
+    hard_cap_halt_message,
+    hard_cap_stuck_line,
     is_harness_delta,
     make_failure_signature,
     needs_adr_diff_review,
@@ -376,13 +380,18 @@ def run_fix_cycle(
     def _do_verify(**kwargs: Any) -> VerifyOutcome:
         if "tier" not in kwargs:
             kwargs = {**kwargs, "tier": gate_tier}
+        # Verify wall clock must not burn the Mechanic minute budget (slice 15).
+        progress.pause_for_verify(time.time())
         try:
-            return _verify(slice_file=slice_file, **kwargs)
-        except TypeError:
             try:
-                return _verify(**kwargs)
+                return _verify(slice_file=slice_file, **kwargs)
             except TypeError:
-                return _verify()
+                try:
+                    return _verify(**kwargs)
+                except TypeError:
+                    return _verify()
+        finally:
+            progress.resume_after_verify(time.time())
 
     roots = []
     for r in default_ips_roots()[:2]:
@@ -448,6 +457,7 @@ def run_fix_cycle(
     while True:
         now = time.time()
         if progress.at_hard_cap(now) and progress.spawns_used > 0:
+            _log(hard_cap_console_line(progress, now=now))
             _halt_exhausted(
                 outcome,
                 progress,
@@ -459,6 +469,8 @@ def run_fix_cycle(
                 cast=_cast,
                 stuck_printed=_stuck_printed,
                 reason="hard cap",
+                halt_kind="hard_cap",
+                now=now,
             )
 
         packet = outcome.packet or build_failure_packet(
@@ -843,27 +855,65 @@ def run_fix_cycle(
                 )
                 return outcome
 
-        # Progress / stress_flake observation
+        # Progress / stress_flake observation — check thrash then hard-cap
+        # *before* logging "continuing" so we never imply another cycle then halt.
         if stress_flake_mode:
             cont, line = progress.observe_stress_flake(
                 had_harness_delta=is_harness_delta(in_scope)
             )
-            _log(line)
             sig = _mechanic_signature(outcome, stress_flake=True)
             progress.signature_history.append(sig)
             progress.last_signature = sig
             if not cont or progress.stress_flake_thrash():
+                _log(line)
                 narrate_thrash_halt(log=_log, voice=_voice)
                 raise ThrashHalt(
                     thrash_halt_message(progress, last="stress-flake after green")
                 )
+            now_cap = time.time()
+            if progress.at_hard_cap(now_cap):
+                _log(hard_cap_console_line(progress, now=now_cap))
+                _halt_exhausted(
+                    outcome,
+                    progress,
+                    slice_file=slice_file,
+                    repo_root=repo_root,
+                    slice_id=slice_id,
+                    log=_log,
+                    voice=_voice,
+                    cast=_cast,
+                    stuck_printed=_stuck_printed,
+                    reason="hard cap",
+                    halt_kind="hard_cap",
+                    now=now_cap,
+                )
+            _log(line)
         else:
             sig = _mechanic_signature(outcome)
             cont, line = progress.observe_signature(sig)
-            _log(line)
             if progress.thrash_halt():
+                _log(line)
                 narrate_thrash_halt(log=_log, voice=_voice)
                 raise ThrashHalt(thrash_halt_message(progress))
+            now_cap = time.time()
+            if progress.at_hard_cap(now_cap):
+                # Do not emit "PROGRESS: … continuing" right before a hard-cap halt.
+                _log(hard_cap_console_line(progress, now=now_cap))
+                _halt_exhausted(
+                    outcome,
+                    progress,
+                    slice_file=slice_file,
+                    repo_root=repo_root,
+                    slice_id=slice_id,
+                    log=_log,
+                    voice=_voice,
+                    cast=_cast,
+                    stuck_printed=_stuck_printed,
+                    reason="hard cap",
+                    halt_kind="hard_cap",
+                    now=now_cap,
+                )
+            _log(line)
 
         _narrate_verify_failure(
             agent,
@@ -897,16 +947,26 @@ def _halt_exhausted(
     cast: CastLog,
     stuck_printed: set[str],
     reason: str,
+    halt_kind: str = "hard_cap",
+    now: float | None = None,
 ) -> None:
     from slice_pipeline import _log_stuck_card_path
 
+    now = time.time() if now is None else now
     packet = outcome.packet
+    cap_line = ""
+    if halt_kind == "hard_cap":
+        cap_line = hard_cap_stuck_line(progress, now=now)
+        msg = hard_cap_halt_message(progress, now=now, last=reason)
+    else:
+        msg = thrash_halt_message(progress, last=reason)
     card = format_stuck_card(
         packet or FailurePacket(raw_failures=outcome.failures),
         slice_file=slice_file,
         attempt=progress.spawns_used,
         max_attempts=progress.max_spawns,
         levers_tried=progress.levers_tried,
+        cap_line=cap_line,
     )
     _log_stuck_card_path(
         card,
@@ -915,7 +975,10 @@ def _halt_exhausted(
         log=log,
         printed=stuck_printed,
     )
-    narrate_thrash_halt(log=log, voice=voice)
+    if halt_kind == "hard_cap":
+        narrate_hard_cap_halt(log=log, voice=voice)
+    else:
+        narrate_thrash_halt(log=log, voice=voice)
     if outcome.packet:
         last_name = cast.entries[-1].name if cast.entries else "Quinn"
         narrate_failure_detail(
@@ -924,10 +987,15 @@ def _halt_exhausted(
             log=log,
             voice=voice,
         )
-    msg = thrash_halt_message(progress, last=reason)
     resume_hint = (
         f"Resume warm: scripts/slice-loop.sh --max 1  "
         f"# see build/test-results/session-slice-{(slice_id or 0):02d}/"
+        f"  # hard-cap timer resets on warm resume"
+        if halt_kind == "hard_cap"
+        else (
+            f"Resume warm: scripts/slice-loop.sh --max 1  "
+            f"# see build/test-results/session-slice-{(slice_id or 0):02d}/"
+        )
     )
     log(resume_hint)
     bundle_dir = write_session_bundle(
@@ -943,6 +1011,10 @@ def _halt_exhausted(
             "gate": "mechanic",
             "spawns": progress.spawns_used,
             "resume_hint": resume_hint,
+            "halt_kind": halt_kind,
+            "mechanic_elapsed_m": round(progress.mechanic_elapsed_minutes(now), 1),
+            "verify_elapsed_m": round(progress.verify_elapsed_minutes(now), 1),
+            "max_minutes": progress.max_minutes,
         },
     )
     log(f"session bundle written: {bundle_dir}")

@@ -793,6 +793,7 @@ def format_stuck_card(
     next_role: str = "",
     lever: str = "",
     levers_tried: list[str] | None = None,
+    cap_line: str = "",
 ) -> str:
     sid = slice_id_from_path(slice_file)
     title = f"Slice {sid:02d}" if sid is not None else (slice_file or "slice")
@@ -821,6 +822,8 @@ def format_stuck_card(
         lines.append(f"Attempt: {attempt}/{max_attempts}{role_bit}")
     if levers_tried:
         lines.append("Tried: " + " | ".join(levers_tried))
+    if cap_line:
+        lines.append(cap_line if cap_line.startswith("Cap:") else f"Cap: {cap_line}")
     if packet.suggested_files:
         lines.append("Files: " + ", ".join(packet.suggested_files[:6]))
     if packet.bundle:

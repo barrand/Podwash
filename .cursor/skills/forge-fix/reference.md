@@ -58,6 +58,10 @@ All under `build/test-results/` (gitignored).
 | **5** | **ThrashHalt** — no progress / hard cap / review blocked ×2 |
 | **6** | **InfraHalt** — bridge/DNS/sim (retry-safe) |
 
+`halt.json` `extra.halt_kind` distinguishes **`hard_cap`** (Mechanic minute/spawn
+ceiling; verify wall clock excluded) from **`no_progress`** / review thrash.
+Hard-cap reasons start with `HARD CAP:` — never `no progress 0/2`.
+
 ## Verify tiers
 
 | Tier | Action | When |

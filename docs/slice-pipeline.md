@@ -19,7 +19,7 @@
 | Event log + timeline + SUMMARY | `factory_events.py` |
 | Shift-floor narrator + Murphy | `factory_narrator.py` (rendering only) |
 | Sim pre-boot / crash watch / stress | `sim_hygiene.py` (UITest stress 3×) |
-| Red → progress stop | signature progress / oscillation / hard cap 8 or 45 min; exit 5 thrash / 6 infra |
+| Red → progress stop | signature progress / oscillation / hard cap 8 spawns or 45 min **Mechanic agent time** (verify excluded); exit 5 thrash|hard-cap / 6 infra |
 | `VERIFY RESULT` + Status Done | Deterministic doc writer |
 | Status Ready after story content | Deterministic doc writer (`set_slice_status`) |
 | Split commits + isolation + push | Loop (pipeline mode); Mechanic deltas → `fix tests` / `fix app` / `fix docs` |
@@ -164,7 +164,7 @@ build  >  test_failure  >  infra/flake
 2. Infra classification uses **curated** failure text only (never full xcodebuild stdout).
 3. Phrase-level infra markers only — never bare `dns` / `lock` / `coresimulator`.
 4. Structured vs heuristic disagreement logs `CLASSIFIER DISAGREEMENT` and prefers structured.
-5. Progress stop (not count budgets): continue while signature changes or failure count drops; halt on identical signature 2× or oscillation within window N=4; hard cap 8 Mechanic spawns / 45 min.
+5. Progress stop (not count budgets): continue while signature changes or failure count drops; halt on identical signature 2× or oscillation within window N=4; hard cap **8 Mechanic spawns** or **45 min of Mechanic agent time** (verify / `verify.sh` wall clock is **excluded** from the minute budget).
 6. ~~class-transition credit~~ / ~~handoff credit~~ — **removed in Factory v3** (see historical note below).
 
 `verify.sh` also writes `build/test-results/verify-result.json` (machine-readable contract). Raw verify stdout is persisted as `verify-output-*.txt` / `verify-output-latest.txt` and copied into the session bundle on halt.
@@ -267,7 +267,7 @@ Mechanic `RunProgress` uses `fix_worker=True` so shell `verify.sh` /
 | Signature seen in oscillation window (N=4) | Counts as no-progress |
 | `stress_flake` ×2 with no harness delta | Thrash halt |
 | Test- or ADR-diff review blocked ×2 | Thrash halt |
-| Hard cap 8 Mechanic spawns or 45 min | Thrash halt |
+| Hard cap 8 Mechanic spawns or 45 min **Mechanic agent time** (verify excluded) | `HARD CAP` halt (exit 5; `halt_kind=hard_cap`) |
 | Infra / flake cold-retry | Free (not a spawn) |
 
 `--max-fix-attempts` maps to Mechanic spawn cap (default **8**).
