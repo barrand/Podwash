@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import tempfile
@@ -632,6 +633,7 @@ class AuthoringGatePromptTests(unittest.TestCase):
             prompt = build_gate_prompt("architect", path, tmp)
             self.assertIn("docs/adr/017-overlay-sync.md", prompt)
             self.assertIn("xcodebuild", prompt)
+            self.assertIn("Spike", prompt)
             self.assertIn("verify.sh", prompt)
 
     def test_explain_gate_pending_architect_resolved_path(self):
@@ -659,6 +661,41 @@ class AuthoringGatePromptTests(unittest.TestCase):
             self.assertIn("docs/adr/017-overlay-sync.md", msg)
             self.assertNotIn("0XX", msg)
 
+    def test_persist_gate_stuck_halt_writes_bundle(self):
+        from slice_pipeline import _persist_gate_stuck_halt
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tr = os.path.join(tmp, "build", "test-results")
+            os.makedirs(tr)
+            slices = os.path.join(tmp, "docs", "slices")
+            os.makedirs(slices)
+            path = os.path.join(slices, "slice-16-beep-overlay.md")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("# Slice 16\n")
+            logs: list[str] = []
+            explain = (
+                "gate architect still pending after worker — stopping. "
+                "(Status=Ready; missing artifacts: ['docs/adr/017-overlay-sync.md']) "
+                "unblock: create docs/adr/017-overlay-sync.md"
+            )
+            _persist_gate_stuck_halt(
+                slice_id=16,
+                gate_id="architect",
+                gate_label="architect",
+                explain=explain,
+                agent="Ada",
+                slice_file=path,
+                repo_root=tmp,
+                log=logs.append,
+            )
+            bundle = os.path.join(tr, "session-slice-16", "halt.json")
+            self.assertTrue(os.path.isfile(bundle))
+            self.assertTrue(any("session bundle" in l for l in logs))
+            with open(bundle, encoding="utf-8") as fh:
+                meta = json.load(fh)
+            self.assertEqual(meta.get("phase"), "GATE-ARCHITECT")
+            self.assertEqual(meta.get("extra", {}).get("halt_kind"), "gate_stuck")
+
     def test_parse_verify_result_class_build(self):
         v = parse_verify_result(
             "VERIFY RESULT: exit=65 total=0 passed=0 failed=0 skipped=0 "
@@ -681,6 +718,108 @@ class AuthoringGatePromptTests(unittest.TestCase):
             }
         )
         self.assertIn("class=build", line)
+
+
+class BridgeCloseHaltTests(unittest.TestCase):
+    def test_is_bridge_network_error(self):
+        from slice_pipeline import _is_bridge_network_error
+
+        class NetworkError(Exception):
+            pass
+
+        self.assertTrue(
+            _is_bridge_network_error(
+                NetworkError("Server disconnected without sending a response.")
+            )
+        )
+        self.assertTrue(
+            _is_bridge_network_error(
+                RuntimeError("Bridge request failed: RemoteProtocolError")
+            )
+        )
+        self.assertFalse(_is_bridge_network_error(ValueError("not network")))
+
+    def test_run_worker_bridge_close_raises_infra_halt(self):
+        from unittest import mock
+
+        from slice_loop_progress import RunProgress
+        from slice_pipeline import InfraHalt, run_worker
+
+        class NetworkError(Exception):
+            pass
+
+        class FakeRun:
+            def messages(self):
+                return iter([])
+
+            def wait(self):
+                class R:
+                    status = "finished"
+
+                return R()
+
+        class FakeAgent:
+            agent_id = "a1"
+
+            def send(self, _prompt: str) -> FakeRun:
+                return FakeRun()
+
+            def __enter__(self) -> "FakeAgent":
+                return self
+
+            def __exit__(self, *_args: object) -> None:
+                raise NetworkError(
+                    "Bridge request failed: RemoteProtocolError: "
+                    "Server disconnected without sending a response."
+                )
+
+        class FakeClient:
+            def create_agent(self, _options: object) -> FakeAgent:
+                return FakeAgent()
+
+        fake_sdk = mock.MagicMock()
+        fake_sdk.AgentOptions = mock.MagicMock(return_value=object())
+        fake_sdk.LocalAgentOptions = mock.MagicMock(return_value=object())
+
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "build", "test-results"))
+            logs: list[str] = []
+            prog = RunProgress(
+                16,
+                "Beep overlay",
+                "docs/slices/slice-16-beep-overlay.md",
+                logs.append,
+                authoring_gate=True,
+                gate_id="architect",
+                forced_role="Architect",
+                repo_root=tmp,
+            )
+            with mock.patch.dict(sys.modules, {"cursor_sdk": fake_sdk}):
+                with mock.patch(
+                    "slice_pipeline.sdk_model_for_role", return_value="m"
+                ), mock.patch(
+                    "slice_pipeline.format_sdk_model", return_value="m"
+                ):
+                    with self.assertRaises(InfraHalt) as ctx:
+                        run_worker(
+                            FakeClient(),
+                            role="Architect",
+                            prompt="write ADR",
+                            api_key="test-key",
+                            repo_root=tmp,
+                            log=logs.append,
+                            progress=prog,
+                        )
+            self.assertIn("bridge disconnect", ctx.exception.reason)
+            self.assertTrue(any("INFRA HALT" in l for l in logs))
+            halt = os.path.join(
+                tmp, "build", "test-results", "session-slice-16", "halt.json"
+            )
+            self.assertTrue(os.path.isfile(halt))
+            with open(halt, encoding="utf-8") as fh:
+                meta = json.load(fh)
+            self.assertEqual(meta.get("phase"), "BRIDGE-CLOSE")
+            self.assertEqual(meta.get("extra", {}).get("halt_kind"), "bridge_close")
 
 
 class CommitPathFilterTests(unittest.TestCase):

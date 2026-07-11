@@ -116,6 +116,30 @@ ROLE_EDIT_PATHS: dict[str, str] = {
     "Subagent": "(unknown role — prefer named podwash-* subagents)",
 }
 
+# Path prefixes each authoring role may touch (spike exception handled separately).
+ROLE_EDIT_MARKERS: dict[str, tuple[str, ...]] = {
+    "Architect": ("/docs/adr/", "/docs/slices/"),
+    "UX": ("/docs/slices/",),
+    "PM": ("/docs/slices/",),
+    "Engineer": ("/PodWash/PodWash/",),
+    "QA": (
+        "/PodWash/PodWashTests/",
+        "/PodWash/PodWashUITests/",
+        "/PodWash/PodWashSlowTests/",
+        "/docs/slices/",
+    ),
+}
+
+_ARCHITECT_SPIKE_PATH_RE = re.compile(
+    r"/PodWash(?:Tests|UITests|SlowTests)/_[^/]*Spike\.swift$",
+    re.IGNORECASE,
+)
+# Architect measurement spikes: xcodebuild test -only-testing:…Spike…
+_ARCHITECT_SPIKE_ONLY_TESTING_RE = re.compile(
+    r"-only-testing:\s*\S*Spike",
+    re.IGNORECASE,
+)
+
 
 class ThrashHalt(Exception):
     """Raised when the loop should stop grinding the same red verify."""
@@ -197,9 +221,68 @@ def is_verify_run(cmd: str) -> bool:
     return False
 
 
+def is_architect_spike_xcodebuild(cmd: str) -> bool:
+    """True for spike-scoped ``xcodebuild … test -only-testing:…Spike``.
+
+    Architect may measure with a throwaway ``_*Spike`` test; full-suite and
+    ``verify.sh`` remain banned.
+    """
+    if not cmd or "verify.sh" in cmd:
+        return False
+    c = cmd.strip()
+    if "xcodebuild" not in c:
+        return False
+    if not re.search(r"(?:^|[\s;|&])test(?:\s|$)", c):
+        return False
+    return bool(_ARCHITECT_SPIKE_ONLY_TESTING_RE.search(c))
+
+
+def is_banned_verify_command(
+    cmd: str,
+    *,
+    gate_id: str | None = None,
+    authoring_gate: bool = False,
+    fix_worker: bool = False,
+) -> bool:
+    """Whether a shell command should trigger verify-ban handling for this gate."""
+    if not is_verify_run(cmd):
+        return False
+    if fix_worker:
+        return True
+    if not authoring_gate:
+        return False
+    if gate_id == "architect" and is_architect_spike_xcodebuild(cmd):
+        return False
+    return True
+
+
 def role_edit_paths(role: str) -> str:
     """Human-readable paths this role is allowed to edit."""
     return ROLE_EDIT_PATHS.get(role, ROLE_EDIT_PATHS["Subagent"])
+
+
+def worker_edit_violation(
+    role: str, path: str, *, gate_id: str | None = None
+) -> str | None:
+    """If an authoring worker edits outside its lane, return a warning message."""
+    role = (role or "").strip()
+    if not role or not path:
+        return None
+    markers = ROLE_EDIT_MARKERS.get(role)
+    if not markers:
+        return None
+    p = path.replace("\\", "/")
+    if any(marker in p for marker in markers):
+        return None
+    if (
+        role == "Architect"
+        and gate_id == "architect"
+        and _ARCHITECT_SPIKE_PATH_RE.search(p)
+    ):
+        return None
+    return (
+        f"{role} gate may only edit {role_edit_paths(role)} — not {short_path(path)}"
+    )
 
 
 def detect_wrong_role_spawn(role: str, description: str) -> str | None:
@@ -1944,27 +2027,56 @@ class RunProgress:
                 self.log(f"   {self.prefix()} cancel failed: {exc}")
 
     def _handle_verify_ban(self, cmd: str) -> bool:
-        """Cancel verify during fix workers / authoring gates.
+        """Handle banned verify shells during fix workers / authoring gates.
 
-        Fix workers: first violation re-prompts; second burns the attempt.
-        Authoring gates: cancel and continue — never burn budget (TDD red expected).
+        Fix workers: cancel the agent run; first violation re-prompts, second burns.
+        Authoring gates: **warn only** — never cancel the agent (slice 16: cancel
+        → CANCELLED → bridge close crash). Never burn authoring budget.
 
         Returns True if the shell event was handled as a violation.
         """
-        if not is_verify_run(cmd):
-            return False
-        if not (self.fix_worker or self.authoring_gate):
+        if not is_banned_verify_command(
+            cmd,
+            gate_id=self.gate_id,
+            authoring_gate=self.authoring_gate,
+            fix_worker=self.fix_worker,
+        ):
             return False
 
         self._verify_violations += 1
+        if self._event_log is not None:
+            try:
+                self._event_log.record(
+                    (self.gate_id or "authoring").upper(),
+                    self.active_role(),
+                    "verify_violation",
+                    detail={
+                        "cmd": (cmd or "")[:200],
+                        "n": self._verify_violations,
+                        "authoring": self.authoring_gate,
+                        "fix_worker": self.fix_worker,
+                    },
+                    timeline=False,
+                    mission="verify ban",
+                )
+            except Exception:  # noqa: BLE001 — never fail the ban path
+                pass
 
         if self.authoring_gate:
             gate = (self.gate_id or "authoring").replace("_", " ")
             if self.gate_id == "architect":
-                hint = (
-                    "do not run verify.sh during architect — write the ADR under "
-                    "docs/adr/; optional measurement spike via xcodebuild only"
-                )
+                if "verify.sh" in (cmd or ""):
+                    hint = (
+                        "do not run verify.sh during architect — write the ADR "
+                        "under docs/adr/; spike ok: xcodebuild test "
+                        "-only-testing:…Spike"
+                    )
+                else:
+                    hint = (
+                        "full-suite xcodebuild banned during architect — use "
+                        "xcodebuild test -only-testing:…Spike for measurement, "
+                        "or finish the ADR without verifying"
+                    )
             elif self.gate_id == "test_spec":
                 hint = (
                     "TDD red is expected — do not verify during test-spec; end your "
@@ -1979,8 +2091,10 @@ class RunProgress:
                 f"⚠ {self.prefix()} AUTHORING VERIFY BAN: {hint} "
                 f"(violation {self._verify_violations})"
             )
-            self._cancel_bound_run()
-            # Never burn authoring budget — cancel and let the worker finish.
+            self.log(
+                f"   {self.prefix()} continuing (authoring ban is warn-only; "
+                f"agent not cancelled)"
+            )
             return True
 
         self.log(
@@ -2169,20 +2283,28 @@ class RunProgress:
         if isinstance(direct, str) and direct.strip():
             self.append_assistant_text(direct)
 
-    def _warn_delegate_violation(self, norm: str, args: Any) -> None:
+    def _warn_path_violation(self, norm: str, args: Any) -> None:
         if norm not in ("edit", "strreplace", "write", "delete"):
             return
-        if self.active_role() != "Coordinator":
-            return
         path = raw_path(args)
-        hit = delegate_violation(path)
-        if not hit:
+        if not path:
             return
-        role, subagent = hit
-        self.log(
-            f"⚠ {self.prefix()} delegate violation — spawn {subagent} ({role}), "
-            f"coordinator must not edit {short_path(path)}"
-        )
+        role = self.active_role()
+        if role == "Coordinator":
+            hit = delegate_violation(path)
+            if not hit:
+                return
+            target_role, subagent = hit
+            self.log(
+                f"⚠ {self.prefix()} delegate violation — spawn {subagent} ({target_role}), "
+                f"coordinator must not edit {short_path(path)}"
+            )
+            return
+        if not (self.authoring_gate or self.fix_worker):
+            return
+        msg = worker_edit_violation(role, path, gate_id=self.gate_id)
+        if msg:
+            self.log(f"⚠ {self.prefix()} {msg}")
 
     def _tool(self, call_id, name, status, args, result=None):
         norm = normalize_tool_name(name)
@@ -2195,25 +2317,44 @@ class RunProgress:
 
         if status == "running" and call_id not in self._seen_starts:
             self._seen_starts.add(call_id)
-            self._warn_delegate_violation(norm, args)
+            self._warn_path_violation(norm, args)
             cmd_early = arg_shell_command(args if isinstance(args, dict) else {})
-            if (
-                norm == "shell"
-                and (self.fix_worker or self.authoring_gate)
-                and is_verify_run(cmd_early)
-            ):
-                self._handle_verify_ban(cmd_early)
-                self.log(f"→ {self.prefix()} blocked verify: {label}")
-                self.note(f"blocked verify: {label}")
-                return
-            self.log(f"→ {self.prefix()} {label}")
+            logged_shell = False
+            if norm == "shell" and (self.fix_worker or self.authoring_gate):
+                if (
+                    self.gate_id == "architect"
+                    and is_architect_spike_xcodebuild(cmd_early)
+                ):
+                    self.log(
+                        f"→ {self.prefix()} architect spike ok: {label} "
+                        f"(verify.sh still banned)"
+                    )
+                    self.note(f"architect spike ok: {label}")
+                    logged_shell = True
+                elif is_banned_verify_command(
+                    cmd_early,
+                    gate_id=self.gate_id,
+                    authoring_gate=self.authoring_gate,
+                    fix_worker=self.fix_worker,
+                ):
+                    self._handle_verify_ban(cmd_early)
+                    self.log(f"→ {self.prefix()} blocked verify: {label}")
+                    self.note(f"blocked verify: {label}")
+                    # Fix workers cancel the agent run — stop tracking.
+                    # Authoring is warn-only: keep tracking so the shell can finish
+                    # while the worker continues writing gate artifacts.
+                    if self.fix_worker:
+                        return
+                    logged_shell = True
+            if not logged_shell:
+                self.log(f"→ {self.prefix()} {label}")
+                self.note(label)
             import time
 
             self._active_shell[call_id] = {
                 "label": label,
                 "started_at": time.time(),
             }
-            self.note(label)
         elif status in ("completed", "error"):
             self._active_shell.pop(call_id, None)
             mark = "✓" if status == "completed" else "✗"
@@ -2223,9 +2364,16 @@ class RunProgress:
             if (
                 norm == "shell"
                 and (self.fix_worker or self.authoring_gate)
-                and is_verify_run(cmd)
+                and is_banned_verify_command(
+                    cmd,
+                    gate_id=self.gate_id,
+                    authoring_gate=self.authoring_gate,
+                    fix_worker=self.fix_worker,
+                )
             ):
-                self._handle_verify_ban(cmd)
+                # Prefer the running-start handler; only catch late for fix workers.
+                if self.fix_worker and self._verify_violations == 0:
+                    self._handle_verify_ban(cmd)
                 return
             blob = _result_blob(result)
             # Real test runs OR inspection of results (xcresulttool) / crash text.

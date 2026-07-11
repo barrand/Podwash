@@ -35,7 +35,7 @@ Ship the classic "censored" beep or quack during mute windows while preserving t
 - Bundled overlay assets — `beep.wav` (pinned synthetic 1 kHz tone per product decision) and `quack.wav` (distinct bundled asset; tests assert by **asset ID**, not timbre)
 - `PodWash/PodWashTests/OverlaySyncTests.swift` + `OverlayEventRecorder` test double
 - Offline verification helper — composite render or mix-bus tap that reuses Slice 04 `OfflineRenderRMS` windowing (interior/exterior thresholds)
-- Architect spike + ADR — `docs/adr/0XX-overlay-sync.md` with measured sync jitter on simulator; supersedes ADR-000 §7 deferral
+- Architect spike + ADR — `docs/adr/017-overlay-sync.md` with measured sync jitter on simulator; supersedes ADR-000 §7 deferral
 
 ## Fixture strategy (pinned)
 
@@ -124,7 +124,7 @@ Test spec review: (pending)
 | Role | Gate | Artifact path |
 |------|------|---------------|
 | PM | Required | `docs/slices/slice-16-beep-overlay.md` (this file) |
-| Architect | Required (spike + ADR) | `docs/adr/0XX-overlay-sync.md` — measured sync validation; supersedes ADR-000 §7 |
+| Architect | Required (spike + ADR) | `docs/adr/017-overlay-sync.md` — measured sync validation; supersedes ADR-000 §7 |
 | UX | Required | `docs/slices/slice-16-ux.md` — `muteOverlayControl` states/values (extends Settings) |
 | QA | Required | `PodWash/PodWashTests/OverlaySyncTests.swift`, overlay fixtures + provenance |
 | Engineer | Required | `OverlayEngine`, `SettingsStore`/`SettingsView` overlay mode, `PlaybackCoordinator` wiring |

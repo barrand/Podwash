@@ -620,6 +620,62 @@ def _log_stuck_card_path(
     return path
 
 
+def _format_gate_stuck_card(
+    *,
+    slice_id: int,
+    gate_id: GateId,
+    gate_label: str,
+    explain: str,
+    agent: str,
+) -> str:
+    body = extract_gate_stuck_body(explain)
+    return (
+        f"GATE STUCK — Slice {slice_id:02d}\n"
+        f"Gate: {gate_label} ({gate_id})\n"
+        f"Worker: {agent}\n"
+        f"Detail: {body}\n"
+        f"Class: policy\n"
+    )
+
+
+def _persist_gate_stuck_halt(
+    *,
+    slice_id: int,
+    gate_id: GateId,
+    gate_label: str,
+    explain: str,
+    agent: str,
+    slice_file: str,
+    repo_root: str,
+    log: LogFn,
+) -> None:
+    """Write stuck card + session bundle when an authoring gate halts."""
+    card = _format_gate_stuck_card(
+        slice_id=slice_id,
+        gate_id=gate_id,
+        gate_label=gate_label,
+        explain=explain,
+        agent=agent,
+    )
+    _log_stuck_card_path(card, repo_root=repo_root, slice_file=slice_file, log=log)
+    try:
+        bundle_dir = write_session_bundle(
+            repo_root=repo_root,
+            slice_id=slice_id,
+            reason=explain,
+            stuck_card=card,
+            phase=f"GATE-{gate_id.upper()}",
+            extra={
+                "gate": gate_id,
+                "halt_kind": "gate_stuck",
+                "agent": agent,
+            },
+        )
+        log(f"session bundle: {bundle_dir}")
+    except Exception as exc:  # noqa: BLE001 — halt must still return
+        log(f"gate-stuck bundle write failed: {exc}")
+
+
 def _narrate_verify_failure(
     name: str,
     outcome: VerifyOutcome,
@@ -1558,8 +1614,9 @@ def build_gate_prompt(gate_id: GateId, slice_file: str, repo_root: str) -> str:
             "Author the ADR / design note for this slice. Edit only docs/adr/** "
             "(and slice design notes if needed). When empirical validation is "
             "required, a throwaway spike may live in PodWashTests/_*Spike.swift — "
-            "run it with xcodebuild, not scripts/verify.sh. The gate artifact is "
-            "the ADR markdown file."
+            "run it with `xcodebuild test -only-testing:…Spike` (not scripts/verify.sh "
+            "and not a full-suite xcodebuild). The gate artifact is the ADR markdown "
+            "file."
         ),
         "ux": (
             "Author the UX spec (interaction, a11y, UI test scenarios) in "
@@ -1652,6 +1709,70 @@ def _assistant_text_from_message(message: Any) -> str:
     return "\n".join(parts)
 
 
+def _is_bridge_network_error(exc: BaseException) -> bool:
+    """True for Cursor bridge / httpx disconnects during agent RPC."""
+    name = type(exc).__name__
+    if name in (
+        "NetworkError",
+        "RemoteProtocolError",
+        "ConnectError",
+        "ReadTimeout",
+        "WriteTimeout",
+        "ConnectTimeout",
+    ):
+        return True
+    mod = getattr(type(exc), "__module__", "") or ""
+    if "cursor_sdk" in mod and "Network" in name:
+        return True
+    msg = str(exc).lower()
+    return (
+        "server disconnected" in msg
+        or "bridge request failed" in msg
+        or "remoteprotocolerror" in msg
+    )
+
+
+def _persist_bridge_close_halt(
+    *,
+    repo_root: str,
+    progress: Any | None,
+    role: str,
+    reason: str,
+    log: LogFn,
+) -> None:
+    """Best-effort session bundle when agent close dies on the bridge."""
+    slice_id = int(getattr(progress, "slice_id", 0) or 0) if progress else 0
+    gate = getattr(progress, "gate_id", None) if progress else None
+    card = (
+        f"INFRA HALT — Slice {slice_id:02d}\n"
+        f"Role: {role}\n"
+        f"Gate: {gate or '(unknown)'}\n"
+        f"Detail: {reason}\n"
+        f"Class: infra\n"
+    )
+    try:
+        from failure_packet import persist_stuck_card
+
+        slice_file = getattr(progress, "slice_file", "") if progress else ""
+        if slice_file:
+            persist_stuck_card(card, repo_root=repo_root, slice_file=slice_file)
+        bundle_dir = write_session_bundle(
+            repo_root=repo_root,
+            slice_id=slice_id or None,
+            reason=reason,
+            stuck_card=card,
+            phase="BRIDGE-CLOSE",
+            extra={
+                "halt_kind": "bridge_close",
+                "role": role,
+                "gate": gate,
+            },
+        )
+        log(f"session bundle: {bundle_dir}")
+    except Exception as exc:  # noqa: BLE001 — still raise InfraHalt
+        log(f"bridge-close bundle write failed: {exc}")
+
+
 def run_worker(
     client: Any,
     *,
@@ -1680,52 +1801,69 @@ def run_worker(
         local=LocalAgentOptions(cwd=repo_root),
         mode=mode,  # type: ignore[arg-type]
     )
-    with client.create_agent(options) as agent:
-        run = agent.send(prompt)
-        if progress is not None and getattr(progress, "verbose", False):
-            _log(
-                f"worker agent_id={getattr(agent, 'agent_id', '?')} "
-                f"run_id={getattr(run, 'id', '?')}"
-            )
-        if progress is not None:
-            # Expose run for verify-ban cancel
-            if hasattr(progress, "bind_run"):
-                progress.bind_run(run)
-            progress.start()
-        assistant_bits: list[str] = []
-        try:
-            for message in run.messages():
-                if progress is not None:
-                    progress.handle(message)
-                text = _assistant_text_from_message(message)
-                if text:
-                    assistant_bits.append(text)
-                    if on_assistant_text:
-                        on_assistant_text(text)
-                    # Do NOT also append via progress.append_assistant_text —
-                    # progress.handle() already captures assistant text; double
-                    # append corrupts referee JSON with embedded newlines.
-            result = run.wait()
-        finally:
+    try:
+        with client.create_agent(options) as agent:
+            run = agent.send(prompt)
+            if progress is not None and getattr(progress, "verbose", False):
+                _log(
+                    f"worker agent_id={getattr(agent, 'agent_id', '?')} "
+                    f"run_id={getattr(run, 'id', '?')}"
+                )
             if progress is not None:
-                progress.stop()
+                # Expose run for verify-ban cancel (fix workers only)
                 if hasattr(progress, "bind_run"):
-                    progress.bind_run(None)
-        status = getattr(result, "status", "unknown")
-        # Verify-ban may mark violation_burned
-        if progress is not None and getattr(progress, "verify_violation_burned", False):
-            _log("WORKER VIOLATION: verify owned by loop (attempt burned)")
-            return False, "verify_violation"
-        if progress is not None and getattr(progress, "verbose", False):
-            _log(f"worker finished: role={role} status={status}")
-        if progress is not None and hasattr(progress, "set_assistant_text"):
-            # Always prefer the clean stream join when present — never keep a
-            # longer corrupted buffer from dual-capture.
-            if assistant_bits:
-                progress.set_assistant_text("".join(assistant_bits))
-            elif not (getattr(progress, "assistant_text", "") or "").strip():
-                progress.set_assistant_text("")
-        return status == "finished", str(status)
+                    progress.bind_run(run)
+                progress.start()
+            assistant_bits: list[str] = []
+            result: Any = None
+            try:
+                for message in run.messages():
+                    if progress is not None:
+                        progress.handle(message)
+                    text = _assistant_text_from_message(message)
+                    if text:
+                        assistant_bits.append(text)
+                        if on_assistant_text:
+                            on_assistant_text(text)
+                        # Do NOT also append via progress.append_assistant_text —
+                        # progress.handle() already captures assistant text; double
+                        # append corrupts referee JSON with embedded newlines.
+                result = run.wait()
+            finally:
+                if progress is not None:
+                    progress.stop()
+                    if hasattr(progress, "bind_run"):
+                        progress.bind_run(None)
+            status = getattr(result, "status", "unknown") if result is not None else "unknown"
+            # Verify-ban may mark violation_burned
+            if progress is not None and getattr(progress, "verify_violation_burned", False):
+                _log("WORKER VIOLATION: verify owned by loop (attempt burned)")
+                return False, "verify_violation"
+            if progress is not None and getattr(progress, "verbose", False):
+                _log(f"worker finished: role={role} status={status}")
+            if progress is not None and hasattr(progress, "set_assistant_text"):
+                # Always prefer the clean stream join when present — never keep a
+                # longer corrupted buffer from dual-capture.
+                if assistant_bits:
+                    progress.set_assistant_text("".join(assistant_bits))
+                elif not (getattr(progress, "assistant_text", "") or "").strip():
+                    progress.set_assistant_text("")
+            return status == "finished", str(status)
+    except InfraHalt:
+        raise
+    except Exception as exc:
+        if _is_bridge_network_error(exc):
+            reason = f"bridge disconnect on agent close: {exc}"
+            _log(f"INFRA HALT: {reason}")
+            _persist_bridge_close_halt(
+                repo_root=repo_root,
+                progress=progress,
+                role=role,
+                reason=reason,
+                log=_log,
+            )
+            raise InfraHalt(reason) from exc
+        raise
 
 
 # ---------------------------------------------------------------------------
@@ -2432,6 +2570,16 @@ def run_pipeline_slice(
                     log=_log,
                     voice=_voice,
                 )
+                _persist_gate_stuck_halt(
+                    slice_id=slice_id,
+                    gate_id=gid,
+                    gate_label=label,
+                    explain=explain,
+                    agent=agent,
+                    slice_file=slice_file,
+                    repo_root=repo_root,
+                    log=_log,
+                )
                 elapsed = int(time.time() - t0)
                 _emit_recap("halt", elapsed)
                 return False, elapsed, last_verify, _slice_meta()
@@ -2461,6 +2609,16 @@ def run_pipeline_slice(
                         log=_log,
                         voice=_voice,
                     )
+                    _persist_gate_stuck_halt(
+                        slice_id=slice_id,
+                        gate_id=gid,
+                        gate_label=label,
+                        explain=explain,
+                        agent=agent,
+                        slice_file=slice_file,
+                        repo_root=repo_root,
+                        log=_log,
+                    )
                     elapsed = int(time.time() - t0)
                     _emit_recap("halt", elapsed)
                     return False, elapsed, last_verify, _slice_meta()
@@ -2472,6 +2630,16 @@ def run_pipeline_slice(
                         extract_gate_stuck_body(explain),
                         log=_log,
                         voice=_voice,
+                    )
+                    _persist_gate_stuck_halt(
+                        slice_id=slice_id,
+                        gate_id=gid,
+                        gate_label=label,
+                        explain=explain,
+                        agent=agent,
+                        slice_file=slice_file,
+                        repo_root=repo_root,
+                        log=_log,
                     )
                     elapsed = int(time.time() - t0)
                     _emit_recap("halt", elapsed)

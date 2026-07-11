@@ -153,7 +153,7 @@ build  >  test_failure  >  infra/flake
 
 | Phase | Policy |
 |-------|--------|
-| **TDD compile-red during authoring** (`story`…`test_review`) | Never counted toward thrash; `verify.sh` / `xcodebuild test` cancelled (ban, no budget burn) |
+| **TDD compile-red during authoring** (`story`…`test_review`) | Never counted toward thrash. Ban is **warn-only** (agent not cancelled). `verify.sh` banned; Architect may run spike-scoped `xcodebuild test -only-testing:…Spike` only |
 | **Sim install/launch/bootstrap (tier-2)** | Infra cold-retry + `ensure_sim_booted` — **does not** burn Engineer/QA fix budget (slice 12 death-run). Identical failure signature on a cold retry aborts further retries (deterministic ≠ flake). |
 | **Build-red after implement** | `class=build` / `build_error:` / missing bundle executable → Engineer; **never** infra cold-retry (slice 13: CoreSimulator in stdout must not override `class=build`) |
 | **Test-red after implement** | Assertion / harness → Engineer\|QA (`resolve_tier2_continue`: XCTestExpectation double-fulfill → QA; same hyp+sig escalates to predicate-wait lever) |
@@ -255,8 +255,13 @@ prompts may include recent ledger lines for context.
 ### Verify ban (Mechanic + authoring gates)
 
 Mechanic `RunProgress` uses `fix_worker=True` so shell `verify.sh` /
-`xcodebuild … test` is cancelled. Authoring-gate `RunProgress` uses
-`authoring_gate=True`: red verifies are ignored (TDD compile-red expected).
+`xcodebuild … test` **cancels the agent run** (first violation re-prompts;
+second burns). Authoring-gate `RunProgress` uses `authoring_gate=True`:
+banned verifies are **warn-only** (no agent cancel — avoids CANCELLED →
+bridge-close crashes). Architect may run spike-scoped
+`xcodebuild test -only-testing:…Spike`; `verify.sh` and full-suite
+`xcodebuild` stay banned. Bridge disconnect on agent close → `InfraHalt`
+(exit 6) with a `BRIDGE-CLOSE` session bundle.
 
 ## Progress stop (Factory v3)
 

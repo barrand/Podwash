@@ -655,7 +655,7 @@ class AuthoringGateThrashTests(unittest.TestCase):
             bundle = os.path.join(tmp, "build", "test-results", "session-slice-12")
             self.assertTrue(os.path.isdir(bundle))
 
-    def test_authoring_verify_ban_cancels_without_burn(self):
+    def test_authoring_verify_ban_warns_without_cancel(self):
         lines: list[str] = []
         cancelled: list[bool] = []
 
@@ -685,12 +685,119 @@ class AuthoringGateThrashTests(unittest.TestCase):
         )
         self.assertEqual(progress._verify_violations, 1)
         self.assertFalse(progress.verify_violation_burned)
-        self.assertTrue(cancelled)
+        self.assertFalse(cancelled)  # authoring: warn-only
         self.assertTrue(any("AUTHORING VERIFY BAN" in l for l in lines))
-        # Second ban still does not burn
+        self.assertTrue(any("warn-only" in l for l in lines))
+        # Second ban still does not burn or cancel
         progress._handle_verify_ban("xcodebuild test -scheme PodWash")
         self.assertEqual(progress._verify_violations, 2)
         self.assertFalse(progress.verify_violation_burned)
+        self.assertFalse(cancelled)
+
+    def test_architect_spike_xcodebuild_allowed(self):
+        from slice_loop_progress import (
+            is_architect_spike_xcodebuild,
+            is_banned_verify_command,
+        )
+
+        spike = (
+            "xcodebuild test -scheme PodWash "
+            "-only-testing:PodWashTests/OverlaySyncSpike"
+        )
+        self.assertTrue(is_architect_spike_xcodebuild(spike))
+        self.assertFalse(
+            is_banned_verify_command(
+                spike, gate_id="architect", authoring_gate=True
+            )
+        )
+        full = "xcodebuild test -scheme PodWash"
+        self.assertFalse(is_architect_spike_xcodebuild(full))
+        self.assertTrue(
+            is_banned_verify_command(
+                full, gate_id="architect", authoring_gate=True
+            )
+        )
+        self.assertTrue(
+            is_banned_verify_command(
+                "scripts/verify.sh", gate_id="architect", authoring_gate=True
+            )
+        )
+
+    def test_architect_spike_shell_logs_ok_not_ban(self):
+        lines: list[str] = []
+        cancelled: list[bool] = []
+
+        class FakeRun:
+            def supports(self, cap: str) -> bool:
+                return cap == "cancel"
+
+            def cancel(self) -> None:
+                cancelled.append(True)
+
+        progress = RunProgress(
+            16,
+            "Beep overlay",
+            "docs/slices/slice-16-beep-overlay.md",
+            lines.append,
+            authoring_gate=True,
+            gate_id="architect",
+            forced_role="Architect",
+        )
+        progress.bind_run(FakeRun())
+        progress._tool(
+            "v1",
+            "shell",
+            "running",
+            {
+                "command": (
+                    "xcodebuild test -scheme PodWash "
+                    "-only-testing:PodWashTests/_OverlaySyncSpike"
+                )
+            },
+            None,
+        )
+        joined = "\n".join(lines)
+        self.assertIn("architect spike ok", joined)
+        self.assertNotIn("AUTHORING VERIFY BAN", joined)
+        self.assertEqual(progress._verify_violations, 0)
+        self.assertFalse(cancelled)
+        self.assertIn("v1", progress._active_shell)
+
+    def test_architect_full_xcodebuild_warns_without_cancel(self):
+        lines: list[str] = []
+        cancelled: list[bool] = []
+
+        class FakeRun:
+            def supports(self, cap: str) -> bool:
+                return cap == "cancel"
+
+            def cancel(self) -> None:
+                cancelled.append(True)
+
+        progress = RunProgress(
+            16,
+            "Beep overlay",
+            "docs/slices/slice-16-beep-overlay.md",
+            lines.append,
+            authoring_gate=True,
+            gate_id="architect",
+            forced_role="Architect",
+        )
+        progress.bind_run(FakeRun())
+        progress._tool(
+            "v1",
+            "shell",
+            "running",
+            {"command": "xcodebuild test -scheme PodWash"},
+            None,
+        )
+        joined = "\n".join(lines)
+        self.assertIn("AUTHORING VERIFY BAN", joined)
+        self.assertIn("full-suite xcodebuild banned", joined)
+        self.assertIn("warn-only", joined)
+        self.assertFalse(cancelled)
+        self.assertEqual(progress._verify_violations, 1)
+        self.assertIn("v1", progress._active_shell)
 
     def test_detect_build_error_from_compile_blob(self):
         from slice_loop_progress import extract_build_error
@@ -818,8 +925,50 @@ class AdrPlaceholderTests(unittest.TestCase):
         progress._handle_verify_ban("scripts/verify.sh")
         joined = "\n".join(lines)
         self.assertIn("AUTHORING VERIFY BAN", joined)
-        self.assertIn("architect", joined)
+        self.assertIn("Spike", joined)
+        self.assertIn("warn-only", joined)
         self.assertNotIn("test-spec", joined)
+
+    def test_worker_edit_violation_architect_blocks_prod_tests(self):
+        from slice_loop_progress import worker_edit_violation
+
+        msg = worker_edit_violation(
+            "Architect",
+            "PodWash/PodWashTests/OverlaySyncTests.swift",
+            gate_id="architect",
+        )
+        self.assertIsNotNone(msg)
+        assert msg is not None
+        self.assertIn("docs/adr", msg)
+
+    def test_worker_edit_violation_architect_allows_spike(self):
+        from slice_loop_progress import worker_edit_violation
+
+        msg = worker_edit_violation(
+            "Architect",
+            "PodWash/PodWashTests/_OverlaySyncSpike.swift",
+            gate_id="architect",
+        )
+        self.assertIsNone(msg)
+
+    def test_worker_path_violation_logged_for_architect(self):
+        lines: list[str] = []
+        progress = RunProgress(
+            16,
+            "Beep overlay",
+            "docs/slices/slice-16-beep-overlay.md",
+            lines.append,
+            authoring_gate=True,
+            gate_id="architect",
+            forced_role="Architect",
+        )
+        progress._warn_path_violation(
+            "write",
+            {"path": "PodWash/PodWashTests/OverlaySyncTests.swift"},
+        )
+        joined = "\n".join(lines)
+        self.assertIn("may only edit", joined)
+        self.assertIn("OverlaySyncTests", joined)
 
 
 if __name__ == "__main__":
