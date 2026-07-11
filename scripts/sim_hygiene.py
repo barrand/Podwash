@@ -11,7 +11,7 @@ from typing import Callable
 
 LogFn = Callable[[str], None]
 
-DEFAULT_STRESS_RUNS = 5
+DEFAULT_STRESS_RUNS = 3  # Factory v3: was 5; paired with dropping UITest verify retries
 
 
 @dataclass

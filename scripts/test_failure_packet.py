@@ -29,7 +29,6 @@ from failure_packet import (  # noqa: E402
 from fix_playbooks import select_lever, starter_lever_text  # noqa: E402
 from slice_loop_progress import RunProgress, is_verify_run  # noqa: E402
 from slice_pipeline import (  # noqa: E402
-    FixBudget,
     VerifyOutcome,
     build_fix_prompt,
     route_fix,
@@ -542,7 +541,9 @@ class VerifyBanTests(unittest.TestCase):
 
 class FixLoopPacketTests(unittest.TestCase):
     def test_halts_when_no_actionable(self):
-        budget = FixBudget(max_attempts=2)
+        from factory_progress import ProgressTracker
+
+        tracker = ProgressTracker(max_spawns=2)
         red = VerifyOutcome(
             result={"exit": "1", "total": "?", "passed": "?", "failed": "?", "skipped": "?"},
             green=False,
@@ -562,13 +563,15 @@ class FixLoopPacketTests(unittest.TestCase):
                 slice_file="docs/slices/slice-09.md",
                 repo_root=REPO,
                 api_key="k",
-                budget=budget,
+                budget=tracker,
                 verify_fn=fake_verify,
             )
         self.assertIn("DIAGNOSE FAILED", str(ctx.exception.reason))
 
     def test_flake_cold_retry_no_budget(self):
-        budget = FixBudget(max_attempts=2)
+        from factory_progress import ProgressTracker
+
+        tracker = ProgressTracker(max_spawns=2)
         calls = {"n": 0}
         flake = VerifyOutcome(
             result={"exit": "1", "failed": "1", "passed": "0", "skipped": "0", "total": "1"},
@@ -596,17 +599,17 @@ class FixLoopPacketTests(unittest.TestCase):
             slice_file="docs/slices/slice-09.md",
             repo_root=REPO,
             api_key="k",
-            budget=budget,
+            budget=tracker,
             verify_fn=fake_verify,
         )
         self.assertTrue(out.green)
-        self.assertEqual(budget.attempts_used, 0)
-        self.assertTrue(budget.flake_cold_retried)
+        self.assertEqual(tracker.spawns_used, 0)
+        self.assertTrue(tracker.flake_cold_retried)
 
     def test_attempt_memory_second_prompt(self):
-        from referee import RefereeVerdict
+        from factory_progress import ProgressTracker
 
-        budget = FixBudget(max_attempts=2)
+        tracker = ProgressTracker(max_spawns=8)
         packet = FailurePacket(
             test_ids=["PodWashUITests/AnalysisProgressUITests/testProgressIndicatorLifecycle()"],
             assertions=["XCTAssertTrue failed"],
@@ -627,7 +630,6 @@ class FixLoopPacketTests(unittest.TestCase):
             packet=packet,
         )
         prompts: list[str] = []
-        refs = {"n": 0}
 
         def fake_verify(**_kw):
             return red
@@ -636,47 +638,43 @@ class FixLoopPacketTests(unittest.TestCase):
             prompts.append(kwargs.get("prompt") or "")
             return True, "finished"
 
-        def fake_referee(**_kw):
-            refs["n"] += 1
-            return RefereeVerdict(
-                primary_failure=packet.test_ids[0],
-                role="Engineer",
-                fix_scope="app",
-                files=["PodWash/PodWash/EpisodeListView.swift"],
-                instruction="Hold analyzing state so UITests can observe progress",
-                hypothesis=f"download refresh clobbers analysisProgress AX (try {refs['n']})",
-                confidence="high",
-            )
-
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch("slice_pipeline.run_worker", side_effect=fake_worker):
+            with mock.patch("slice_pipeline.run_worker", side_effect=fake_worker), mock.patch(
+                "slice_pipeline.git_paths_changed", return_value=[]
+            ), mock.patch(
+                "slice_pipeline.load_persona", return_value="You are Mechanic."
+            ), mock.patch(
+                "mechanic_fix.append_ledger"
+            ), mock.patch(
+                "mechanic_fix.load_ledger", return_value=[]
+            ), mock.patch(
+                "mechanic_fix.write_session_bundle", return_value="/tmp/x"
+            ):
                 with self.assertRaises(ThrashHalt):
                     run_fix_loop(
                         client=object(),
                         slice_file="docs/slices/slice-09-analysis-ui.md",
                         repo_root=tmp,
                         api_key="k",
-                        budget=budget,
+                        budget=tracker,
                         verify_fn=fake_verify,
-                        referee_fn=fake_referee,
                     )
-        fix_prompts = [p for p in prompts if "fix worker" in p]
+        fix_prompts = [p for p in prompts if "Mechanic" in p]
         self.assertGreaterEqual(len(fix_prompts), 2)
         self.assertIn("Attempt history", fix_prompts[1])
-        self.assertIn("Hold analyzing", fix_prompts[0])
-        self.assertIn("Hypothesis ledger", fix_prompts[0])
+        self.assertIn("role=Mechanic", fix_prompts[1])
 
 
 class RouteWithPacketTests(unittest.TestCase):
-    def test_ui_race_engineer(self):
+    def test_ui_race_mechanic(self):
         p = FailurePacket(failure_class="ui_race", signature="t1")
-        self.assertEqual(route_fix([], [], packet=p), "Engineer")
+        self.assertEqual(route_fix([], [], packet=p), "Mechanic")
 
-    def test_lever_role_overrides(self):
+    def test_lever_role_ignored_always_mechanic(self):
         p = FailurePacket(failure_class="ui_race", signature="t1")
         self.assertEqual(
             route_fix([], [], packet=p, lever_role="QA"),
-            "QA",
+            "Mechanic",
         )
 
 

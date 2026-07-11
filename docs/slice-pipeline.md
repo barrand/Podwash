@@ -3,6 +3,7 @@
 > Design reference for `scripts/slice_pipeline.py` and `--orchestrator=pipeline`.
 > Plan: [`plans/loop-as-orchestrator-refactor.md`](plans/loop-as-orchestrator-refactor.md).
 > Factory v2: [`plans/factory-v2.md`](plans/factory-v2.md) (**P0 + P1 landed**; P2 cancelled).
+> **Factory v3 (Mechanic):** [`plans/factory-v3-mechanic.md`](plans/factory-v3-mechanic.md) — **landed** (one fix worker, progress-based stop).
 > Fix confidence: [`plans/factory-fix-confidence.md`](plans/factory-fix-confidence.md).
 > Runner mechanics: [`slice-runner.md`](slice-runner.md).
 
@@ -13,15 +14,15 @@
 | Gate ordering / skip-done | `GateState` + FSM in `slice_pipeline.py` |
 | `scripts/verify.sh` (tiers 0–3) | Loop (subprocess) — source of truth |
 | Red → FailurePacket + stuck card | `failure_packet.py` (evidence formats) |
-| Red → **LLM referee** → fix | `referee.py` (strict JSON) + Engineer\|QA |
-| Hypothesis ledger (anti-thrash) | `hypothesis_ledger.py` — reject repeat hyp+signature |
+| Red → **Mechanic** fix cycle | `mechanic_fix.py` + `factory_progress.py` (no role routing) |
+| Hypothesis ledger (audit log) | `hypothesis_ledger.py` — log only; never halt on match |
 | Event log + timeline + SUMMARY | `factory_events.py` |
 | Shift-floor narrator + Murphy | `factory_narrator.py` (rendering only) |
-| Sim pre-boot / crash watch / stress | `sim_hygiene.py` |
-| Red → fix budget | `--max-fix-attempts` (default 2); flake cold-retry is free; exit 5 thrash / 6 infra |
+| Sim pre-boot / crash watch / stress | `sim_hygiene.py` (UITest stress 3×) |
+| Red → progress stop | signature progress / oscillation / hard cap 8 or 45 min; exit 5 thrash / 6 infra |
 | `VERIFY RESULT` + Status Done | Deterministic doc writer |
 | Status Ready after story content | Deterministic doc writer (`set_slice_status`) |
-| Split commits + isolation + push | Loop (pipeline mode) |
+| Split commits + isolation + push | Loop (pipeline mode); Mechanic deltas → `fix tests` / `fix app` / `fix docs` |
 | Story / UX / ADR / tests / app / reviews | One visible SDK worker per gate |
 
 ## Orchestrator modes
@@ -157,94 +158,77 @@ build  >  test_failure  >  infra/flake
 | **Build-red after implement** | `class=build` / `build_error:` / missing bundle executable → Engineer; **never** infra cold-retry (slice 13: CoreSimulator in stdout must not override `class=build`) |
 | **Test-red after implement** | Assertion / harness → Engineer\|QA (`resolve_tier2_continue`: XCTestExpectation double-fulfill → QA; same hyp+sig escalates to predicate-wait lever) |
 
-**Invariants (enforced in Python + `test_factory_hardening.py`):**
+**Invariants (enforced in Python + `test_factory_hardening.py` / `test_factory_v3.py`):**
 
 1. `VERIFY RESULT class=build` or `failure_class=build_error` ⇒ `is_tier2_infra_failure` is False.
 2. Infra classification uses **curated** failure text only (never full xcodebuild stdout).
 3. Phrase-level infra markers only — never bare `dns` / `lock` / `coresimulator`.
 4. Structured vs heuristic disagreement logs `CLASSIFIER DISAGREEMENT` and prefers structured.
-5. After every fix worker, tier-0 (`build-for-testing`) runs; compile-red becomes the next pending outcome (skips tier-2 until build-green).
-6. When failure class changes after the normal fix budget would halt, one **class-transition credit** grants a spawn (cap 1 per gate; total spawns ≤ `max_runs + 1` before handoff credits).
-7. When a worker's explicit `HANDOFF:` flip is pending at the budget boundary, one **handoff credit** grants a spawn of the flipped role (cap 1; slice 19). Bare `NO-EDIT` auto-flips do **not** extend the budget. Console: `HANDOFF credit: spawning QA (pending flip; budget exhausted)`.
+5. Progress stop (not count budgets): continue while signature changes or failure count drops; halt on identical signature 2× or oscillation within window N=4; hard cap 8 Mechanic spawns / 45 min.
+6. ~~class-transition credit~~ / ~~handoff credit~~ — **removed in Factory v3** (see historical note below).
 
 `verify.sh` also writes `build/test-results/verify-result.json` (machine-readable contract). Raw verify stdout is persisted as `verify-output-*.txt` / `verify-output-latest.txt` and copied into the session bundle on halt.
 
-Red-verify thrash (`max_red_verifies=2`) applies only to coordinator-monitored /
+Red-verify thrash applies only to coordinator-monitored /
 post-implement grinding — **not** authoring-gate TDD compile-red. After
 `test_spec` + `test_review` clear, the pipeline auto-commits test paths as
 `slice-NN: test spec` so a later halt never orphans authored tests.
 
-See also [`plans/factory-tier2-infra-qa-routing.md`](plans/factory-tier2-infra-qa-routing.md).
+See also [`plans/factory-v3-mechanic.md`](plans/factory-v3-mechanic.md).
 
-## Fix path (FailurePacket → lane|referee → ledger → fix)
+## Fix path (FailurePacket → Mechanic → progress stop)
 
-Applies to **both** coordinator and pipeline modes via shared `run_fix_loop`
-(and the same lane brain on tier-2 via `resolve_tier2_continue`).
+Applies to **both** tier-2 implement gate and full-suite verify via unified
+`run_fix_cycle` (`scripts/mechanic_fix.py`).
 
 ```text
 loop-owned verify.sh (red)
-  → FailurePacket (summary testFailures + exported attachments)
-  → print + persist stuck card (build/test-results/stuck-slice-NN.txt)
-  → classify_fix_lane (scripts/fix_lanes.py) — deterministic short-circuit
-       packaging | expectation_api | artifact_fixture | build → skip referee
-  → else LLM referee (plan mode, sentinel-wrapped JSON verdict)
-  → on parse fail: one free referee retry, then heuristic fallback (try-N)
-  → ledger gate: same hyp+sig → reroute opposite role (does not halt while budget remains)
-  → scope-contradiction guard (Engineer+test-only files → QA, and vice versa)
-  → git baseline snapshot → Engineer|QA fix worker → git delta (real files_touched)
-  → optional HANDOFF: line (honored only when in-scope delta empty)
-  → empty in-scope → Engineer↔QA flip (Architect only for adr_citation);
-       explicit no-edit×2 → NO-EDIT THRASH
-  → tier 1 re-verify (failed tests only)
-  → if green → tier 3 full suite
-  → append ledger entry (files_touched = in-scope git delta, not suggestions)
+  → FailurePacket + stuck card
+  → optional lane HINT (packaging | expectation_api | artifact_fixture | adr_citation | build)
+       — recipe only; Mechanic may ignore
+  → Mechanic worker (app + tests + ADRs in one session)
+  → git delta (all paths count; no per-role filter)
+  → tier 1 re-verify → optional UITest stress (3×) → gate tier (2 or 3)
+  → progress rule on normalized signature
+  → on green: test-diff review (if tests changed) + ADR-diff review (if ADRs changed)
+  → append ledger (audit log only — never halt on match)
+  → commit split: fix tests → fix app → fix docs
+```
+
+Console:
+
+```text
+LANE HINT: expectation_api (optional — Mechanic may ignore)
+PROGRESS: signature changed (3 failures → 1) — continuing (cycle 4, cap 8)
+NO PROGRESS 1/2: identical signature after Mechanic cycle
+NO PROGRESS 1/2: signature seen in window (oscillation)
+THRASH HALT: no progress 2/2 on sig=…; cycles=5/8; last=stress-flake after green
 ```
 
 ### Deterministic lanes (`scripts/fix_lanes.py`)
 
-High-confidence lanes skip the LLM referee on **both** tier-2 and full-suite:
+Optional **prompt recipes** only (Factory v3 — no role routing):
 
-| Lane | Role | Trigger |
-|------|------|---------|
-| `packaging` | Engineer | Missing bundle executable |
-| `expectation_api` | QA | XCTestExpectation double-fulfill (+ lever escalate from ledger) |
-| `artifact_fixture` | QA | Regenerate / unparsable `benchmark-results.json` (slice 18) |
-| `build` | Engineer | `is_build_lane` / compile-red |
+| Lane | Suggested scope | Trigger |
+|------|-----------------|---------|
+| `packaging` | app | Missing bundle executable |
+| `expectation_api` | tests | XCTestExpectation double-fulfill |
+| `artifact_fixture` | tests | Regenerate / unparsable benchmark artifact |
+| `adr_citation` | docs | ADR missing committed benchmark numbers |
+| `build` | app | Compile/link red |
 
-Still go through referee: `crash`, `ui_race`, `missing_identifier`, `wrong_state`,
-generic `assertion`, `unknown`, multi-primary failures.
+### Historical (v2 — superseded)
 
-Console: `LANE: artifact_fixture → QA`.
-
-### Worker handoff line
-
-Fix prompts require:
-
-```text
-SUMMARY: <one line>
-HANDOFF: scope=ok|out_of_scope; route=loop|QA|Engineer; applied=yes|no
-```
-
-Python parses `HANDOFF:` softly (missing line = warn, not hard fail). Honor
-`out_of_scope` / explicit `route=` **only when** the in-scope git delta is empty;
-otherwise log `HANDOFF IGNORED: worker edited in-scope paths`.
-
-If the flip is still pending when the normal fix budget would halt, the loop
-grants one **handoff credit** so the flipped role still gets a turn (then thrash
-if still red). Halt text includes `pending handoff QA was honored once` when
-that credit was used. Bare `NO-EDIT` auto-flips (no `HANDOFF:` line) do not
-extend the budget. Default NO-EDIT rotation is **Engineer ↔ QA only**; Architect
-is reserved for the `adr_citation` lane or an explicit `route=Architect` handoff
-(slice 19: QA no-edit must not spawn Architect for a Settings UITest). Console:
-`NO-EDIT: empty in-scope delta — next role=Engineer (Architect only for adr_citation)`.
+Role routing, LLM referee, `HANDOFF:` flips, class-transition / handoff credits,
+and Engineer↔QA path filters are **deleted**. See
+[`plans/factory-handoffs.md`](plans/factory-handoffs.md) (superseded) and
+[`plans/factory-v3-mechanic.md`](plans/factory-v3-mechanic.md).
 
 ### Git baseline (observation-first)
 
-Before each fix worker: snapshot `git status --porcelain` **and** fingerprints
+Before each Mechanic cycle: snapshot `git status --porcelain` **and** fingerprints
 (mtime+size) of already-dirty paths. After: ledger `files_touched` = new paths
-plus dirty paths whose fingerprint changed, filtered by role scope. Pre-existing
-dirty tree must not pollute the attempt record as “touched,” but **in-place edits**
-to an already-dirty in-scope file (e.g. untracked ADR) do count.
+plus dirty paths whose fingerprint changed.
 
 ### FailurePacket
 
@@ -254,77 +238,46 @@ Built by `scripts/failure_packet.py` from:
 2. `xcresulttool export attachments --test-id 'Class/testName()'` — hierarchy + query-chain `.txt` files.
 3. Soft undiagnosable: build/lock reds without test ids still produce an actionable packet. Hard-halt only when there is **no** actionable evidence and no bundle.
 
-Signature is stable: sorted `test_ids` + crash fingerprint (not assertion/hierarchy text). Heuristic `classify_failure` remains as a **hint** inside the packet; it no longer routes fixes.
+Signature (v3): sorted test ids + normalized failure class (`factory_progress.make_failure_signature`).
 
 ### Stuck card
 
-Human-readable card printed on every red loop-owned verify and thrash halt, also written to `build/test-results/stuck-slice-NN.txt`, and embedded in referee + fix prompts.
-
-### LLM referee (replaces diagnose + playbooks as router)
-
-`scripts/referee.py` — plan-mode worker (`composer-2.5`) returns a **sentinel-wrapped** compact JSON line:
-
-```text
-VERDICT_JSON_BEGIN {"primary_failure":"…","role":"Engineer",…} VERDICT_JSON_END
-```
-
-Required keys: `primary_failure`, `failure_groups`, `role`, `fix_scope`, `files`, `instruction`, `hypothesis`, `confidence`, `narration`.
-
-Python enforces:
-
-| Outcome | Behavior |
-|---------|----------|
-| Parse fail | One free referee retry; then heuristic fallback with `heuristic:{class}:{sig}:try-N` (does **not** halt) |
-| `confidence=low` / missing hypothesis | Halt (stuck card) |
-| `fix_scope=app` / `role=Engineer` | Engineer |
-| `fix_scope=tests` / `role=QA` | QA |
-| Engineer + only test files (or QA + only app files) | Scope flip before spawn |
-
-Raw referee transcripts are persisted to `build/test-results/referee-slice-NN-attempt-N.txt` (and `…-last.txt`). Session telemetry logs `parse_ok` / `parse_retry` / `parse_fail`.
-
-Legacy `fix_playbooks.py` / diagnose helpers remain in-tree for tests but are **not** consulted by `run_fix_loop`.
+Human-readable card printed on every red loop-owned verify and thrash halt, also
+written to `build/test-results/stuck-slice-NN.txt`, and embedded in Mechanic prompts.
 
 ### Hypothesis ledger
 
-`build/test-results/ledger-slice-NN.jsonl` — durable across bridge death. Each attempt appends `{ts, attempt, role, hypothesis, files_touched, result_signature, verify_tier, outcome}`. **`files_touched` is the per-worker in-scope git delta**, not referee suggestions. Before spawning a fix worker, if the referee verdict's **hypothesis + signature** matches a prior entry, Python **reroutes to the opposite role** with a fresh `ledger-reroute:…:try-N` hypothesis (never pays for the same theory twice, never leaves budget on the table). Halt on ledger only after the fix budget is exhausted. Repeat signatures always get a **fresh** fix worker (new agent context) with the ledger attached.
+`build/test-results/ledger-slice-NN.jsonl` — durable across bridge death. Each
+Mechanic cycle appends `{ts, attempt, role, hypothesis, files_touched, …}`.
+**Audit log only** in Factory v3 — never halt on a ledger match. Fresh Mechanic
+prompts may include recent ledger lines for context.
 
-### Verify ban (fix workers + authoring gates)
+### Verify ban (Mechanic + authoring gates)
 
-Fix-worker `RunProgress` uses `fix_worker=True` + `forced_role=` so logs show
-`[Engineer]` / `[QA]`, nested red-verify thrash is disabled (`max_red_verifies=0`),
-and shell `verify.sh` / `xcodebuild … test` is cancelled. First violation →
-re-prompt; second → attempt burned.
+Mechanic `RunProgress` uses `fix_worker=True` so shell `verify.sh` /
+`xcodebuild … test` is cancelled. Authoring-gate `RunProgress` uses
+`authoring_gate=True`: red verifies are ignored (TDD compile-red expected).
 
-Authoring-gate `RunProgress` uses `authoring_gate=True`: red verifies are ignored
-(TDD compile-red expected), and verify shells are cancelled **without** burning
-budget. The `test_spec` prompt also bans verify in text; the cancel is the hard
-guarantee.
+## Progress stop (Factory v3)
 
-## Fix routing (P0)
+| Signal | Behavior |
+|--------|----------|
+| Signature changed or failure count dropped | Continue |
+| Identical signature 2 consecutive cycles | `THRASH HALT` exit 5 |
+| Signature seen in oscillation window (N=4) | Counts as no-progress |
+| `stress_flake` ×2 with no harness delta | Thrash halt |
+| Test- or ADR-diff review blocked ×2 | Thrash halt |
+| Hard cap 8 Mechanic spawns or 45 min | Thrash halt |
+| Infra / flake cold-retry | Free (not a spawn) |
 
-| Signal | Worker |
-|--------|--------|
-| Deterministic lane (`fix_lanes.classify_fix_lane`) | Role from lane; skip referee |
-| Referee `fix_scope=app` / `role=Engineer` | Engineer (`PodWash/PodWash/**`) |
-| Referee `fix_scope=tests` / `role=QA` | QA (tests only) |
-| Scope contradiction (role vs suggested files) | Flip role before spawn |
-| Empty in-scope git delta | Force opposite role next (`NO-EDIT` / `ledger-reroute:no-edit`) |
-| Explicit `HANDOFF: … applied=no` / `out_of_scope` ×2 | `NO-EDIT THRASH` halt |
-| Referee `confidence=low` | Halt (stuck card) |
-| Unparseable referee JSON | Retry once → heuristic fallback (`try-N`) |
-| Ledger hit (same hyp + signature) | Reroute opposite role while budget remains |
-| Fix budget exhausted | Halt exit 5 (+ resume hint) |
-
-Shared budget: `--max-fix-attempts` (default **3**) → exit **5** on exhaustion.
-Budget **persists** across bridge retries. Flake cold-retry does **not** burn budget.
-Referee calls (including one parse retry) do **not** burn budget (routing only).
+`--max-fix-attempts` maps to Mechanic spawn cap (default **8**).
 
 ## Partial-failure policy
 
 - Reuse one `launch_bridge`; dispose each agent after its gate.
 - If gate N fails after earlier gates produced artifacts: **leave artifacts on disk**,
   halt with gate id + attempt, **do not** auto-revert.
-- Model ids are pinned in `ROLE_MODELS`; SDK spawns use `scripts/sdk_models.py` with `fast=false` — never bare ids (they bill as `*-fast`). IDE subagents may use frontmatter bracket syntax.
+- Model ids are pinned in `ROLE_MODELS`; SDK spawns use `scripts/sdk_models.py` with `fast=false` — never bare ids (they bill as `*-fast`). IDE subagents may use frontmatter bracket syntax. Mechanic uses `grok-4.5`.
 
 ## Handoff contract (coordinator mode)
 
@@ -332,10 +285,10 @@ Referee calls (including one parse retry) do **not** burn budget (routing only).
 2. Loop always owns verify when implement is done **or** status ∈ `{In Progress, Verify}`.
 3. Sequential only — never parallel loop verify with a coordinator-owned verify.
 
-## Unit tests (P0 + P1)
+## Unit tests
 
 ```bash
-python3 -m unittest scripts.test_factory_p1 scripts.test_referee \
+python3 -m unittest scripts.test_factory_v3 scripts.test_factory_p1 \
   scripts.test_fix_lanes scripts.test_factory_hardening \
   scripts.test_hypothesis_ledger scripts.test_slice_pipeline \
   scripts.test_slice_loop_progress scripts.test_failure_packet -q
@@ -343,9 +296,7 @@ python3 -m unittest scripts.test_factory_p1 scripts.test_referee \
 scripts/slice-loop.sh --orchestrator pipeline --max 1   # unattended default
 ```
 
-**P1 landed:** JSONL event log (`events-slice-NN.jsonl`), phase timeline, `SUMMARY:`
-contract, shift-floor narrator (names + Murphy), pipeline default, implement exit =
-tier-2 green (`tier2-slice-NN.ok`, `max_implement_verify_runs=3`), exit **6** infra vs
-**5** thrash, sim pre-boot (`PODWASH_SIM_UDID`), crash watchdog, UITest stress-run (5×).
-
-**P2 cancelled** — no Slice-10 replay; try the factory on slice 11+.
+**Factory v3 landed:** Mechanic (no role routing), unified `run_fix_cycle`,
+progress-based stop, UITest verify retries dropped, stress-run 3×, test/ADR diff
+reviews, commit split `fix tests` / `fix app` / `fix docs`. Phase 3 (agent
+resume) deferred.

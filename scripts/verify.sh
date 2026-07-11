@@ -26,7 +26,9 @@
 # Behavior:
 #   - Resolves an available iPhone simulator dynamically (no hardcoded device names).
 #   - Writes a timestamped .xcresult bundle under build/test-results/ (gitignored).
-#   - Retries flaky failures once (-retry-tests-on-failure -test-iterations 2) for tiers 1–3.
+#   - Retries flaky unit-test failures once (-retry-tests-on-failure -test-iterations 2)
+#     when the run is unit-only. UITest runs and full (unfiltered) suites omit retries
+#     (Factory v3 — one definition of green; stress-run confirms UITest fixes).
 #   - Serializes concurrent runs with a lockfile (build/.verify.lock).
 #   - Prints executed/passed/failed/skipped counts and a copy-pastable
 #     "VERIFY RESULT" line for the slice file's verification record.
@@ -181,11 +183,28 @@ if [ "$XCODE_ACTION" != "build-for-testing" ]; then
     echo "verify.sh: result bundle: $RESULT_BUNDLE"
 fi
 
+# Factory v3: retry only for unit-only filtered runs. UITest filters and full
+# unfiltered suites omit -retry-tests-on-failure so flakes surface to the Mechanic.
+RETRY_FLAGS=""
+_ALL_TEST_ARGS="$ONLY_FLAGS $*"
+case "$_ALL_TEST_ARGS" in
+    *PodWashUITests*)
+        RETRY_FLAGS=""
+        ;;
+    *)
+        if [ "$FILTERED" -eq 0 ]; then
+            RETRY_FLAGS=""
+        else
+            RETRY_FLAGS="-retry-tests-on-failure -test-iterations 2"
+        fi
+        ;;
+esac
+
 if [ "${VERIFY_DRY_RUN:-0}" = "1" ]; then
     if [ "$XCODE_ACTION" = "build-for-testing" ]; then
         echo "verify.sh: DRY_RUN argv: xcodebuild $XCODE_ACTION -project $PROJECT -scheme $SCHEME -destination $DESTINATION -derivedDataPath $DERIVED_DATA -quiet $ONLY_FLAGS $*"
     else
-        echo "verify.sh: DRY_RUN argv: xcodebuild $XCODE_ACTION -project $PROJECT -scheme $SCHEME -destination $DESTINATION -derivedDataPath $DERIVED_DATA -resultBundlePath $RESULT_BUNDLE -retry-tests-on-failure -test-iterations 2 -quiet $ONLY_FLAGS $*"
+        echo "verify.sh: DRY_RUN argv: xcodebuild $XCODE_ACTION -project $PROJECT -scheme $SCHEME -destination $DESTINATION -derivedDataPath $DERIVED_DATA -resultBundlePath $RESULT_BUNDLE $RETRY_FLAGS -quiet $ONLY_FLAGS $*"
     fi
     echo "VERIFY RESULT: exit=0 total=0 passed=0 failed=0 skipped=0 filtered=$FILTERED bundle=$RESULT_BUNDLE tier=$VERIFY_TIER class=tests"
     /usr/bin/python3 -c "
@@ -222,8 +241,7 @@ else
         -destination "$DESTINATION" \
         -derivedDataPath "$DERIVED_DATA" \
         -resultBundlePath "$RESULT_BUNDLE" \
-        -retry-tests-on-failure \
-        -test-iterations 2 \
+        $RETRY_FLAGS \
         -quiet \
         $ONLY_FLAGS \
         "$@"

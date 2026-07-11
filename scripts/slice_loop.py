@@ -549,8 +549,8 @@ def main():
         default=DEFAULT_MAX_FIX_ATTEMPTS,
         metavar="N",
         help=(
-            "loop-owned Engineer|QA fix budget after red verify "
-            f"(default {DEFAULT_MAX_FIX_ATTEMPTS})"
+            "Mechanic spawn hard-cap after red verify (progress rule usually "
+            f"halts earlier; default {DEFAULT_MAX_FIX_ATTEMPTS})"
         ),
     )
     parser.add_argument(

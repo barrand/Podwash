@@ -249,7 +249,7 @@ class SimHygieneTests(unittest.TestCase):
     def test_stress_run_uitest_only(self):
         ids = ["PodWashUITests/Foo/testBar()"]
         self.assertTrue(should_stress_run(ids, just_fixed=True))
-        self.assertEqual(stress_run_count(ids, just_fixed=True), 5)
+        self.assertEqual(stress_run_count(ids, just_fixed=True), 3)
         self.assertFalse(should_stress_run(["PodWashTests/Foo/testA()"], just_fixed=True))
         self.assertFalse(should_stress_run(ids, just_fixed=False))
 
@@ -481,10 +481,10 @@ class Tier2ContinuePromptTests(unittest.TestCase):
                 run_i=1,
                 max_runs=3,
             )
-            self.assertIn("Packaging", prompt)
+            self.assertIn("packaging", prompt.lower())
             self.assertIn("bundle executable", prompt.lower())
 
-    def test_expectation_api_violation_routes_to_qa(self):
+    def test_expectation_api_violation_routes_to_mechanic(self):
         from slice_pipeline import resolve_tier2_continue
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -522,12 +522,12 @@ class Tier2ContinuePromptTests(unittest.TestCase):
                 run_i=1,
                 max_runs=3,
             )
-            self.assertEqual(role, "QA")
+            self.assertEqual(role, "Mechanic")
             self.assertIn("XCTestExpectation", prompt)
-            self.assertIn("Do not edit app code", prompt)
             self.assertIn("PlaybackRateTests", prompt)
             self.assertIn("invalidate", prompt.lower())
             self.assertIn("setRate", prompt)
+            self.assertIn("Suggested recipe", prompt)
             self.assertNotIn("PersistenceController", prompt)
             self.assertNotIn("QueueCoordinator", prompt)
             self.assertNotIn("NSPredicate", prompt)
@@ -541,12 +541,11 @@ class Tier2ContinuePromptTests(unittest.TestCase):
                 max_runs=3,
                 escalate_expectation=True,
             )
-            self.assertEqual(role2, "QA")
+            self.assertEqual(role2, "Mechanic")
             self.assertIn("NSPredicate", prompt2)
             self.assertIn("ledger-escalate:predicate-wait", prompt2)
-            self.assertIn("Do not edit app", prompt2)
 
-    def test_artifact_regeneration_routes_to_qa(self):
+    def test_artifact_regeneration_routes_to_mechanic(self):
         from failure_packet import build_failure_packet
         from slice_pipeline import resolve_tier2_continue
 
@@ -594,10 +593,9 @@ class Tier2ContinuePromptTests(unittest.TestCase):
                 run_i=1,
                 max_runs=3,
             )
-            self.assertEqual(role, "QA")
-            self.assertIn("Artifact/fixture lane", prompt)
+            self.assertEqual(role, "Mechanic")
+            self.assertIn("Suggested recipe", prompt)
             self.assertIn("benchmark-results.json", prompt)
-            self.assertIn("do not edit app code", prompt.lower())
             self.assertIn("SegmentationBenchmarkTests", prompt)
 
     def test_sim_launch_failure_is_infra_not_packaging(self):
@@ -702,8 +700,6 @@ class Tier2InfraColdRetryTests(unittest.TestCase):
                     max_runs=1,
                     max_infra_retries=2,
                 )
-            infra_logs = [
-                l for l in logs if "infra cold retry" in l and "aborted" not in l
-            ]
+            infra_logs = [l for l in logs if "infra cold-retry" in l]
             self.assertEqual(len(infra_logs), 2)
             self.assertGreaterEqual(calls["n"], 3)

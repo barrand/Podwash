@@ -16,10 +16,12 @@ stopped, and harden the Forge so the next run is clearer and more robust.
 ## Hard bans
 
 **In scope:** `scripts/slice_*.py`, `scripts/*factory*`, `scripts/verify.sh`,
-`scripts/failure_packet.py`, `scripts/referee.py`, `scripts/session_bundle.py`,
-`scripts/sim_hygiene.py`, factory unit tests (`scripts/test_factory_*.py`,
-`scripts/test_slice_*.py`, `scripts/test_failure_packet.py`, etc.), and process
-docs under `docs/slice-*.md` / `docs/plans/factory-*.md`.
+`scripts/failure_packet.py`, `scripts/mechanic_fix.py`,
+`scripts/factory_progress.py`, `scripts/fix_lanes.py`,
+`scripts/session_bundle.py`, `scripts/sim_hygiene.py`, factory unit tests
+(`scripts/test_factory_*.py`, `scripts/test_slice_*.py`,
+`scripts/test_failure_packet.py`, etc.), and process docs under
+`docs/slice-*.md` / `docs/plans/factory-*.md`.
 
 **Out of scope — do not edit:**
 

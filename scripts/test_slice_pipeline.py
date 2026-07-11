@@ -100,64 +100,62 @@ class VerifyTierHelpersTests(unittest.TestCase):
 
 
 class FixRouterTests(unittest.TestCase):
-    def test_crash_routes_engineer(self):
+    def test_crash_routes_mechanic(self):
         self.assertEqual(
             route_fix([], ["Crash: PodWash at Foo.testBar()"]),
-            "Engineer",
+            "Mechanic",
         )
 
-    def test_ambiguous_defaults_engineer(self):
+    def test_ambiguous_defaults_mechanic(self):
         self.assertEqual(
             route_fix(["FooTests/testSomething — XCTAssertTrue failed"], []),
-            "Engineer",
+            "Mechanic",
         )
 
-    def test_same_signature_after_engineer_routes_qa(self):
+    def test_same_signature_still_mechanic(self):
         fails = ["PodWashUITests/testProgress — XCTAssertTrue failed"]
         sig = failure_signature(fails, [])
         self.assertEqual(
             route_fix(
                 fails,
                 [],
-                previous_role="Engineer",
+                previous_role="Mechanic",
                 previous_signature=sig,
             ),
-            "QA",
+            "Mechanic",
         )
 
-    def test_fixture_wording_can_route_qa(self):
+    def test_fixture_wording_still_mechanic(self):
         self.assertEqual(
             route_fix(
                 ["golden fixture XCTAssertEqual failed in PodWashTests"],
                 [],
             ),
-            "QA",
+            "Mechanic",
         )
 
     def test_fix_budget_persists(self):
         b = FixBudget(max_attempts=2)
-        b.record("Engineer", "sig1")
+        b.record("Mechanic", "sig1")
         self.assertEqual(b.attempts_used, 1)
         self.assertFalse(b.exhausted())
-        b.record("QA", "sig1")
+        b.record("Mechanic", "sig1")
         self.assertTrue(b.exhausted())
 
-    def test_build_fix_prompt_scopes(self):
-        eng = build_fix_prompt(
-            "Engineer", "docs/slices/x.md", ["t"], [], "b.xcresult", 1, 2
+    def test_build_fix_prompt_mechanic_scopes(self):
+        mech = build_fix_prompt(
+            "Mechanic", "docs/slices/x.md", ["t"], [], "b.xcresult", 1, 2
         )
-        self.assertIn("PodWash/PodWash/**", eng)
-        self.assertIn("Do NOT run scripts/verify.sh", eng)
-        qa = build_fix_prompt("QA", "docs/slices/x.md", ["t"], [], None, 2, 2)
-        self.assertIn("PodWashTests", qa)
+        self.assertIn("PodWash/PodWash/**", mech)
+        self.assertIn("Mechanic", mech)
+        self.assertIn("docs/adr/**", mech)
+        self.assertIn("Do NOT run scripts/verify.sh", mech)
 
-    def test_halts_when_budget_exhausted(self):
-        budget = FixBudget(max_attempts=2)
-        # crash class — referee returns a fresh hypothesis each attempt so ledger
-        # does not halt early; both fix attempts stay red → budget exhausted.
+    def test_halts_on_identical_signature_thrash(self):
         from failure_packet import FailurePacket
-        from referee import RefereeVerdict
+        from factory_progress import ProgressTracker
 
+        tracker = ProgressTracker(max_spawns=8)
         packet = FailurePacket(
             test_ids=["PodWashTests/Foo/testCrash()"],
             crashes=["Crash: PodWash EXC_BAD_ACCESS at Foo"],
@@ -173,44 +171,44 @@ class FixRouterTests(unittest.TestCase):
             crashes=packet.crashes,
             packet=packet,
         )
-        calls = {"n": 0, "ref": 0}
+        roles: list[str] = []
 
         def fake_verify(**_kw):
-            calls["n"] += 1
             return red
 
-        def fake_referee(**_kw):
-            calls["ref"] += 1
-            return RefereeVerdict(
-                primary_failure="PodWashTests/Foo/testCrash()",
-                role="Engineer",
-                fix_scope="app",
-                files=["PodWash/PodWash/Foo.swift"],
-                instruction=f"Fix crash attempt {calls['ref']}",
-                hypothesis=f"nil guard missing in path {calls['ref']}",
-                confidence="high",
-            )
+        def capture_worker(client, role, prompt, **_kw):
+            roles.append(role)
+            return True, "finished"
 
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch("slice_pipeline.run_worker", return_value=(True, "finished")):
+            with mock.patch("slice_pipeline.run_worker", side_effect=capture_worker), mock.patch(
+                "slice_pipeline.git_paths_changed", return_value=[]
+            ), mock.patch(
+                "slice_pipeline.load_persona", return_value="You are Mechanic."
+            ), mock.patch(
+                "mechanic_fix.append_ledger"
+            ), mock.patch(
+                "mechanic_fix.load_ledger", return_value=[]
+            ), mock.patch(
+                "mechanic_fix.write_session_bundle", return_value="/tmp/x"
+            ):
                 with self.assertRaises(ThrashHalt) as ctx:
                     run_fix_loop(
                         client=object(),
                         slice_file="docs/slices/slice-09.md",
                         repo_root=tmp,
                         api_key="k",
-                        budget=budget,
+                        budget=tracker,
                         verify_fn=fake_verify,
-                        referee_fn=fake_referee,
                     )
-        self.assertIn("exhausted", str(ctx.exception.reason).lower())
-        self.assertEqual(budget.attempts_used, 2)
-        # initial verify + tier1 + tier3 per attempt (or tier1 only when red)
-        self.assertGreaterEqual(calls["n"], 3)
-        self.assertEqual(calls["ref"], 2)
+        self.assertIn("THRASH HALT", str(ctx.exception.reason))
+        self.assertTrue(all(r == "Mechanic" for r in roles), roles)
+        self.assertGreaterEqual(len(roles), 1)
 
     def test_returns_on_green(self):
-        budget = FixBudget(max_attempts=2)
+        from factory_progress import ProgressTracker
+
+        tracker = ProgressTracker(max_spawns=2)
         green = VerifyOutcome(
             result={"exit": "0", "total": "1", "passed": "1", "failed": "0", "skipped": "0"},
             green=True,
@@ -220,151 +218,17 @@ class FixRouterTests(unittest.TestCase):
             slice_file="x.md",
             repo_root=REPO,
             api_key="k",
-            budget=budget,
+            budget=tracker,
             verify_fn=lambda **_kw: green,
         )
         self.assertTrue(out.green)
-        self.assertEqual(budget.attempts_used, 0)
-
-    def test_ledger_reroutes_repeat_hypothesis_while_budget_remains(self):
-        """Same hyp+sig no longer thrash-halts; flips role and spends an attempt."""
-        from failure_packet import FailurePacket
-        from referee import RefereeVerdict
-
-        budget = FixBudget(max_attempts=2)
-        packet = FailurePacket(
-            test_ids=["PodWashTests/Foo/testA()"],
-            signature="PodWashTests/Foo/testA()",
-            raw_failures=["PodWashTests/Foo/testA() — fail"],
-            suggested_files=["PodWash/PodWashTests/FooTests.swift"],
-            actionable=True,
-        )
-        red = VerifyOutcome(
-            result={"exit": "1", "failed": "1", "passed": "0", "skipped": "0", "total": "1"},
-            green=False,
-            failures=packet.raw_failures,
-            packet=packet,
-        )
-        hyp = "cancel fires before bytes flushed"
-        roles: list[str] = []
-
-        def fake_referee(**_kw):
-            return RefereeVerdict(
-                primary_failure="PodWashTests/Foo/testA()",
-                role="Engineer",
-                fix_scope="app",
-                files=["PodWash/PodWashTests/FooTests.swift"],
-                instruction="Fix cancel gate",
-                hypothesis=hyp,
-                confidence="high",
-            )
-
-        def capture_worker(client, role, prompt, **_kw):
-            roles.append(role)
-            return True, "finished"
-
-        with tempfile.TemporaryDirectory() as tmp:
-            from hypothesis_ledger import append_ledger, make_entry
-
-            append_ledger(
-                make_entry(
-                    slice_id=9,
-                    attempt=1,
-                    role="Engineer",
-                    hypothesis=hyp,
-                    signature=packet.signature,
-                    outcome="red",
-                ),
-                repo_root=tmp,
-                slice_id=9,
-            )
-            with mock.patch("slice_pipeline.run_worker", side_effect=capture_worker):
-                with self.assertRaises(ThrashHalt) as ctx:
-                    run_fix_loop(
-                        client=object(),
-                        slice_file="docs/slices/slice-09.md",
-                        repo_root=tmp,
-                        api_key="k",
-                        budget=budget,
-                        verify_fn=lambda **_kw: red,
-                        referee_fn=fake_referee,
-                    )
-            # Budget exhausted after reroutes — not an immediate ledger halt
-            self.assertIn("exhausted", str(ctx.exception.reason).lower())
-            self.assertEqual(budget.attempts_used, 2)
-            self.assertTrue(any(r == "QA" for r in roles), roles)
-
-    def test_heuristic_parse_fail_allows_full_budget(self):
-        """Referee JSON parse fail → heuristic try-N; must spend all attempts."""
-        from failure_packet import FailurePacket
-        from referee import RefereeError
-
-        budget = FixBudget(max_attempts=2)
-        packet = FailurePacket(
-            test_ids=["PodWashTests/QueueTests/testAutoAdvanceOnEpisodeEnd()"],
-            signature="PodWashTests/QueueTests/testAutoAdvanceOnEpisodeEnd()",
-            raw_failures=[
-                'PodWashTests/QueueTests/testAutoAdvanceOnEpisodeEnd() — '
-                'XCTAssertEqual failed: ("2") is not equal to ("1")'
-            ],
-            failure_class="assertion",
-            fix_scope="app",
-            suggested_files=["PodWash/PodWashTests/QueueTests.swift"],
-            actionable=True,
-        )
-        red = VerifyOutcome(
-            result={"exit": "65", "failed": "1", "passed": "0", "skipped": "0", "total": "1"},
-            green=False,
-            failures=packet.raw_failures,
-            packet=packet,
-        )
-        roles: list[str] = []
-
-        def fake_referee(**_kw):
-            raise RefereeError("referee JSON parse failed: Invalid control character")
-
-        def capture_worker(client, role, prompt, **_kw):
-            roles.append(role)
-            return True, "finished"
-
-        with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch("slice_pipeline.run_worker", side_effect=capture_worker):
-                with self.assertRaises(ThrashHalt) as ctx:
-                    run_fix_loop(
-                        client=object(),
-                        slice_file="docs/slices/slice-11-queue-resume.md",
-                        repo_root=tmp,
-                        api_key="k",
-                        budget=budget,
-                        verify_fn=lambda **_kw: red,
-                        referee_fn=fake_referee,
-                    )
-        self.assertIn("exhausted", str(ctx.exception.reason).lower())
-        self.assertEqual(budget.attempts_used, 2)
-        # Scope contradiction: Engineer + test files → QA on attempt 1
-        self.assertEqual(roles[0], "QA", roles)
-
-    def test_scope_contradiction_flips_engineer_to_qa(self):
-        from referee import resolve_role_scope_contradiction
-
-        role, scope = resolve_role_scope_contradiction(
-            "Engineer",
-            ["PodWash/PodWashTests/QueueTests.swift", "PodWash/PodWashTests/ResumePositionTests.swift"],
-        )
-        self.assertEqual(role, "QA")
-        self.assertEqual(scope, "tests")
-        role2, scope2 = resolve_role_scope_contradiction(
-            "QA",
-            ["PodWash/PodWash/QueueCoordinator.swift"],
-        )
-        self.assertEqual(role2, "Engineer")
-        self.assertEqual(scope2, "app")
+        self.assertEqual(tracker.spawns_used, 0)
 
     def test_tier1_then_tier3_on_fix_green(self):
         from failure_packet import FailurePacket
-        from referee import RefereeVerdict
+        from factory_progress import ProgressTracker
 
-        budget = FixBudget(max_attempts=2)
+        tracker = ProgressTracker(max_spawns=2)
         packet = FailurePacket(
             test_ids=["PodWashTests/Foo/testA()"],
             signature="PodWashTests/Foo/testA()",
@@ -391,83 +255,47 @@ class FixRouterTests(unittest.TestCase):
                 return red
             return green
 
-        def fake_referee(**_kw):
-            return RefereeVerdict(
-                primary_failure="PodWashTests/Foo/testA()",
-                role="Engineer",
-                fix_scope="app",
-                files=["PodWash/PodWash/Foo.swift"],
-                instruction="Fix the assertion",
-                hypothesis="off-by-one in Foo",
-                confidence="high",
-            )
-
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch("slice_pipeline.run_worker", return_value=(True, "finished")):
+            with mock.patch("slice_pipeline.run_worker", return_value=(True, "finished")), mock.patch(
+                "slice_pipeline.git_paths_changed", return_value=[]
+            ), mock.patch(
+                "slice_pipeline.load_persona", return_value="You are Mechanic."
+            ), mock.patch(
+                "mechanic_fix.append_ledger"
+            ), mock.patch(
+                "mechanic_fix.load_ledger", return_value=[]
+            ):
                 out = run_fix_loop(
                     client=object(),
                     slice_file="docs/slices/slice-10.md",
                     repo_root=tmp,
                     api_key="k",
-                    budget=budget,
+                    budget=tracker,
                     verify_fn=fake_verify,
-                    referee_fn=fake_referee,
                 )
         self.assertTrue(out.green)
         self.assertEqual(tiers[:3], [3, 1, 3])
-
-    def test_low_confidence_referee_halts(self):
-        from failure_packet import FailurePacket
-        from referee import RefereeError
-
-        budget = FixBudget(max_attempts=2)
-        packet = FailurePacket(
-            test_ids=["PodWashTests/Foo/testA()"],
-            signature="PodWashTests/Foo/testA()",
-            raw_failures=["PodWashTests/Foo/testA() — fail"],
-            actionable=True,
-        )
-        red = VerifyOutcome(
-            result={"exit": "1", "failed": "1", "passed": "0", "skipped": "0", "total": "1"},
-            green=False,
-            failures=packet.raw_failures,
-            packet=packet,
-        )
-
-        def fake_referee(**_kw):
-            raise RefereeError("referee confidence=low — insufficient evidence")
-
-        with tempfile.TemporaryDirectory() as tmp:
-            with self.assertRaises(ThrashHalt) as ctx:
-                run_fix_loop(
-                    client=object(),
-                    slice_file="docs/slices/slice-09.md",
-                    repo_root=tmp,
-                    api_key="k",
-                    budget=budget,
-                    verify_fn=lambda **_kw: red,
-                    referee_fn=fake_referee,
-                )
-        self.assertIn("referee", str(ctx.exception.reason).lower())
-        self.assertEqual(budget.attempts_used, 0)
+        self.assertEqual(tracker.spawns_used, 1)
 
 
 class ModelModeMapTests(unittest.TestCase):
     def test_models_are_plain_ids(self):
         self.assertEqual(model_for_role("PM"), "composer-2.5")
         self.assertEqual(model_for_role("Engineer"), "grok-4.5")
+        self.assertEqual(model_for_role("Mechanic"), "grok-4.5")
         self.assertNotIn("[", model_for_role("Architect"))
 
     def test_reviewers_use_plan_mode(self):
         self.assertEqual(mode_for_role("QA review"), "plan")
         self.assertEqual(mode_for_role("PM review"), "plan")
         self.assertEqual(mode_for_role("Architect review"), "plan")
-        self.assertEqual(mode_for_role("Referee"), "plan")
         self.assertEqual(mode_for_role("Engineer"), "agent")
         self.assertEqual(mode_for_role("QA"), "agent")
+        self.assertEqual(mode_for_role("Mechanic"), "agent")
 
-    def test_referee_model_is_cheap(self):
-        self.assertEqual(model_for_role("Referee"), "composer-2.5")
+    def test_mechanic_model_is_grok(self):
+        self.assertEqual(model_for_role("Mechanic"), "grok-4.5")
+        self.assertEqual(mode_for_role("Mechanic"), "agent")
 
 
 class GateStateTests(unittest.TestCase):

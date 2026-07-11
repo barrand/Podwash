@@ -194,11 +194,12 @@ _default_voice = StoryVoice()
 
 NAME_POOLS: dict[str, tuple[str, ...]] = {
     "Engineer": ("Edison", "Elena", "Ezra", "Esme", "Elliott"),
+    "Mechanic": ("Morgan", "Max", "Maya", "Miles", "Mira"),
     "QA": ("Quinn", "Quincy", "Queenie", "Quill"),
     "Architect": ("Ada", "Atlas", "Aurora"),
     "PM": ("Priya", "Parker", "Penny"),
     "UX": ("Uma", "Ulysses", "Unity"),
-    "Referee": ("Rhea",),
+    "Referee": ("Rhea",),  # historical — unused in Factory v3
     "Coordinator": ("Kai", "Kira", "Kellen", "Kit"),
     "QA review": ("Quinn", "Quincy", "Queenie", "Quill"),
     "PM review": ("Priya", "Parker", "Penny"),
@@ -207,6 +208,7 @@ NAME_POOLS: dict[str, tuple[str, ...]] = {
 
 ROLE_INITIAL: dict[str, str] = {
     "Engineer": "E",
+    "Mechanic": "M",
     "QA": "Q",
     "Architect": "A",
     "PM": "P",
@@ -281,6 +283,7 @@ def narrate_spawn(
 ) -> str:
     emoji = {
         "Engineer": "🔧",
+        "Mechanic": "🔧",
         "QA": "🧪",
         "QA review": "🧪",
         "Architect": "📐",

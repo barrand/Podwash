@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Factory hardening regressions — slice 13 failure modes + fire-drill suite.
+"""Factory hardening regressions — classifier hygiene + infra cold-retry.
 
-Exclusive lanes, classifier hygiene, identical-sig infra abort, class-transition
-credit, and post-edit tier-0 routing.
+Class-transition / handoff credits removed in Factory v3 — see test_factory_v3.py.
 """
 
 from __future__ import annotations
@@ -11,13 +10,13 @@ import os
 import sys
 import tempfile
 import unittest
-from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from failure_packet import FailurePacket
 from sim_hygiene import classify_infra_failure
 from slice_pipeline import (
+    InfraHalt,
     VerifyOutcome,
     is_build_lane,
     is_tier2_infra_failure,
@@ -200,10 +199,10 @@ class ExclusiveLaneTests(unittest.TestCase):
         self.assertTrue(is_tier2_infra_failure(_sim_outcome()))
 
 
-class IdenticalSigInfraAbortTests(unittest.TestCase):
-    def test_identical_infra_aborts_second_cold_retry(self):
-        from slice_loop_progress import ThrashHalt
+class InfraColdRetryTests(unittest.TestCase):
+    """Factory v3: infra cold-retries then InfraHalt (no identical-sig abort)."""
 
+    def test_identical_infra_exhausts_retries_then_infra_halt(self):
         calls = {"n": 0}
 
         def verify_fn(**_kw):
@@ -213,7 +212,7 @@ class IdenticalSigInfraAbortTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             slice_path = _slice_md(tmp)
             logs: list[str] = []
-            with self.assertRaises(ThrashHalt):
+            with self.assertRaises(InfraHalt):
                 run_tier2_implement_gate(
                     client=None,
                     slice_file=slice_path,
@@ -224,14 +223,12 @@ class IdenticalSigInfraAbortTests(unittest.TestCase):
                     max_runs=1,
                     max_infra_retries=2,
                 )
-            infra_logs = [l for l in logs if "infra cold retry" in l and "aborted" not in l]
-            abort_logs = [l for l in logs if "identical signature" in l]
-            self.assertEqual(len(infra_logs), 1, logs)
-            self.assertEqual(len(abort_logs), 1, logs)
-            # First verify → retry; second → abort → fix burn → halt (client=None)
-            self.assertEqual(calls["n"], 2)
+            infra_logs = [l for l in logs if "infra cold-retry" in l]
+            self.assertEqual(len(infra_logs), 2, logs)
+            # Initial verify + 2 cold retries
+            self.assertEqual(calls["n"], 3)
 
-    def test_distinct_infra_signatures_get_multiple_retries(self):
+    def test_distinct_infra_then_real_failure_spawns_mechanic_path(self):
         from slice_loop_progress import ThrashHalt
 
         calls = {"n": 0}
@@ -262,195 +259,14 @@ class IdenticalSigInfraAbortTests(unittest.TestCase):
                     max_runs=1,
                     max_infra_retries=2,
                 )
-            infra_logs = [l for l in logs if "infra cold retry" in l and "aborted" not in l]
+            infra_logs = [l for l in logs if "infra cold-retry" in l]
             self.assertEqual(len(infra_logs), 2, logs)
             self.assertGreaterEqual(calls["n"], 3)
 
 
-class ClassTransitionCreditTests(unittest.TestCase):
-    def test_new_class_after_budget_gets_one_spawn(self):
-        """Slice 13 shape: crash+UI burn budget, then build_error must still spawn."""
-        from slice_loop_progress import ThrashHalt
-
-        sequence = [
-            _assert_outcome("crash-ish assertion A"),
-            _assert_outcome("missing_identifier-ish B"),
-            _build_outcome(),
-            _build_outcome(),  # after transition spawn, still red → halt
-        ]
-        calls = {"n": 0}
-        worker_calls = {"n": 0}
-
-        def verify_fn(**kw):
-            tier = kw.get("tier", 2)
-            if tier == 0:
-                # Post-edit tier-0 green so we don't inject pending build
-                return VerifyOutcome(
-                    result={"exit": "0", "class": "tests", "tier": "0"},
-                    green=True,
-                    tier=0,
-                )
-            calls["n"] += 1
-            i = min(calls["n"] - 1, len(sequence) - 1)
-            return sequence[i]
-
-        def fake_worker(*_a, **_k):
-            worker_calls["n"] += 1
-            return True, "ok"
-
-        with tempfile.TemporaryDirectory() as tmp:
-            slice_path = _slice_md(tmp)
-            logs: list[str] = []
-            with mock.patch("slice_pipeline.run_worker", side_effect=fake_worker):
-                with self.assertRaises(ThrashHalt):
-                    run_tier2_implement_gate(
-                        client=object(),  # truthy — allow spawns
-                        slice_file=slice_path,
-                        repo_root=tmp,
-                        api_key="x",
-                        log=logs.append,
-                        verify_fn=verify_fn,
-                        max_runs=2,
-                        max_infra_retries=0,
-                    )
-            credit = [l for l in logs if "class-transition credit" in l]
-            self.assertEqual(len(credit), 1, logs)
-            # Two normal spawns + one transition spawn
-            self.assertEqual(worker_calls["n"], 3, logs)
-            self.assertTrue(
-                any("build_error" in l or "class=build" in l for l in logs),
-                logs,
-            )
-
-
-class HandoffCreditTests(unittest.TestCase):
-    def test_handoff_flip_on_last_attempt_spawns_flipped_role(self):
-        """Slice 19: Engineer out_of_scope→QA on last attempt must still spawn QA."""
-        from slice_loop_progress import ThrashHalt
-
-        msg = (
-            'XCTAssertEqual failed: ("0") is not equal to ("2") - '
-            "Second analyze still invokes pipeline (cache load inside)"
-        )
-        red = VerifyOutcome(
-            result={"exit": "65", "failed": "1", "tier": "2", "class": "tests"},
-            green=False,
-            failures=[msg],
-            output=msg,
-            packet=FailurePacket(
-                raw_failures=[msg],
-                assertions=[msg],
-                failure_class="assertion",
-                fix_scope="app",  # first spawn → Engineer
-                test_ids=[
-                    "SegmentationIntegrationTests/"
-                    "testSegmentsAndProfanityCachedWithIndependentActions()"
-                ],
-            ),
-            tier=2,
-        )
-        calls = {"n": 0}
-        roles: list[str] = []
-
-        def verify_fn(**kw):
-            tier = kw.get("tier", 2)
-            if tier == 0:
-                return VerifyOutcome(
-                    result={"exit": "0", "class": "tests", "tier": "0"},
-                    green=True,
-                    tier=0,
-                )
-            calls["n"] += 1
-            return red
-
-        def fake_worker(*_a, **kwargs):
-            role = kwargs.get("role") or "Engineer"
-            roles.append(role)
-            progress = kwargs.get("progress")
-            if progress is not None and role == "Engineer":
-                progress.assistant_text = (
-                    "SUMMARY: No app change — AC1 asserts unused pipelineSpy\n"
-                    "HANDOFF: scope=out_of_scope; route=QA; applied=no\n"
-                )
-            return True, "ok"
-
-        class _Prog:
-            assistant_text = ""
-            _files_touched: list[str] = []
-
-        def progress_factory(role: str, agent_name: str | None = None):
-            return _Prog()
-
-        with tempfile.TemporaryDirectory() as tmp:
-            slice_path = _slice_md(tmp)
-            logs: list[str] = []
-            with mock.patch("slice_pipeline.run_worker", side_effect=fake_worker), mock.patch(
-                "slice_pipeline.git_paths_changed", return_value=[]
-            ):
-                with self.assertRaises(ThrashHalt) as ctx:
-                    run_tier2_implement_gate(
-                        client=object(),
-                        slice_file=slice_path,
-                        repo_root=tmp,
-                        api_key="x",
-                        log=logs.append,
-                        verify_fn=verify_fn,
-                        progress_factory=progress_factory,
-                        max_runs=1,
-                        max_infra_retries=0,
-                    )
-            self.assertTrue(
-                any("HANDOFF credit: spawning QA" in l for l in logs),
-                logs,
-            )
-            self.assertTrue(
-                any("HANDOFF FLIP: out_of_scope → QA" in l for l in logs),
-                logs,
-            )
-            self.assertEqual(roles, ["Engineer", "QA"], roles)
-            self.assertIn("pending handoff QA was honored once", str(ctx.exception))
-
-
-class PostEditTier0Tests(unittest.TestCase):
-    def test_tier0_red_skips_to_pending_build_outcome(self):
-        from slice_loop_progress import ThrashHalt
-
-        calls = {"tier2": 0, "tier0": 0}
-        worker_calls = {"n": 0}
-
-        def verify_fn(**kw):
-            tier = kw.get("tier", 2)
-            if tier == 0:
-                calls["tier0"] += 1
-                return _build_outcome()
-            calls["tier2"] += 1
-            if calls["tier2"] == 1:
-                return _assert_outcome("first test red")
-            # Should receive pending build from tier-0, but if tier-2 runs again:
-            return _build_outcome()
-
-        def fake_worker(*_a, **_k):
-            worker_calls["n"] += 1
-            return True, "ok"
-
-        with tempfile.TemporaryDirectory() as tmp:
-            slice_path = _slice_md(tmp)
-            logs: list[str] = []
-            with mock.patch("slice_pipeline.run_worker", side_effect=fake_worker):
-                with self.assertRaises(ThrashHalt):
-                    run_tier2_implement_gate(
-                        client=object(),
-                        slice_file=slice_path,
-                        repo_root=tmp,
-                        api_key="x",
-                        log=logs.append,
-                        verify_fn=verify_fn,
-                        max_runs=2,
-                        max_infra_retries=0,
-                    )
-            self.assertGreaterEqual(calls["tier0"], 1, logs)
-            self.assertTrue(any("post-edit tier-0 RED" in l for l in logs), logs)
-            self.assertTrue(any("pending post-edit outcome" in l for l in logs), logs)
+# ClassTransitionCreditTests / HandoffCreditTests / PostEditTier0Tests deleted —
+# Factory v3 Mechanic loop has no role credits or post-edit tier-0. See
+# scripts/test_factory_v3.py for progress-based stop + Mechanic cycle coverage.
 
 
 class FireDrillSuite(unittest.TestCase):
@@ -460,7 +276,6 @@ class FireDrillSuite(unittest.TestCase):
         logs: list[str] = []
         outcome = _build_outcome()
         self.assertFalse(is_tier2_infra_failure(outcome, log=logs.append))
-        # Even with CoreSimulator in stdout, no infra retry path
         from slice_loop_progress import ThrashHalt
 
         def verify_fn(**_kw):
@@ -480,7 +295,7 @@ class FireDrillSuite(unittest.TestCase):
                     max_runs=1,
                     max_infra_retries=2,
                 )
-            self.assertFalse(any("infra cold retry" in l for l in gate_logs), gate_logs)
+            self.assertFalse(any("infra cold-retry" in l for l in gate_logs), gate_logs)
 
 
 if __name__ == "__main__":
