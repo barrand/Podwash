@@ -11,24 +11,22 @@ struct DiscoverView: View {
     @Bindable var viewModel: DiscoverViewModel
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                TextField("Search podcasts", text: searchBinding)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .padding(12)
-                    .accessibilityIdentifier("discoverSearchField")
-                    .accessibilityLabel("Search podcasts")
-                    .accessibilityHint("Search the podcast directory.")
+        VStack(spacing: 0) {
+            TextField("Search podcasts", text: searchBinding)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .padding(12)
+                .accessibilityIdentifier("discoverSearchField")
+                .accessibilityLabel("Search podcasts")
+                .accessibilityHint("Search the podcast directory.")
 
-                resultsRegion
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("discoverRoot")
-            .accessibilityLabel("Discover")
-            .navigationTitle("Discover")
+            resultsRegion
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("discoverRoot")
+        .accessibilityLabel("Discover")
+        .navigationTitle("Discover")
         .task {
             if viewModel.loadPhase == .idle {
                 await viewModel.loadPopular()

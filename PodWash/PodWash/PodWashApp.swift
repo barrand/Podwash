@@ -16,14 +16,27 @@ import SwiftUI
 struct PodWashApp: App {
     /// Production Core Data stack (ADR-007). Constructed once at launch so the
     /// installable binary always wires a real `PersistenceController` (queue +
-    /// resume types live in the same model).
+    /// resume types live in the same model). Library UITest fixtures use an
+    /// isolated in-memory store (ADR-015 §6).
     private let persistence: PersistenceController
 
     /// Lock-screen / Control Center transport (ADR-011). Activated once at launch.
     private let remoteCommands: RemoteCommandCoordinator
 
     init() {
-        persistence = PersistenceController.production()
+        // Fresh temp-SQLite per launch (ADR-015 §6). Fixed identifiers reuse durable
+        // files across UITest launches and can leave seeded rows in the empty fixture.
+        if FixtureLibrary.isEmptyEnabled {
+            persistence = PersistenceController.inMemory(
+                identifier: "uitest-library-empty-\(UUID().uuidString)"
+            )
+        } else if FixtureLibrary.isEnabled {
+            persistence = PersistenceController.inMemory(
+                identifier: "uitest-library-\(UUID().uuidString)"
+            )
+        } else {
+            persistence = PersistenceController.production()
+        }
         let commands = RemoteCommandCoordinator(commands: MPRemoteCommandCenterAdapter())
         commands.activate()
         remoteCommands = commands

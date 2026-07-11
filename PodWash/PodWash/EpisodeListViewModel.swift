@@ -56,4 +56,13 @@ final class EpisodeListViewModel {
             phase = .failed(.malformedFeed)
         }
     }
+
+    /// Loads a previously persisted subscription (Library → detail; no network).
+    func loadFromStore(feedURL: URL) {
+        if let feed = store.subscription(forFeedURL: feedURL) {
+            phase = .loaded(feed)
+        } else {
+            phase = .failed(.networkFailure)
+        }
+    }
 }

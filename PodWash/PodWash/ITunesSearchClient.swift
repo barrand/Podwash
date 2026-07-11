@@ -15,7 +15,7 @@ struct PodcastSearchResult: Equatable, Identifiable, Sendable {
     let artworkURL: URL?
 }
 
-struct PodcastSummary: Equatable, Identifiable, Sendable {
+struct PodcastSummary: Equatable, Hashable, Identifiable, Sendable {
     var id: String { feedURL.absoluteString }
     let title: String
     let feedURL: URL

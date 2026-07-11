@@ -14,6 +14,7 @@ struct EpisodeListView: View {
     var downloadManager: DownloadManager
     var queueStore: QueueStore
     var onQueueChanged: () -> Void
+    var onPlayEpisode: ((Episode) -> Void)? = nil
 
     var body: some View {
         // Observe generation so representable refreshes when analysis UI changes.
@@ -23,7 +24,8 @@ struct EpisodeListView: View {
             analysisViewModel: analysisViewModel,
             downloadManager: downloadManager,
             queueStore: queueStore,
-            onQueueChanged: onQueueChanged
+            onQueueChanged: onQueueChanged,
+            onPlayEpisode: onPlayEpisode
         )
     }
 }
@@ -34,6 +36,7 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
     var downloadManager: DownloadManager
     var queueStore: QueueStore
     var onQueueChanged: () -> Void
+    var onPlayEpisode: ((Episode) -> Void)?
 
     func makeUIViewController(context: Context) -> EpisodeTableViewController {
         EpisodeTableViewController(
@@ -41,7 +44,8 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
             analysisViewModel: analysisViewModel,
             downloadManager: downloadManager,
             queueStore: queueStore,
-            onQueueChanged: onQueueChanged
+            onQueueChanged: onQueueChanged,
+            onPlayEpisode: onPlayEpisode
         )
     }
 
@@ -51,7 +55,8 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
             analysisViewModel: analysisViewModel,
             downloadManager: downloadManager,
             queueStore: queueStore,
-            onQueueChanged: onQueueChanged
+            onQueueChanged: onQueueChanged,
+            onPlayEpisode: onPlayEpisode
         )
     }
 }
@@ -62,19 +67,22 @@ private final class EpisodeTableViewController: UITableViewController {
     private var downloadManager: DownloadManager
     private var queueStore: QueueStore
     private var onQueueChanged: () -> Void
+    private var onPlayEpisode: ((Episode) -> Void)?
 
     init(
         feed: PodcastFeed,
         analysisViewModel: AnalysisUIViewModel,
         downloadManager: DownloadManager,
         queueStore: QueueStore,
-        onQueueChanged: @escaping () -> Void
+        onQueueChanged: @escaping () -> Void,
+        onPlayEpisode: ((Episode) -> Void)?
     ) {
         self.feed = feed
         self.analysisViewModel = analysisViewModel
         self.downloadManager = downloadManager
         self.queueStore = queueStore
         self.onQueueChanged = onQueueChanged
+        self.onPlayEpisode = onPlayEpisode
         super.init(style: .plain)
         analysisViewModel.onAnalyzingEpisodeIDChanged = { [weak self] in
             guard let self else { return }
@@ -107,7 +115,8 @@ private final class EpisodeTableViewController: UITableViewController {
         analysisViewModel: AnalysisUIViewModel,
         downloadManager: DownloadManager,
         queueStore: QueueStore,
-        onQueueChanged: @escaping () -> Void
+        onQueueChanged: @escaping () -> Void,
+        onPlayEpisode: ((Episode) -> Void)?
     ) {
         let feedChanged = self.feed != feed
         self.feed = feed
@@ -115,6 +124,7 @@ private final class EpisodeTableViewController: UITableViewController {
         self.downloadManager = downloadManager
         self.queueStore = queueStore
         self.onQueueChanged = onQueueChanged
+        self.onPlayEpisode = onPlayEpisode
         analysisViewModel.onAnalyzingEpisodeIDChanged = { [weak self] in
             guard let self else { return }
             self.refreshAnalysisDisplayOnVisibleRows()
@@ -135,6 +145,19 @@ private final class EpisodeTableViewController: UITableViewController {
             refreshQueueDisplayOnVisibleRows()
         }
         tableView.layoutIfNeeded()
+    }
+
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: false)
+        guard let onPlayEpisode else { return }
+        onPlayEpisode(feed.episodes[indexPath.row])
+    }
+
+    private func playHandler(for indexPath: IndexPath) -> () -> Void {
+        { [weak self] in
+            guard let self, let onPlayEpisode = self.onPlayEpisode else { return }
+            onPlayEpisode(self.feed.episodes[indexPath.row])
+        }
     }
 
     private func refreshDownloadDisplayOnVisibleRows() {
@@ -280,7 +303,8 @@ private final class EpisodeTableViewController: UITableViewController {
             isQueued: isQueued,
             onToggle: episodeToggleHandler(for: indexPath),
             onDownload: downloadButtonHandler(for: indexPath),
-            onQueueAdd: queueAddHandler(for: indexPath)
+            onQueueAdd: queueAddHandler(for: indexPath),
+            onPlay: onPlayEpisode == nil ? nil : playHandler(for: indexPath)
         )
         return cell
     }
@@ -308,6 +332,7 @@ private final class EpisodeTableViewCell: UITableViewCell {
     private var onToggle: ((Bool) -> Void)?
     private var onDownload: (() -> Void)?
     private var onQueueAdd: (() -> Void)?
+    private var onPlay: (() -> Void)?
     private var rowIndex: Int = 0
     private var cellAccessibilityValue: String?
 
@@ -430,11 +455,15 @@ private final class EpisodeTableViewCell: UITableViewCell {
             UIImage.SymbolConfiguration(textStyle: .body),
             forImageIn: .normal
         )
-        // Ensure a tappable target; zero-size accessory controls receive AX taps but no actions.
+        // Fixed 44×44 — a flexible >=44 width let UIStackView .fill expand the
+        // queue button across the cell center, so XCTest episodeCell_*.tap() hit
+        // "Add to queue" instead of starting playback (Library mini-player miss).
         downloadButton.translatesAutoresizingMaskIntoConstraints = false
+        downloadButton.setContentHuggingPriority(.required, for: .horizontal)
+        downloadButton.setContentCompressionResistancePriority(.required, for: .horizontal)
         NSLayoutConstraint.activate([
-            downloadButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            downloadButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            downloadButton.widthAnchor.constraint(equalToConstant: 44),
+            downloadButton.heightAnchor.constraint(equalToConstant: 44),
         ])
 
         queueAddButton.addTarget(self, action: #selector(queueAddTapped), for: .touchUpInside)
@@ -446,9 +475,11 @@ private final class EpisodeTableViewCell: UITableViewCell {
             forImageIn: .normal
         )
         queueAddButton.translatesAutoresizingMaskIntoConstraints = false
+        queueAddButton.setContentHuggingPriority(.required, for: .horizontal)
+        queueAddButton.setContentCompressionResistancePriority(.required, for: .horizontal)
         NSLayoutConstraint.activate([
-            queueAddButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            queueAddButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            queueAddButton.widthAnchor.constraint(equalToConstant: 44),
+            queueAddButton.heightAnchor.constraint(equalToConstant: 44),
         ])
 
         cleaningSwitch.isAccessibilityElement = true
@@ -456,6 +487,7 @@ private final class EpisodeTableViewCell: UITableViewCell {
         accessoryStack.axis = .horizontal
         accessoryStack.spacing = 8
         accessoryStack.alignment = .center
+        accessoryStack.distribution = .fill
         accessoryStack.addArrangedSubview(queueAddButton)
         accessoryStack.addArrangedSubview(downloadButton)
         accessoryStack.addArrangedSubview(cleaningSwitch)
@@ -484,6 +516,10 @@ private final class EpisodeTableViewCell: UITableViewCell {
         contentView.bringSubviewToFront(accessoryStack)
 
         cleaningSwitch.addTarget(self, action: #selector(switchChanged), for: .valueChanged)
+        let playTap = UITapGestureRecognizer(target: self, action: #selector(playTapped))
+        playTap.cancelsTouchesInView = false
+        textStack.isUserInteractionEnabled = true
+        textStack.addGestureRecognizer(playTap)
         // Baseline AX children so switches/buttons stay queryable before any
         // progress/badge host is published.
         updateAccessibilityElements(
@@ -501,11 +537,13 @@ private final class EpisodeTableViewCell: UITableViewCell {
         isQueued: Bool,
         onToggle: @escaping (Bool) -> Void,
         onDownload: @escaping () -> Void,
-        onQueueAdd: @escaping () -> Void
+        onQueueAdd: @escaping () -> Void,
+        onPlay: (() -> Void)? = nil
     ) {
         self.onToggle = onToggle
         self.onDownload = onDownload
         self.onQueueAdd = onQueueAdd
+        self.onPlay = onPlay
         self.rowIndex = index
 
         titleLabel.text = episode.title
@@ -528,6 +566,21 @@ private final class EpisodeTableViewCell: UITableViewCell {
         accessibilityIdentifier = "episodeCell_\(index)"
         accessibilityLabel = episode.title
         cellAccessibilityValue = EpisodeListFormatting.iso8601String(from: episode.pubDate)
+        // When play is wired (Library shell), expose the cell as an activatable
+        // element so XCTest `episodeCell_*`.tap() starts playback. Hide accessory
+        // AX children so they are not preferred over the cell hit target.
+        if onPlay != nil {
+            isAccessibilityElement = true
+            accessibilityTraits = .button
+            accessibilityElements = nil
+            contentView.accessibilityElements = nil
+            accessoryStack.accessibilityElementsHidden = true
+            queueAddButton.isAccessibilityElement = false
+            downloadButton.isAccessibilityElement = false
+            cleaningSwitch.isAccessibilityElement = false
+        } else {
+            accessoryStack.accessibilityElementsHidden = false
+        }
 
         titleLabel.isAccessibilityElement = false
         dateLabel.isAccessibilityElement = false
@@ -655,6 +708,19 @@ private final class EpisodeTableViewCell: UITableViewCell {
         showsDownloadProgress: Bool,
         showsBadge: Bool
     ) {
+        // Library play path exposes the whole cell for XCTest episode taps.
+        if onPlay != nil {
+            isAccessibilityElement = true
+            accessibilityTraits.insert(.button)
+            accessibilityElements = nil
+            contentView.accessibilityElements = nil
+            accessoryStack.accessibilityElementsHidden = true
+            queueAddButton.isAccessibilityElement = false
+            downloadButton.isAccessibilityElement = false
+            cleaningSwitch.isAccessibilityElement = false
+            return
+        }
+        accessoryStack.accessibilityElementsHidden = false
         // Publish AX children on the *cell* (not contentView). After Slice 22 moved
         // accessories into contentView, assigning only progress/badge to
         // `contentView.accessibilityElements` left `analysisProgress` /
@@ -690,6 +756,36 @@ private final class EpisodeTableViewCell: UITableViewCell {
 
     @objc private func queueAddTapped() {
         onQueueAdd?()
+    }
+
+    @objc private func playTapped() {
+        onPlay?()
+    }
+
+    override func accessibilityActivate() -> Bool {
+        if let onPlay {
+            onPlay()
+            return true
+        }
+        return super.accessibilityActivate()
+    }
+
+    /// Keep accessory 44pt controls tappable; route body taps to play when wired.
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        guard onPlay != nil else {
+            return super.hitTest(point, with: event)
+        }
+        let accessoryPoint = convert(point, to: accessoryStack)
+        if accessoryStack.bounds.contains(accessoryPoint),
+           let accessoryHit = accessoryStack.hitTest(accessoryPoint, with: event) {
+            return accessoryHit
+        }
+        let textPoint = convert(point, to: textStack)
+        if textStack.bounds.contains(textPoint) {
+            return textStack
+        }
+        // Cell-center taps that miss textStack still start playback (Library AC4).
+        return textStack
     }
 }
 

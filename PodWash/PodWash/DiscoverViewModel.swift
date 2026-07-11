@@ -48,6 +48,9 @@ final class DiscoverViewModel {
         self.searchDebounceNanoseconds = searchDebounceNanoseconds
     }
 
+    // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION.
+    nonisolated deinit {}
+
     func loadPopular() async {
         loadPhase = .loading
         do {

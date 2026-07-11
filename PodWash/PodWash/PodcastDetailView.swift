@@ -12,6 +12,8 @@ struct PodcastDetailView: View {
     @Bindable var analysisViewModel: AnalysisUIViewModel
     var downloadManager: DownloadManager
     var queueStore: QueueStore
+    /// Slice 23 — episode row tap starts playback in the app shell (nil in exclusive fixtures).
+    var onPlayEpisode: ((Episode) -> Void)? = nil
     @State private var queueRevision = 0
 
     var body: some View {
@@ -53,7 +55,8 @@ struct PodcastDetailView: View {
                 analysisViewModel: analysisViewModel,
                 downloadManager: downloadManager,
                 queueStore: queueStore,
-                onQueueChanged: { queueRevision += 1 }
+                onQueueChanged: { queueRevision += 1 },
+                onPlayEpisode: onPlayEpisode
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

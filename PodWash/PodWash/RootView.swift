@@ -2,8 +2,7 @@
 //  RootView.swift
 //  PodWash
 //
-//  Slice 03/06/09/13/19/22 — Routes fixture-mode UI tests to player, feed, settings,
-//  skip-override, or Discover shells.
+//  Slice 03/06/09/13/19/22/23 — Routes fixture-mode UI tests and production AppShellView.
 //
 
 import SwiftUI
@@ -19,6 +18,7 @@ struct RootView: View {
     @State private var queueStore: QueueStore?
     @State private var fixtureSettingsStore: SettingsStore?
     @State private var discoverViewModel: DiscoverViewModel?
+    @State private var appShellModel: AppShellModel?
 
     init(
         persistence: PersistenceController,
@@ -67,14 +67,19 @@ struct RootView: View {
                 }
             } else if FixtureDiscover.isEnabled {
                 if let discoverViewModel {
-                    DiscoverView(viewModel: discoverViewModel)
+                    NavigationStack {
+                        DiscoverView(viewModel: discoverViewModel)
+                    }
                 } else {
                     ProgressView()
                         .accessibilityIdentifier("discover.loading")
                         .accessibilityLabel("Loading discover")
                 }
+            } else if let appShellModel {
+                AppShellView(model: appShellModel)
             } else {
-                ContentView()
+                ProgressView()
+                    .accessibilityIdentifier("shell.loading")
             }
         }
         .task {
@@ -83,6 +88,7 @@ struct RootView: View {
             await loadFixtureAudioIfNeeded()
             await loadFixtureFeedIfNeeded()
             loadFixtureDiscoverIfNeeded()
+            loadAppShellIfNeeded()
         }
     }
 
@@ -167,5 +173,24 @@ struct RootView: View {
             parser: FixtureDiscover.makeParser(),
             store: store
         )
+    }
+
+    private func loadAppShellIfNeeded() {
+        guard !FixtureSkipOverride.isEnabled,
+              !FixtureSettings.isEnabled,
+              !FixtureAudio.isEnabled,
+              !(FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch),
+              !FixtureDiscover.isEnabled
+        else { return }
+        guard appShellModel == nil else { return }
+
+        let model = AppShellModel(persistence: persistence, remoteCommands: remoteCommands)
+        // Seed/clear via the shell's store so LibraryViewModel reads the same context rows.
+        if FixtureLibrary.isEnabled {
+            try? FixtureLibrary.prepareSeededStore(model.podcastStore)
+        } else if FixtureLibrary.isEmptyEnabled {
+            try? FixtureLibrary.prepareEmptyStore(model.podcastStore)
+        }
+        appShellModel = model
     }
 }
