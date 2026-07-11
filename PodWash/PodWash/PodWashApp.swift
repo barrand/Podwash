@@ -45,6 +45,7 @@ struct PodWashApp: App {
     var body: some Scene {
         WindowGroup {
             RootView(persistence: persistence, remoteCommands: remoteCommands)
+                .preferredColorScheme(.dark)
         }
     }
 }

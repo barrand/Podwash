@@ -47,6 +47,13 @@ struct RootView: View {
                     ProgressView()
                         .accessibilityIdentifier("settings.loading")
                 }
+            } else if FixtureBranding.isEnabled {
+                if let fixtureEngine, let fixtureSettingsStore {
+                    BrandingChromeView(engine: fixtureEngine, settingsStore: fixtureSettingsStore)
+                } else {
+                    ProgressView()
+                        .accessibilityIdentifier("playback.loading")
+                }
             } else if FixtureAudio.isEnabled {
                 if let fixtureEngine {
                     PlaybackControlsView(engine: fixtureEngine)
@@ -91,6 +98,7 @@ struct RootView: View {
         .task {
             await loadFixtureSkipOverrideIfNeeded()
             loadFixtureSettingsIfNeeded()
+            await loadFixtureBrandingIfNeeded()
             await loadFixtureAudioIfNeeded()
             await loadFixtureFeedIfNeeded()
             loadFixtureDiscoverIfNeeded()
@@ -119,6 +127,22 @@ struct RootView: View {
         guard FixtureSettings.isEnabled, fixtureSettingsStore == nil else { return }
         FixtureSettings.prepareFreshDefaults()
         fixtureSettingsStore = SettingsStore()
+    }
+
+    private func loadFixtureBrandingIfNeeded() async {
+        guard FixtureBranding.isEnabled else { return }
+        if fixtureSettingsStore == nil {
+            fixtureSettingsStore = SettingsStore()
+        }
+        guard fixtureEngine == nil else { return }
+        guard let url = FixtureAudio.bundledURL() else { return }
+        let engine = PlaybackEngine(
+            url: url,
+            title: FixtureAudio.fixtureTitle,
+            artist: FixtureAudio.fixtureArtist
+        )
+        fixtureEngine = engine
+        remoteCommands.bind(engine)
     }
 
     private func loadFixtureAudioIfNeeded() async {
@@ -187,6 +211,7 @@ struct RootView: View {
     private func loadAppShellIfNeeded() {
         guard !FixtureSkipOverride.isEnabled,
               !FixtureSettings.isEnabled,
+              !FixtureBranding.isEnabled,
               !FixtureAudio.isEnabled,
               !(FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch),
               !FixtureDiscover.isEnabled

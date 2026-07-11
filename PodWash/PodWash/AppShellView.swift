@@ -67,6 +67,14 @@ struct AppShellView: View {
                 .accessibilityLabel("Discover")
                 .accessibilityHint("Search and subscribe to podcasts.")
         }
+        .background(BrandTheme.surface)
+        .background {
+            Color.clear
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier("themePrimarySurface")
+                .accessibilityLabel("Brand surface")
+                .accessibilityValue("1")
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if model.isMiniPlayerVisible, let engine = model.engine {
                 MiniPlayerBar(
@@ -135,7 +143,6 @@ struct AppShellView: View {
     private var libraryTab: some View {
         NavigationStack {
             LibraryView(viewModel: libraryViewModel, onDiscover: { selectedTab = .discover })
-                .navigationTitle("Library")
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(for: PodcastSummary.self) { summary in
                     LibraryPodcastDetailView(model: model, summary: summary)
@@ -144,7 +151,15 @@ struct AppShellView: View {
                     SettingsView(store: model.settingsStore)
                 }
                 // Reserve trailing nav-bar space so the overlay gear aligns with chrome.
+                // Brand wordmark replaces literal "Library" nav title (slice-21-ux.md).
                 .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        Text(BrandTheme.approvedDisplayName)
+                            .font(.headline)
+                            .foregroundStyle(BrandTheme.onSurface)
+                            .accessibilityIdentifier("brandWordmark")
+                            .accessibilityLabel(BrandTheme.approvedDisplayName)
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Color.clear
                             .frame(width: 44, height: 44)

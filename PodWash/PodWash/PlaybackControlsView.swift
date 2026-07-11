@@ -40,6 +40,7 @@ struct PlaybackControlsView: View {
                     Button(action: togglePlayPause) {
                         Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
                             .font(.system(size: 56))
+                            .foregroundStyle(BrandTheme.primary)
                     }
                     .accessibilityIdentifier("playback.playPause")
                     .accessibilityLabel(isPlaying ? "Pause" : "Play")
@@ -52,6 +53,14 @@ struct PlaybackControlsView: View {
                     .accessibilityIdentifier("playback.seekForward15")
                     .accessibilityLabel("Seek forward 15 seconds")
                 }
+                // Brand accent sentinel (ADR-019 §4) — sibling of transport row; ids unchanged.
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityIdentifier("themePrimaryAccent")
+                    .accessibilityLabel("Brand primary accent")
+                    .accessibilityValue("brandPrimary")
+                    .allowsHitTesting(false)
 
                 HStack(spacing: 24) {
                     Button(action: { engine.cycleRate() }) {

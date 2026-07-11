@@ -27,6 +27,7 @@ struct EpisodeListView: View {
             onQueueChanged: onQueueChanged,
             onPlayEpisode: onPlayEpisode
         )
+        .background(BrandTheme.surface)
     }
 }
 
