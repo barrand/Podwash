@@ -253,15 +253,16 @@ across those retries.
 
 ### Self-heal (Medic)
 
-`scripts/slice-loop.sh --self-heal` routes through
-[`scripts/forge_supervisor.py`](../scripts/forge_supervisor.py). On exit **5**
-(thrash) or a **repeated** exit **6** (one free infra retry first), the Medic
-runs forge-fix diagnose → critic rubric → scripts-only implement, then a
-fail-before/pass-after regression canary and the factory unit suite. Green heals
-commit (`forge: harden …`) and resume `slice_loop` in a fresh process.
+`scripts/slice-loop.sh` routes through
+[`scripts/forge_supervisor.py`](../scripts/forge_supervisor.py) with **Medic on
+by default**. On exit **5** (thrash) or a **repeated** exit **6** (one free infra
+retry first), the Medic runs forge-fix diagnose → critic rubric → scripts-only
+implement, then a fail-before/pass-after regression canary and the factory unit
+suite. Green heals commit (`forge: harden …`) and resume `slice_loop` in a fresh
+process.
 
-Default is **off**. Flags: `--medic-no-push`, `--medic-no-commit`. See
-[`docs/slice-pipeline.md`](slice-pipeline.md) § Medic.
+Opt out: `--no-self-heal`. Flags: `--medic-no-push` (commit heal, skip push),
+`--medic-no-commit`. See [`docs/slice-pipeline.md`](slice-pipeline.md) § Medic.
 
 ### Notes and limits
 

@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 16 |
 | **Title** | Beep/quack overlay |
-| **Status** | Ready |
+| **Status** | Done |
 | **Crux** | Overlay start/stop events during mute intervals align with cached interval boundaries within **±50 ms** on a pinned local fixture — without re-encoding the episode (ADR-000 §7 sync problem; Architect spike required before QA test spec). |
 
 ## PRD / spec references

@@ -292,12 +292,13 @@ bridge-close crashes). Architect may run spike-scoped
 
 ## Medic (self-heal)
 
-Optional supervisor around the loop — **does not** live inside `slice_loop.py`
-(heals must reload in a fresh process).
+Supervisor around the loop — **on by default**. Opt out with `--no-self-heal`.
+Heals reload in a fresh `slice_loop` process (not in-process).
 
 ```bash
-scripts/slice-loop.sh --self-heal --max 1
-scripts/slice-loop.sh --self-heal --medic-no-push   # commit heal, skip push
+scripts/slice-loop.sh --max 1                 # Medic on (default)
+scripts/slice-loop.sh --medic-no-push --max 1 # heal + commit, skip push
+scripts/slice-loop.sh --no-self-heal --max 1  # plain loop, no Medic
 ```
 
 | Concern | Owner |
@@ -320,9 +321,12 @@ critic = `composer-2.5` (`fast=false`). Never fast variants.
 **Anti-thrash:** one heal attempt per halt signature; max 2 per slice / 3 per
 session. A recurring signature after a heal means the fix did not stick → human.
 
-Default `--self-heal` is **off** until trusted. Manual
-[`.cursor/skills/forge-fix/SKILL.md`](../.cursor/skills/forge-fix/SKILL.md)
-remains for attended post-mortems.
+`--medic-no-push`: Medic still commits the harden locally; skips `git push` so
+you can review before the remote updates. `--medic-no-commit`: leave the dirty
+tree (no commit either).
+
+Manual [`.cursor/skills/forge-fix/SKILL.md`](../.cursor/skills/forge-fix/SKILL.md)
+remains for attended post-mortems when Medic refuses.
 
 ## Unit tests
 
@@ -333,11 +337,11 @@ python3 -m unittest scripts.test_factory_v3 scripts.test_factory_p1 \
   scripts.test_slice_loop_progress scripts.test_failure_packet \
   scripts.test_forge_medic scripts.test_forge_supervisor -q
 ./scripts/test-verify-tiers.sh
-scripts/slice-loop.sh --orchestrator pipeline --max 1   # unattended default
-scripts/slice-loop.sh --self-heal --max 1               # optional Medic supervisor
+scripts/slice-loop.sh --orchestrator pipeline --max 1   # unattended (Medic on)
+scripts/slice-loop.sh --no-self-heal --max 1            # plain loop, no Medic
 ```
 
 **Factory v3 landed:** Mechanic (no role routing), unified `run_fix_cycle`,
 progress-based stop, UITest verify retries dropped, stress-run 3×, test/ADR diff
 reviews, commit split `fix tests` / `fix app` / `fix docs`. Phase 3 (agent
-resume) deferred. **Medic supervisor** landed behind `--self-heal`.
+resume) deferred. **Medic supervisor** is on by default (`--no-self-heal` to opt out).

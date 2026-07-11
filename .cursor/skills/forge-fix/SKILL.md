@@ -15,12 +15,12 @@ stopped, and harden the Forge so the next run is clearer and more robust.
 
 ## Automated path (Medic)
 
-Unattended equivalent: `scripts/slice-loop.sh --self-heal`. The Medic supervisor
-(`scripts/forge_supervisor.py` + `scripts/forge_medic.py`) embeds this workflow
-(structured diagnose JSON → critic rubric → scripts-only implement → regression
-canary → factory suite). Prefer Medic for routine thrash/infra heals; use this
-skill attended when Medic refuses (`lane=test`, critic block, denylist, canary
-fail) or you want a human-led post-mortem.
+Unattended equivalent: `scripts/slice-loop.sh` (Medic **on by default**). The
+Medic supervisor (`scripts/forge_supervisor.py` + `scripts/forge_medic.py`) embeds
+this workflow (structured diagnose JSON → critic rubric → scripts-only implement
+→ regression canary → factory suite). Prefer Medic for routine thrash/infra heals;
+use this skill attended when Medic refuses (`lane=test`, critic block, denylist,
+canary fail) or you want a human-led post-mortem. Opt out: `--no-self-heal`.
 
 Reports land in `docs/forge/medic-reports/`. Ledger:
 `build/test-results/medic-ledger.jsonl`.

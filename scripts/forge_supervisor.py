@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Forge supervisor — optional self-heal wrapper around slice_loop.py.
+"""Forge supervisor — self-heal wrapper around slice_loop.py (default on).
 
 Runs ``slice_loop.py`` as a subprocess so medic patches reload on resume.
 Thin by design: exit dispatch, budgets, invoke ``forge_medic.run_medic_heal``.
 
 Usage:
-  scripts/slice-loop.sh --self-heal …
-  python3 scripts/forge_supervisor.py --self-heal --max 1
+  scripts/slice-loop.sh …                 # Medic on by default
+  scripts/slice-loop.sh --no-self-heal …  # plain slice_loop, no Medic
+  scripts/slice-loop.sh --medic-no-push   # heal + commit, skip push
 """
 
 from __future__ import annotations
@@ -35,9 +36,13 @@ def log(msg: str) -> None:
 
 
 def strip_supervisor_args(argv: Sequence[str]) -> tuple[list[str], dict[str, bool]]:
-    """Remove supervisor-only flags; return (loop_argv, flags)."""
+    """Remove supervisor-only flags; return (loop_argv, flags).
+
+    Self-heal defaults **on**. ``--no-self-heal`` opts out. ``--self-heal`` is
+    accepted as an explicit no-op for older docs/scripts.
+    """
     flags = {
-        "self_heal": False,
+        "self_heal": True,
         "medic_no_push": False,
         "medic_no_commit": False,
     }
@@ -45,6 +50,9 @@ def strip_supervisor_args(argv: Sequence[str]) -> tuple[list[str], dict[str, boo
     for arg in argv:
         if arg == "--self-heal":
             flags["self_heal"] = True
+            continue
+        if arg == "--no-self-heal":
+            flags["self_heal"] = False
             continue
         if arg == "--medic-no-push":
             flags["medic_no_push"] = True
@@ -105,7 +113,6 @@ def run_medic(
         do_push=do_push,
         session_heal_count=session_heal_count,
     )
-    new_count = session_heal_count + (1 if result.outcome != "signature_repeat" else 0)
     # Count only real heal attempts that burned budget
     if result.outcome in (
         "healed",
@@ -139,7 +146,6 @@ def supervisor_main(argv: Sequence[str] | None = None) -> int:
     loop_argv, flags = strip_supervisor_args(argv)
 
     if not flags["self_heal"]:
-        # Passthrough without heal (caller should normally use slice_loop)
         return run_slice_loop(loop_argv)
 
     # Parse known dry-run early — no medic on dry-run
@@ -199,30 +205,33 @@ def supervisor_main(argv: Sequence[str] | None = None) -> int:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Forge supervisor — slice_loop with optional Medic self-heal",
+        description="Forge supervisor — slice_loop with Medic self-heal (default on)",
     )
     p.add_argument(
         "--self-heal",
         action="store_true",
-        help="on exit 5/6, run Medic heal then resume (default off when using slice_loop directly)",
+        help="explicit Medic on (default; kept for older scripts)",
+    )
+    p.add_argument(
+        "--no-self-heal",
+        action="store_true",
+        help="disable Medic — plain slice_loop only",
     )
     p.add_argument(
         "--medic-no-push",
         action="store_true",
-        help="medic commits but does not push",
+        help="medic commits the heal locally but does not git push",
     )
     p.add_argument(
         "--medic-no-commit",
         action="store_true",
         help="medic leaves a dirty tree (no commit/push)",
     )
-    # Remaining args forwarded to slice_loop — documented there
     p.add_argument("loop_args", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
     return p
 
 
 if __name__ == "__main__":
-    # Allow `python forge_supervisor.py --help` but forward unknown to loop
     if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
         build_arg_parser().print_help()
         print(

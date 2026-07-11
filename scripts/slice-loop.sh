@@ -1,19 +1,20 @@
 #!/bin/sh
 # PodWash slice loop wrapper — Phase 2 of the slice runner.
 #
-# Sets up an isolated venv with the Cursor SDK, then runs scripts/slice_loop.py.
-# All arguments are passed through to the Python driver.
+# Sets up an isolated venv with the Cursor SDK, then runs the Forge supervisor
+# (Medic self-heal on by default) → scripts/slice_loop.py.
+# All arguments are passed through (supervisor strips its own flags).
 #
 # Usage:
-#   scripts/slice-loop.sh                 # run the queue until it stops
+#   scripts/slice-loop.sh                 # run the queue (Medic on by default)
 #   scripts/slice-loop.sh --dry-run       # show the next decision; spawns no agent
 #   scripts/slice-loop.sh --max 3         # run at most 3 slices this session
 #   scripts/slice-loop.sh --verbose       # also stream full coordinator text
 #   scripts/slice-loop.sh --heartbeat 60  # idle ping every 60s (0 to disable)
 #   scripts/slice-loop.sh --stream-timeout 0  # disable bridge stream idle cap (default)
 #   scripts/slice-loop.sh --max-red-verifies 2  # halt after N red verifies (default 2)
-#   scripts/slice-loop.sh --self-heal     # on exit 5/6, Medic heal then resume (default off)
-#   scripts/slice-loop.sh --self-heal --medic-no-push  # heal + commit, skip push
+#   scripts/slice-loop.sh --no-self-heal  # plain slice_loop — no Medic on halt
+#   scripts/slice-loop.sh --medic-no-push # Medic commits heal locally, skips push
 #
 # Auth (non-dry-run): export CURSOR_API_KEY=cursor_...
 #
@@ -28,19 +29,9 @@ set -eu
 REPO_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$REPO_ROOT"
 
-LOOP_PY="$REPO_ROOT/scripts/slice_loop.py"
 SUPERVISOR_PY="$REPO_ROOT/scripts/forge_supervisor.py"
 REQS="$REPO_ROOT/scripts/slice-loop-requirements.txt"
 VENV="$REPO_ROOT/build/.slice-loop-venv"
-
-# --self-heal routes through the Medic supervisor (subprocess loop + heal).
-SELF_HEAL=0
-for arg in "$@"; do
-    if [ "$arg" = "--self-heal" ]; then
-        SELF_HEAL=1
-        break
-    fi
-done
 
 # Pick a Python >= 3.10 (cursor-sdk has no wheels for 3.9).
 find_python310() {
@@ -65,13 +56,10 @@ find_python310() {
     return 1
 }
 
-# --dry-run imports no SDK — any python3 is fine.
+# --dry-run imports no SDK — any python3 is fine (still via supervisor).
 for arg in "$@"; do
     if [ "$arg" = "--dry-run" ]; then
-        if [ "$SELF_HEAL" -eq 1 ]; then
-            exec python3 "$SUPERVISOR_PY" "$@"
-        fi
-        exec python3 "$LOOP_PY" "$@"
+        exec python3 "$SUPERVISOR_PY" "$@"
     fi
 done
 
@@ -95,7 +83,4 @@ if ! venv_ok; then
     "$VENV/bin/pip" install -q --disable-pip-version-check -r "$REQS"
 fi
 
-if [ "$SELF_HEAL" -eq 1 ]; then
-    exec "$VENV/bin/python" "$SUPERVISOR_PY" "$@"
-fi
-exec "$VENV/bin/python" "$LOOP_PY" "$@"
+exec "$VENV/bin/python" "$SUPERVISOR_PY" "$@"
