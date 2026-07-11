@@ -24,7 +24,7 @@ final class IntervalMuteSkipTests: XCTestCase {
     private let fixtureName = "sine-300hz-5s"
     private let fixtureExt = "wav"
 
-    /// Copies the bundled WAV fixture to a temp URL (mirrors PlaybackEngineTests):
+    /// Copies the bundled WAV fixture to a unique temp URL (mirrors PlaybackEngineTests):
     /// the engine plays from a file URL. Fails (never skips) if the fixture is
     /// missing so a setup gap surfaces as a red test, not a skip.
     private func fixtureURL(file: StaticString = #filePath, line: UInt = #line) -> URL {
@@ -34,16 +34,36 @@ final class IntervalMuteSkipTests: XCTestCase {
             XCTFail("Missing \(fixtureName).\(fixtureExt) in \(bundle.bundlePath)", file: file, line: line)
             return URL(fileURLWithPath: "/dev/null")
         }
+        // Unique path — shared `podwash-sine-…` temps race with other suites that
+        // remove+recopy the same name while AVPlayer still holds the file.
         let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("podwash-\(fixtureName).\(fixtureExt)")
-        try? FileManager.default.removeItem(at: tempURL)
+            .appendingPathComponent("podwash-interval-mute-\(UUID().uuidString)-\(fixtureName).\(fixtureExt)")
         do {
             try FileManager.default.copyItem(at: bundledURL, to: tempURL)
         } catch {
             XCTFail("Could not copy fixture to temp: \(error)", file: file, line: line)
             return bundledURL
         }
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: tempURL)
+        }
         return tempURL
+    }
+
+    /// Waits until the engine has loaded asset duration (item typically ready then).
+    private func waitForEngineReady(_ engine: PlaybackEngine, timeout: TimeInterval = 5) async {
+        let ready = expectation(description: "engine duration loaded")
+        let deadline = Date().addingTimeInterval(timeout)
+        func poll() {
+            engine.refreshCurrentTime()
+            if engine.duration > 0 {
+                ready.fulfill()
+            } else if Date() < deadline {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: poll)
+            }
+        }
+        poll()
+        await fulfillment(of: [ready], timeout: timeout)
     }
 
     // MARK: - AC1: scheduler consumes IntervalBuilder output directly
@@ -87,6 +107,8 @@ final class IntervalMuteSkipTests: XCTestCase {
             title: "Skip Test",
             artist: "PodWash QA"
         )
+        await waitForEngineReady(engine)
+
         let skip = CensorInterval(start: 2.0, end: 2.5, action: .skip)
         await engine.applySchedule(IntervalSchedule(intervals: [skip]))
 

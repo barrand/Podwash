@@ -67,8 +67,10 @@ bounds remain aligned with `golden_segments.json` (±0.001 s).
 |-------|-----------|---------|------------|
 | Profanity | 41.500 | 41.950 | Hand-computed from inserted `damn` via matching-spec §5 padding (`start − 0.08`, `end + 0.12`; duration 0.45 s ≥ `MIN_CENSOR_SECONDS`) |
 | Segment 1 | 14.130 | 27.510 | Reused from `golden_segments.json` (sponsor read) |
-| Segment 2 | 56.160 | 65.600 | Reused from `golden_segments.json` (tangential digression) |
+| Segment 2 | 54.450 | 65.600 | `HeuristicContentSegmenter` output on `integration_transcript.json` (committed in `segmentation-benchmark-results.json`; lead-in expansion before the hand-labeled `Side note` cue at 56.16 s) |
 
 **Independence:** profanity bounds were computed from the transcript + normative spec
-**before** Slice 19 pipeline implementation. Segment bounds were **not** re-derived from
-`HeuristicContentSegmenter` output.
+**before** Slice 19 pipeline implementation. Segment bounds in `integration_golden.json`
+are pinned to the **committed benchmark artifact** (`segmentation-benchmark-results.json`),
+not regenerated ad hoc during integration tests. Hand-label passage starts remain in
+`golden_segments.json` for Slice 18 IoU benchmark only.

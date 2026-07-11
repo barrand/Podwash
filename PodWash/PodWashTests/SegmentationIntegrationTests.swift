@@ -154,6 +154,22 @@ final class SegmentationIntegrationTests: XCTestCase {
         return (coordinator, engine)
     }
 
+    /// Waits until the engine has loaded asset duration (skip clamping depends on it).
+    private func waitForEngineReady(_ engine: PlaybackEngine, timeout: TimeInterval = 5) async {
+        let ready = expectation(description: "engine duration loaded")
+        let deadline = Date().addingTimeInterval(timeout)
+        func poll() {
+            engine.refreshCurrentTime()
+            if engine.duration > 0 {
+                ready.fulfill()
+            } else if Date() < deadline {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: poll)
+            }
+        }
+        poll()
+        await fulfillment(of: [ready], timeout: timeout)
+    }
+
     private func unrelatedIntervals(in schedule: IntervalSchedule?) -> [CensorInterval] {
         schedule?.intervals.filter { $0.source == .unrelatedContent } ?? []
     }
@@ -166,7 +182,7 @@ final class SegmentationIntegrationTests: XCTestCase {
         let episode = EpisodeIdentity(id: episodeID)
         let unrelatedEnabled = UnrelatedContentOptions(enabled: true, action: .skip)
 
-        let first = try await pipeline.analyze(
+        let first = try await pipelineSpy.analyze(
             episode: episode,
             audioURL: dummyAudioURL(),
             targetWords: targetWords,
@@ -211,7 +227,7 @@ final class SegmentationIntegrationTests: XCTestCase {
         let transcribeAfterFirst = asrSpy.transcribeCallCount
         XCTAssertEqual(transcribeAfterFirst, 0, "Injected transcript must bypass ASR on first analyze")
 
-        let second = try await pipeline.analyze(
+        let second = try await pipelineSpy.analyze(
             episode: episode,
             audioURL: dummyAudioURL(),
             targetWords: targetWords,
@@ -270,6 +286,8 @@ final class SegmentationIntegrationTests: XCTestCase {
             title: "Skip Override",
             artist: "PodWash QA"
         )
+        await waitForEngineReady(engine)
+
         let skipInterval = CensorInterval(
             start: 2.0,
             end: 5.0,
@@ -284,13 +302,18 @@ final class SegmentationIntegrationTests: XCTestCase {
 
         let skipLanded = expectation(description: "skip lands near interval end")
         var skipObserver: Any?
+        var lastObserved = 1.9
         skipObserver = engine.avPlayer.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 0.02, preferredTimescale: 600),
             queue: .main
         ) { time in
-            if time.seconds >= skipInterval.end - 0.1 {
+            let seconds = time.seconds
+            // Require a seek-past jump (not slow natural playback to EOF on the 5 s clip).
+            let jumpedPastSkip = seconds - lastObserved > 1.5
+            if jumpedPastSkip && seconds >= skipInterval.end - 0.1 {
                 skipLanded.fulfill()
             }
+            lastObserved = seconds
         }
         addTeardownBlock { [engine] in
             if let skipObserver { engine.avPlayer.removeTimeObserver(skipObserver) }
@@ -298,6 +321,7 @@ final class SegmentationIntegrationTests: XCTestCase {
 
         engine.play()
         await fulfillment(of: [skipLanded], timeout: 10)
+        engine.refreshCurrentTime()
 
         XCTAssertGreaterThanOrEqual(
             engine.currentTime, skipInterval.end - 0.1,
@@ -326,6 +350,7 @@ final class SegmentationIntegrationTests: XCTestCase {
 
         engine.overrideUnrelatedContentSkip(skipInterval)
         await fulfillment(of: [overrideLanded], timeout: 2.0)
+        engine.refreshCurrentTime()
 
         XCTAssertGreaterThanOrEqual(engine.currentTime, 1.95)
         XCTAssertLessThanOrEqual(engine.currentTime, 2.05)
