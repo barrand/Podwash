@@ -3,7 +3,7 @@
 //  PodWashTests
 //
 //  Slice 18 — Content segmentation spike (FAST / Done gate). Validates the committed
-//  benchmark-results.json execution-evidence artifact against the independent hand-golden.
+//  segmentation-benchmark-results.json execution-evidence artifact against the independent hand-golden.
 //  NO live segmenter inference on the fast path → deterministic + CI-safe.
 //  See docs/adr/012-content-segmentation-approach.md §3.5.
 //
@@ -17,6 +17,7 @@ final class SegmentationSpikeTests: XCTestCase {
     private let recallFloor = 0.500
     private let iouThreshold = 0.5
     private let adrNumericTolerance = 0.001
+    private let benchmarkArtifactName = "segmentation-benchmark-results"
 
     // MARK: - Path helpers
 
@@ -55,7 +56,7 @@ final class SegmentationSpikeTests: XCTestCase {
     }
 
     private func loadBenchmark(file: StaticString = #filePath, line: UInt = #line) throws -> SegmentationBenchmark {
-        let url = try segmentationFixtureURL("benchmark-results", "json", file: file, line: line)
+        let url = try segmentationFixtureURL(benchmarkArtifactName, "json", file: file, line: line)
         let data = try Data(contentsOf: url)
         return try JSONDecoder().decode(SegmentationBenchmark.self, from: data)
     }
@@ -72,18 +73,18 @@ final class SegmentationSpikeTests: XCTestCase {
 
         let url: URL
         do {
-            url = try segmentationFixtureURL("benchmark-results", "json")
+            url = try segmentationFixtureURL(benchmarkArtifactName, "json")
         } catch {
-            XCTFail("benchmark-results.json is missing — execution evidence absent. \(hint)")
+            XCTFail("\(benchmarkArtifactName).json is missing — execution evidence absent. \(hint)")
             return
         }
 
         guard let data = try? Data(contentsOf: url) else {
-            XCTFail("benchmark-results.json is unreadable at \(url.path). \(hint)")
+            XCTFail("\(benchmarkArtifactName).json is unreadable at \(url.path). \(hint)")
             return
         }
         guard let benchmark = try? JSONDecoder().decode(SegmentationBenchmark.self, from: data) else {
-            XCTFail("benchmark-results.json is unparsable as SegmentationBenchmark. \(hint)")
+            XCTFail("\(benchmarkArtifactName).json is unparsable as SegmentationBenchmark. \(hint)")
             return
         }
         XCTAssertGreaterThan(benchmark.segmentCount, 0, "benchmark segmentCount == 0 — spike produced no segments. \(hint)")

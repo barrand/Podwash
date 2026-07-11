@@ -31,13 +31,13 @@ Positive-class ranges only (`[{ "start", "end" }]`). Bounds snap to the first/la
 
 - Labels were assigned from the **scripted dialogue** before any `HeuristicContentSegmenter` (or other candidate) existed.
 - Golden ranges were **not** tuned to segmenter output.
-- `benchmark-results.json` is **execution evidence** produced later by `PodWashSlowTests/SegmentationBenchmarkTests` running production `HeuristicContentSegmenter` on `spike_transcript.json`; fast tests recompute IoU precision/recall from that artifact vs this golden file.
+- `segmentation-benchmark-results.json` is **execution evidence** produced later by `PodWashSlowTests/SegmentationBenchmarkTests` running production `HeuristicContentSegmenter` on `spike_transcript.json`; fast tests recompute IoU precision/recall from that artifact vs this golden file. (Distinct filename avoids colliding with `Fixtures/asr/benchmark-results.json` in the flat test bundle.)
 
-## Regenerating `benchmark-results.json`
+## Regenerating `segmentation-benchmark-results.json`
 
 ```bash
 PODWASH_SCHEME=PodWashSlowTests VERIFY_ALLOW_SKIPS=1 scripts/verify.sh \
   -only-testing:PodWashSlowTests/SegmentationBenchmarkTests
 ```
 
-Commit the updated `benchmark-results.json` after a green regeneration run.
+Commit the updated `segmentation-benchmark-results.json` after a green regeneration run.

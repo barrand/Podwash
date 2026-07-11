@@ -4,7 +4,7 @@
 //
 //  Slice 18 — Content segmentation spike (SLOW / nightly only — NOT a Done gate).
 //  Runs production HeuristicContentSegmenter on spike_transcript.json, regenerates
-//  benchmark-results.json (the AC2 execution evidence), and asserts live P/R still
+//  segmentation-benchmark-results.json (the AC2 execution evidence), and asserts live P/R still
 //  meet thresholds. Excluded from the default fast verify.sh run (scheme skipped="YES").
 //  See docs/adr/012-content-segmentation-approach.md §3.5.
 //
@@ -17,6 +17,7 @@ final class SegmentationBenchmarkTests: XCTestCase {
     private let precisionFloor = 0.700
     private let recallFloor = 0.500
     private let iouThreshold = 0.5
+    private let benchmarkArtifactName = "segmentation-benchmark-results"
 
     private var innerProjectDir: URL {
         URL(fileURLWithPath: #filePath)
@@ -79,7 +80,7 @@ final class SegmentationBenchmarkTests: XCTestCase {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(benchmark)
-        let url = segmentationFixturesDir.appendingPathComponent("benchmark-results.json")
+        let url = segmentationFixturesDir.appendingPathComponent("\(benchmarkArtifactName).json")
         try data.write(to: url, options: .atomic)
     }
 }
