@@ -55,6 +55,7 @@ struct PodcastDetailView: View {
                 queueStore: queueStore,
                 onQueueChanged: { queueRevision += 1 }
             )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 

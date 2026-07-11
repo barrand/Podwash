@@ -35,7 +35,7 @@ final class EpisodeListViewModel {
         phase = .loading
         do {
             let feed = try await parser.parse(url: feedURL)
-            try store.save(feed)
+            try store.save(feed, feedURL: feedURL)
             phase = .loaded(feed)
         } catch let error as RSSParserError {
             phase = .failed(error)
@@ -48,7 +48,7 @@ final class EpisodeListViewModel {
         phase = .loading
         do {
             let feed = try parser.parse(data: data)
-            try store.save(feed)
+            try store.save(feed, feedURL: FixtureFeed.fixtureFeedURL)
             phase = .loaded(feed)
         } catch let error as RSSParserError {
             phase = .failed(error)

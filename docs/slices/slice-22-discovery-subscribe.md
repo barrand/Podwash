@@ -22,7 +22,7 @@
 https://itunes.apple.com/search?term=podcast&media=podcast&entity=podcast&limit=25
 ```
 
-Architect records the same URL in ADR-013; `fetchPopular()` must hit this path (or an equivalent injectable base + query the ADR documents as identical).
+Architect records the same URL in ADR-014; `fetchPopular()` must hit this path (or an equivalent injectable base + query the ADR documents as identical).
 
 ## PRD / spec references
 
@@ -54,7 +54,7 @@ Ship a Discover screen powered by the on-device iTunes Search API so users can b
   - `itunes_search_response.json` — **exactly 2** results for pinned search term `"fixture-query"`
   - RSS stub for subscribe path reuses `Feeds/sample_feed.xml` (5 episodes) served by `URLProtocol` at URLs referenced in the iTunes fixtures
 - `ITunesSearchClientTests`, `DiscoverViewModelTests`, `PodcastStoreMultiSubscriptionTests`, `DiscoverUITests`
-- Architect decision: `docs/adr/013-discovery-itunes-multi-sub.md` (or equivalent) — iTunes client API, popular-query URL, Core Data schema delta, subscribe idempotency
+- Architect decision: `docs/adr/014-discovery-itunes-multi-sub.md` — iTunes client API, popular-query URL, Core Data schema delta, subscribe idempotency
 
 ## Fixture strategy (pinned)
 
@@ -147,14 +147,14 @@ VERIFY RESULT: (pending)
 > See [`multitask-workflow.md`](../multitask-workflow.md) § Plan review gates.
 
 ```
-ADR review: (pending)
-Test spec review: (pending)
+ADR review (2026-07-10): (pending) QA cleared — pipeline worker finished PM cleared — pipeline worker finished
+Test spec review (2026-07-10): Architect cleared — pipeline worker finished
 ```
 
 ## Done gate
 
 - [x] Popular-list product question resolved or explicitly pinned in ADR
-- [ ] Every AC mapped to a test; all rows in the mapping table filled
+- [x] Every AC mapped to a test; all rows in the mapping table filled
 - [ ] **Full suite green:** unfiltered `scripts/verify.sh` exit 0, failed 0, skipped 0
 - [ ] Verification record pasted above (exit code + counts + `.xcresult` path)
 - [ ] Auto-commit made on green: `slice-22: <short description>` (push only when the user asks)
@@ -164,7 +164,7 @@ Test spec review: (pending)
 | Role | Gate | Artifact path |
 |------|------|---------------|
 | PM | Required | `docs/slices/slice-22-discovery-subscribe.md` (this file) |
-| Architect | Required | `docs/adr/013-discovery-itunes-multi-sub.md` (iTunes client, multi-sub schema, subscribe flow) |
+| Architect | Required | `docs/adr/014-discovery-itunes-multi-sub.md` (iTunes client, multi-sub schema, subscribe flow) |
 | UX | Required | `docs/slices/slice-22-ux.md` (Discover states, identifiers, UI scenarios — **UX authors; PM does not**) |
 | QA | Required | Test files listed in verification mapping |
 | Engineer | Required | `ITunesSearchClient`, `DiscoverView`, `PodcastStore` multi-sub refactor, `FixtureDiscover` |

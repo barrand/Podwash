@@ -2,7 +2,7 @@
 //  PodcastStore.swift
 //  PodWash
 //
-//  Slice 11 — Core Data–backed feed/episode persistence (ADR-009 §4).
+//  Slice 11/22 — Core Data–backed multi-subscription persistence (ADR-009, ADR-014).
 //
 
 import CoreData
@@ -26,16 +26,131 @@ nonisolated final class PodcastStore: @unchecked Sendable {
         self.init(context: controller.viewContext, retaining: controller)
     }
 
+    /// Upsert by `result.feedURL`. Does not clear other subscriptions.
+    func saveSubscription(from result: PodcastSearchResult, feed: PodcastFeed) throws {
+        try upsert(
+            feed: feed,
+            feedURL: result.feedURL,
+            title: result.title,
+            artworkURL: result.artworkURL ?? feed.artworkURL,
+            collectionId: result.collectionId
+        )
+    }
+
+    /// Upsert by explicit feed URL (fixture / EpisodeListViewModel path).
+    func save(_ feed: PodcastFeed, feedURL: URL) throws {
+        try upsert(
+            feed: feed,
+            feedURL: feedURL,
+            title: feed.title,
+            artworkURL: feed.artworkURL,
+            collectionId: nil
+        )
+    }
+
+    /// Compatibility for pre–Slice 22 callers; upserts under `FixtureFeed.fixtureFeedURL`.
     func save(_ feed: PodcastFeed) throws {
+        try save(feed, feedURL: FixtureFeed.fixtureFeedURL)
+    }
+
+    var subscriptionCount: Int {
+        context.performAndWait {
+            let request = CDPodcast.fetchRequest()
+            return (try? self.context.count(for: request)) ?? 0
+        }
+    }
+
+    func allSubscriptions() -> [PodcastSummary] {
+        context.performAndWait {
+            let request = CDPodcast.fetchRequest()
+            request.sortDescriptors = [
+                NSSortDescriptor(key: "subscribedAt", ascending: true),
+                NSSortDescriptor(key: "feedURLString", ascending: true),
+            ]
+            let rows = (try? self.context.fetch(request)) ?? []
+            return rows.compactMap { podcast -> PodcastSummary? in
+                guard let feedURLString = podcast.feedURLString,
+                      let feedURL = URL(string: feedURLString),
+                      !feedURLString.isEmpty
+                else { return nil }
+                return PodcastSummary(
+                    title: podcast.title ?? "",
+                    feedURL: feedURL,
+                    artworkURL: podcast.artworkURLString.flatMap(URL.init(string:)),
+                    collectionId: podcast.collectionId.map { $0.intValue }
+                )
+            }
+        }
+    }
+
+    func subscription(forFeedURL feedURL: URL) -> PodcastFeed? {
+        context.performAndWait {
+            guard let podcast = self.fetchPodcast(feedURLString: feedURL.absoluteString) else {
+                return nil
+            }
+            return PodcastFeed(
+                title: podcast.title ?? "",
+                artworkURL: podcast.artworkURLString.flatMap(URL.init(string:)),
+                description: podcast.feedDescription,
+                episodes: self.episodes(for: podcast)
+            )
+        }
+    }
+
+    func isSubscribed(feedURL: URL) -> Bool {
+        context.performAndWait {
+            self.fetchPodcast(feedURLString: feedURL.absoluteString) != nil
+        }
+    }
+
+    func clear() throws {
         try context.performAndWait {
             try self.clearPodcastRows()
+            try self.context.save()
+        }
+    }
 
-            let podcast = CDPodcast(context: self.context)
-            podcast.title = feed.title
-            podcast.artworkURLString = feed.artworkURL?.absoluteString
+    /// Legacy single-feed read: first subscription by `allSubscriptions()` order, else nil.
+    var currentFeed: PodcastFeed? {
+        guard let summary = allSubscriptions().first else { return nil }
+        return subscription(forFeedURL: summary.feedURL)
+    }
+
+    var episodes: [Episode] {
+        currentFeed?.episodes ?? []
+    }
+
+    private func upsert(
+        feed: PodcastFeed,
+        feedURL: URL,
+        title: String,
+        artworkURL: URL?,
+        collectionId: Int?
+    ) throws {
+        try context.performAndWait {
+            let key = feedURL.absoluteString
+            let podcast: CDPodcast
+            if let existing = self.fetchPodcast(feedURLString: key) {
+                if let existingEpisodes = existing.episodes?.array as? [CDEpisode] {
+                    for row in existingEpisodes {
+                        self.context.delete(row)
+                    }
+                }
+                podcast = existing
+            } else {
+                podcast = CDPodcast(context: self.context)
+                podcast.feedURLString = key
+                podcast.subscribedAt = Date()
+                podcast.channelCleaningEnabled = false
+                podcast.channelUnrelatedContentEnabled = false
+            }
+
+            podcast.title = title
+            podcast.artworkURLString = artworkURL?.absoluteString
             podcast.feedDescription = feed.description
-            podcast.channelCleaningEnabled = false
-            podcast.channelUnrelatedContentEnabled = false
+            if let collectionId {
+                podcast.collectionId = NSNumber(value: collectionId)
+            }
 
             let ordered = NSMutableOrderedSet()
             for episode in feed.episodes {
@@ -59,31 +174,9 @@ nonisolated final class PodcastStore: @unchecked Sendable {
         }
     }
 
-    func clear() throws {
-        try context.performAndWait {
-            try self.clearPodcastRows()
-            try self.context.save()
-        }
-    }
-
-    var currentFeed: PodcastFeed? {
-        context.performAndWait {
-            guard let podcast = self.fetchPodcast() else { return nil }
-            return PodcastFeed(
-                title: podcast.title ?? "",
-                artworkURL: podcast.artworkURLString.flatMap(URL.init(string:)),
-                description: podcast.feedDescription,
-                episodes: self.episodes(for: podcast)
-            )
-        }
-    }
-
-    var episodes: [Episode] {
-        currentFeed?.episodes ?? []
-    }
-
-    private func fetchPodcast() -> CDPodcast? {
+    private func fetchPodcast(feedURLString: String) -> CDPodcast? {
         let request = CDPodcast.fetchRequest()
+        request.predicate = NSPredicate(format: "feedURLString == %@", feedURLString)
         request.fetchLimit = 1
         return try? context.fetch(request).first
     }

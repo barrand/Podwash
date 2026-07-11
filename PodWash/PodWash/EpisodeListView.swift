@@ -94,11 +94,11 @@ private final class EpisodeTableViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         tableView.register(EpisodeTableViewCell.self, forCellReuseIdentifier: EpisodeTableViewCell.reuseID)
-        // Tall enough for title + date + analysis/download progress without
-        // beginUpdates animations (those keep XCTest non-idle until after the
-        // fixture analyzing window closes, dropping `analysisProgress`).
-        tableView.rowHeight = 120
-        tableView.estimatedRowHeight = 120
+        // Fixed height tall enough for title + date + analysis/download progress.
+        // Avoid automaticDimension and beginUpdates (both can keep XCTest non-idle
+        // until after the fixture analyzing window closes, dropping `analysisProgress`).
+        tableView.rowHeight = 140
+        tableView.estimatedRowHeight = 140
         applyListAccessibility()
     }
 
@@ -420,16 +420,6 @@ private final class EpisodeTableViewCell: UITableViewCell {
             downloadProgressAccessibilityHost.heightAnchor.constraint(greaterThanOrEqualToConstant: 22),
         ])
 
-        contentView.addSubview(textStack)
-        textStack.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            textStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            textStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
-            textStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
-            textStack.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -120),
-            badgeLabel.heightAnchor.constraint(equalToConstant: 22),
-        ])
-
         downloadButton.addTarget(self, action: #selector(downloadTapped), for: .touchUpInside)
         downloadButton.isAccessibilityElement = true
         downloadButton.accessibilityTraits = .button
@@ -465,18 +455,28 @@ private final class EpisodeTableViewCell: UITableViewCell {
         accessoryStack.addArrangedSubview(downloadButton)
         accessoryStack.addArrangedSubview(cleaningSwitch)
         accessoryStack.translatesAutoresizingMaskIntoConstraints = false
-        // Size the accessory from Auto Layout so the switch keeps a real frame for
-        // XCTest taps alongside the 44×44 download button.
+        accessoryStack.setContentHuggingPriority(.required, for: .horizontal)
+        accessoryStack.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        // Pin accessories in contentView (not UITableView's accessoryView) so SwiftUI
+        // representable layout passes position controls on the trailing edge, not over titles.
+        contentView.addSubview(textStack)
+        contentView.addSubview(accessoryStack)
+        textStack.translatesAutoresizingMaskIntoConstraints = false
+        textStack.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         NSLayoutConstraint.activate([
+            textStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            textStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+            textStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
+            textStack.trailingAnchor.constraint(equalTo: accessoryStack.leadingAnchor, constant: -8),
+
+            accessoryStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            accessoryStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
             accessoryStack.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+
+            badgeLabel.heightAnchor.constraint(equalToConstant: 22),
         ])
-        let accessorySize = accessoryStack.systemLayoutSizeFitting(
-            CGSize(width: UIView.layoutFittingExpandedSize.width, height: 44),
-            withHorizontalFittingPriority: .fittingSizeLevel,
-            verticalFittingPriority: .required
-        )
-        accessoryStack.frame = CGRect(origin: .zero, size: accessorySize)
-        accessoryView = accessoryStack
+        contentView.bringSubviewToFront(accessoryStack)
 
         cleaningSwitch.addTarget(self, action: #selector(switchChanged), for: .valueChanged)
     }
@@ -643,8 +643,8 @@ private final class EpisodeTableViewCell: UITableViewCell {
         showsDownloadProgress: Bool,
         showsBadge: Bool
     ) {
-        // Keep progress/badge on contentView (same path as Slice 09 badges). Accessory
-        // controls stay on accessoryView so UIKit exposes the switch/button normally.
+        // Keep progress/badge on contentView. Accessory buttons/switch stay separate
+        // interactive elements — do not fold them into this list.
         var axChildren: [UIView] = []
         if showsDownloadProgress {
             axChildren.append(downloadProgressAccessibilityHost)

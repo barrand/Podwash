@@ -4,9 +4,17 @@
         <attribute name="artworkURLString" optional="YES" attributeType="String"/>
         <attribute name="channelCleaningEnabled" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="channelUnrelatedContentEnabled" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="collectionId" optional="YES" attributeType="Integer 64" usesScalarValueType="NO"/>
         <attribute name="feedDescription" optional="YES" attributeType="String"/>
+        <attribute name="feedURLString" attributeType="String" defaultValueString=""/>
+        <attribute name="subscribedAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
         <attribute name="title" attributeType="String" defaultValueString=""/>
         <relationship name="episodes" optional="YES" toMany="YES" deletionRule="Cascade" ordered="YES" destinationEntity="CDEpisode" inverseName="podcast" inverseEntity="CDEpisode"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="feedURLString"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
     </entity>
     <entity name="CDEpisode" representedClassName="CDEpisode" syncable="YES" codeGenerationType="class">
         <attribute name="artworkURLString" optional="YES" attributeType="String"/>

@@ -1,0 +1,21 @@
+{
+  "resultCount": 2,
+  "results": [
+    {
+      "wrapperType": "track",
+      "kind": "podcast",
+      "collectionId": 20001,
+      "collectionName": "Fixture Search Delta",
+      "feedUrl": "https://fixture.podwash.tests/feeds/search-delta",
+      "artworkUrl600": "https://fixture.podwash.tests/artwork/delta.png"
+    },
+    {
+      "wrapperType": "track",
+      "kind": "podcast",
+      "collectionId": 20002,
+      "collectionName": "Fixture Search Echo",
+      "feedUrl": "https://fixture.podwash.tests/feeds/search-echo",
+      "artworkUrl600": "https://fixture.podwash.tests/artwork/echo.png"
+    }
+  ]
+}

@@ -30,3 +30,4 @@ from the relevant slice file's Role artifacts table.
 | [011](011-remote-commands-background-audio.md) | Remote commands + background audio: MPRemoteCommandCenter doubles, spokenAudio session, UIBackgroundModes | Accepted |
 | [012](012-content-segmentation-approach.md) | Content segmentation approach: heuristic cue scoring (`heuristic-cue-v1`) | Accepted |
 | [013](013-segmentation-integration.md) | Segmentation integration: pipeline merge, cache, independent actions, skip override | Accepted |
+| [014](014-discovery-itunes-multi-sub.md) | Discovery: iTunes Search client + multi-subscription store | Accepted |

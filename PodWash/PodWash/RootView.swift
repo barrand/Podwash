@@ -2,8 +2,8 @@
 //  RootView.swift
 //  PodWash
 //
-//  Slice 03/06/09/13/19 — Routes fixture-mode UI tests to player, feed, settings,
-//  or skip-override shells.
+//  Slice 03/06/09/13/19/22 — Routes fixture-mode UI tests to player, feed, settings,
+//  skip-override, or Discover shells.
 //
 
 import SwiftUI
@@ -18,6 +18,7 @@ struct RootView: View {
     @State private var fixtureDownloadManager: DownloadManager?
     @State private var queueStore: QueueStore?
     @State private var fixtureSettingsStore: SettingsStore?
+    @State private var discoverViewModel: DiscoverViewModel?
 
     init(
         persistence: PersistenceController,
@@ -64,6 +65,14 @@ struct RootView: View {
                     ProgressView()
                         .accessibilityIdentifier("feed.loading")
                 }
+            } else if FixtureDiscover.isEnabled {
+                if let discoverViewModel {
+                    DiscoverView(viewModel: discoverViewModel)
+                } else {
+                    ProgressView()
+                        .accessibilityIdentifier("discover.loading")
+                        .accessibilityLabel("Loading discover")
+                }
             } else {
                 ContentView()
             }
@@ -73,6 +82,7 @@ struct RootView: View {
             loadFixtureSettingsIfNeeded()
             await loadFixtureAudioIfNeeded()
             await loadFixtureFeedIfNeeded()
+            loadFixtureDiscoverIfNeeded()
         }
     }
 
@@ -143,5 +153,15 @@ struct RootView: View {
 
         guard let data = FixtureFeed.bundledData() else { return }
         await feedViewModel.load(data: data)
+    }
+
+    private func loadFixtureDiscoverIfNeeded() {
+        guard FixtureDiscover.isEnabled, discoverViewModel == nil else { return }
+        let store = PodcastStore(context: persistence.viewContext)
+        discoverViewModel = DiscoverViewModel(
+            searchClient: FixtureDiscover.makeSearchClient(),
+            parser: FixtureDiscover.makeParser(),
+            store: store
+        )
     }
 }
