@@ -38,9 +38,11 @@ from fix_lanes import (
     fix_scope_for_role,
     format_attempt_note,
     git_delta,
+    git_delta_with_fingerprints,
     opposite_role,
     parse_handoff_line,
     resolve_handoff_flip,
+    snapshot_path_fingerprints,
 )
 from factory_events import EventLog, parse_summary_line
 from factory_narrator import (
@@ -2716,6 +2718,7 @@ def run_fix_loop(
             )
         progress = progress_factory(role, agent) if progress_factory else None
         baseline = set(git_paths_changed(repo_root))
+        baseline_fps = snapshot_path_fingerprints(repo_root, baseline)
         ok, status = run_worker(
             client,
             role=role,
@@ -2726,7 +2729,12 @@ def run_fix_loop(
             progress=progress,
         )
         after = set(git_paths_changed(repo_root))
-        delta = git_delta(baseline, after)
+        delta = git_delta_with_fingerprints(
+            baseline,
+            after,
+            repo_root=repo_root,
+            fingerprints_before=baseline_fps,
+        )
         in_scope = filter_paths_for_role(delta, role)
         if progress is not None and hasattr(progress, "_files_touched"):
             progress._files_touched = list(in_scope)
@@ -2759,9 +2767,12 @@ def run_fix_loop(
                     is_build=is_build_lane(outcome),
                 )
                 budget.forced_next_role = alternate_fix_role(role, lane=lane_hint)
+                skip_note = ""
+                if lane_hint is None or lane_hint.lane_id != "adr_citation":
+                    skip_note = " (Architect only for adr_citation)"
                 _log(
                     f"NO-EDIT: empty in-scope delta — next role="
-                    f"{budget.forced_next_role} "
+                    f"{budget.forced_next_role}{skip_note} "
                     f"(ledger-reroute:no-edit)"
                 )
                 if not handoff_tag:
@@ -3376,6 +3387,7 @@ def run_tier2_implement_gate(
             )
         progress = progress_factory(role, agent) if progress_factory else None
         baseline = set(git_paths_changed(repo_root))
+        baseline_fps = snapshot_path_fingerprints(repo_root, baseline)
         ok, status = run_worker(
             client,
             role=role,
@@ -3386,7 +3398,12 @@ def run_tier2_implement_gate(
             progress=progress,
         )
         after = set(git_paths_changed(repo_root))
-        delta = git_delta(baseline, after)
+        delta = git_delta_with_fingerprints(
+            baseline,
+            after,
+            repo_root=repo_root,
+            fingerprints_before=baseline_fps,
+        )
         in_scope = filter_paths_for_role(delta, role)
         if progress is not None and hasattr(progress, "_files_touched"):
             progress._files_touched = list(in_scope)
@@ -3418,9 +3435,12 @@ def run_tier2_implement_gate(
                     is_build=is_build_lane(outcome),
                 )
                 forced_next_role = alternate_fix_role(role, lane=lane_hint)
+                skip_note = ""
+                if lane_hint is None or lane_hint.lane_id != "adr_citation":
+                    skip_note = " (Architect only for adr_citation)"
                 _log(
                     f"NO-EDIT: empty in-scope delta — next role="
-                    f"{forced_next_role} (ledger-reroute:no-edit)"
+                    f"{forced_next_role}{skip_note} (ledger-reroute:no-edit)"
                 )
                 if not handoff_tag:
                     handoff_tag = f"no-edit→{forced_next_role}"

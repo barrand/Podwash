@@ -8,6 +8,7 @@ through the referee.
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from typing import Iterable
@@ -255,6 +256,50 @@ def git_delta(baseline: set[str], after: set[str]) -> list[str]:
     return sorted(after - baseline)
 
 
+def path_fingerprint(repo_root: str, rel: str) -> str:
+    """Cheap content proxy (mtime_ns + size) for already-dirty path detection."""
+    path = os.path.join(repo_root, rel)
+    try:
+        st = os.stat(path)
+        return f"{st.st_mtime_ns}:{st.st_size}"
+    except OSError:
+        return ""
+
+
+def snapshot_path_fingerprints(
+    repo_root: str, paths: Iterable[str]
+) -> dict[str, str]:
+    """Fingerprint dirty paths before a worker so in-place edits count as delta."""
+    out: dict[str, str] = {}
+    for p in paths:
+        p = (p or "").strip()
+        if p:
+            out[p] = path_fingerprint(repo_root, p)
+    return out
+
+
+def git_delta_with_fingerprints(
+    baseline: set[str],
+    after: set[str],
+    *,
+    repo_root: str,
+    fingerprints_before: dict[str, str] | None = None,
+) -> list[str]:
+    """Set-difference plus paths that were dirty before and changed on disk.
+
+    Slice 19: Architect edited already-untracked ``docs/adr/013-*.md``; plain
+    set-difference looked like NO-EDIT and burned the fix budget.
+    """
+    added = set(after) - set(baseline)
+    changed: set[str] = set()
+    if fingerprints_before:
+        for p in set(baseline) & set(after):
+            before = fingerprints_before.get(p, "")
+            if before and path_fingerprint(repo_root, p) != before:
+                changed.add(p)
+    return sorted(added | changed)
+
+
 def parse_handoff_line(text: str) -> WorkerHandoff | None:
     """Parse optional ``HANDOFF: scope=…; route=…; applied=…`` from worker text."""
     m = _HANDOFF_RE.search(text or "")
@@ -325,19 +370,26 @@ def alternate_fix_role(
     skip: str | None = None,
     lane: FixLane | None = None,
 ) -> str:
-    """Next fix worker when flipping after no-edit or out-of-scope handoff."""
+    """Next fix worker when flipping after no-edit or out-of-scope handoff.
+
+    Default rotation is Engineer ↔ QA only. Architect is reserved for the
+    ``adr_citation`` lane (or an explicit ``HANDOFF: route=Architect``). Slice 19
+    burned a fix attempt sending Architect at a Settings UITest via QA no-edit.
+    """
     if lane is not None and lane.lane_id == "adr_citation":
+        if skip == "Architect":
+            return opposite_role(role) if role in ("Engineer", "QA") else "Engineer"
         return "Architect"
-    order = ("Engineer", "QA", "Architect")
-    try:
-        idx = order.index(role)
-    except ValueError:
-        return opposite_role(role)
-    for offset in (1, 2):
-        candidate = order[(idx + offset) % len(order)]
-        if candidate != skip:
-            return candidate
-    return "Engineer"
+    if role == "QA":
+        nxt = "Engineer"
+    elif role == "Engineer":
+        nxt = "QA"
+    else:
+        # Architect / unknown on a non-ADR failure → Engineer owns app/UI fallout
+        nxt = "Engineer"
+    if skip and nxt == skip:
+        nxt = "QA" if nxt == "Engineer" else "Engineer"
+    return nxt
 
 
 def format_attempt_note(

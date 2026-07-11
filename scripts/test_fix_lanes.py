@@ -14,14 +14,18 @@ if _SCRIPTS not in sys.path:
 
 from failure_packet import FailurePacket  # noqa: E402
 from fix_lanes import (  # noqa: E402
+    FixLane,
+    alternate_fix_role,
     classify_fix_lane,
     extract_adr_citation_hint,
     filter_paths_for_role,
     format_attempt_note,
     git_delta,
+    git_delta_with_fingerprints,
     is_adr_citation_failure,
     parse_handoff_line,
     resolve_handoff_flip,
+    snapshot_path_fingerprints,
 )
 from slice_pipeline import (  # noqa: E402
     VerifyOutcome,
@@ -138,6 +142,31 @@ class GitDeltaAndScopeTests(unittest.TestCase):
             ["PodWash/PodWashTests/Fixtures/segmentation/benchmark-results.json"],
         )
 
+    def test_fingerprint_delta_sees_edit_to_already_dirty_path(self):
+        """Slice 19: Architect edited already-untracked ADR — must count as delta."""
+        with tempfile.TemporaryDirectory() as tmp:
+            rel = "docs/adr/013-segmentation-integration.md"
+            path = os.path.join(tmp, rel)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("# ADR-013\npending\n")
+            baseline = {rel}
+            fps = snapshot_path_fingerprints(tmp, baseline)
+            # Ensure mtime can advance on coarse filesystems
+            os.utime(path, None)
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write("\n## Benchmark results\nprecision: 1.000\n")
+            after = {rel}
+            delta = git_delta_with_fingerprints(
+                baseline,
+                after,
+                repo_root=tmp,
+                fingerprints_before=fps,
+            )
+            self.assertEqual(delta, [rel])
+            # Plain set-difference still empty — regression guard
+            self.assertEqual(git_delta(baseline, after), [])
+
     def test_filter_paths_engineer(self):
         paths = [
             "PodWash/PodWash/Foo.swift",
@@ -173,6 +202,32 @@ class GitDeltaAndScopeTests(unittest.TestCase):
             filter_paths_for_role(paths, "Architect"),
             ["docs/adr/012-content-segmentation-approach.md"],
         )
+
+
+class AlternateFixRoleTests(unittest.TestCase):
+    def test_alternate_fix_role_skips_architect_unless_adr_lane(self):
+        """Slice 19: QA no-edit on UITest must not spawn Architect."""
+        self.assertEqual(alternate_fix_role("QA"), "Engineer")
+        self.assertEqual(alternate_fix_role("Engineer"), "QA")
+        self.assertEqual(alternate_fix_role("Architect"), "Engineer")
+        adr = FixLane(
+            lane_id="adr_citation",
+            role="Architect",
+            instruction="fill ADR",
+            hypothesis="ADR pending",
+            fix_scope="docs",
+        )
+        self.assertEqual(alternate_fix_role("QA", lane=adr), "Architect")
+        self.assertEqual(alternate_fix_role("Engineer", lane=adr), "Architect")
+
+    def test_out_of_scope_without_route_stays_engineer_qa(self):
+        h = parse_handoff_line(
+            "HANDOFF: scope=out_of_scope; route=loop; applied=no"
+        )
+        flip, msg = resolve_handoff_flip("QA", h, [])
+        self.assertEqual(flip, "Engineer")
+        self.assertIn("out_of_scope → Engineer", msg)
+        self.assertNotEqual(flip, "Architect")
 
 
 class HandoffParseTests(unittest.TestCase):

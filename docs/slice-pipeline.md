@@ -193,7 +193,8 @@ loop-owned verify.sh (red)
   → scope-contradiction guard (Engineer+test-only files → QA, and vice versa)
   → git baseline snapshot → Engineer|QA fix worker → git delta (real files_touched)
   → optional HANDOFF: line (honored only when in-scope delta empty)
-  → empty in-scope → force opposite role next; explicit no-edit×2 → NO-EDIT THRASH
+  → empty in-scope → Engineer↔QA flip (Architect only for adr_citation);
+       explicit no-edit×2 → NO-EDIT THRASH
   → tier 1 re-verify (failed tests only)
   → if green → tier 3 full suite
   → append ledger entry (files_touched = in-scope git delta, not suggestions)
@@ -232,13 +233,18 @@ If the flip is still pending when the normal fix budget would halt, the loop
 grants one **handoff credit** so the flipped role still gets a turn (then thrash
 if still red). Halt text includes `pending handoff QA was honored once` when
 that credit was used. Bare `NO-EDIT` auto-flips (no `HANDOFF:` line) do not
-extend the budget.
+extend the budget. Default NO-EDIT rotation is **Engineer ↔ QA only**; Architect
+is reserved for the `adr_citation` lane or an explicit `route=Architect` handoff
+(slice 19: QA no-edit must not spawn Architect for a Settings UITest). Console:
+`NO-EDIT: empty in-scope delta — next role=Engineer (Architect only for adr_citation)`.
 
 ### Git baseline (observation-first)
 
-Before each fix worker: snapshot `git status --porcelain`. After: ledger
-`files_touched` = set-difference filtered by role scope. Pre-existing dirty
-tree (ADR/app from earlier gates) must not pollute the attempt record.
+Before each fix worker: snapshot `git status --porcelain` **and** fingerprints
+(mtime+size) of already-dirty paths. After: ledger `files_touched` = new paths
+plus dirty paths whose fingerprint changed, filtered by role scope. Pre-existing
+dirty tree must not pollute the attempt record as “touched,” but **in-place edits**
+to an already-dirty in-scope file (e.g. untracked ADR) do count.
 
 ### FailurePacket
 

@@ -126,7 +126,8 @@ When diagnosing thrash inside the fix/tier-2 loop (not forge-fix “who owns the
 | `LANE: expectation_api → QA` | Double-fulfill / KVO harness |
 | `LANE: packaging → Engineer` | Missing bundle executable |
 | `LANE: build → Engineer` | Compile-red |
-| `NO-EDIT: empty in-scope delta — next role=…` | Worker changed nothing in scope; flip next |
+| `NO-EDIT: empty in-scope delta — next role=…` | Worker changed nothing in scope; flip next (Engineer↔QA; Architect only for adr_citation) |
+| `NO-EDIT: … (Architect only for adr_citation)` | Explicit note that Architect was skipped for a non-ADR failure |
 | `HANDOFF FLIP: …` | Worker `HANDOFF:` honored (empty in-scope delta) |
 | `HANDOFF credit: spawning QA (pending flip; budget exhausted)` | Flip was pending at budget halt — one extra spawn granted |
 | `HANDOFF IGNORED: …` | Worker claimed out_of_scope but edited in-scope paths |

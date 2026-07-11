@@ -10,8 +10,10 @@ deltas, thin `HANDOFF:` line. See [`docs/slice-pipeline.md`](../slice-pipeline.m
 - [x] Tier-2 + full-suite share deterministic lanes (packaging / expectation / artifact / build)
 - [x] Referee still owns crash / ui_race / generic assertion / unknown
 - [x] Per-worker git baseline → ledger `files_touched` = in-scope delta
-- [x] Empty in-scope → force opposite role; explicit no-edit×2 → `NO-EDIT THRASH`
+- [x] Empty in-scope → force opposite role among Engineer↔QA (Architect only for adr_citation)
+- [x] Fingerprint delta counts in-place edits to already-dirty paths
 - [x] `HANDOFF:` honored only when in-scope delta empty
+- [x] Explicit no-edit×2 → `NO-EDIT THRASH`
 - [x] Handoff credit at budget boundary (slice 19: last-attempt flip still spawns)
 - [x] Rich `attempt_notes` (summary + files + handoff) in fix prompts
 - [x] Narrator ledger-block copy says flip/reroute (not halt)
