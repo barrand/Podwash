@@ -12,6 +12,8 @@
 #   scripts/slice-loop.sh --heartbeat 60  # idle ping every 60s (0 to disable)
 #   scripts/slice-loop.sh --stream-timeout 0  # disable bridge stream idle cap (default)
 #   scripts/slice-loop.sh --max-red-verifies 2  # halt after N red verifies (default 2)
+#   scripts/slice-loop.sh --self-heal     # on exit 5/6, Medic heal then resume (default off)
+#   scripts/slice-loop.sh --self-heal --medic-no-push  # heal + commit, skip push
 #
 # Auth (non-dry-run): export CURSOR_API_KEY=cursor_...
 #
@@ -27,8 +29,18 @@ REPO_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$REPO_ROOT"
 
 LOOP_PY="$REPO_ROOT/scripts/slice_loop.py"
+SUPERVISOR_PY="$REPO_ROOT/scripts/forge_supervisor.py"
 REQS="$REPO_ROOT/scripts/slice-loop-requirements.txt"
 VENV="$REPO_ROOT/build/.slice-loop-venv"
+
+# --self-heal routes through the Medic supervisor (subprocess loop + heal).
+SELF_HEAL=0
+for arg in "$@"; do
+    if [ "$arg" = "--self-heal" ]; then
+        SELF_HEAL=1
+        break
+    fi
+done
 
 # Pick a Python >= 3.10 (cursor-sdk has no wheels for 3.9).
 find_python310() {
@@ -56,6 +68,9 @@ find_python310() {
 # --dry-run imports no SDK — any python3 is fine.
 for arg in "$@"; do
     if [ "$arg" = "--dry-run" ]; then
+        if [ "$SELF_HEAL" -eq 1 ]; then
+            exec python3 "$SUPERVISOR_PY" "$@"
+        fi
         exec python3 "$LOOP_PY" "$@"
     fi
 done
@@ -80,4 +95,7 @@ if ! venv_ok; then
     "$VENV/bin/pip" install -q --disable-pip-version-check -r "$REQS"
 fi
 
+if [ "$SELF_HEAL" -eq 1 ]; then
+    exec "$VENV/bin/python" "$SUPERVISOR_PY" "$@"
+fi
 exec "$VENV/bin/python" "$LOOP_PY" "$@"

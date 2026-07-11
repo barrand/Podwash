@@ -248,7 +248,20 @@ across those retries.
 | 2 | A slice ran but did not reach Done (agent error, red verify, or no progress) |
 | 3 | `wait` — blocked on an unfinished dependency |
 | 4 | `halt` — a halt-and-ask gate needs a user decision |
-| 5 | `thrash` — loop-owned fix/verify budget exhausted |
+| 5 | `thrash` — loop-owned fix/verify budget exhausted (anti-thrash) |
+| 6 | `infra` — bridge/DNS/sim death (retry-safe; attempt not burned) |
+
+### Self-heal (Medic)
+
+`scripts/slice-loop.sh --self-heal` routes through
+[`scripts/forge_supervisor.py`](../scripts/forge_supervisor.py). On exit **5**
+(thrash) or a **repeated** exit **6** (one free infra retry first), the Medic
+runs forge-fix diagnose → critic rubric → scripts-only implement, then a
+fail-before/pass-after regression canary and the factory unit suite. Green heals
+commit (`forge: harden …`) and resume `slice_loop` in a fresh process.
+
+Default is **off**. Flags: `--medic-no-push`, `--medic-no-commit`. See
+[`docs/slice-pipeline.md`](slice-pipeline.md) § Medic.
 
 ### Notes and limits
 

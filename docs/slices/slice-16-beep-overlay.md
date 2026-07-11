@@ -87,6 +87,7 @@ Automatable only. **XCTSkip is not allowed on core ACs** — a mapped test that 
 | 3 | `PodWash/PodWashTests/OverlaySyncTests.swift` | `testOfflineRenderOverlayEnergy` | Interior RMS >0.10 (beep) vs <0.01 (off); reuse `OfflineRenderRMS` windows |
 | 4 | `PodWash/PodWashTests/OverlaySyncTests.swift` | `testOverlaySettingRespected` | off/beep/quack asset IDs; default `.off`; 0/2 event counts |
 | 5 | `PodWash/PodWashTests/OverlaySyncTests.swift` | `testSeekResync` | seek 1.2→2.5; active count 0 within 0.200 s; no orphan events |
+| — | `PodWash/PodWashUITests/SettingsUITests.swift` | `testMuteOverlayControlCycles` | UX deliverable: `muteOverlayControl` cycles off/beep/quack |
 | 6 | — | — | Command-level: unfiltered `scripts/verify.sh` exit 0, failed 0, skipped 0 |
 
 ## Verification commands
@@ -102,14 +103,14 @@ scripts/verify.sh
 ## Verification record (QA fills at Verify)
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=106 passed=106 failed=0 skipped=0 filtered=0 bundle=build/test-results/verify-20260711-164736.xcresult tier=3 class=tests
 ```
 
 ## Plan review record (coordinator fills before downstream roles)
 
 ```
-ADR review: (pending)
-Test spec review: (pending)
+ADR review (2026-07-11): (pending) QA cleared — pipeline worker finished PM cleared — pipeline worker finished
+Test spec review (2026-07-11): Architect cleared — pipeline worker finished
 ```
 
 ## Done gate
@@ -126,5 +127,5 @@ Test spec review: (pending)
 | PM | Required | `docs/slices/slice-16-beep-overlay.md` (this file) |
 | Architect | Required (spike + ADR) | `docs/adr/017-overlay-sync.md` — measured sync validation; supersedes ADR-000 §7 |
 | UX | Required | `docs/slices/slice-16-ux.md` — `muteOverlayControl` states/values (extends Settings) |
-| QA | Required | `PodWash/PodWashTests/OverlaySyncTests.swift`, overlay fixtures + provenance |
+| QA | Required | `PodWash/PodWashTests/OverlaySyncTests.swift`, `OverlayEventRecorder.swift`, `OverlayOfflineComposite.swift`, overlay fixtures + provenance; `PodWashUITests/SettingsUITests.swift` (`testMuteOverlayControlCycles`) |
 | Engineer | Required | `OverlayEngine`, `SettingsStore`/`SettingsView` overlay mode, `PlaybackCoordinator` wiring |

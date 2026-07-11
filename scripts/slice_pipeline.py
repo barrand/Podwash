@@ -157,6 +157,9 @@ ROLE_MODELS: dict[str, str] = {
     "QA review": "composer-2.5",
     "Architect review": "grok-4.5",
     "Mechanic": "grok-4.5",
+    "Medic diagnose": "grok-4.5",
+    "Medic critic": "composer-2.5",
+    "Medic implement": "grok-4.5",
     "Coordinator": "composer-2.5",
 }
 
@@ -172,9 +175,17 @@ ROLE_AGENT_FILES: dict[str, str] = {
     "Mechanic": "podwash-engineer.md",
 }
 
-# Reviewers + referee run in SDK plan mode (read-only). Authors/fixers use agent mode.
+# Reviewers + medic diagnose/critic run in SDK plan mode (read-only).
+# Authors/fixers/medic implement use agent mode.
 PLAN_MODE_ROLES = frozenset(
-    {"PM review", "QA review", "Architect review", "Coordinator"}
+    {
+        "PM review",
+        "QA review",
+        "Architect review",
+        "Coordinator",
+        "Medic diagnose",
+        "Medic critic",
+    }
 )
 
 GateId = Literal[

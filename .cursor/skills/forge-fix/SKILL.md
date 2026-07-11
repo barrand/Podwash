@@ -13,6 +13,18 @@ disable-model-invocation: true
 Repeatable post-mortem for Forge breaks. Dig into what happened, why the factory
 stopped, and harden the Forge so the next run is clearer and more robust.
 
+## Automated path (Medic)
+
+Unattended equivalent: `scripts/slice-loop.sh --self-heal`. The Medic supervisor
+(`scripts/forge_supervisor.py` + `scripts/forge_medic.py`) embeds this workflow
+(structured diagnose JSON → critic rubric → scripts-only implement → regression
+canary → factory suite). Prefer Medic for routine thrash/infra heals; use this
+skill attended when Medic refuses (`lane=test`, critic block, denylist, canary
+fail) or you want a human-led post-mortem.
+
+Reports land in `docs/forge/medic-reports/`. Ledger:
+`build/test-results/medic-ledger.jsonl`.
+
 ## Hard bans
 
 **In scope:** `scripts/slice_*.py`, `scripts/*factory*`, `scripts/verify.sh`,

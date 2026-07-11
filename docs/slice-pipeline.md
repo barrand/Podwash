@@ -290,18 +290,54 @@ bridge-close crashes). Architect may run spike-scoped
 2. Loop always owns verify when implement is done **or** status ∈ `{In Progress, Verify}`.
 3. Sequential only — never parallel loop verify with a coordinator-owned verify.
 
+## Medic (self-heal)
+
+Optional supervisor around the loop — **does not** live inside `slice_loop.py`
+(heals must reload in a fresh process).
+
+```bash
+scripts/slice-loop.sh --self-heal --max 1
+scripts/slice-loop.sh --self-heal --medic-no-push   # commit heal, skip push
+```
+
+| Concern | Owner |
+|---------|--------|
+| Subprocess `slice_loop` + exit dispatch | `forge_supervisor.py` |
+| Diagnose / critic / implement prompts + quality gates | `forge_medic.py` |
+| Halt signature dedup | `build/test-results/medic-ledger.jsonl` |
+| Post-mortems | `docs/forge/medic-reports/` |
+
+**When Medic runs:** exit **5** (thrash), or exit **6** after one free plain retry.
+
+**Pipeline:** structured diagnose JSON → lane gate (`test` → human) → one-shot
+critic rubric → implement (`scripts/**` only) → diff denylist (hard reject) →
+regression canary (new test **fails** on pre-fix tree, **passes** after) →
+full factory unit suite → commit `forge: harden …` → resume.
+
+**Models:** Medic diagnose + implement = `grok-4.5` (`fast=false`, `effort=high`);
+critic = `composer-2.5` (`fast=false`). Never fast variants.
+
+**Anti-thrash:** one heal attempt per halt signature; max 2 per slice / 3 per
+session. A recurring signature after a heal means the fix did not stick → human.
+
+Default `--self-heal` is **off** until trusted. Manual
+[`.cursor/skills/forge-fix/SKILL.md`](../.cursor/skills/forge-fix/SKILL.md)
+remains for attended post-mortems.
+
 ## Unit tests
 
 ```bash
 python3 -m unittest scripts.test_factory_v3 scripts.test_factory_p1 \
   scripts.test_fix_lanes scripts.test_factory_hardening \
   scripts.test_hypothesis_ledger scripts.test_slice_pipeline \
-  scripts.test_slice_loop_progress scripts.test_failure_packet -q
+  scripts.test_slice_loop_progress scripts.test_failure_packet \
+  scripts.test_forge_medic scripts.test_forge_supervisor -q
 ./scripts/test-verify-tiers.sh
 scripts/slice-loop.sh --orchestrator pipeline --max 1   # unattended default
+scripts/slice-loop.sh --self-heal --max 1               # optional Medic supervisor
 ```
 
 **Factory v3 landed:** Mechanic (no role routing), unified `run_fix_cycle`,
 progress-based stop, UITest verify retries dropped, stress-run 3×, test/ADR diff
 reviews, commit split `fix tests` / `fix app` / `fix docs`. Phase 3 (agent
-resume) deferred.
+resume) deferred. **Medic supervisor** landed behind `--self-heal`.

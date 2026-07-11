@@ -33,3 +33,4 @@ from the relevant slice file's Role artifacts table.
 | [014](014-discovery-itunes-multi-sub.md) | Discovery: iTunes Search client + multi-subscription store | Accepted |
 | [015](015-app-shell-navigation.md) | App shell navigation: Library + Discover tabs + mini-player | Accepted |
 | [016](016-carplay-templates.md) | CarPlay templates: library, queue, now playing | Accepted |
+| [017](017-overlay-sync.md) | Overlay sync: beep/quack during mute intervals | Accepted |
