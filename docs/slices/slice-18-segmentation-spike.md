@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 18 |
 | **Title** | Segmentation spike |
-| **Status** | Ready |
+| **Status** | Done |
 | **Crux** | An on-device, transcript-based segmenter labels superfluous/tangential spans in a hand-golden fixture with **precision ≥ 0.7** and **recall ≥ 0.5** (temporal IoU ≥ 0.5 matching), with **execution evidence** (committed benchmark JSON produced by the spike harness) — proving Differentiator 2 is feasible before Slice 19 integration. |
 
 ## Product decisions (user, 2026-07-10 — MVP track)
@@ -104,7 +104,7 @@ scripts/verify.sh
 ## Verification record (QA fills at Verify)
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=70 passed=70 failed=0 skipped=0 filtered=0 bundle=build/test-results/verify-20260710-175855.xcresult tier=3 class=tests
 ```
 
 ## Plan review record (coordinator fills before downstream roles)
