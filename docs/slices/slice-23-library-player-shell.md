@@ -56,7 +56,7 @@ Replace the placeholder `ContentView` with a production navigation shell so a co
 - **App composition root** — wire `PlaybackEngine`, `PlaybackCoordinator`, `QueueCoordinator`, `RemoteCommandCoordinator` for non-fixture launches (mirror fixture wiring from `RootView` today)
 - **Launch-argument fixture mode** — `-UITestFixtureLibrary`: seeds **exactly 2** subscriptions (golden titles from Slice 22 fixtures) with `sample_feed.xml` episodes into in-memory Core Data at launch; lands on Library tab; uses bundled audio fixture for play assertion (no live network)
 - `LibraryViewModelTests`, `LibraryNavigationTests` (unit/integration), `LibraryUITests`
-- Architect decision: `docs/adr/014-app-shell-navigation.md` (or extend ADR-013) — tab vs stack, coordinator ownership, multi-sub read APIs if any remain from Slice 22
+- Architect decision: `docs/adr/015-app-shell-navigation.md` — tab vs stack, coordinator ownership, fixture seeding (014 was Discovery)
 
 ## Fixture strategy (pinned)
 
@@ -144,7 +144,7 @@ scripts/verify.sh
 > A slice without a recorded full-suite green artifact is not Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=93 passed=93 failed=0 skipped=0 filtered=0 bundle=build/test-results/verify-20260711-010638.xcresult tier=3 class=tests
 ```
 
 ## Plan review record (coordinator fills before downstream roles)
@@ -154,8 +154,8 @@ VERIFY RESULT: (pending)
 > See [`multitask-workflow.md`](../multitask-workflow.md) § Plan review gates.
 
 ```
-ADR review: (pending)
-Test spec review: (pending)
+ADR review (2026-07-11): (pending) QA cleared — pipeline worker finished PM cleared — pipeline worker finished
+Test spec review (2026-07-11): Architect cleared — pipeline worker finished
 ```
 
 ## Done gate
@@ -170,7 +170,7 @@ Test spec review: (pending)
 | Role | Gate | Artifact path |
 |------|------|---------------|
 | PM | Required | `docs/slices/slice-23-library-player-shell.md` (this file) |
-| Architect | Required | `docs/adr/014-app-shell-navigation.md` (navigation graph, coordinator wiring) |
+| Architect | Required | `docs/adr/015-app-shell-navigation.md` (navigation graph, coordinator wiring) |
 | UX | Required | `docs/slices/slice-23-ux.md` (Library/Discover/Player chrome, identifiers, scenarios — **UX authors; PM does not**) |
 | QA | Required | `LibraryViewModelTests.swift`, `LibraryUITests.swift` |
 | Engineer | Required | `LibraryView`, `RootView`/`ContentView` production shell, `FixtureLibrary`, coordinator wiring |

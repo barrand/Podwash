@@ -31,3 +31,4 @@ from the relevant slice file's Role artifacts table.
 | [012](012-content-segmentation-approach.md) | Content segmentation approach: heuristic cue scoring (`heuristic-cue-v1`) | Accepted |
 | [013](013-segmentation-integration.md) | Segmentation integration: pipeline merge, cache, independent actions, skip override | Accepted |
 | [014](014-discovery-itunes-multi-sub.md) | Discovery: iTunes Search client + multi-subscription store | Accepted |
+| [015](015-app-shell-navigation.md) | App shell navigation: Library + Discover tabs + mini-player | Accepted |
