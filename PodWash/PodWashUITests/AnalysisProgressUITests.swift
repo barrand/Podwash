@@ -3,6 +3,7 @@
 //  PodWashUITests
 //
 //  Slice 09 — Analysis progress + cleaning toggle UI tests (slice-09-ux.md). AC2, AC3.
+//  Slice 20 — migrated `analysisProgress` → `analysisTimeline` (ADR-018).
 //
 
 import XCTest
@@ -64,48 +65,50 @@ final class AnalysisProgressUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter().wait(for: [toggleHittable], timeout: 3), .completed)
 
         // Register before tap so XCTest observes accessibility updates during the
-        // toggle action (progress can appear and vanish before post-tap idle ends).
-        let progressAppeared = expectation(
-            for: Self.analysisProgressVisiblePredicate,
+        // toggle action (timeline can appear and vanish before post-tap idle ends).
+        let timelineAppeared = expectation(
+            for: Self.analysisTimelineVisiblePredicate,
             evaluatedWith: app,
             handler: nil
         )
 
         episodeToggle.tap()
 
-        wait(for: [progressAppeared], timeout: 2)
+        wait(for: [timelineAppeared], timeout: 2)
 
-        let progress = Self.analysisProgressElement(in: app, cell: episodeCell)
-        let progressGone = NSPredicate(format: "exists == false")
-        let progressExpectation = XCTNSPredicateExpectation(predicate: progressGone, object: progress)
-        XCTAssertEqual(XCTWaiter().wait(for: [progressExpectation], timeout: 5), .completed)
+        let timeline = Self.analysisTimelineElement(in: app, cell: episodeCell)
+        let timelineGone = NSPredicate(format: "exists == false")
+        let timelineExpectation = XCTNSPredicateExpectation(predicate: timelineGone, object: timeline)
+        XCTAssertEqual(XCTWaiter().wait(for: [timelineExpectation], timeout: 5), .completed)
+
+        XCTAssertFalse(app.descendants(matching: .any)["analysisProgress"].exists)
 
         let episodeBadge = app.descendants(matching: .any)["cleaningBadge_episodeOn"]
         XCTAssertTrue(episodeBadge.waitForExistence(timeout: 2))
     }
 
-    private static var analysisProgressVisiblePredicate: NSPredicate {
+    private static var analysisTimelineVisiblePredicate: NSPredicate {
         NSPredicate { evaluatedObject, _ in
             guard let app = evaluatedObject as? XCUIApplication else { return false }
             let cell = app.cells["episodeCell_0"]
-            return analysisProgressElement(in: app, cell: cell).exists
+            return analysisTimelineElement(in: app, cell: cell).exists
         }
     }
 
-    /// Slice-09 UX: `analysisProgress` identifier on row *i*; label `Analyzing episode`.
-    private static func analysisProgressElement(in app: XCUIApplication, cell: XCUIElement) -> XCUIElement {
-        let scoped = cell.descendants(matching: .any)["analysisProgress"]
+    /// Slice-20 UX: `analysisTimeline` identifier on row *i*; label `Analysis timeline`.
+    private static func analysisTimelineElement(in app: XCUIApplication, cell: XCUIElement) -> XCUIElement {
+        let scoped = cell.descendants(matching: .any)["analysisTimeline"]
         if scoped.exists {
             return scoped
         }
-        let global = app.descendants(matching: .any)["analysisProgress"]
+        let global = app.descendants(matching: .any)["analysisTimeline"]
         if global.exists {
             return global
         }
-        let scopedLabel = cell.descendants(matching: .any)["Analyzing episode"]
+        let scopedLabel = cell.descendants(matching: .any)["Analysis timeline"]
         if scopedLabel.exists {
             return scopedLabel
         }
-        return app.descendants(matching: .any)["Analyzing episode"]
+        return app.descendants(matching: .any)["Analysis timeline"]
     }
 }
