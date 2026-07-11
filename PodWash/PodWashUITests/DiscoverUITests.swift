@@ -86,9 +86,9 @@ final class DiscoverUITests: XCTestCase {
         subscribeButton.tap()
 
         let subscribed = NSPredicate(format: "value == %@", "1")
-        let expectation = XCTNSPredicateExpectation(object: subscribeButton, predicate: subscribed)
+        let expectation = XCTNSPredicateExpectation(predicate: subscribed, object: subscribeButton)
         let result = XCTWaiter().wait(for: [expectation], timeout: 5)
-        XCTAssertEqual(result, .completed)
+        XCTAssertEqual(result, XCTWaiter.Result.completed)
         XCTAssertEqual(subscribeButton.value as? String, "1")
     }
 }

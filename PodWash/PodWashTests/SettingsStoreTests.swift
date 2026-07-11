@@ -9,7 +9,8 @@
 //  - Custom-word token "xyzzy!" → "xyzzy" per matching-spec §3 (hand-derived from
 //    normalize rules; independent of SettingsStore implementation).
 //  - Default profile categories pinned in slice AC1 / WordCategories.defaultEnabledIDs.
-//  - sWord disable count delta of 4 from slice seed list (spec §7 S-word subset).
+//  - sWord disable count delta derived from WordCategories.words(for: "sWord")
+//    normalized via WordMatcher (spec §7 S-word subset; size grows with seed list).
 //
 //  Until SettingsStore, SettingsCleaningAction, and WordCategories exist (Engineer,
 //  later effort), this file fails to compile — intended TDD red state.
@@ -95,6 +96,10 @@ final class SettingsStoreTests: XCTestCase {
             "Default profile must include fWord seeds"
         )
 
+        let sWordSeedCount = WordMatcher.normalizedTargetSet(
+            WordCategories.words(for: "sWord")
+        ).count
+
         let countBefore = targetSet().count
         store.setCategoryEnabled("sWord", false)
 
@@ -108,8 +113,8 @@ final class SettingsStoreTests: XCTestCase {
         )
         XCTAssertEqual(
             countBefore - targetSet().count,
-            4,
-            "Disabling sWord must drop exactly four normalized tokens"
+            sWordSeedCount,
+            "Disabling sWord must drop exactly all sWord normalized tokens"
         )
 
         let countAfterDisable = targetSet().count

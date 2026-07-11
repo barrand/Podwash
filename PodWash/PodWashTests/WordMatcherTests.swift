@@ -44,4 +44,24 @@ final class WordMatcherTests: XCTestCase {
         // And an unrelated token does not match either.
         XCTAssertFalse(WordMatcher.matches(WordMatcher.normalize("well"), in: targetSet))
     }
+
+    /// Expanded category seeds include obfuscated spellings (matching-spec §3 interior
+    /// chars preserved). ASR tokens normalize the same way before set membership.
+    func testObfuscatedCategorySeedsMatchInTargetSet() {
+        let sWordTargets = WordMatcher.normalizedTargetSet(WordCategories.words(for: "sWord"))
+        let fWordTargets = WordMatcher.normalizedTargetSet(WordCategories.words(for: "fWord"))
+
+        XCTAssertTrue(
+            WordMatcher.matches(WordMatcher.normalize("sh!t"), in: sWordTargets),
+            "Expanded sWord seeds must include obfuscated sh!t variant"
+        )
+        XCTAssertTrue(
+            WordMatcher.matches(WordMatcher.normalize("f*ck"), in: fWordTargets),
+            "Expanded fWord seeds must include obfuscated f*ck variant"
+        )
+        XCTAssertTrue(
+            WordMatcher.matches(WordMatcher.normalize("sh1thole"), in: sWordTargets),
+            "Expanded sWord seeds must include obfuscated sh1thole variant"
+        )
+    }
 }
