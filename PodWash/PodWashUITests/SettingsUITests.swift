@@ -3,6 +3,7 @@
 //  PodWashUITests
 //
 //  Slice 13 — Settings UI tests (slice-13-settings-ux.md). AC5–AC6.
+//  Slice 16 — `testMuteOverlayControlCycles` (slice-16-ux.md).
 //
 //  Launch fixture: -UITestFixtureSettings opens SettingsView directly (no RSS/network).
 //  Scheme parallelization is already disabled (Slice 03 precedent).
@@ -110,6 +111,55 @@ final class SettingsUITests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         }
         XCTFail("\(message); expected accessibilityValue \(expected), got \(lastValue ?? "nil")")
+    }
+
+    private func muteOverlayControl(in app: XCUIApplication) -> XCUIElement {
+        let asButton = app.buttons["muteOverlayControl"]
+        if asButton.exists { return asButton }
+        return app.descendants(matching: .any)["muteOverlayControl"]
+    }
+
+    // MARK: - Slice 16: mute overlay control cycles off/beep/quack
+
+    @MainActor
+    func testMuteOverlayControlCycles() throws {
+        let app = launchSettingsApp()
+        waitForSettingsRoot(app)
+
+        let control = muteOverlayControl(in: app)
+        XCTAssertTrue(control.waitForExistence(timeout: 5), "muteOverlayControl must exist")
+        XCTAssertEqual(
+            control.value as? String,
+            "off",
+            "Fresh store: mute overlay must default to off"
+        )
+
+        control.tap()
+        waitForAccessibilityValue(
+            "beep",
+            identifier: "muteOverlayControl",
+            in: app,
+            timeout: 2,
+            message: "One tap must select beep overlay"
+        )
+
+        muteOverlayControl(in: app).tap()
+        waitForAccessibilityValue(
+            "quack",
+            identifier: "muteOverlayControl",
+            in: app,
+            timeout: 2,
+            message: "Second tap must select quack overlay"
+        )
+
+        muteOverlayControl(in: app).tap()
+        waitForAccessibilityValue(
+            "off",
+            identifier: "muteOverlayControl",
+            in: app,
+            timeout: 2,
+            message: "Third tap must return overlay to off"
+        )
     }
 
     // MARK: - AC5: category toggle accessibilityValue cycles "1" ↔ "0"

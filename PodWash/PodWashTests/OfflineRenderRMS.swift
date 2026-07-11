@@ -345,4 +345,19 @@ struct OfflineRenderRMS {
         }
         return maxDelta
     }
+
+    // MARK: - Slice 16 overlay composite (test harness)
+
+    /// Recomputes windowed RMS after software-mixing overlay PCM into `mixedSamples`.
+    /// Caller must preserve `samples.count`; used by `OverlayOfflineComposite` (ADR-017 §5).
+    func replacingSamples(_ mixedSamples: [Float]) -> OfflineRenderRMS {
+        precondition(mixedSamples.count == samples.count, "mixed sample count must match base render")
+        let windows = Self.computeWindows(samples: mixedSamples, startTime: startTime)
+        return OfflineRenderRMS(
+            samples: mixedSamples,
+            startTime: startTime,
+            windows: windows,
+            intervals: intervals
+        )
+    }
 }
