@@ -703,7 +703,7 @@ class AuthoringGateThrashTests(unittest.TestCase):
         self.assertIn("MonotonicClock", be or "")
 
     def test_extract_build_error_xcodebuild_scheme_member(self):
-        from slice_loop_progress import extract_build_error
+        from slice_loop_progress import extract_build_error, extract_factory_config_error
 
         blob = (
             "VERIFY RESULT: exit=70 total=0 passed=0 failed=0 skipped=0 "
@@ -713,10 +713,12 @@ class AuthoringGateThrashTests(unittest.TestCase):
             "specified test plan or scheme.\n"
         )
         be = extract_build_error(blob)
-        self.assertIsNotNone(be)
-        assert be is not None
-        self.assertIn("build_error:", be)
-        self.assertIn("PodWashSlowTests", be)
+        self.assertIsNone(be)
+        fc = extract_factory_config_error(blob)
+        self.assertIsNotNone(fc)
+        assert fc is not None
+        self.assertIn("factory_config:", fc)
+        self.assertIn("PodWashSlowTests", fc)
 
     def test_enrich_build_failures_scheme_red(self):
         from slice_loop_progress import enrich_build_failures
@@ -729,7 +731,7 @@ class AuthoringGateThrashTests(unittest.TestCase):
         v = parse_verify_result(blob)
         enriched = enrich_build_failures([], blob, v)
         self.assertEqual(len(enriched), 1)
-        self.assertTrue(enriched[0].startswith("build_error:"))
+        self.assertTrue(enriched[0].startswith("factory_config:"))
 
     def test_parse_verify_result_class_build(self):
         v = parse_verify_result(

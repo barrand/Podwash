@@ -19,6 +19,7 @@ from slice_pipeline import (
     InfraHalt,
     VerifyOutcome,
     is_build_lane,
+    is_factory_config_lane,
     is_tier2_infra_failure,
     outcome_failure_class,
     run_tier2_implement_gate,
@@ -184,6 +185,30 @@ class ExclusiveLaneTests(unittest.TestCase):
         self.assertTrue(is_build_lane(outcome))
         self.assertFalse(is_tier2_infra_failure(outcome))
 
+    def test_factory_config_not_build_lane(self):
+        from slice_loop_progress import enrich_build_failures
+
+        blob = (
+            "verify.sh: VERIFY_TIER=2 requires -only-testing: args or VERIFY_SLICE_TESTS\n"
+            "VERIFY RESULT: exit=1 total=0 passed=0 failed=0 skipped=0 filtered=0 "
+            "bundle=b.xcresult tier=2 class=build\n"
+        )
+        failures = enrich_build_failures([], blob, {"exit": "1", "class": "build"})
+        outcome = VerifyOutcome(
+            result={"exit": "1", "class": "factory_config", "tier": "2"},
+            green=False,
+            failures=failures,
+            output=blob,
+            packet=FailurePacket(
+                raw_failures=failures,
+                failure_class="factory_config",
+                actionable=False,
+            ),
+            tier=2,
+        )
+        self.assertTrue(is_factory_config_lane(outcome))
+        self.assertFalse(is_build_lane(outcome))
+
     def test_disagreement_alarm_logged(self):
         # Full stdout with CoreSimulator used to trip infra; structured=build wins.
         logs: list[str] = []
@@ -296,6 +321,41 @@ class FireDrillSuite(unittest.TestCase):
                     max_infra_retries=2,
                 )
             self.assertFalse(any("infra cold-retry" in l for l in gate_logs), gate_logs)
+
+
+class FactoryConfigHaltTests(unittest.TestCase):
+    def test_factory_config_refuses_mechanic(self):
+        from slice_loop_progress import ThrashHalt, enrich_build_failures
+
+        blob = (
+            "verify.sh: VERIFY_TIER=2 requires -only-testing: args or VERIFY_SLICE_TESTS\n"
+        )
+        failures = enrich_build_failures([], blob, {"exit": "1", "class": "build"})
+
+        def verify_fn(**_kw):
+            return VerifyOutcome(
+                result={"exit": "1", "class": "factory_config", "tier": "2"},
+                green=False,
+                failures=failures,
+                output=blob,
+                tier=2,
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            slice_path = _slice_md(tmp)
+            logs: list[str] = []
+            with self.assertRaises(ThrashHalt):
+                run_tier2_implement_gate(
+                    client=None,
+                    slice_file=slice_path,
+                    repo_root=tmp,
+                    api_key="x",
+                    log=logs.append,
+                    verify_fn=verify_fn,
+                    max_runs=2,
+                )
+            self.assertTrue(any("FACTORY CONFIG" in l for l in logs), logs)
+            self.assertFalse(any("Mechanic cycle" in l for l in logs), logs)
 
 
 if __name__ == "__main__":

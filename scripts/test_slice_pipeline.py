@@ -98,6 +98,100 @@ class VerifyTierHelpersTests(unittest.TestCase):
             ["PodWashTests/Foo/testA()"],
         )
 
+    def test_test_ids_for_tier1_rejects_build_error(self):
+        from failure_packet import FailurePacket, build_failure_packet
+        from slice_pipeline import test_ids_for_tier1
+
+        blob = (
+            "VERIFY RESULT: exit=70 total=0 passed=0 failed=0 skipped=0 "
+            "filtered=1 bundle=b.xcresult tier=1 class=build\n"
+            'xcodebuild: error: Tests in the target "PodWash" can\'t be run because '
+            '"PodWash" isn\'t a member of the specified test plan or scheme.\n'
+        )
+        pkt = build_failure_packet(
+            failures=[],
+            crashes=[],
+            bundle=None,
+            exit_code="70",
+            output=blob,
+            export_attachments=False,
+        )
+        self.assertEqual(pkt.test_ids, [])
+        self.assertEqual(test_ids_for_tier1(pkt, pkt.raw_failures), [])
+        self.assertEqual(
+            test_ids_for_tier1(
+                FailurePacket(test_ids=["build_error: exit=1 (0 tests executed)"]),
+                ["build_error: exit=1 (0 tests executed)"],
+            ),
+            [],
+        )
+
+    def test_run_verify_tier2_populates_slice_tests(self):
+        import tempfile
+        from unittest import mock
+
+        from slice_pipeline import run_verify
+
+        mapping = """
+## Verification mapping
+
+| AC# | Test file | Test method | Notes |
+|-----|-----------|-------------|-------|
+| 1 | `PodWash/PodWashTests/QueueTests.swift` | `testQueueOperationsAndPersistence` | |
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            slice_path = os.path.join(tmp, "docs", "slices", "slice-22-foo.md")
+            os.makedirs(os.path.dirname(slice_path), exist_ok=True)
+            with open(slice_path, "w", encoding="utf-8") as fh:
+                fh.write(mapping)
+            captured: dict[str, str] = {}
+
+            def fake_run(cmd, **kwargs):
+                captured.update(kwargs.get("env") or {})
+                proc = mock.MagicMock()
+                proc.returncode = 0
+                proc.stdout = (
+                    "VERIFY RESULT: exit=0 total=1 passed=1 failed=0 skipped=0 "
+                    "filtered=1 bundle=b.xcresult tier=2 class=tests\n"
+                )
+                proc.stderr = ""
+                return proc
+
+            with mock.patch("slice_pipeline.subprocess.run", side_effect=fake_run):
+                outcome = run_verify(
+                    tmp,
+                    slice_file=slice_path,
+                    tier=2,
+                    log=lambda _m: None,
+                )
+            self.assertTrue(outcome.green)
+            self.assertIn(
+                "PodWashTests/QueueTests/testQueueOperationsAndPersistence()",
+                captured.get("VERIFY_SLICE_TESTS", ""),
+            )
+
+    def test_run_verify_tier2_empty_mapping_factory_config(self):
+        import tempfile
+
+        from slice_pipeline import run_verify
+
+        with tempfile.TemporaryDirectory() as tmp:
+            slice_path = os.path.join(tmp, "docs", "slices", "slice-99-empty.md")
+            os.makedirs(os.path.dirname(slice_path), exist_ok=True)
+            with open(slice_path, "w", encoding="utf-8") as fh:
+                fh.write("# Slice 99\n\nNo mapping table.\n")
+            outcome = run_verify(
+                tmp,
+                slice_file=slice_path,
+                tier=2,
+                log=lambda _m: None,
+            )
+            self.assertFalse(outcome.green)
+            self.assertEqual((outcome.result or {}).get("class"), "factory_config")
+            self.assertTrue(
+                any((f or "").startswith("factory_config:") for f in outcome.failures or [])
+            )
+
 
 class FixRouterTests(unittest.TestCase):
     def test_crash_routes_mechanic(self):

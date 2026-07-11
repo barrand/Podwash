@@ -327,7 +327,7 @@ class MappedTestsAndTierTests(unittest.TestCase):
         )
 
     def test_format_tier2_halt_reason_includes_build_detail(self):
-        from slice_pipeline import VerifyOutcome
+        from slice_pipeline import VerifyOutcome, format_tier2_halt_reason
 
         outcome = VerifyOutcome(
             result={"exit": "70", "class": "build"},
@@ -344,8 +344,8 @@ class MappedTestsAndTierTests(unittest.TestCase):
             tier=2,
         )
         reason = format_tier2_halt_reason(outcome, max_runs=3)
-        self.assertIn("class=build_error", reason)
-        self.assertIn("build_error:", reason)
+        self.assertIn("class=factory_config", reason)
+        self.assertIn("factory_config:", reason)
         self.assertNotIn("still red: []", reason)
 
     def test_tier2_marker(self):

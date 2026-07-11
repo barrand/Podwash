@@ -349,6 +349,7 @@ def run_fix_cycle(
         _tier2_failure_blob,
         git_paths_changed,
         is_build_lane,
+        is_factory_config_lane,
         is_tier2_infra_failure,
         run_verify,
         run_worker,
@@ -470,6 +471,28 @@ def run_fix_cycle(
         if slice_files and not packet.suggested_files:
             packet = packet.with_updates(suggested_files=list(slice_files))
 
+        if is_factory_config_lane(outcome):
+            reason = (outcome.failures or ["factory_config: verify wiring"])[0]
+            _log(
+                "FACTORY CONFIG: refusing Mechanic — "
+                + reason.replace("factory_config:", "").strip()[:160]
+            )
+            card = format_stuck_card(
+                packet,
+                slice_file=slice_file,
+                attempt=progress.spawns_used,
+                max_attempts=progress.max_spawns,
+            )
+            _log_stuck_card_path(
+                card,
+                repo_root=repo_root,
+                slice_file=slice_file,
+                log=_log,
+                printed=_stuck_printed,
+            )
+            narrate_thrash_halt(log=_log, voice=_voice)
+            raise ThrashHalt(reason)
+
         # Infra cold-retry (free)
         if (
             not is_build_lane(outcome)
@@ -580,6 +603,7 @@ def run_fix_cycle(
         _cast.add("Mechanic", agent, f"fix-{attempt}")
 
         failed_ids = test_ids_for_tier1(packet, outcome.failures)
+        pre_mechanic_build = is_build_lane(outcome)
         bundle = (outcome.result or {}).get("bundle") or latest_xcresult_path(
             repo_root
         )
@@ -691,9 +715,15 @@ def run_fix_cycle(
             )
 
         # Re-verify: tier-1 failed ids → optional stress → gate tier
-        if failed_ids:
+        if failed_ids and not pre_mechanic_build:
             _log(f"tier-1 re-verify ({len(failed_ids)} failed tests)")
             outcome = _do_verify(tier=1, failed_tests=failed_ids)
+        elif failed_ids and pre_mechanic_build:
+            _log(
+                "tier-1 skipped: build_error lane — no valid test ids "
+                "(refusing bogus -only-testing:)"
+            )
+            outcome = _do_verify(tier=gate_tier)
         else:
             _log(f"tier-1 skipped (no test ids) — tier {gate_tier}")
             outcome = _do_verify(tier=gate_tier)

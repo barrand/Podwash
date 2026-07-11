@@ -335,9 +335,43 @@ def _truncate_build_detail(detail: str, *, limit: int = 100) -> str:
     return detail
 
 
+def is_factory_config_output(text: str) -> bool:
+    """True when verify failed due to factory wiring, not app compile or XCTest."""
+    low = (text or "").lower()
+    if "verify_tier=2 requires" in low or "verify_tier=1 requires" in low:
+        return True
+    if "isn't a member of the specified test plan or scheme" in low:
+        return True
+    if 'tests in the target "build_error:"' in low:
+        return True
+    if re.search(
+        r'tests in the target "podwash" can\'?t be run',
+        low,
+    ):
+        return True
+    return False
+
+
+def extract_factory_config_error(text: str) -> str | None:
+    """Return ``factory_config: <detail>`` for verify wiring / scheme misconfig."""
+    if not is_factory_config_output(text):
+        return None
+    for line in (text or "").splitlines():
+        stripped = line.strip()
+        low = stripped.lower()
+        if "verify_tier=" in low and "requires" in low:
+            return f"factory_config: {_truncate_build_detail(stripped)}"
+        m = _XCODEBUILD_ERROR_RE.search(stripped)
+        if m and is_factory_config_output(stripped):
+            return f"factory_config: {_truncate_build_detail(m.group(1))}"
+    return "factory_config: verify wiring misconfiguration"
+
+
 def extract_build_error(text: str) -> str | None:
     """Return ``build_error: <detail>`` when output looks like a compile/build fail."""
     if not text:
+        return None
+    if is_factory_config_output(text):
         return None
     for m in _COMPILE_ERROR_RE.finditer(text):
         detail = (m.group(1) or "").strip()
@@ -372,6 +406,8 @@ def looks_like_build_failure(
     from failure_packet import is_artifact_fixture_failure, is_test_decode_assertion_blob
 
     blob = text or ""
+    if is_factory_config_output(blob):
+        return False
     if is_artifact_fixture_failure(blob) or is_test_decode_assertion_blob(blob):
         return False
     if verify and verify.get("class") == "build":
@@ -401,9 +437,14 @@ def enrich_build_failures(
     output: str,
     verify: dict[str, str] | None = None,
 ) -> list[str]:
-    """Ensure compile/scheme-red verify runs surface a ``build_error:`` line."""
+    """Ensure compile/scheme-red verify runs surface a diagnostic line."""
     if any((f or "").startswith("build_error:") for f in failures):
         return list(failures)
+    if any((f or "").startswith("factory_config:") for f in failures):
+        return list(failures)
+    fc = extract_factory_config_error(output)
+    if fc:
+        return [fc, *failures]
     if not looks_like_build_failure(output, verify):
         return list(failures)
     detail = extract_build_error(output)

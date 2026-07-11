@@ -25,6 +25,7 @@ from failure_packet import (
     is_artifact_fixture_failure,
     is_expectation_api_violation,
     is_flake_signal,
+    is_valid_test_id,
     persist_stuck_card,
     slice_id_from_path,
 )
@@ -116,6 +117,8 @@ from slice_loop_progress import (
     detect_test_failures,
     enrich_build_failures,
     extract_build_error,
+    extract_factory_config_error,
+    is_factory_config_output,
     latest_xcresult_path,
     looks_like_build_failure,
     summarize_ips_crash,
@@ -358,23 +361,32 @@ class VerifyOutcome:
     tier: int = 3
 
 
+def resolve_tier2_slice_tests(slice_file: str, repo_root: str) -> list[str]:
+    """Slice mapping test ids for tier-2 implement gate (excludes nightly rows)."""
+    try:
+        text = _read_slice_text(slice_file, repo_root)
+    except OSError:
+        text = ""
+    return extract_mapped_test_ids(text, tier2=True)
+
+
 def test_ids_for_tier1(packet: FailurePacket | None, failures: list[str]) -> list[str]:
     """Stable -only-testing: ids for tier-1 re-verify (failed tests first)."""
     ids: list[str] = []
     if packet:
         for tid in packet.test_ids:
             t = (tid or "").strip()
-            if t and t not in ids:
+            if is_valid_test_id(t) and t not in ids:
                 ids.append(t)
     if not ids:
         for f in failures or []:
-            if f.lower().startswith("xcodebuild"):
+            low = (f or "").lower()
+            if low.startswith(("xcodebuild", "build_error:", "factory_config:")):
                 continue
             # Prefer "Class/test()" prefix before em-dash detail
             head = re.split(r"\s+[—–-]\s+", f, maxsplit=1)[0].strip()
-            if head and ("/" in head or head.startswith("PodWash")):
-                if head not in ids:
-                    ids.append(head)
+            if is_valid_test_id(head) and head not in ids:
+                ids.append(head)
     return ids
 
 
@@ -851,6 +863,38 @@ def run_verify(
     cmd = [VERIFY_SH if repo_root == REPO_ROOT_DEFAULT else os.path.join(repo_root, "scripts", "verify.sh")]
     if extra_args:
         cmd.extend(extra_args)
+    has_cli_only = any(
+        (a or "").startswith("-only-testing:") for a in (extra_args or [])
+    )
+    if tier == 2 and slice_file and slice_tests is None:
+        slice_tests = resolve_tier2_slice_tests(slice_file, repo_root)
+    if tier == 2 and not slice_tests and not has_cli_only:
+        sid = slice_id_from_path(slice_file)
+        label = f"slice-{sid:02d}" if sid is not None else "slice"
+        msg = (
+            f"FACTORY CONFIG HALT: tier-2 has no VERIFY_SLICE_TESTS — "
+            f"extract_mapped_test_ids returned 0 ids for {label}; "
+            f"fix slice Verification mapping or scripts/slice_pipeline.py wiring "
+            f"(not an app compile error)."
+        )
+        _log(msg)
+        fc = f"factory_config: {msg}"
+        return VerifyOutcome(
+            result={
+                "exit": "1",
+                "total": "0",
+                "passed": "0",
+                "failed": "0",
+                "skipped": "0",
+                "filtered": "0",
+                "class": "factory_config",
+                "tier": str(tier),
+            },
+            green=False,
+            failures=[fc],
+            output=msg + "\n",
+            tier=tier,
+        )
     run_env = os.environ.copy()
     try:
         tier_env = verify_env_for_tier(
@@ -927,6 +971,13 @@ def run_verify(
     if bundle and not failures:
         failures = read_failures_from_xcresult(bundle)
     failures = enrich_build_failures(failures, output, result)
+    if is_factory_config_output(output):
+        fc = extract_factory_config_error(output)
+        if fc and not any((f or "").startswith("factory_config:") for f in failures):
+            failures = [fc, *failures]
+        if result is not None:
+            result = dict(result)
+            result["class"] = "factory_config"
     if result and bundle and "bundle" not in result:
         result = dict(result)
         result["bundle"] = bundle
@@ -1104,8 +1155,26 @@ def _tier2_curated_blob(outcome: VerifyOutcome) -> str:
     return "\n".join(parts)
 
 
+def is_factory_config_lane(outcome: VerifyOutcome) -> bool:
+    """True when verify failed due to factory wiring — not app compile or XCTest."""
+    result = outcome.result or {}
+    if result.get("class") == "factory_config":
+        return True
+    failures = list(outcome.failures or [])
+    if any((f or "").startswith("factory_config:") for f in failures):
+        return True
+    pkt = outcome.packet
+    if pkt and pkt.failure_class == "factory_config":
+        return True
+    if is_factory_config_output(outcome.output):
+        return True
+    return False
+
+
 def is_build_lane(outcome: VerifyOutcome) -> bool:
     """True when structured signals say compile/link red (beats infra lane)."""
+    if is_factory_config_lane(outcome):
+        return False
     result = outcome.result or {}
     if result.get("class") == "build":
         return True
@@ -1123,6 +1192,8 @@ def is_build_lane(outcome: VerifyOutcome) -> bool:
 
 def outcome_failure_class(outcome: VerifyOutcome) -> str:
     """Stable class label for budget / transition accounting."""
+    if is_factory_config_lane(outcome):
+        return "factory_config"
     if is_build_lane(outcome):
         return "build_error"
     blob = _tier2_failure_blob(outcome)
@@ -1990,6 +2061,10 @@ def format_tier2_halt_reason(
         be = extract_build_error(outcome.output)
         if be:
             detail = [be]
+        else:
+            fc = extract_factory_config_error(outcome.output)
+            if fc:
+                detail = [fc]
     if not detail:
         detail = list(outcome.crashes or [])[:2]
     handoff_bit = ""

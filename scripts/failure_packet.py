@@ -137,6 +137,22 @@ def _norm_test_id(raw: str) -> str:
     return s
 
 
+_VALID_TEST_ID_RE = re.compile(
+    r"^(?:PodWash(?:Tests|UITests|SlowTests)/)?[A-Za-z_]\w*/test\w+\(\)$"
+)
+
+
+def is_valid_test_id(tid: str) -> bool:
+    """True for ``Target/Class/testMethod()`` ids usable with ``-only-testing:``."""
+    t = (tid or "").strip()
+    if not t:
+        return False
+    low = t.lower()
+    if low.startswith(("build_error:", "factory_config:", "xcodebuild")):
+        return False
+    return bool(_VALID_TEST_ID_RE.match(t))
+
+
 def is_artifact_fixture_failure(blob: str) -> bool:
     """True when a fast test expects a committed benchmark/golden artifact."""
     low = (blob or "").lower()
@@ -174,7 +190,11 @@ def extract_artifact_regeneration_hint(blob: str) -> str:
 
 
 def _looks_buildish(raw_failures: list[str], exit_code: str | None, output: str) -> bool:
+    from slice_loop_progress import is_factory_config_output
+
     blob = "\n".join(raw_failures) + "\n" + (output or "")
+    if is_factory_config_output(blob):
+        return False
     if is_artifact_fixture_failure(blob) or is_test_decode_assertion_blob(blob):
         return False
     if _BUILD_HINT_RE.search(blob):
@@ -542,7 +562,7 @@ def build_failure_packet(
     export_attachments: bool = True,
 ) -> FailurePacket:
     """Build a FailurePacket from verify outcome pieces."""
-    from slice_loop_progress import enrich_build_failures
+    from slice_loop_progress import enrich_build_failures, is_factory_config_output
 
     raw = list(failures or [])
     verify_hint = {"exit": str(exit_code)} if exit_code else None
@@ -558,7 +578,7 @@ def build_failure_packet(
     if summary:
         enriched: list[str] = []
         for tid, detail in summary_test_failures(summary):
-            if tid and tid not in test_ids:
+            if tid and is_valid_test_id(tid) and tid not in test_ids:
                 test_ids.append(tid)
             if detail and detail not in assertions:
                 assertions.append(detail)
@@ -580,7 +600,7 @@ def build_failure_packet(
             if f.lower().startswith("xcodebuild"):
                 continue
             tid = _norm_test_id(f)
-            if tid and ("/" in tid or "test" in tid.lower()):
+            if is_valid_test_id(tid):
                 if tid not in test_ids:
                     test_ids.append(tid)
                 rest = f[len(tid) :].lstrip(" —–-")
@@ -659,6 +679,13 @@ def build_failure_packet(
         packet.halt_reason = (
             "DIAGNOSE FAILED: no actionable evidence "
             "(no test id, no crashes, no build signal, no xcresult bundle)"
+        )
+    elif not test_ids and is_factory_config_output(output):
+        packet.failure_class = "factory_config"
+        packet.actionable = False
+        packet.halt_reason = (
+            "FACTORY CONFIG: verify wiring or slice mapping — not an app compile error "
+            "(see verify-output-latest.txt)"
         )
     elif not test_ids and _looks_buildish(raw, exit_code, output):
         packet.failure_class = "build_error"

@@ -277,6 +277,25 @@ class PacketBuilderTests(unittest.TestCase):
         card = format_stuck_card(packet, slice_file="docs/slices/slice-01.md")
         self.assertIn("build_error", card)
 
+    def test_build_error_not_extracted_as_test_id(self):
+        blob = (
+            "VERIFY RESULT: exit=70 total=0 passed=0 failed=0 skipped=0 "
+            "filtered=1 bundle=b.xcresult tier=1 class=build\n"
+            'xcodebuild: error: Tests in the target "PodWash" can\'t be run because '
+            '"PodWash" isn\'t a member of the specified test plan or scheme.\n'
+        )
+        packet = build_failure_packet(
+            failures=[],
+            crashes=[],
+            bundle=None,
+            exit_code="70",
+            output=blob,
+            export_attachments=False,
+        )
+        self.assertEqual(packet.test_ids, [])
+        self.assertEqual(packet.failure_class, "factory_config")
+        self.assertFalse(packet.actionable)
+
     def test_hard_halt_no_evidence(self):
         packet = build_failure_packet(
             failures=[],
