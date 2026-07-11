@@ -164,7 +164,8 @@ build  >  test_failure  >  infra/flake
 3. Phrase-level infra markers only — never bare `dns` / `lock` / `coresimulator`.
 4. Structured vs heuristic disagreement logs `CLASSIFIER DISAGREEMENT` and prefers structured.
 5. After every fix worker, tier-0 (`build-for-testing`) runs; compile-red becomes the next pending outcome (skips tier-2 until build-green).
-6. When failure class changes after the normal fix budget would halt, one **class-transition credit** grants a spawn (cap 1 per gate; total spawns ≤ `max_runs + 1`).
+6. When failure class changes after the normal fix budget would halt, one **class-transition credit** grants a spawn (cap 1 per gate; total spawns ≤ `max_runs + 1` before handoff credits).
+7. When a worker's explicit `HANDOFF:` flip is pending at the budget boundary, one **handoff credit** grants a spawn of the flipped role (cap 1; slice 19). Bare `NO-EDIT` auto-flips do **not** extend the budget. Console: `HANDOFF credit: spawning QA (pending flip; budget exhausted)`.
 
 `verify.sh` also writes `build/test-results/verify-result.json` (machine-readable contract). Raw verify stdout is persisted as `verify-output-*.txt` / `verify-output-latest.txt` and copied into the session bundle on halt.
 
@@ -226,6 +227,12 @@ HANDOFF: scope=ok|out_of_scope; route=loop|QA|Engineer; applied=yes|no
 Python parses `HANDOFF:` softly (missing line = warn, not hard fail). Honor
 `out_of_scope` / explicit `route=` **only when** the in-scope git delta is empty;
 otherwise log `HANDOFF IGNORED: worker edited in-scope paths`.
+
+If the flip is still pending when the normal fix budget would halt, the loop
+grants one **handoff credit** so the flipped role still gets a turn (then thrash
+if still red). Halt text includes `pending handoff QA was honored once` when
+that credit was used. Bare `NO-EDIT` auto-flips (no `HANDOFF:` line) do not
+extend the budget.
 
 ### Git baseline (observation-first)
 

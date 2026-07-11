@@ -128,6 +128,7 @@ When diagnosing thrash inside the fix/tier-2 loop (not forge-fix “who owns the
 | `LANE: build → Engineer` | Compile-red |
 | `NO-EDIT: empty in-scope delta — next role=…` | Worker changed nothing in scope; flip next |
 | `HANDOFF FLIP: …` | Worker `HANDOFF:` honored (empty in-scope delta) |
+| `HANDOFF credit: spawning QA (pending flip; budget exhausted)` | Flip was pending at budget halt — one extra spawn granted |
 | `HANDOFF IGNORED: …` | Worker claimed out_of_scope but edited in-scope paths |
 | `NO-EDIT THRASH` | Explicit no-edit handoff twice on same signature |
 

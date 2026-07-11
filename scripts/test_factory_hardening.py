@@ -323,6 +323,94 @@ class ClassTransitionCreditTests(unittest.TestCase):
             )
 
 
+class HandoffCreditTests(unittest.TestCase):
+    def test_handoff_flip_on_last_attempt_spawns_flipped_role(self):
+        """Slice 19: Engineer out_of_scope→QA on last attempt must still spawn QA."""
+        from slice_loop_progress import ThrashHalt
+
+        msg = (
+            'XCTAssertEqual failed: ("0") is not equal to ("2") - '
+            "Second analyze still invokes pipeline (cache load inside)"
+        )
+        red = VerifyOutcome(
+            result={"exit": "65", "failed": "1", "tier": "2", "class": "tests"},
+            green=False,
+            failures=[msg],
+            output=msg,
+            packet=FailurePacket(
+                raw_failures=[msg],
+                assertions=[msg],
+                failure_class="assertion",
+                fix_scope="app",  # first spawn → Engineer
+                test_ids=[
+                    "SegmentationIntegrationTests/"
+                    "testSegmentsAndProfanityCachedWithIndependentActions()"
+                ],
+            ),
+            tier=2,
+        )
+        calls = {"n": 0}
+        roles: list[str] = []
+
+        def verify_fn(**kw):
+            tier = kw.get("tier", 2)
+            if tier == 0:
+                return VerifyOutcome(
+                    result={"exit": "0", "class": "tests", "tier": "0"},
+                    green=True,
+                    tier=0,
+                )
+            calls["n"] += 1
+            return red
+
+        def fake_worker(*_a, **kwargs):
+            role = kwargs.get("role") or "Engineer"
+            roles.append(role)
+            progress = kwargs.get("progress")
+            if progress is not None and role == "Engineer":
+                progress.assistant_text = (
+                    "SUMMARY: No app change — AC1 asserts unused pipelineSpy\n"
+                    "HANDOFF: scope=out_of_scope; route=QA; applied=no\n"
+                )
+            return True, "ok"
+
+        class _Prog:
+            assistant_text = ""
+            _files_touched: list[str] = []
+
+        def progress_factory(role: str, agent_name: str | None = None):
+            return _Prog()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            slice_path = _slice_md(tmp)
+            logs: list[str] = []
+            with mock.patch("slice_pipeline.run_worker", side_effect=fake_worker), mock.patch(
+                "slice_pipeline.git_paths_changed", return_value=[]
+            ):
+                with self.assertRaises(ThrashHalt) as ctx:
+                    run_tier2_implement_gate(
+                        client=object(),
+                        slice_file=slice_path,
+                        repo_root=tmp,
+                        api_key="x",
+                        log=logs.append,
+                        verify_fn=verify_fn,
+                        progress_factory=progress_factory,
+                        max_runs=1,
+                        max_infra_retries=0,
+                    )
+            self.assertTrue(
+                any("HANDOFF credit: spawning QA" in l for l in logs),
+                logs,
+            )
+            self.assertTrue(
+                any("HANDOFF FLIP: out_of_scope → QA" in l for l in logs),
+                logs,
+            )
+            self.assertEqual(roles, ["Engineer", "QA"], roles)
+            self.assertIn("pending handoff QA was honored once", str(ctx.exception))
+
+
 class PostEditTier0Tests(unittest.TestCase):
     def test_tier0_red_skips_to_pending_build_outcome(self):
         from slice_loop_progress import ThrashHalt

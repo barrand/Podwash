@@ -141,6 +141,9 @@ DEFAULT_MAX_TIER2_INFRA_RETRIES = 2
 # One extra spawn when failure class changes after budget would otherwise halt
 # (slice 13: crash→UI burned 2/3, then build_error never got a worker).
 DEFAULT_MAX_CLASS_TRANSITION_CREDITS = 1
+# One extra spawn when a worker's HANDOFF/no-edit flip is pending at the budget
+# boundary (slice 19: Edison out_of_scope→QA on last attempt, flip never consumed).
+DEFAULT_MAX_HANDOFF_CREDITS = 1
 
 # Exit codes owned by the loop (slice_loop.py mirrors these).
 EXIT_THRASH = 5
@@ -327,7 +330,11 @@ class FixBudget:
     levers_tried: list[str] = field(default_factory=list)
     # Observation-first handoffs (git no-edit / worker HANDOFF line)
     forced_next_role: str = ""
+    # Explicit HANDOFF: flip only — grants budget-boundary credit (slice 19).
+    # Bare NO-EDIT still sets forced_next_role but does not extend the budget.
+    pending_handoff_role: str = ""
     no_edit_counts: dict[str, int] = field(default_factory=dict)
+    handoff_credits_used: int = 0
 
     @property
     def remaining(self) -> int:
@@ -341,6 +348,13 @@ class FixBudget:
             self.attempt_notes.append(note)
 
     def exhausted(self) -> bool:
+        # Slice 19: allow one more iteration when an explicit HANDOFF flip would
+        # otherwise be discarded at the budget boundary (not bare NO-EDIT).
+        if (
+            self.pending_handoff_role in FIX_WORKER_ROLES
+            and self.handoff_credits_used < DEFAULT_MAX_HANDOFF_CREDITS
+        ):
+            return False
         return self.attempts_used >= self.max_attempts
 
 
@@ -2352,8 +2366,17 @@ def run_fix_loop(
         # Deterministic lanes skip the LLM referee (packaging / expectation /
         # artifact / build). Hard cases still go through Rhea.
         forced_role = budget.forced_next_role
+        pending_handoff = budget.pending_handoff_role
         if forced_role:
             budget.forced_next_role = ""
+        if pending_handoff:
+            budget.pending_handoff_role = ""
+            if budget.attempts_used >= budget.max_attempts:
+                budget.handoff_credits_used += 1
+                _log(
+                    f"HANDOFF credit: spawning {forced_role or pending_handoff} "
+                    f"(pending flip; budget exhausted)"
+                )
         lane = classify_fix_lane(
             blob=_tier2_failure_blob(outcome),
             packet=packet,
@@ -2722,6 +2745,7 @@ def run_fix_loop(
         if flip_role:
             handoff_tag = f"out_of_scope→{flip_role}"
             budget.forced_next_role = flip_role
+            budget.pending_handoff_role = flip_role
         elif handoff and handoff.scope == "out_of_scope":
             handoff_tag = "out_of_scope(ignored)"
         elif handoff:
@@ -2906,8 +2930,12 @@ def run_fix_loop(
             log=_log,
             voice=_voice,
         )
+    handoff_bit = ""
+    if budget.handoff_credits_used:
+        handoff_bit = "pending handoff was honored once; "
     reason = (
         f"fix budget exhausted ({budget.max_attempts} attempts); "
+        f"{handoff_bit}"
         f"still red: {outcome.failures[:3] or outcome.crashes[:2]}"
     )
     resume_hint = (
@@ -2927,6 +2955,7 @@ def run_fix_loop(
         extra={
             "gate": "fix_loop",
             "attempts": budget.attempts_used,
+            "handoff_credits_used": budget.handoff_credits_used,
             "referee_telemetry": dict(referee_telemetry),
             "resume_hint": resume_hint,
         },
@@ -2947,7 +2976,12 @@ def run_fix_loop(
 
 
 
-def format_tier2_halt_reason(outcome: VerifyOutcome, *, max_runs: int) -> str:
+def format_tier2_halt_reason(
+    outcome: VerifyOutcome,
+    *,
+    max_runs: int,
+    handoff_honored: str = "",
+) -> str:
     """Human halt line for tier-2 budget exhaustion — never bare ``still red: []``."""
     fail_cls = outcome_failure_class(outcome)
     detail: list[str] = list(outcome.failures or [])[:3]
@@ -2959,13 +2993,18 @@ def format_tier2_halt_reason(outcome: VerifyOutcome, *, max_runs: int) -> str:
             detail = [be]
     if not detail:
         detail = list(outcome.crashes or [])[:2]
+    handoff_bit = ""
+    if handoff_honored:
+        handoff_bit = f"pending handoff {handoff_honored} was honored once; "
     if detail:
         return (
             f"implement tier-2 gate failed after {max_runs} runs; "
+            f"{handoff_bit}"
             f"class={fail_cls}: {detail}"
         )
     return (
         f"implement tier-2 gate failed after {max_runs} runs; "
+        f"{handoff_bit}"
         f"class={fail_cls} (no per-test detail — see verify-output-latest.txt)"
     )
 
@@ -3042,12 +3081,19 @@ def run_tier2_implement_gate(
     infra_retries = 0
     verify_n = 0
     transition_credits_used = 0
+    handoff_credits_used = 0
+    handoff_honored_role = ""
     spawned_classes: set[str] = set()
     last_infra_sig: str | None = None
     pending_outcome: VerifyOutcome | None = None
     outcome = VerifyOutcome(result={}, green=False, tier=2)
-    hard_cap = max_runs + DEFAULT_MAX_CLASS_TRANSITION_CREDITS
+    hard_cap = (
+        max_runs
+        + DEFAULT_MAX_CLASS_TRANSITION_CREDITS
+        + DEFAULT_MAX_HANDOFF_CREDITS
+    )
     forced_next_role = ""
+    pending_handoff_role = ""
     no_edit_counts: dict[str, int] = {}
     attempt_notes: list[str] = []
 
@@ -3139,7 +3185,23 @@ def run_tier2_implement_gate(
         fail_cls = outcome_failure_class(outcome)
         next_attempt = fix_attempt + 1
         if next_attempt > max_runs:
+            # Slice 19: explicit HANDOFF flip must get one spawn before thrash —
+            # bare NO-EDIT flips do not extend the budget (class-transition still
+            # covers new failure classes).
             if (
+                pending_handoff_role in FIX_WORKER_ROLES
+                and handoff_credits_used < DEFAULT_MAX_HANDOFF_CREDITS
+            ):
+                handoff_credits_used += 1
+                handoff_honored_role = pending_handoff_role
+                if not forced_next_role:
+                    forced_next_role = pending_handoff_role
+                pending_handoff_role = ""
+                _log(
+                    f"HANDOFF credit: spawning {forced_next_role} "
+                    f"(pending flip; budget exhausted)"
+                )
+            elif (
                 fail_cls in spawned_classes
                 or transition_credits_used >= DEFAULT_MAX_CLASS_TRANSITION_CREDITS
             ):
@@ -3169,11 +3231,12 @@ def run_tier2_implement_gate(
                 append_ledger(entry, repo_root=repo_root, slice_id=slice_id)
                 ledger.append(entry)
                 break
-            transition_credits_used += 1
-            _log(
-                f"class-transition credit {transition_credits_used}/"
-                f"{DEFAULT_MAX_CLASS_TRANSITION_CREDITS} for class={fail_cls}"
-            )
+            else:
+                transition_credits_used += 1
+                _log(
+                    f"class-transition credit {transition_credits_used}/"
+                    f"{DEFAULT_MAX_CLASS_TRANSITION_CREDITS} for class={fail_cls}"
+                )
 
         fix_attempt = next_attempt
         pkt = outcome.packet
@@ -3250,6 +3313,7 @@ def run_tier2_implement_gate(
                 )
                 role = forced_next_role
         forced_next_role = ""
+        pending_handoff_role = ""
         hyp = (
             f"ledger-escalate:predicate-wait:{sig[:50]}"
             if escalate
@@ -3340,6 +3404,7 @@ def run_tier2_implement_gate(
         if flip_role:
             handoff_tag = f"out_of_scope→{flip_role}"
             forced_next_role = flip_role
+            pending_handoff_role = flip_role
         elif handoff and handoff.scope == "out_of_scope":
             handoff_tag = "out_of_scope(ignored)"
         elif handoff:
@@ -3432,7 +3497,11 @@ def run_tier2_implement_gate(
             )
             pending_outcome = t0
 
-    reason = format_tier2_halt_reason(outcome, max_runs=max_runs)
+    reason = format_tier2_halt_reason(
+        outcome,
+        max_runs=max_runs,
+        handoff_honored=handoff_honored_role,
+    )
     tier2_halt_blob = _tier2_failure_blob(outcome)
     if is_artifact_fixture_failure(tier2_halt_blob):
         eng_count = sum(1 for e in ledger if getattr(e, "role", "") == "Engineer")
@@ -3467,6 +3536,8 @@ def run_tier2_implement_gate(
             "infra_retries": infra_retries,
             "ledger_entries": len(ledger),
             "transition_credits_used": transition_credits_used,
+            "handoff_credits_used": handoff_credits_used,
+            "handoff_honored": handoff_honored_role,
             "spawned_classes": sorted(spawned_classes),
         },
     )

@@ -12,6 +12,7 @@ deltas, thin `HANDOFF:` line. See [`docs/slice-pipeline.md`](../slice-pipeline.m
 - [x] Per-worker git baseline → ledger `files_touched` = in-scope delta
 - [x] Empty in-scope → force opposite role; explicit no-edit×2 → `NO-EDIT THRASH`
 - [x] `HANDOFF:` honored only when in-scope delta empty
+- [x] Handoff credit at budget boundary (slice 19: last-attempt flip still spawns)
 - [x] Rich `attempt_notes` (summary + files + handoff) in fix prompts
 - [x] Narrator ledger-block copy says flip/reroute (not halt)
 - [x] Unit tests: `scripts/test_fix_lanes.py` + existing factory suites green
