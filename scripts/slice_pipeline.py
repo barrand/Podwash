@@ -1861,17 +1861,30 @@ def record_green_verify(
     set_slice_status(slice_file, repo_root, "Done")
 
 
-def check_test_isolation(repo_root: str, *, staged: bool = True) -> bool:
+def is_ignored_commit_path(path: str) -> bool:
+    """Paths that must never land in factory split commits."""
+    p = (path or "").replace("\\", "/")
+    return "/__pycache__/" in p or p.endswith(".pyc")
+
+
+def check_test_isolation(
+    repo_root: str, *, staged: bool = True, log: LogFn | None = None
+) -> bool:
+    _log = log or (lambda m: None)
     cmd = [os.path.join(repo_root, "scripts", "check-test-isolation.sh")]
     if staged:
         cmd.append("--staged")
     proc = subprocess.run(cmd, cwd=repo_root, capture_output=True, text=True)
+    if proc.returncode != 0:
+        for line in (proc.stderr or proc.stdout or "").splitlines():
+            if line.strip():
+                _log(line.strip())
     return proc.returncode == 0
 
 
 def git_paths_changed(repo_root: str) -> list[str]:
     proc = subprocess.run(
-        ["git", "status", "--porcelain"],
+        ["git", "status", "--porcelain", "-uall"],
         cwd=repo_root,
         capture_output=True,
         text=True,
@@ -1883,8 +1896,21 @@ def git_paths_changed(repo_root: str) -> list[str]:
         path = line[3:].strip()
         if " -> " in path:
             path = path.split(" -> ", 1)[1]
+        if is_ignored_commit_path(path):
+            continue
         paths.append(path)
     return paths
+
+
+def log_dirty_commit_paths(repo_root: str, log: LogFn) -> None:
+    dirty = git_paths_changed(repo_root)
+    if not dirty:
+        return
+    log(f"commit phase incomplete — {len(dirty)} path(s) still dirty:")
+    for path in dirty[:12]:
+        log(f"  {path}")
+    if len(dirty) > 12:
+        log(f"  … and {len(dirty) - 12} more")
 
 
 def split_paths_for_commits(paths: list[str]) -> tuple[list[str], list[str], list[str]]:
@@ -1931,7 +1957,7 @@ def commit_test_spec_changes(
         return True
     if run_git(repo_root, ["add", "--", *tests], log=_log) != 0:
         return False
-    if not check_test_isolation(repo_root, staged=True):
+    if not check_test_isolation(repo_root, staged=True, log=_log):
         _log("check-test-isolation.sh --staged FAILED — aborting test-spec commit")
         run_git(repo_root, ["reset", "HEAD"], log=_log)
         return False
@@ -1970,21 +1996,31 @@ def commit_slice_changes(
                 return True
             if run_git(repo_root, ["add", "--", *files], log=_log) != 0:
                 return False
-            if not check_test_isolation(repo_root, staged=True):
+            if not check_test_isolation(repo_root, staged=True, log=_log):
                 _log("check-test-isolation.sh --staged FAILED — aborting commit")
                 run_git(repo_root, ["reset", "HEAD"], log=_log)
                 return False
             return run_git(repo_root, ["commit", "-m", message], log=_log) == 0
 
         ok = True
-        if tests:
-            ok = stage_and_commit(tests, f"slice-{nn}: test spec") and ok
-        implement_files = apps + other
-        if implement_files:
-            ok = stage_and_commit(implement_files, f"slice-{nn}: implement") and ok
-    if ok and push:
-        ok = run_git(repo_root, ["push"], log=_log) == 0
-    return ok
+        for batch, message in (
+            (tests, f"slice-{nn}: test spec"),
+            (apps + other, f"slice-{nn}: implement"),
+        ):
+            if not batch:
+                continue
+            if not stage_and_commit(batch, message):
+                ok = False
+                break
+    if not ok:
+        log_dirty_commit_paths(repo_root, _log)
+        _log("push skipped — commit phase incomplete")
+        return False
+    if push:
+        if run_git(repo_root, ["push"], log=_log) != 0:
+            _log("git push failed")
+            return False
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -2513,18 +2549,24 @@ def run_pipeline_slice(
             return False, elapsed, last_verify, _slice_meta()
 
         events.record("RECORD", "loop", "record_start", timeline=True, mission="VERIFY RESULT")
-        record_green_verify(slice_file, repo_root, outcome.result)
-        _log("recorded VERIFY RESULT + Status Done")
+        write_verify_result(slice_file, repo_root, outcome.result)
+        _log("recorded VERIFY RESULT")
 
         if do_commit:
             events.record("COMMIT", "loop", "commit_start", timeline=True, mission="split commits")
             if not commit_slice_changes(
                 slice_id, repo_root, log=_log, push=do_push
             ):
-                _log("commit/push failed")
+                set_slice_status(slice_file, repo_root, "Verify")
+                _log("commit/push incomplete — Status reverted to Verify")
                 elapsed = int(time.time() - t0)
                 _emit_recap("halt", elapsed)
                 return False, elapsed, last_verify, _slice_meta()
+            set_slice_status(slice_file, repo_root, "Done")
+            _log("Status Done" + (" + pushed" if do_push else ""))
+        else:
+            set_slice_status(slice_file, repo_root, "Done")
+            _log("Status Done (commit skipped)")
 
     elapsed = int(time.time() - t0)
     _emit_recap("green", elapsed)

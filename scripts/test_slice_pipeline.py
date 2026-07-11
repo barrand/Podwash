@@ -633,5 +633,48 @@ class AuthoringGatePromptTests(unittest.TestCase):
         self.assertIn("class=build", line)
 
 
+class CommitPathFilterTests(unittest.TestCase):
+    def test_ignored_pycache_paths(self):
+        from slice_pipeline import is_ignored_commit_path
+
+        self.assertTrue(
+            is_ignored_commit_path("scripts/__pycache__/slice_pipeline.cpython-313.pyc")
+        )
+        self.assertFalse(is_ignored_commit_path("scripts/slice_pipeline.py"))
+
+    def test_git_paths_changed_skips_pycache(self):
+        from slice_pipeline import git_paths_changed
+
+        with tempfile.TemporaryDirectory() as tmp:
+            subprocess = __import__("subprocess")
+            os.makedirs(os.path.join(tmp, "scripts", "__pycache__"), exist_ok=True)
+            real_file = os.path.join(tmp, "docs", "note.md")
+            os.makedirs(os.path.dirname(real_file), exist_ok=True)
+            with open(real_file, "w", encoding="utf-8") as fh:
+                fh.write("v1\n")
+            pyc = os.path.join(
+                tmp, "scripts", "__pycache__", "slice_pipeline.cpython-313.pyc"
+            )
+            subprocess.run(["git", "init"], cwd=tmp, capture_output=True, check=True)
+            subprocess.run(
+                ["git", "add", "docs/note.md"],
+                cwd=tmp,
+                capture_output=True,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "commit", "-m", "init"],
+                cwd=tmp,
+                capture_output=True,
+                check=True,
+            )
+            with open(real_file, "w", encoding="utf-8") as fh:
+                fh.write("v2\n")
+            with open(pyc, "wb") as fh:
+                fh.write(b"\x00\x01")
+            paths = git_paths_changed(tmp)
+            self.assertEqual(paths, ["docs/note.md"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -203,8 +203,9 @@ def same_resume_family(sig_a: str, sig_b: str) -> bool:
 
 
 def is_test_path(path: str) -> bool:
+    """True for test-target sources only (not app bundle ``PodWash/PodWash/Fixtures/``)."""
     p = (path or "").replace("\\", "/")
-    return any(p.startswith(pref) for pref in _TEST_TARGET_PREFIXES) or "/Fixtures/" in p
+    return any(p.startswith(pref) for pref in _TEST_TARGET_PREFIXES)
 
 
 def is_app_path(path: str) -> bool:

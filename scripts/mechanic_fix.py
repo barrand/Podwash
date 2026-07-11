@@ -297,23 +297,25 @@ def commit_mechanic_deltas(
     def stage_and_commit(files: list[str], message: str) -> bool:
         if not files:
             return True
+        _log(f"commit: staging {len(files)} path(s) for {message!r}")
         if run_git(repo_root, ["add", "--", *files], log=_log) != 0:
             return False
-        if not check_test_isolation(repo_root, staged=True):
-            _log("check-test-isolation.sh --staged FAILED — aborting commit")
+        if not check_test_isolation(repo_root, staged=True, log=_log):
+            _log("check-test-isolation.sh --staged FAILED — aborting commit sequence")
             run_git(repo_root, ["reset", "HEAD"], log=_log)
             return False
         return run_git(repo_root, ["commit", "-m", message], log=_log) == 0
 
-    ok = True
-    if tests:
-        ok = stage_and_commit(tests, f"slice-{nn}: fix tests") and ok
-    if apps:
-        ok = stage_and_commit(apps, f"slice-{nn}: fix app") and ok
-    docs = adrs + other
-    if docs:
-        ok = stage_and_commit(docs, f"slice-{nn}: fix docs") and ok
-    return ok
+    for batch, message in (
+        (tests, f"slice-{nn}: fix tests"),
+        (apps, f"slice-{nn}: fix app"),
+        (adrs + other, f"slice-{nn}: fix docs"),
+    ):
+        if not batch:
+            continue
+        if not stage_and_commit(batch, message):
+            return False
+    return True
 
 
 def run_fix_cycle(

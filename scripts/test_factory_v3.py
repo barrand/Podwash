@@ -186,6 +186,26 @@ class AntiCheatPathTests(unittest.TestCase):
         self.assertEqual(len(adrs), 1)
         self.assertEqual(len(other), 1)
 
+    def test_app_bundle_fixture_not_classified_as_test(self):
+        """Regression: PodWash/PodWash/Fixtures/ must land in apps, not tests."""
+        tests, apps, adrs, other = classify_fix_paths(
+            [
+                "PodWash/PodWashTests/ITunesStubURLProtocol.swift",
+                "PodWash/PodWash/Fixtures/feeds/second_feed.xml",
+            ]
+        )
+        self.assertEqual(tests, ["PodWash/PodWashTests/ITunesStubURLProtocol.swift"])
+        self.assertEqual(apps, ["PodWash/PodWash/Fixtures/feeds/second_feed.xml"])
+        self.assertEqual(adrs, [])
+        self.assertEqual(other, [])
+
+    def test_test_target_fixture_still_classified_as_test(self):
+        tests, apps, _adrs, _other = classify_fix_paths(
+            ["PodWash/PodWashTests/Fixtures/feeds/sample_feed.xml"]
+        )
+        self.assertEqual(tests, ["PodWash/PodWashTests/Fixtures/feeds/sample_feed.xml"])
+        self.assertEqual(apps, [])
+
 
 class MechanicPromptTests(unittest.TestCase):
     def test_prompt_allows_app_tests_adr(self):
