@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+     xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Fixture Popular Beta Feed</title>
+    <link>https://fixture.podwash.tests/feeds/popular-beta</link>
+    <description>One-episode RSS stub for Slice 22 multi-subscription tests. Hand-authored by QA.</description>
+    <language>en-us</language>
+    <itunes:author>PodWash QA</itunes:author>
+
+    <item>
+      <title>Beta Solo Episode</title>
+      <link>https://fixture.podwash.tests/episodes/beta-solo</link>
+      <guid isPermaLink="false">fixture-ep-beta-001</guid>
+      <pubDate>Tue, 14 Jan 2026 12:30:00 +0000</pubDate>
+      <description>Single-episode stub feed paired with popular result index 1.</description>
+      <enclosure url="https://fixture.podwash.tests/audio/beta-solo.m4a" length="12345" type="audio/mp4"/>
+    </item>
+  </channel>
+</rss>
