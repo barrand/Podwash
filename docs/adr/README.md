@@ -35,3 +35,4 @@ from the relevant slice file's Role artifacts table.
 | [016](016-carplay-templates.md) | CarPlay templates: library, queue, now playing | Accepted |
 | [017](017-overlay-sync.md) | Overlay sync: beep/quack during mute intervals | Accepted |
 | [018](018-analysis-timeline.md) | Analysis timeline: progress seam, bucketing, episode-row binding | Accepted |
+| [019](019-brand-theme.md) | Brand theme: tokens, display name, App Icon linkage | Accepted |

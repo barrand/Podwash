@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 20 |
 | **Title** | Analysis timeline visualization |
-| **Status** | Ready |
+| **Status** | Done |
 | **Crux** | While analysis is in flight for an episode with cleaning enabled, the episode row renders a **12-segment** timeline whose **blue / green / grey** counts match a pinned progress snapshot from an injected stepped pipeline double — assertable in unit tests and via `analysisTimeline` accessibility values in UI tests, with no physical device or Skipper app comparison. |
 
 ## PRD / spec references

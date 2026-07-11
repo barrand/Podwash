@@ -58,7 +58,7 @@ Establish a minimal, testable brand system (display name, App Icon, semantic col
 - Launch argument **`-UITestFixtureBranding`** — lands on a deterministic chrome surface (player + list tab or combined fixture) without network/RSS; parallelization off per Slice 03 precedent
 - `PodWash/PodWashTests/BrandThemeTests.swift` — token + bundle structural asserts
 - `PodWash/PodWashUITests/BrandingUITests.swift` — chrome accessibility contract
-- `docs/adr/011-brand-theme.md` — module boundary: `BrandTheme` public API, asset catalog linkage, which views may import tokens
+- `docs/adr/019-brand-theme.md` — module boundary: `BrandTheme` public API, asset catalog linkage, which views may import tokens
 - `docs/slices/slice-21-ux.md` — **UX agent authors** (PM links only; not written in this story pass)
 
 ## Brand token contract (pinned — user 2026-07-10)
@@ -146,7 +146,7 @@ scripts/verify.sh
 > A slice without a recorded full-suite green artifact is not Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=119 passed=119 failed=0 skipped=0 filtered=0 bundle=build/test-results/verify-20260711-173639.xcresult tier=3 class=tests
 ```
 
 ## Plan review record (coordinator fills before downstream roles)
@@ -156,8 +156,8 @@ VERIFY RESULT: (pending)
 > See [`multitask-workflow.md`](../multitask-workflow.md) § Plan review gates.
 
 ```
-ADR review: (pending)
-Test spec review: (pending)
+ADR review (2026-07-11): (pending) QA cleared — pipeline worker finished PM cleared — pipeline worker finished
+Test spec review (2026-07-11): Architect cleared — pipeline worker finished
 ```
 
 ## Done gate
@@ -173,7 +173,7 @@ Test spec review: (pending)
 | Role | Gate | Artifact path |
 |------|------|---------------|
 | PM | Required | `docs/slices/slice-21-visual-identity.md` (this file) |
-| Architect | Required | `docs/adr/011-brand-theme.md` (`BrandTheme` API, asset linkage, view import rules) |
+| Architect | Required | `docs/adr/019-brand-theme.md` (`BrandTheme` API, asset linkage, view import rules) |
 | UX | Required | `docs/slices/slice-21-ux.md` (chrome layout, `brandWordmark` / `themePrimaryAccent` / `themePrimarySurface` contracts, fixture screen) |
 | QA | Required | `BrandThemeTests.swift`, `BrandingUITests.swift` |
 | Engineer | Required | `BrandTheme.swift`, asset catalog, Info.plist display name, token wiring on Slice 03/06/13 chrome |
