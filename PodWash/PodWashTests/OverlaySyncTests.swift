@@ -91,19 +91,31 @@ final class OverlaySyncTests: XCTestCase {
         timeout: TimeInterval = 12
     ) async {
         let reached = expectation(description: "playhead >= \(target)")
+        // Guard once on the main queue — do NOT removeTimeObserver inside the
+        // callback (that retained [engine] and triggered PlaybackEngine /
+        // MPNowPlayingInfoCenterUpdater deinit SIGABRT mid-wait). Match
+        // IntervalMuteSkipTests: fulfill once, remove after await / teardown.
+        var didFulfill = false
         var token: Any?
         token = engine.avPlayer.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 0.02, preferredTimescale: 600),
             queue: .main
         ) { time in
-            if time.seconds >= target {
-                reached.fulfill()
-            }
+            guard time.seconds >= target, !didFulfill else { return }
+            didFulfill = true
+            reached.fulfill()
         }
         addTeardownBlock { [engine] in
-            if let token { engine.avPlayer.removeTimeObserver(token) }
+            if let observer = token {
+                token = nil
+                engine.avPlayer.removeTimeObserver(observer)
+            }
         }
         await fulfillment(of: [reached], timeout: timeout)
+        if let observer = token {
+            token = nil
+            engine.avPlayer.removeTimeObserver(observer)
+        }
     }
 
     private func waitUntilPastLastBoundary(
@@ -125,12 +137,23 @@ final class OverlaySyncTests: XCTestCase {
         )
     }
 
+    private func makeTestEngine(title: String) -> PlaybackEngine {
+        // Inject recorder so teardown never hits MPNowPlayingInfoCenterUpdater
+        // MainActor deinit (crash class seen mid OverlaySync wait).
+        PlaybackEngine(
+            url: fixtureURL(),
+            title: title,
+            artist: "PodWash QA",
+            nowPlayingUpdater: NowPlayingInfoRecorder()
+        )
+    }
+
     private func runOverlayPlayback(
         muteIntervals: [(start: TimeInterval, end: TimeInterval)],
         mode: MuteOverlayMode,
         recorder: OverlayEventRecorder
     ) async throws -> PlaybackEngine {
-        let engine = PlaybackEngine(url: fixtureURL(), title: "Overlay", artist: "PodWash QA")
+        let engine = makeTestEngine(title: "Overlay")
         await waitForEngineReady(engine)
 
         let censor = muteIntervals.map {
@@ -171,7 +194,7 @@ final class OverlaySyncTests: XCTestCase {
         store: SettingsStore,
         recorder: OverlayEventRecorder
     ) async throws {
-        let engine = PlaybackEngine(url: fixtureURL(), title: "Settings Overlay", artist: "PodWash QA")
+        let engine = makeTestEngine(title: "Settings Overlay")
         await waitForEngineReady(engine)
         await engine.applySchedule(IntervalSchedule(intervals: pinnedCensorIntervals))
 
@@ -351,7 +374,7 @@ final class OverlaySyncTests: XCTestCase {
     func testSeekResync() async throws {
         let singleInterval: [(start: TimeInterval, end: TimeInterval)] = [(1.0, 1.5)]
         let recorder = OverlayEventRecorder()
-        let engine = PlaybackEngine(url: fixtureURL(), title: "Seek Overlay", artist: "PodWash QA")
+        let engine = makeTestEngine(title: "Seek Overlay")
         await waitForEngineReady(engine)
 
         let censor = singleInterval.map {
@@ -369,8 +392,6 @@ final class OverlaySyncTests: XCTestCase {
 
         engine.play()
         await waitUntilPlayhead(1.20, engine: engine)
-
-        let eventsBeforeSeek = recorder.startEvents.count + recorder.stopEvents.count
 
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             engine.seek(to: 2.5) {
@@ -392,15 +413,23 @@ final class OverlaySyncTests: XCTestCase {
             "activeOverlayCount must be 0 within \(seekResyncDeadline)s of seek completion"
         )
 
+        // Snapshot AFTER seek resync. Clearing an orphan overlay may emit one
+        // overlayStop (recorder only drops activeOverlayCount via stop events).
+        // AC5 "no additional events" means none after resync until the next
+        // scheduled interval — not "zero events during the seek itself."
+        let eventsAfterResync = recorder.startEvents.count + recorder.stopEvents.count
+
         engine.play()
-        await waitUntilPastLastBoundary(engine: engine, lastEnd: 1.5)
+        // Advance past the seek land so any stale boundary would have a chance
+        // to fire; fixture has no further mute intervals after 1.5.
+        await waitUntilPlayhead(2.7, engine: engine)
         engine.pause()
 
         let totalEvents = recorder.startEvents.count + recorder.stopEvents.count
         XCTAssertEqual(
-            totalEvents, eventsBeforeSeek,
+            totalEvents, eventsAfterResync,
             "No additional overlay events after seek to 2.5 s (outside interval); "
-                + "got \(totalEvents) total vs \(eventsBeforeSeek) before seek"
+                + "got \(totalEvents) total vs \(eventsAfterResync) after resync"
         )
     }
 }

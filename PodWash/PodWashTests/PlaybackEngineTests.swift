@@ -17,6 +17,9 @@ final class NowPlayingInfoRecorder: NowPlayingInfoUpdating {
     private(set) var lastDuration: TimeInterval = 0
     private(set) var updateCount = 0
 
+    // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION.
+    nonisolated deinit {}
+
     func updateNowPlayingInfo(
         title: String,
         artist: String,
