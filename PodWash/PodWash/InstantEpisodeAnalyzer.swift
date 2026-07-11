@@ -3,12 +3,16 @@
 //  PodWash
 //
 //  Slice 09 — Stub analyzer for UI tests (-UITestFixtureAnalysis).
+//  Slice 20 — Publishes at least one timeline snapshot while analyzing (ADR-018).
 //
 
 import Foundation
 
 /// Returns immediately with an empty interval list for deterministic UI tests.
-struct InstantEpisodeAnalyzer: EpisodeAnalyzing, Sendable {
+final class InstantEpisodeAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
+    var onProgress: AnalysisProgressHandler?
+    var onMainActorProgress: MainActorAnalysisProgressHandler?
+
     func analyze(
         episode: EpisodeIdentity,
         audioURL: URL,
@@ -33,13 +37,40 @@ struct InstantEpisodeAnalyzer: EpisodeAnalyzing, Sendable {
         profanityAction: CensorAction,
         unrelatedContent: UnrelatedContentOptions
     ) async throws -> [CensorInterval] {
+        _ = episode
+        _ = audioURL
+        _ = targetWords
+        _ = injectedTranscript
         _ = profanityAction
         _ = unrelatedContent
+
+        let duration = FixtureAnalysisTimeline.episodeDuration
+        let start = AnalysisProgressSnapshot(
+            episodeDuration: duration,
+            processedEnd: 0,
+            processingStart: 0,
+            processingEnd: FixtureAnalysisTimeline.bucketWidth,
+            adRanges: []
+        )
+        let complete = AnalysisProgressSnapshot(
+            episodeDuration: duration,
+            processedEnd: duration,
+            processingStart: duration,
+            processingEnd: duration,
+            adRanges: []
+        )
+        await MainActor.run {
+            onMainActorProgress?(start)
+            onProgress?(start)
+        }
         // Brief yield only — the observable analyzing window is held in
         // `AnalysisUIViewModel.completePrimedEpisodeAnalysis` via Task.sleep so
-        // XCTest can go idle while `analysisProgress` is still in the AX tree.
-        // Must not animate UIActivityIndicator (that blocks XCTest idle).
+        // XCTest can go idle while `analysisTimeline` is still in the AX tree.
         try await Task.sleep(for: .milliseconds(200))
+        await MainActor.run {
+            onMainActorProgress?(complete)
+            onProgress?(complete)
+        }
         return []
     }
 }

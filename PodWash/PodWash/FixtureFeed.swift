@@ -13,6 +13,7 @@ enum FixtureFeed {
     static var isEnabled: Bool {
         ProcessInfo.processInfo.arguments.contains(launchArgument)
             || FixtureAnalysis.isEnabled
+            || FixtureAnalysisTimeline.isEnabled
             || FixtureQueue.isEnabled
             || FixtureQueue.shouldPreserveOnLaunch
     }

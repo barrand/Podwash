@@ -104,7 +104,7 @@ private final class EpisodeTableViewController: UITableViewController {
         tableView.register(EpisodeTableViewCell.self, forCellReuseIdentifier: EpisodeTableViewCell.reuseID)
         // Fixed height tall enough for title + date + analysis/download progress.
         // Avoid automaticDimension and beginUpdates (both can keep XCTest non-idle
-        // until after the fixture analyzing window closes, dropping `analysisProgress`).
+        // until after the fixture analyzing window closes, dropping `analysisTimeline`).
         tableView.rowHeight = 140
         tableView.estimatedRowHeight = 140
         applyListAccessibility()
@@ -139,7 +139,7 @@ private final class EpisodeTableViewController: UITableViewController {
         } else {
             // Only refresh analysis here. Download chrome is pushed via
             // `downloadManager.onStateChanged` — re-applying it on every
-            // analysis generation clobbers the transient `analysisProgress` AX
+            // analysis generation clobbers the transient `analysisTimeline` AX
             // surface before XCTest goes idle.
             refreshAnalysisDisplayOnVisibleRows()
             refreshQueueDisplayOnVisibleRows()
@@ -261,7 +261,7 @@ private final class EpisodeTableViewController: UITableViewController {
                 // `asyncAfter`): pending GCD timers keep XCTest non-idle until
                 // they fire, so the app only becomes idle *after* progress is
                 // already cleared. `Task.sleep` inside the view model suspends
-                // without blocking idleness, leaving `analysisProgress` visible.
+                // without blocking idleness, leaving `analysisTimeline` visible.
                 self.analysisViewModel.primeEpisodeCleaningToggle(episodeID: episodeID)
                 // Keep the UISwitch visually on even if a later representable
                 // refresh races setCleaningSwitch from a momentarily stale read.
@@ -321,9 +321,7 @@ private final class EpisodeTableViewCell: UITableViewCell {
     private let titleLabel = UILabel()
     private let dateLabel = UILabel()
     private let badgeLabel = UILabel()
-    private let progressView = UIActivityIndicatorView(style: .medium)
-    private let progressLabel = UILabel()
-    private let progressStack = UIStackView()
+    private let timelineBar = AnalysisTimelineBarView()
     private let progressAccessibilityHost = UIView()
     private let downloadProgressView = UIActivityIndicatorView(style: .medium)
     private let downloadProgressLabel = UILabel()
@@ -381,36 +379,22 @@ private final class EpisodeTableViewCell: UITableViewCell {
         badgeLabel.accessibilityLabel = "Episode cleaning on"
         badgeLabel.isAccessibilityElement = false
 
-        progressLabel.font = .preferredFont(forTextStyle: .caption1)
-        progressLabel.text = "Analyzing…"
-        progressLabel.textColor = .secondaryLabel
-        progressLabel.accessibilityLabel = "Analyzing episode"
-        progressLabel.isAccessibilityElement = false
-
-        progressView.hidesWhenStopped = false
-        progressStack.axis = .horizontal
-        progressStack.spacing = 8
-        progressStack.alignment = .center
-        progressStack.addArrangedSubview(progressView)
-        progressStack.isAccessibilityElement = false
-        progressView.isAccessibilityElement = false
+        timelineBar.isAccessibilityElement = false
 
         progressAccessibilityHost.isHidden = true
         progressAccessibilityHost.isAccessibilityElement = false
-        progressAccessibilityHost.accessibilityLabel = "Analyzing episode"
+        progressAccessibilityHost.accessibilityLabel = "Analysis timeline"
+        progressAccessibilityHost.accessibilityHint =
+            "Shows which parts of the episode are scanned, in progress, or waiting."
         progressAccessibilityHost.isUserInteractionEnabled = false
-        progressAccessibilityHost.addSubview(progressStack)
-        progressAccessibilityHost.addSubview(progressLabel)
-        progressStack.translatesAutoresizingMaskIntoConstraints = false
-        progressLabel.translatesAutoresizingMaskIntoConstraints = false
+        progressAccessibilityHost.addSubview(timelineBar)
+        timelineBar.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            progressStack.leadingAnchor.constraint(equalTo: progressAccessibilityHost.leadingAnchor),
-            progressStack.topAnchor.constraint(equalTo: progressAccessibilityHost.topAnchor),
-            progressStack.bottomAnchor.constraint(equalTo: progressAccessibilityHost.bottomAnchor),
-            progressLabel.leadingAnchor.constraint(equalTo: progressStack.trailingAnchor, constant: 8),
-            progressLabel.trailingAnchor.constraint(lessThanOrEqualTo: progressAccessibilityHost.trailingAnchor),
-            progressLabel.centerYAnchor.constraint(equalTo: progressAccessibilityHost.centerYAnchor),
-            progressAccessibilityHost.heightAnchor.constraint(greaterThanOrEqualToConstant: 22),
+            timelineBar.leadingAnchor.constraint(equalTo: progressAccessibilityHost.leadingAnchor),
+            timelineBar.trailingAnchor.constraint(equalTo: progressAccessibilityHost.trailingAnchor),
+            timelineBar.topAnchor.constraint(equalTo: progressAccessibilityHost.topAnchor, constant: 4),
+            timelineBar.bottomAnchor.constraint(equalTo: progressAccessibilityHost.bottomAnchor, constant: -4),
+            progressAccessibilityHost.heightAnchor.constraint(greaterThanOrEqualToConstant: 16),
         ])
 
         textStack.axis = .vertical
@@ -526,9 +510,9 @@ private final class EpisodeTableViewCell: UITableViewCell {
         textStack.isUserInteractionEnabled = true
         textStack.addGestureRecognizer(playTap)
         // Baseline AX children so switches/buttons stay queryable before any
-        // progress/badge host is published.
+        // timeline/badge host is published.
         updateAccessibilityElements(
-            showsAnalysisProgress: false,
+            showsAnalysisTimeline: false,
             showsDownloadProgress: false,
             showsBadge: false
         )
@@ -657,7 +641,7 @@ private final class EpisodeTableViewCell: UITableViewCell {
         }
 
         updateAccessibilityElements(
-            showsAnalysisProgress: !progressAccessibilityHost.isHidden,
+            showsAnalysisTimeline: !progressAccessibilityHost.isHidden,
             showsDownloadProgress: showsProgress,
             showsBadge: !badgeLabel.isHidden
         )
@@ -669,7 +653,7 @@ private final class EpisodeTableViewCell: UITableViewCell {
     }
 
     func applyAnalysisDisplay(analysisViewModel: AnalysisUIViewModel, episodeID: String) {
-        let showsProgress = analysisViewModel.episodeRowShowsProgress(episodeID: episodeID)
+        let showsTimeline = analysisViewModel.episodeRowShowsTimeline(episodeID: episodeID)
         let showsBadge = analysisViewModel.episodeRowShowsOnBadge(episodeID: episodeID)
 
         badgeLabel.isHidden = !showsBadge
@@ -677,29 +661,27 @@ private final class EpisodeTableViewCell: UITableViewCell {
         badgeLabel.accessibilityIdentifier = showsBadge ? "cleaningBadge_episodeOn" : nil
         badgeLabel.accessibilityLabel = "Episode cleaning on"
 
-        progressAccessibilityHost.isHidden = !showsProgress
-        progressAccessibilityHost.isAccessibilityElement = showsProgress
+        progressAccessibilityHost.isHidden = !showsTimeline
+        progressAccessibilityHost.isAccessibilityElement = showsTimeline
         // Keep the identifier stable while visible so XCTest descendant queries
-        // (cell-scoped and app-global) can resolve `analysisProgress` on the
+        // (cell-scoped and app-global) can resolve `analysisTimeline` on the
         // main-actor-published analyzing state before completion.
-        progressAccessibilityHost.accessibilityIdentifier = showsProgress ? "analysisProgress" : nil
-        progressAccessibilityHost.accessibilityLabel = "Analyzing episode"
-        progressLabel.isHidden = !showsProgress
-        progressLabel.isAccessibilityElement = false
-        progressLabel.accessibilityIdentifier = nil
-        // Never animate the spinner during fixture UI tests: UIActivityIndicatorView
-        // animation keeps the app non-idle, so XCTest's post-tap idle wait blocks
-        // until analysis finishes and `analysisProgress` is already gone.
-        if showsProgress && !FixtureAnalysis.isEnabled {
-            progressView.startAnimating()
+        progressAccessibilityHost.accessibilityIdentifier = showsTimeline ? "analysisTimeline" : nil
+        progressAccessibilityHost.accessibilityLabel = "Analysis timeline"
+        progressAccessibilityHost.accessibilityHint =
+            "Shows which parts of the episode are scanned, in progress, or waiting."
+        if let colors = analysisViewModel.episodeRowTimelineColors(episodeID: episodeID) {
+            timelineBar.apply(colors: colors)
+            progressAccessibilityHost.accessibilityValue =
+                analysisViewModel.episodeRowTimelineAccessibilityValue(episodeID: episodeID)
         } else {
-            progressView.stopAnimating()
+            progressAccessibilityHost.accessibilityValue = nil
         }
 
-        // Explicit AX children so UITableViewCell exposes progress alongside the
+        // Explicit AX children so UITableViewCell exposes timeline alongside the
         // accessory controls (grouped cell AX can otherwise omit nested hosts).
         updateAccessibilityElements(
-            showsAnalysisProgress: showsProgress,
+            showsAnalysisTimeline: showsTimeline,
             showsDownloadProgress: !downloadProgressAccessibilityHost.isHidden,
             showsBadge: showsBadge
         )
@@ -709,7 +691,7 @@ private final class EpisodeTableViewCell: UITableViewCell {
     }
 
     private func updateAccessibilityElements(
-        showsAnalysisProgress: Bool,
+        showsAnalysisTimeline: Bool,
         showsDownloadProgress: Bool,
         showsBadge: Bool
     ) {
@@ -727,15 +709,15 @@ private final class EpisodeTableViewCell: UITableViewCell {
         }
         accessoryStack.accessibilityElementsHidden = false
         // Publish AX children on the *cell* (not contentView). After Slice 22 moved
-        // accessories into contentView, assigning only progress/badge to
-        // `contentView.accessibilityElements` left `analysisProgress` /
+        // accessories into contentView, assigning only timeline/badge to
+        // `contentView.accessibilityElements` left `analysisTimeline` /
         // `cleaningBadge_episodeOn` invisible to XCTest descendant queries even
         // when the hosts were on-screen (see AnalysisProgressUITests recording).
         var axChildren: [UIView] = [queueAddButton, downloadButton, cleaningSwitch]
         if showsDownloadProgress {
             axChildren.append(downloadProgressAccessibilityHost)
         }
-        if showsAnalysisProgress {
+        if showsAnalysisTimeline {
             axChildren.append(progressAccessibilityHost)
         }
         if showsBadge {

@@ -54,7 +54,7 @@ struct RootView: View {
                     ProgressView()
                         .accessibilityIdentifier("playback.loading")
                 }
-            } else if FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch {
+            } else if FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch {
                 if let fixtureFeedViewModel, let fixtureAnalysisViewModel, let fixtureDownloadManager, let queueStore {
                     PodcastDetailView(
                         viewModel: fixtureFeedViewModel,
@@ -134,7 +134,7 @@ struct RootView: View {
     }
 
     private func loadFixtureFeedIfNeeded() async {
-        guard FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch else { return }
+        guard FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch else { return }
         guard fixtureFeedViewModel == nil else { return }
 
         FixtureDownload.clearDownloadsDirectoryIfNeeded()
@@ -146,10 +146,13 @@ struct RootView: View {
         try? store.clear()
         let feedViewModel = EpisodeListViewModel(parser: RSSParser(), store: store)
         let cleaningStore = CleaningToggleStore(context: context)
+        let analyzer: any EpisodeAnalyzing = FixtureAnalysisTimeline.isEnabled
+            ? FixtureAnalysisTimeline.makeSteppedAnalyzer()
+            : InstantEpisodeAnalyzer()
         let analysisViewModel = AnalysisUIViewModel(
             store: CleaningToggleStoreAdapter(cleaningStore),
-            analyzer: InstantEpisodeAnalyzer(),
-            autoAnalyzeOnEpisodeEnable: FixtureAnalysis.isEnabled
+            analyzer: analyzer,
+            autoAnalyzeOnEpisodeEnable: FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled
         )
         let downloadStateStore = DownloadStateStore(context: context)
         let downloadManager = DownloadManager(
@@ -185,7 +188,7 @@ struct RootView: View {
         guard !FixtureSkipOverride.isEnabled,
               !FixtureSettings.isEnabled,
               !FixtureAudio.isEnabled,
-              !(FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch),
+              !(FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch),
               !FixtureDiscover.isEnabled
         else { return }
         guard appShellModel == nil else { return }
