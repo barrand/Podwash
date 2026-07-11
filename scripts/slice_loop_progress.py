@@ -1043,13 +1043,94 @@ def _review_cleared(value: str) -> bool:
     )
 
 
-def _path_exists(repo_root: str, raw: str) -> bool:
+# PM slice tables sometimes leave ``docs/adr/0XX-*.md`` until Architect assigns a number.
+ADR_PATH_PLACEHOLDER_RE = re.compile(
+    r"(docs/adr/)(0XX|XXX)([-\w.]*)",
+    re.IGNORECASE,
+)
+
+
+def next_adr_number(repo_root: str) -> int:
+    """Next free three-digit ADR index from ``docs/adr/NNN-*.md`` filenames."""
+    adr_dir = os.path.join(repo_root, "docs", "adr")
+    if not os.path.isdir(adr_dir):
+        return 1
+    max_n = 0
+    for name in os.listdir(adr_dir):
+        m = re.match(r"^(\d{3})-", name)
+        if m:
+            max_n = max(max_n, int(m.group(1)))
+    return max_n + 1
+
+
+def resolve_adr_placeholders_in_string(text: str, repo_root: str) -> str:
+    """Replace ``docs/adr/0XX`` / ``XXX`` tokens with the next ADR number."""
+    if not text or not ADR_PATH_PLACEHOLDER_RE.search(text):
+        return text
+    padded = f"{next_adr_number(repo_root):03d}"
+
+    def _sub(m: re.Match[str]) -> str:
+        return f"{m.group(1)}{padded}{m.group(3)}"
+
+    return ADR_PATH_PLACEHOLDER_RE.sub(_sub, text)
+
+
+def slice_has_adr_placeholders(text: str) -> bool:
+    return bool(ADR_PATH_PLACEHOLDER_RE.search(text or ""))
+
+
+def normalize_slice_adr_placeholders(slice_file: str, repo_root: str) -> bool:
+    """Rewrite slice markdown when Role-artifact ADR paths still use 0XX/XXX.
+
+    Returns True when the file was updated.
+    """
+    path = slice_file if os.path.isabs(slice_file) else os.path.join(repo_root, slice_file)
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    if not slice_has_adr_placeholders(text):
+        return False
+    new_text = resolve_adr_placeholders_in_string(text, repo_root)
+    if new_text == text:
+        return False
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(new_text)
+    return True
+
+
+def architect_adr_path_from_slice(slice_file: str, repo_root: str) -> str | None:
+    """Resolved ADR path from the Architect Role-artifacts row, if any."""
+    text = _read_slice_text(slice_file, repo_root)
+    rows = _role_artifact_rows(text)
+    arch_row = next((r for r in rows if "architect" in r["role"].lower()), None)
+    if not arch_row:
+        return None
+    paths = _artifact_paths_from_cell(arch_row["path"])
+    raw = paths[0] if paths else arch_row["path"]
+    token = _artifact_token(raw)
+    if not token:
+        return None
+    return resolve_adr_placeholders_in_string(token, repo_root)
+
+
+def _artifact_token(raw: str) -> str:
     raw = (raw or "").strip().strip("`")
     if not raw or raw in ("—", "-", "n/a", "N/A"):
-        return False
-    # Take first path-like token (tables sometimes add notes after em-dash).
+        return ""
     token = re.split(r"\s+[—–-]\s+", raw, maxsplit=1)[0].strip().strip("`")
-    token = token.split()[0] if token.split() else token
+    return token.split()[0] if token.split() else token
+
+
+def _resolved_artifact_token(raw: str, repo_root: str) -> str:
+    token = _artifact_token(raw)
+    if not token:
+        return ""
+    return resolve_adr_placeholders_in_string(token, repo_root)
+
+
+def _path_exists(repo_root: str, raw: str) -> bool:
+    token = _resolved_artifact_token(raw, repo_root)
+    if not token:
+        return False
     if not token.endswith((".md", ".swift", ".json", ".txt", ".yml", ".yaml")):
         # ADR paths without extension notes still ok if they look like docs/
         if not token.startswith("docs/") and "/" not in token:
@@ -1091,11 +1172,19 @@ def artifact_cell_satisfied(repo_root: str, raw: str) -> bool:
 
 
 def missing_artifact_paths(repo_root: str, raw: str) -> list[str]:
-    """Backtick paths from a cell that are not yet on disk."""
+    """Backtick paths from a cell that are not yet on disk (placeholders resolved)."""
     paths = _artifact_paths_from_cell(raw)
     if not paths:
-        return [] if _path_exists(repo_root, raw) else [raw.strip()]
-    return [p for p in paths if not _path_exists(repo_root, p)]
+        token = _resolved_artifact_token(raw, repo_root)
+        if not token:
+            return []
+        return [] if _path_exists(repo_root, token) else [token]
+    missing: list[str] = []
+    for p in paths:
+        resolved = resolve_adr_placeholders_in_string(p, repo_root)
+        if not _path_exists(repo_root, resolved):
+            missing.append(resolved)
+    return missing
 
 
 def _extract_backtick_paths(text: str) -> list[str]:
@@ -1870,10 +1959,25 @@ class RunProgress:
         self._verify_violations += 1
 
         if self.authoring_gate:
+            gate = (self.gate_id or "authoring").replace("_", " ")
+            if self.gate_id == "architect":
+                hint = (
+                    "do not run verify.sh during architect — write the ADR under "
+                    "docs/adr/; optional measurement spike via xcodebuild only"
+                )
+            elif self.gate_id == "test_spec":
+                hint = (
+                    "TDD red is expected — do not verify during test-spec; end your "
+                    "turn when tests are written"
+                )
+            else:
+                hint = (
+                    f"do not verify during {gate}; end your turn when gate "
+                    "artifacts are written"
+                )
             self.log(
-                f"⚠ {self.prefix()} AUTHORING VERIFY BAN: TDD red is expected — "
-                f"do not verify during test-spec; end your turn when tests are "
-                f"written (violation {self._verify_violations})"
+                f"⚠ {self.prefix()} AUTHORING VERIFY BAN: {hint} "
+                f"(violation {self._verify_violations})"
             )
             self._cancel_bound_run()
             # Never burn authoring budget — cancel and let the worker finish.

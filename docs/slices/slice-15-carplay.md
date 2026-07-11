@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 15 |
 | **Title** | CarPlay |
-| **Status** | Ready |
+| **Status** | Done |
 | **Crux** | CarPlay audio-app templates (library subscriptions, per-show episode list, up-next queue, now-playing) are built from injectable store/coordinator data sources; list contents, selection → playback, and play/pause state are asserted on template doubles — physical head-unit checks are documentation only, never gates. |
 
 ## PRD / spec references

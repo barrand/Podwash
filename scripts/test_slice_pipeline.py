@@ -609,6 +609,56 @@ class AuthoringGatePromptTests(unittest.TestCase):
         self.assertIn("test_spec", AUTHORING_GATES)
         self.assertNotIn("implement", AUTHORING_GATES)
 
+    def test_architect_prompt_includes_resolved_adr_path(self):
+        from slice_pipeline import build_gate_prompt
+
+        with tempfile.TemporaryDirectory() as tmp:
+            adr = os.path.join(tmp, "docs", "adr")
+            slices = os.path.join(tmp, "docs", "slices")
+            os.makedirs(adr)
+            os.makedirs(slices)
+            with open(os.path.join(adr, "016-carplay.md"), "w", encoding="utf-8") as fh:
+                fh.write("# 016\n")
+            path = os.path.join(slices, "slice-16-beep-overlay.md")
+            body = (
+                "# Slice 16\n\n"
+                "## Role artifacts\n\n"
+                "| Role | Gate | Artifact path |\n"
+                "|------|------|---------------|\n"
+                "| Architect | Required | `docs/adr/0XX-overlay-sync.md` |\n"
+            )
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(body)
+            prompt = build_gate_prompt("architect", path, tmp)
+            self.assertIn("docs/adr/017-overlay-sync.md", prompt)
+            self.assertIn("xcodebuild", prompt)
+            self.assertIn("verify.sh", prompt)
+
+    def test_explain_gate_pending_architect_resolved_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            adr = os.path.join(tmp, "docs", "adr")
+            slices = os.path.join(tmp, "docs", "slices")
+            os.makedirs(adr)
+            os.makedirs(slices)
+            with open(os.path.join(adr, "016-carplay.md"), "w", encoding="utf-8") as fh:
+                fh.write("# 016\n")
+            path = os.path.join(slices, "slice-16-beep-overlay.md")
+            body = (
+                "# Slice 16\n\n"
+                "| Field | Value |\n"
+                "|-------|-------|\n"
+                "| **Status** | Ready |\n\n"
+                "## Role artifacts\n\n"
+                "| Role | Gate | Artifact path |\n"
+                "|------|------|---------------|\n"
+                "| Architect | Required | `docs/adr/0XX-overlay-sync.md` |\n"
+            )
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(body)
+            msg = explain_gate_pending("architect", path, tmp)
+            self.assertIn("docs/adr/017-overlay-sync.md", msg)
+            self.assertNotIn("0XX", msg)
+
     def test_parse_verify_result_class_build(self):
         v = parse_verify_result(
             "VERIFY RESULT: exit=65 total=0 passed=0 failed=0 skipped=0 "

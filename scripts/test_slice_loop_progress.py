@@ -8,6 +8,7 @@ import unittest
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPT_DIR)
+REPO_ROOT = os.path.dirname(SCRIPT_DIR)
 
 from slice_loop_progress import (  # noqa: E402
     RunProgress,
@@ -744,6 +745,81 @@ class AuthoringGateThrashTests(unittest.TestCase):
         self.assertEqual(v.get("exit"), "65")
         self.assertEqual(v.get("tier"), "2")
         self.assertFalse(verify_is_green(v))
+
+
+class AdrPlaceholderTests(unittest.TestCase):
+    def test_next_adr_number_from_repo(self):
+        from slice_loop_progress import next_adr_number
+
+        n = next_adr_number(REPO_ROOT)
+        self.assertGreaterEqual(n, 17)
+
+    def test_resolve_adr_placeholders_in_string(self):
+        from slice_loop_progress import resolve_adr_placeholders_in_string
+
+        with tempfile.TemporaryDirectory() as tmp:
+            adr = os.path.join(tmp, "docs", "adr")
+            os.makedirs(adr)
+            with open(os.path.join(adr, "016-carplay.md"), "w", encoding="utf-8") as fh:
+                fh.write("# 016\n")
+            out = resolve_adr_placeholders_in_string(
+                "`docs/adr/0XX-overlay-sync.md`", tmp
+            )
+            self.assertIn("docs/adr/017-overlay-sync.md", out)
+            self.assertNotIn("0XX", out)
+
+    def test_normalize_slice_adr_placeholders_rewrites_file(self):
+        from slice_loop_progress import normalize_slice_adr_placeholders
+
+        with tempfile.TemporaryDirectory() as tmp:
+            adr = os.path.join(tmp, "docs", "adr")
+            os.makedirs(adr)
+            with open(os.path.join(adr, "016-carplay.md"), "w", encoding="utf-8") as fh:
+                fh.write("# 016\n")
+            path = os.path.join(tmp, "slice-16.md")
+            body = (
+                "# Slice 16\n\n"
+                "## Role artifacts\n\n"
+                "| Role | Gate | Artifact path |\n"
+                "|------|------|---------------|\n"
+                "| Architect | Required | `docs/adr/0XX-overlay-sync.md` |\n"
+            )
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(body)
+            self.assertTrue(normalize_slice_adr_placeholders(path, tmp))
+            text = open(path, encoding="utf-8").read()
+            self.assertIn("docs/adr/017-overlay-sync.md", text)
+            self.assertNotIn("0XX", text)
+
+    def test_missing_artifact_paths_resolves_placeholder(self):
+        from slice_loop_progress import missing_artifact_paths
+
+        with tempfile.TemporaryDirectory() as tmp:
+            adr = os.path.join(tmp, "docs", "adr")
+            os.makedirs(adr)
+            with open(os.path.join(adr, "016-carplay.md"), "w", encoding="utf-8") as fh:
+                fh.write("# 016\n")
+            miss = missing_artifact_paths(
+                tmp, "`docs/adr/0XX-overlay-sync.md` — notes"
+            )
+            self.assertEqual(miss, ["docs/adr/017-overlay-sync.md"])
+
+    def test_authoring_verify_ban_architect_message(self):
+        lines: list[str] = []
+        progress = RunProgress(
+            16,
+            "Beep overlay",
+            "docs/slices/slice-16-beep-overlay.md",
+            lines.append,
+            authoring_gate=True,
+            gate_id="architect",
+            forced_role="Architect",
+        )
+        progress._handle_verify_ban("scripts/verify.sh")
+        joined = "\n".join(lines)
+        self.assertIn("AUTHORING VERIFY BAN", joined)
+        self.assertIn("architect", joined)
+        self.assertNotIn("test-spec", joined)
 
 
 if __name__ == "__main__":

@@ -112,6 +112,7 @@ from slice_loop_progress import (
     _story_content_ok,
     _story_done,
     _verification_mapping_filled,
+    architect_adr_path_from_slice,
     artifact_cell_satisfied,
     detect_simulator_crashes,
     detect_test_failures,
@@ -121,6 +122,7 @@ from slice_loop_progress import (
     is_factory_config_output,
     latest_xcresult_path,
     looks_like_build_failure,
+    normalize_slice_adr_placeholders,
     summarize_ips_crash,
     missing_artifact_paths,
     parse_verify_result,
@@ -1554,7 +1556,10 @@ def build_gate_prompt(gate_id: GateId, slice_file: str, repo_root: str) -> str:
         ),
         "architect": (
             "Author the ADR / design note for this slice. Edit only docs/adr/** "
-            "(and slice design notes if needed)."
+            "(and slice design notes if needed). When empirical validation is "
+            "required, a throwaway spike may live in PodWashTests/_*Spike.swift — "
+            "run it with xcodebuild, not scripts/verify.sh. The gate artifact is "
+            "the ADR markdown file."
         ),
         "ux": (
             "Author the UX spec (interaction, a11y, UI test scenarios) in "
@@ -1586,13 +1591,18 @@ def build_gate_prompt(gate_id: GateId, slice_file: str, repo_root: str) -> str:
         ),
     }
     task = tasks.get(gate_id, f"Complete the {gate_id} gate for this slice.")
+    adr_hint = ""
+    if gate_id == "architect":
+        adr_path = architect_adr_path_from_slice(slice_file, repo_root)
+        if adr_path:
+            adr_hint = f"\nRequired ADR path (resolved): {adr_path}\n"
     return f"""{persona}
 
 Gate: {gate_id} ({GATE_LABELS.get(gate_id, gate_id)})
 Slice file: {slice_file}
 SDK mode: {mode}
 Repo: {repo_root}
-
+{adr_hint}
 {task}
 
 Read the slice file and only the artifacts needed for this gate. End your turn when done.
@@ -2349,6 +2359,9 @@ def run_pipeline_slice(
             if not role:
                 _log(f"no worker for gate {gid} — stopping")
                 break
+            if gid == "architect":
+                if normalize_slice_adr_placeholders(slice_file, repo_root):
+                    _log("resolved ADR 0XX/XXX placeholders in slice file")
             agent = names.assign(role, slot=gid)
             act, total = _act_position(state, gid)
             label = GATE_LABELS.get(gid, gid)
@@ -2408,6 +2421,8 @@ def run_pipeline_slice(
                     if st in ("", "draft"):
                         set_slice_status(slice_file, repo_root, "Ready")
                         _log("story content ok — set Status Ready")
+                    if normalize_slice_adr_placeholders(slice_file, repo_root):
+                        _log("resolved ADR 0XX/XXX placeholders in slice file")
             if not ok:
                 explain = explain_gate_pending(gid, slice_file, repo_root)
                 narrate_gate_stuck(label, explain, log=_log, voice=_voice)
