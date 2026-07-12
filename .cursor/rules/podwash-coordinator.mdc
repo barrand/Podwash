@@ -53,7 +53,23 @@ A verification run counts **only** when its artifact is recorded in the slice fi
 - **Split commits (anti-cheat):** never put `PodWash/PodWash/**` and `PodWash/{PodWashTests,PodWashUITests,PodWashSlowTests}/**` in the same commit. Typical pattern: commit tests after QA test-spec review (`slice-NN: test spec`), commit app after Engineer (`slice-NN: implement` or `slice-NN: <description>`), then update slice status/VERIFY RESULT. Run `scripts/check-test-isolation.sh --staged` before each commit.
 - **Commit automatically after each completed slice**: when the full suite is green and the verification record is written, commit remaining slice-doc changes (status / VERIFY RESULT). Do not wait to be asked.
 - **Push automatically after the slice commit**: once the slice is committed on green, push to the remote (never force-push). Do not wait to be asked for the end-of-slice push.
-- Never commit or push a red or unverified slice. For non-slice or mid-slice work, still push only when the user explicitly asks.
+- Never commit or push a red or unverified slice.
+
+### Ad-hoc fix sessions (device feedback / hotfix)
+
+Applies when the user reports a bug or device-testing issue **outside** a formal slice run (e.g. “keyboard won’t dismiss on Discover”). Overrides the general “commit only when asked” user rule for PodWash.
+
+**Session end (automatic — do not wait to be asked):**
+
+1. Fix is implemented (delegate to role subagents per MUST NOT edit).
+2. Verify is green: at minimum a filtered `scripts/verify.sh -only-testing:…` covering touched behavior; prefer full suite when practical.
+3. Run `scripts/check-test-isolation.sh --staged`.
+4. **Commit** only files touched for this fix — never stage unrelated dirty files, `__pycache__/`, `.env`, or credentials.
+5. **Push** to remote (never force-push).
+
+**Commit message:** `fix: <short description>` (not `slice-NN:`).
+
+**Do not auto-commit** mid-slice work, unverified fixes, mixed app+tests commits, or exploratory changes the user did not intend to land.
 
 ## Decision protocol
 
@@ -72,7 +88,8 @@ If a slice hits an **undecided PRD §11 item** (monetization model, skip-at-MVP,
 
 - **One slice per coordinator session** — the user starts each slice in a new chat (walk-away autonomy = one slice at a time; see workflow doc for honesty about this).
 - **Session input:** point at ONE file `docs/slices/slice-NN-*.md`; read PRD/spec only when the slice references them.
-- **Session end:** slice status Done, verification record written, auto-commit made, close chat. Next slice = new session.
+- **Session end:** slice status Done, verification record written, auto-commit made, push, close chat. Next slice = new session.
+- **Ad-hoc fix session end:** verify green → auto-commit + push per **Ad-hoc fix sessions** above; close chat.
 - **Resume** same chat only for fix-up on the current slice before Done.
 
 ## Starting a slice

@@ -75,6 +75,16 @@ struct AppShellView: View {
                 .accessibilityLabel("Brand surface")
                 .accessibilityValue("1")
         }
+        .onChange(of: selectedTab) { oldTab, newTab in
+            if oldTab == .discover, newTab != .discover {
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder),
+                    to: nil,
+                    from: nil,
+                    for: nil
+                )
+            }
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if model.isMiniPlayerVisible, let engine = model.engine {
                 MiniPlayerBar(

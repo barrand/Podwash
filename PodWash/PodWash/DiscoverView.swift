@@ -9,12 +9,15 @@ import SwiftUI
 
 struct DiscoverView: View {
     @Bindable var viewModel: DiscoverViewModel
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
             TextField("Search podcasts", text: searchBinding)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+                .submitLabel(.search)
+                .focused($isSearchFocused)
                 .padding(12)
                 .accessibilityIdentifier("discoverSearchField")
                 .accessibilityLabel("Search podcasts")
@@ -27,6 +30,14 @@ struct DiscoverView: View {
         .accessibilityIdentifier("discoverRoot")
         .accessibilityLabel("Discover")
         .navigationTitle("Discover")
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    isSearchFocused = false
+                }
+            }
+        }
         .task {
             if viewModel.loadPhase == .idle {
                 await viewModel.loadPopular()
@@ -160,6 +171,7 @@ struct DiscoverView: View {
             }
         }
         .listStyle(.plain)
+        .scrollDismissesKeyboard(.immediately)
     }
 }
 
