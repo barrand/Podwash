@@ -13,6 +13,7 @@ import XCTest
 /// Wraps AnalysisPipeline and counts analyze invocations (ADR-006 §5).
 final class PipelineAnalyzeSpy: EpisodeAnalyzing, @unchecked Sendable {
     private(set) var analyzeCallCount = 0
+    private(set) var lastTargetWords: Set<String> = []
     private let inner: AnalysisPipeline
 
     init(inner: AnalysisPipeline) {
@@ -26,6 +27,7 @@ final class PipelineAnalyzeSpy: EpisodeAnalyzing, @unchecked Sendable {
         injectedTranscript: [TimedWord]?
     ) async throws -> [CensorInterval] {
         analyzeCallCount += 1
+        lastTargetWords = targetWords
         return try await inner.analyze(
             episode: episode,
             audioURL: audioURL,
