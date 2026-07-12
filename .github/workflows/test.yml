@@ -40,6 +40,10 @@ jobs:
             scripts/check-test-isolation.sh HEAD
           fi
 
+      # ADR-020: app build copies openai_whisper-tiny.en from gitignored Models/.
+      - name: Setup ASR models
+        run: scripts/setup-asr-models.sh
+
       - name: Run full test suite
         run: scripts/verify.sh
 
@@ -66,6 +70,9 @@ jobs:
         run: |
           sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -n 1)"
           xcodebuild -version
+
+      - name: Setup ASR models
+        run: scripts/setup-asr-models.sh
 
       - name: Run slow suite (no-op until PodWashSlowTests exists)
         run: |

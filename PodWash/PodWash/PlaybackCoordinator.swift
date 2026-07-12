@@ -55,7 +55,9 @@ final class PlaybackCoordinator {
         engine.overrideUnrelatedContentSkip(interval)
     }
 
-    /// Runs `analyze` once (cache hit or miss), stores returned bounds, applies schedule.
+    /// Runs `analyze` once (cache hit or miss), applies schedule, then publishes bounds.
+    /// `cachedIntervals` is assigned **after** the mix is applied so observers waiting on
+    /// interval count (Slice 24 AC5) do not race ahead of a nil `audioMix`.
     func preparePlayback(
         episode: EpisodeIdentity,
         audioURL: URL,
@@ -72,11 +74,11 @@ final class PlaybackCoordinator {
             profanityAction: action,
             unrelatedContent: unrelatedContent
         )
-        cachedIntervals = intervals
         currentAction = action
         unrelatedContentEnabled = unrelatedContent.enabled
         unrelatedContentAction = unrelatedContent.action
-        await applyCurrentSchedule()
+        await applySchedule(intervals: intervals)
+        cachedIntervals = intervals
     }
 
     /// Remaps **profanity** intervals only. Does not call `analyze`.
@@ -108,7 +110,11 @@ final class PlaybackCoordinator {
     private var lastScheduledIntervals: [CensorInterval] = []
 
     private func applyCurrentSchedule() async {
-        let scheduled = cachedIntervals
+        await applySchedule(intervals: cachedIntervals)
+    }
+
+    private func applySchedule(intervals: [CensorInterval]) async {
+        let scheduled = intervals
             .filter { $0.source != .unrelatedContent || unrelatedContentEnabled }
             .map { interval -> CensorInterval in
                 switch interval.source {

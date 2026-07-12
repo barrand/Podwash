@@ -204,7 +204,7 @@ private struct LibraryPodcastDetailView: View {
         _analysisViewModel = State(
             initialValue: AnalysisUIViewModel(
                 store: CleaningToggleStoreAdapter(model.cleaningStore),
-                analyzer: InstantEpisodeAnalyzer(),
+                analyzer: model.episodeAnalyzer,
                 autoAnalyzeOnEpisodeEnable: false
             )
         )
@@ -217,7 +217,11 @@ private struct LibraryPodcastDetailView: View {
             downloadManager: model.downloadManager,
             queueStore: model.queueStore,
             onPlayEpisode: { episode in
-                model.playEpisode(episode, podcastTitle: summary.title)
+                model.playEpisode(
+                    episode,
+                    podcastTitle: summary.title,
+                    feedURL: summary.feedURL
+                )
             }
         )
         .navigationTitle(summary.title)

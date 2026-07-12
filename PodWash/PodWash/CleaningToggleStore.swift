@@ -47,14 +47,35 @@ final class CleaningToggleStore {
         fetchEpisode(id: episodeID)?.episodeCleaningEnabled ?? false
     }
 
+    /// FeedURL-scoped channel cleaning (ADR-020 §5 — multi-sub Library play).
+    func isChannelCleaningEnabled(forFeedURL feedURL: URL) -> Bool {
+        fetchPodcast(feedURLString: feedURL.absoluteString)?.channelCleaningEnabled ?? false
+    }
+
+    func isChannelUnrelatedContentEnabled(forFeedURL feedURL: URL) -> Bool {
+        fetchPodcast(feedURLString: feedURL.absoluteString)?.channelUnrelatedContentEnabled ?? false
+    }
+
     func setChannelCleaning(_ enabled: Bool) throws {
         let podcast = requirePodcast()
         podcast.channelCleaningEnabled = enabled
         try context.save()
     }
 
+    func setChannelCleaning(forFeedURL feedURL: URL, enabled: Bool) throws {
+        let podcast = requirePodcast(forFeedURL: feedURL)
+        podcast.channelCleaningEnabled = enabled
+        try context.save()
+    }
+
     func setChannelUnrelatedContent(_ enabled: Bool) throws {
         let podcast = requirePodcast()
+        podcast.channelUnrelatedContentEnabled = enabled
+        try context.save()
+    }
+
+    func setChannelUnrelatedContent(forFeedURL feedURL: URL, enabled: Bool) throws {
+        let podcast = requirePodcast(forFeedURL: feedURL)
         podcast.channelUnrelatedContentEnabled = enabled
         try context.save()
     }
@@ -67,6 +88,13 @@ final class CleaningToggleStore {
 
     private func fetchPodcast() -> CDPodcast? {
         let request = CDPodcast.fetchRequest()
+        request.fetchLimit = 1
+        return try? context.fetch(request).first
+    }
+
+    private func fetchPodcast(feedURLString: String) -> CDPodcast? {
+        let request = CDPodcast.fetchRequest()
+        request.predicate = NSPredicate(format: "feedURLString == %@", feedURLString)
         request.fetchLimit = 1
         return try? context.fetch(request).first
     }
@@ -84,6 +112,20 @@ final class CleaningToggleStore {
         }
         let podcast = CDPodcast(context: context)
         podcast.title = ""
+        podcast.feedURLString = ""
+        podcast.channelCleaningEnabled = false
+        podcast.channelUnrelatedContentEnabled = false
+        return podcast
+    }
+
+    private func requirePodcast(forFeedURL feedURL: URL) -> CDPodcast {
+        let key = feedURL.absoluteString
+        if let existing = fetchPodcast(feedURLString: key) {
+            return existing
+        }
+        let podcast = CDPodcast(context: context)
+        podcast.title = ""
+        podcast.feedURLString = key
         podcast.channelCleaningEnabled = false
         podcast.channelUnrelatedContentEnabled = false
         return podcast

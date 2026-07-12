@@ -93,7 +93,10 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         nowPlayingUpdater: (any NowPlayingInfoUpdating)? = nil,
         audioSessionConfigurator: (any AudioSessionConfiguring)? = nil
     ) {
-        let item = AVPlayerItem(url: url)
+        // Test download stand-ins copy WAV bytes to `{id}.m4a` (ADR-008 path). AVFoundation
+        // refuses that pairing ("Cannot Open"); remap WAVE payloads to a temp `.wav` for mix.
+        let playableURL = Self.avFoundationPlayableURL(for: url)
+        let item = AVPlayerItem(url: playableURL)
         player = AVPlayer(playerItem: item)
         // Prefer in-place rate changes without bouncing through
         // `.waitingToPlayAtSpecifiedRate` (avoids spurious timeControlStatus KVO).
@@ -206,6 +209,32 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     private static func nearestSupportedRate(to rate: Float) -> Float {
         if supportedRates.contains(rate) { return rate }
         return supportedRates.min(by: { abs($0 - rate) < abs($1 - rate) }) ?? 1.0
+    }
+
+    /// ADR-008 download paths always use `.m4a`. Unit tests install a WAVE fixture at that
+    /// path; AVFoundation cannot open WAVE bytes under a `.m4a` URL. Real AAC downloads
+    /// are unchanged. Returns a temp `.wav` copy when RIFF/WAVE magic is detected.
+    private static func avFoundationPlayableURL(for url: URL) -> URL {
+        guard url.isFileURL, url.pathExtension.lowercased() == "m4a" else { return url }
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return url }
+        defer { try? handle.close() }
+        guard let header = try? handle.read(upToCount: 12), header.count >= 12 else { return url }
+        let isRIFF = header[0] == 0x52 && header[1] == 0x49 && header[2] == 0x46 && header[3] == 0x46
+        let isWAVE = header[8] == 0x57 && header[9] == 0x41 && header[10] == 0x56 && header[11] == 0x45
+        guard isRIFF, isWAVE else { return url }
+
+        let temp = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "podwash-playable-\(url.deletingPathExtension().lastPathComponent).wav",
+                isDirectory: false
+            )
+        try? FileManager.default.removeItem(at: temp)
+        do {
+            try FileManager.default.copyItem(at: url, to: temp)
+            return temp
+        } catch {
+            return url
+        }
     }
 
     func seek(to seconds: TimeInterval, completion: (() -> Void)? = nil) {

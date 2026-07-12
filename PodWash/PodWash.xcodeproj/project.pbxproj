@@ -142,6 +142,7 @@
 				E3E16DCC2FFF1BCC00E398A5 /* Sources */,
 				E3E16DCD2FFF1BCC00E398A5 /* Frameworks */,
 				E3E16DCE2FFF1BCC00E398A5 /* Resources */,
+				AC2400000000000000000001 /* Copy Bundled Whisper Model */,
 			);
 			buildRules = (
 			);
@@ -279,6 +280,28 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		AC2400000000000000000001 /* Copy Bundled Whisper Model */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Bundled Whisper Model";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/../scripts/copy-bundled-whisper-model.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXResourcesBuildPhase section */
 		E3E16DCE2FFF1BCC00E398A5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
@@ -369,6 +392,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PodWash/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = NO;
@@ -402,6 +426,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PodWash/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = NO;

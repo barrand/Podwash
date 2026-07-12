@@ -36,3 +36,4 @@ from the relevant slice file's Role artifacts table.
 | [017](017-overlay-sync.md) | Overlay sync: beep/quack during mute intervals | Accepted |
 | [018](018-analysis-timeline.md) | Analysis timeline: progress seam, bucketing, episode-row binding | Accepted |
 | [019](019-brand-theme.md) | Brand theme: tokens, display name, App Icon linkage | Accepted |
+| [020](020-production-analysis-composition.md) | Production analysis composition: model bundle + shell wiring | Accepted |

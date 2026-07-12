@@ -16,6 +16,9 @@ final class WhisperKitASRTranscriber: ASRTranscribing {
         self.modelFolder = modelFolder
     }
 
+    // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION.
+    nonisolated deinit {}
+
     func transcribe(fileURL: URL) async throws -> [TimedWord] {
         // WhisperKit 1.0.0 `ModelComputeOptions` has no `prefillCompute`; the `MLComputeUnits`
         // base must be explicit (verified empirically in the Slice 05 spike).

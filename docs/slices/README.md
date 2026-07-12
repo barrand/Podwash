@@ -53,6 +53,7 @@ The dependency graph and parallel groups live in [`multitask-workflow.md`](../mu
 | 19 | `slice-19-segmentation-integration.md` | Differentiator 2 — MVP (integration; needs 18) |
 | 20 | `slice-20-analysis-timeline.md` | Pipeline UI (Skipper-style timeline; post–Slice 13) |
 | 21 | `slice-21-visual-identity.md` | Native polish (brand tokens, icon, display name; needs 03 + 06) |
+| 24 | `slice-24-production-analysis-wiring.md` | **MVP closure** — production `AnalysisPipeline` + bundled tiny.en for phone dogfood (needs 07, 08, 13, 23) |
 
 **MVP app shell (Slices 22–23):** Inserted after lock-screen polish (14) and **before CarPlay (15)**.
 The factory built cleaning/playback engines but production `ContentView` was still a placeholder;

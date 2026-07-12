@@ -12,7 +12,9 @@ import Foundation
 /// ASR → matcher → segmenter → cache pipeline.
 final class AnalysisPipeline: @unchecked Sendable {
 
-    private let transcriber: any ASRTranscribing
+    /// `nonisolated(unsafe)`: released from `nonisolated deinit` without a MainActor hop
+    /// (existentials of MainActor-isolated ASR types otherwise crash boxed destroy).
+    nonisolated(unsafe) private let transcriber: any ASRTranscribing
     private let cache: IntervalCache
     private let segmenter: any ContentSegmenting
 
@@ -25,6 +27,9 @@ final class AnalysisPipeline: @unchecked Sendable {
         self.cache = cache
         self.segmenter = segmenter
     }
+
+    // Avoid MainActor/TaskLocal deinit crash when boxed as `any EpisodeAnalyzing`.
+    nonisolated deinit {}
 
     /// Full path: check cache → ASR (if miss) → build intervals → persist → return.
     func analyze(
