@@ -22,6 +22,20 @@ final class AppShellModel {
     /// Shared by play path and LibraryPodcastDetailView / AnalysisUIViewModel.
     private(set) var episodeAnalyzer: any EpisodeAnalyzing
 
+    /// Multiplexes analyzer progress to shell + episode-row view models.
+    private(set) var analysisProgressRelay: AnalysisProgressRelay
+
+    /// Latest progress for the mini-player timeline (nil when no playback analysis).
+    private(set) var playbackAnalysisSnapshot: AnalysisProgressSnapshot?
+
+    /// Episode currently driving the mini-player session.
+    private(set) var nowPlayingEpisodeID: String?
+
+    /// When true, relay progress updates `playbackAnalysisSnapshot`.
+    private var acceptingPlaybackProgress = false
+
+    private var playbackProgressHandlerID: UUID?
+
     /// Test-only: forwarded to `preparePlayback` so AC4/AC5 avoid live ASR.
     var injectedTranscriptForTesting: [TimedWord]? = nil
 
@@ -64,8 +78,10 @@ final class AppShellModel {
         self.remoteCommands = remoteCommands
         self.fixtureLibraryModeForTesting = fixtureLibraryModeForTesting
         self.settingsStore = settingsStore ?? SettingsStore()
-        self.episodeAnalyzer = episodeAnalyzer
+        let resolvedAnalyzer = episodeAnalyzer
             ?? Self.makeDefaultAnalyzer(fixtureLibraryMode: fixtureLibraryModeForTesting)
+        self.episodeAnalyzer = resolvedAnalyzer
+        self.analysisProgressRelay = AnalysisProgressRelay.install(on: resolvedAnalyzer)
 
         let context = persistence.viewContext
         podcastStore = PodcastStore(context: context, retaining: persistence)
@@ -78,6 +94,14 @@ final class AppShellModel {
             stateStore: InMemoryDownloadStateStore(backing: downloadStateStore)
         )
         CarPlayDependencies.register(self)
+
+        playbackProgressHandlerID = analysisProgressRelay.addHandler { [weak self] snapshot in
+            guard let self, self.acceptingPlaybackProgress else { return }
+            self.playbackAnalysisSnapshot = snapshot
+            if snapshot.processedEnd >= snapshot.episodeDuration {
+                self.acceptingPlaybackProgress = false
+            }
+        }
     }
 
     /// Factory used when `episodeAnalyzer` init arg is nil (AC2 / production).
@@ -95,11 +119,20 @@ final class AppShellModel {
     var carPlayEpisodePlayer: (any EpisodePlaying)? { self }
     var carPlayPlaybackEngine: PlaybackEngine? { engine }
 
+    /// Segment colors for the mini-player timeline, or nil when none to show.
+    var miniPlayerTimelineColors: [TimelineSegmentColor]? {
+        guard let snapshot = playbackAnalysisSnapshot else { return nil }
+        let colors = AnalysisTimelineModel.segmentColors(snapshot: snapshot)
+        return colors.isEmpty ? nil : colors
+    }
+
     /// Library / detail entry: resolve audio, prepare engine + coordinators, show mini-player paused.
     /// Playback starts when the user taps `miniPlayerPlayPause` (AC4).
     /// Synchronous so episode-row taps publish `miniPlayer` before XCTest post-tap idle.
     func playEpisode(_ episode: Episode, podcastTitle: String, feedURL: URL? = nil) {
         guard let audioURL = resolveAudioURL(for: episode) else { return }
+
+        clearPlaybackAnalysisProgress()
 
         let newEngine = PlaybackEngine(
             url: audioURL,
@@ -125,6 +158,7 @@ final class AppShellModel {
         queueCoordinator = queue
         remoteCommands.bind(newEngine)
 
+        nowPlayingEpisodeID = episode.id
         nowPlayingEpisodeTitle = episode.title
         nowPlayingPodcastTitle = podcastTitle
         isMiniPlayerVisible = true
@@ -146,6 +180,7 @@ final class AppShellModel {
         )
         let injected = injectedTranscriptForTesting
 
+        acceptingPlaybackProgress = true
         Task { @MainActor in
             try? await coordinator.preparePlayback(
                 episode: EpisodeIdentity(id: episode.id),
@@ -155,6 +190,8 @@ final class AppShellModel {
                 unrelatedContent: unrelated,
                 injectedTranscript: injected
             )
+            // Keep terminal snapshot for mini-player; stop accepting further relay noise.
+            acceptingPlaybackProgress = false
         }
     }
 
@@ -180,6 +217,15 @@ final class AppShellModel {
         playbackCoordinator = nil
         queueCoordinator = nil
         episodePlayer = nil
+        nowPlayingEpisodeID = nil
+        nowPlayingEpisodeTitle = "Now playing"
+        nowPlayingPodcastTitle = ""
+        clearPlaybackAnalysisProgress()
+    }
+
+    private func clearPlaybackAnalysisProgress() {
+        acceptingPlaybackProgress = false
+        playbackAnalysisSnapshot = nil
     }
 
     private func resolveAudioURL(for episode: Episode) -> URL? {

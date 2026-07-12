@@ -91,6 +91,7 @@ struct AppShellView: View {
                     engine: engine,
                     episodeTitle: model.nowPlayingEpisodeTitle,
                     podcastTitle: model.nowPlayingPodcastTitle,
+                    timelineColors: model.miniPlayerTimelineColors,
                     onExpand: { model.expandFullPlayer() },
                     onTogglePlayPause: { model.toggleMiniPlayerPlayPause() }
                 )
@@ -215,7 +216,8 @@ private struct LibraryPodcastDetailView: View {
             initialValue: AnalysisUIViewModel(
                 store: CleaningToggleStoreAdapter(model.cleaningStore),
                 analyzer: model.episodeAnalyzer,
-                autoAnalyzeOnEpisodeEnable: false
+                autoAnalyzeOnEpisodeEnable: false,
+                progressRelay: model.analysisProgressRelay
             )
         )
     }

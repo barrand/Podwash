@@ -12,6 +12,7 @@ import UIKit
 /// SwiftUI wrapper around the same segment model (previews / non-list hosts).
 struct AnalysisTimelineView: View {
     let colors: [TimelineSegmentColor]
+    var accessibilityIdentifier: String = "analysisTimeline"
 
     var body: some View {
         HStack(spacing: 0) {
@@ -22,7 +23,7 @@ struct AnalysisTimelineView: View {
         }
         .frame(height: 8)
         .accessibilityElement(children: .ignore)
-        .accessibilityIdentifier("analysisTimeline")
+        .accessibilityIdentifier(accessibilityIdentifier)
         .accessibilityLabel("Analysis timeline")
         .accessibilityValue(AnalysisTimelineModel.accessibilityValue(from: colors))
         .accessibilityHint("Shows which parts of the episode are scanned, in progress, or waiting.")

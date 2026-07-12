@@ -108,6 +108,9 @@ private final class EpisodeTableViewController: UITableViewController {
         // until after the fixture analyzing window closes, dropping `analysisTimeline`).
         tableView.rowHeight = 140
         tableView.estimatedRowHeight = 140
+        // Deliver touches to in-cell controls immediately — default delay makes
+        // download / cleaning controls feel dead on device (Library path).
+        tableView.delaysContentTouches = false
         applyListAccessibility()
     }
 
@@ -215,13 +218,19 @@ private final class EpisodeTableViewController: UITableViewController {
 
             switch state {
             case .notDownloaded, .failed:
-                guard let remoteURL = episode.audioURL else { return }
+                guard let remoteURL = episode.audioURL else {
+                    // Never silently no-op — show failed affordance so the user can retry.
+                    self.downloadManager.markFailed(episodeID: episode.id)
+                    self.refreshDownloadDisplayOnVisibleRows()
+                    return
+                }
                 // Fixture downloads complete synchronously on the main actor — run
                 // inline so XCTest sees `downloaded` before post-tap idle settles.
                 if FixtureDownload.isEnabled {
                     do {
                         _ = try self.downloadManager.completeFixtureDownloadForUITest(episodeID: episode.id)
                     } catch {
+                        self.downloadManager.markFailed(episodeID: episode.id)
                         self.refreshDownloadDisplayOnVisibleRows()
                         return
                     }
@@ -234,13 +243,17 @@ private final class EpisodeTableViewController: UITableViewController {
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     self.refreshDownloadDisplayOnVisibleRows()
-                    _ = try? await self.downloadManager.download(
-                        episodeID: episode.id,
-                        from: remoteURL
-                    ) { _ in
-                        Task { @MainActor [weak self] in
-                            self?.refreshDownloadDisplayOnVisibleRows()
+                    do {
+                        _ = try await self.downloadManager.download(
+                            episodeID: episode.id,
+                            from: remoteURL
+                        ) { _ in
+                            Task { @MainActor [weak self] in
+                                self?.refreshDownloadDisplayOnVisibleRows()
+                            }
                         }
+                    } catch {
+                        // DownloadManager already marks `.failed`; refresh chrome.
                     }
                     self.refreshDownloadDisplayOnVisibleRows()
                 }
@@ -328,7 +341,7 @@ private final class EpisodeTableViewCell: UITableViewCell {
     private let downloadProgressLabel = UILabel()
     private let downloadProgressStack = UIStackView()
     private let downloadProgressAccessibilityHost = UIView()
-    private let textStack = UIStackView()
+    private let textStack = EpisodePlayStackView()
     private let downloadButton = UIButton(type: .system)
     private let queueAddButton = UIButton(type: .system)
     private let cleaningSwitch = UISwitch()
@@ -384,9 +397,8 @@ private final class EpisodeTableViewCell: UITableViewCell {
 
         progressAccessibilityHost.isHidden = true
         progressAccessibilityHost.isAccessibilityElement = false
-        progressAccessibilityHost.accessibilityLabel = "Analysis timeline"
-        progressAccessibilityHost.accessibilityHint =
-            "Shows which parts of the episode are scanned, in progress, or waiting."
+        progressAccessibilityHost.accessibilityLabel = nil
+        progressAccessibilityHost.accessibilityHint = nil
         progressAccessibilityHost.isUserInteractionEnabled = false
         progressAccessibilityHost.addSubview(timelineBar)
         timelineBar.translatesAutoresizingMaskIntoConstraints = false
@@ -553,23 +565,40 @@ private final class EpisodeTableViewCell: UITableViewCell {
             index: index
         )
 
-        accessibilityIdentifier = "episodeCell_\(index)"
-        accessibilityLabel = episode.title
         cellAccessibilityValue = EpisodeListFormatting.iso8601String(from: episode.pubDate)
-        // When play is wired (Library shell), expose the cell as an activatable
-        // element so XCTest `episodeCell_*`.tap() starts playback. Hide accessory
-        // AX children so they are not preferred over the cell hit target.
+
+        // Play region owns activation when Library wires `onPlay`. Keep the cell
+        // identifier for `app.cells["episodeCell_*"]` queries on the Feed path;
+        // on the Library path, move `episodeCell_*` onto `textStack` so XCTest
+        // taps a hittable play target without collapsing accessories into the cell.
+        isAccessibilityElement = false
+        accessibilityTraits = .none
+        accessoryStack.accessibilityElementsHidden = false
+        accessoryStack.isUserInteractionEnabled = true
+        queueAddButton.isAccessibilityElement = true
+        downloadButton.isAccessibilityElement = true
+        cleaningSwitch.isAccessibilityElement = true
+
         if onPlay != nil {
-            isAccessibilityElement = true
-            accessibilityTraits = .button
-            accessibilityElements = nil
-            contentView.accessibilityElements = nil
-            accessoryStack.accessibilityElementsHidden = true
-            queueAddButton.isAccessibilityElement = false
-            downloadButton.isAccessibilityElement = false
-            cleaningSwitch.isAccessibilityElement = false
+            accessibilityIdentifier = nil
+            accessibilityLabel = nil
+            textStack.accessibilityIdentifier = "episodeCell_\(index)"
+            textStack.isAccessibilityElement = true
+            textStack.accessibilityTraits = .button
+            textStack.accessibilityLabel = episode.title
+            textStack.accessibilityHint = "Plays this episode."
+            textStack.accessibilityValue = cellAccessibilityValue
+            textStack.onActivate = { [weak self] in self?.onPlay?() }
         } else {
-            accessoryStack.accessibilityElementsHidden = false
+            accessibilityIdentifier = "episodeCell_\(index)"
+            accessibilityLabel = episode.title
+            textStack.accessibilityIdentifier = nil
+            textStack.isAccessibilityElement = false
+            textStack.accessibilityTraits = .none
+            textStack.accessibilityLabel = nil
+            textStack.accessibilityHint = nil
+            textStack.accessibilityValue = nil
+            textStack.onActivate = nil
         }
 
         titleLabel.isAccessibilityElement = false
@@ -598,12 +627,19 @@ private final class EpisodeTableViewCell: UITableViewCell {
         let isEnabled: Bool
 
         switch state {
-        case .notDownloaded, .failed:
+        case .notDownloaded:
             showsProgress = false
             value = "notDownloaded"
             label = "Download episode"
             hint = nil
             symbolName = "arrow.down.circle"
+            isEnabled = true
+        case .failed:
+            showsProgress = false
+            value = "failed"
+            label = "Download failed"
+            hint = "Download failed. Tap to retry."
+            symbolName = "exclamationmark.circle"
             isEnabled = true
         case .downloading:
             showsProgress = true
@@ -622,6 +658,7 @@ private final class EpisodeTableViewCell: UITableViewCell {
         }
 
         downloadButton.setImage(UIImage(systemName: symbolName), for: .normal)
+        downloadButton.tintColor = state == .failed ? .systemRed : .tintColor
         downloadButton.isEnabled = isEnabled
         downloadButton.isAccessibilityElement = true
         downloadButton.accessibilityTraits = .button
@@ -668,14 +705,20 @@ private final class EpisodeTableViewCell: UITableViewCell {
         // (cell-scoped and app-global) can resolve `analysisTimeline` on the
         // main-actor-published analyzing state before completion.
         progressAccessibilityHost.accessibilityIdentifier = showsTimeline ? "analysisTimeline" : nil
-        progressAccessibilityHost.accessibilityLabel = "Analysis timeline"
-        progressAccessibilityHost.accessibilityHint =
-            "Shows which parts of the episode are scanned, in progress, or waiting."
-        if let colors = analysisViewModel.episodeRowTimelineColors(episodeID: episodeID) {
-            timelineBar.apply(colors: colors)
-            progressAccessibilityHost.accessibilityValue =
-                analysisViewModel.episodeRowTimelineAccessibilityValue(episodeID: episodeID)
+        if showsTimeline {
+            progressAccessibilityHost.accessibilityLabel = "Analysis timeline"
+            progressAccessibilityHost.accessibilityHint =
+                "Shows which parts of the episode are scanned, in progress, or waiting."
+            if let colors = analysisViewModel.episodeRowTimelineColors(episodeID: episodeID) {
+                timelineBar.apply(colors: colors)
+                progressAccessibilityHost.accessibilityValue =
+                    analysisViewModel.episodeRowTimelineAccessibilityValue(episodeID: episodeID)
+            } else {
+                progressAccessibilityHost.accessibilityValue = nil
+            }
         } else {
+            progressAccessibilityHost.accessibilityLabel = nil
+            progressAccessibilityHost.accessibilityHint = nil
             progressAccessibilityHost.accessibilityValue = nil
         }
 
@@ -696,25 +739,23 @@ private final class EpisodeTableViewCell: UITableViewCell {
         showsDownloadProgress: Bool,
         showsBadge: Bool
     ) {
-        // Library play path exposes the whole cell for XCTest episode taps.
-        if onPlay != nil {
-            isAccessibilityElement = true
-            accessibilityTraits.insert(.button)
-            accessibilityElements = nil
-            contentView.accessibilityElements = nil
-            accessoryStack.accessibilityElementsHidden = true
-            queueAddButton.isAccessibilityElement = false
-            downloadButton.isAccessibilityElement = false
-            cleaningSwitch.isAccessibilityElement = false
-            return
-        }
+        // Always keep accessories queryable/tappable. Library play uses `textStack`
+        // as the dedicated activatable region (not a collapsed whole-cell AX element).
+        isAccessibilityElement = false
         accessoryStack.accessibilityElementsHidden = false
-        // Publish AX children on the *cell* (not contentView). After Slice 22 moved
-        // accessories into contentView, assigning only timeline/badge to
-        // `contentView.accessibilityElements` left `analysisTimeline` /
-        // `cleaningBadge_episodeOn` invisible to XCTest descendant queries even
-        // when the hosts were on-screen (see AnalysisProgressUITests recording).
-        var axChildren: [UIView] = [queueAddButton, downloadButton, cleaningSwitch]
+        queueAddButton.isAccessibilityElement = true
+        downloadButton.isAccessibilityElement = true
+        cleaningSwitch.isAccessibilityElement = true
+
+        var axChildren: [UIView] = []
+        if onPlay != nil {
+            textStack.isAccessibilityElement = true
+            textStack.accessibilityTraits = .button
+            axChildren.append(textStack)
+        } else {
+            textStack.isAccessibilityElement = false
+        }
+        axChildren.append(contentsOf: [queueAddButton, downloadButton, cleaningSwitch])
         if showsDownloadProgress {
             axChildren.append(downloadProgressAccessibilityHost)
         }
@@ -724,6 +765,11 @@ private final class EpisodeTableViewCell: UITableViewCell {
         if showsBadge {
             axChildren.append(badgeLabel)
         }
+        // Publish AX children on the *cell* (not contentView). After Slice 22 moved
+        // accessories into contentView, assigning only timeline/badge to
+        // `contentView.accessibilityElements` left `analysisTimeline` /
+        // `cleaningBadge_episodeOn` invisible to XCTest descendant queries even
+        // when the hosts were on-screen (see AnalysisProgressUITests recording).
         accessibilityElements = axChildren
         contentView.accessibilityElements = nil
     }
@@ -759,6 +805,8 @@ private final class EpisodeTableViewCell: UITableViewCell {
     }
 
     override func accessibilityActivate() -> Bool {
+        // Prefer play-region activation; keep cell activate as a Library fallback
+        // when XCTest taps `episodeCell_*` on the cell container.
         if let onPlay {
             onPlay()
             return true
@@ -771,17 +819,35 @@ private final class EpisodeTableViewCell: UITableViewCell {
         guard onPlay != nil else {
             return super.hitTest(point, with: event)
         }
+        // Prefer accessories so download / queue / cleaning never lose to play.
         let accessoryPoint = convert(point, to: accessoryStack)
         if accessoryStack.bounds.contains(accessoryPoint),
            let accessoryHit = accessoryStack.hitTest(accessoryPoint, with: event) {
             return accessoryHit
         }
         let textPoint = convert(point, to: textStack)
-        if textStack.bounds.contains(textPoint) {
-            return textStack
+        if textStack.bounds.contains(textPoint),
+           let textHit = textStack.hitTest(textPoint, with: event) {
+            return textHit
         }
         // Cell-center taps that miss textStack still start playback (Library AC4).
-        return textStack
+        if bounds.contains(point) {
+            return textStack
+        }
+        return super.hitTest(point, with: event)
+    }
+}
+
+/// Title/date stack that VoiceOver / XCTest can activate to start playback.
+private final class EpisodePlayStackView: UIStackView {
+    var onActivate: (() -> Void)?
+
+    override func accessibilityActivate() -> Bool {
+        if let onActivate {
+            onActivate()
+            return true
+        }
+        return super.accessibilityActivate()
     }
 }
 

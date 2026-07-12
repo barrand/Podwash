@@ -193,6 +193,12 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         stateStore.state(for: episodeID)
     }
 
+    /// Surfaces a failed download affordance when download cannot start (e.g. missing audio URL).
+    func markFailed(episodeID: String) {
+        stateStore.setState(.failed, for: episodeID)
+        notifyStateChanged()
+    }
+
     /// Synchronous fixture-mode download for UI tests (`-UITestFixtureDownload`).
     /// Runs entirely on the main actor so accessibility updates land before XCTest idle.
     @discardableResult

@@ -5,8 +5,10 @@
 //  Slice 07 — Analyze-episode pipeline. ASR → WordMatcher/IntervalBuilder →
 //  persisted interval list (ADR-005 §2). Slice 19 merges ContentSegmenting
 //  intervals with independent actions (ADR-013 §3.3).
+//  Slice 20 / mini-player — optional start+complete progress (ADR-018 §6).
 //
 
+import AVFoundation
 import Foundation
 
 /// ASR → matcher → segmenter → cache pipeline.
@@ -17,6 +19,9 @@ final class AnalysisPipeline: @unchecked Sendable {
     nonisolated(unsafe) private let transcriber: any ASRTranscribing
     private let cache: IntervalCache
     private let segmenter: any ContentSegmenting
+
+    var onProgress: AnalysisProgressHandler?
+    var onMainActorProgress: MainActorAnalysisProgressHandler?
 
     init(
         transcriber: any ASRTranscribing,
@@ -73,6 +78,11 @@ final class AnalysisPipeline: @unchecked Sendable {
         profanityAction: CensorAction,
         unrelatedContent: UnrelatedContentOptions
     ) async throws -> [CensorInterval] {
+        let duration = await Self.resolveDuration(audioURL: audioURL)
+        if duration > 0 {
+            await emitProgress(Self.startSnapshot(duration: duration))
+        }
+
         let union: [CensorInterval]
         if let cached = cache.load(episodeID: episode.id, targetWords: targetWords) {
             union = cached
@@ -111,11 +121,17 @@ final class AnalysisPipeline: @unchecked Sendable {
             try cache.store(union, episodeID: episode.id, targetWords: targetWords)
         }
 
-        return Self.project(
+        let projected = Self.project(
             union: union,
             profanityAction: profanityAction,
             unrelatedContent: unrelatedContent
         )
+
+        if duration > 0 {
+            await emitProgress(Self.completeSnapshot(duration: duration, intervals: projected))
+        }
+
+        return projected
     }
 
     /// Remap actions by source; drop unrelated when disabled.
@@ -142,6 +158,52 @@ final class AnalysisPipeline: @unchecked Sendable {
                     source: .unrelatedContent
                 )
             }
+        }
+    }
+
+    private func emitProgress(_ snapshot: AnalysisProgressSnapshot) async {
+        await MainActor.run {
+            onMainActorProgress?(snapshot)
+            onProgress?(snapshot)
+        }
+    }
+
+    private static func startSnapshot(duration: Double) -> AnalysisProgressSnapshot {
+        let bucketWidth = duration / Double(AnalysisTimelineModel.defaultSegmentCount)
+        return AnalysisProgressSnapshot(
+            episodeDuration: duration,
+            processedEnd: 0,
+            processingStart: 0,
+            processingEnd: bucketWidth,
+            adRanges: []
+        )
+    }
+
+    private static func completeSnapshot(
+        duration: Double,
+        intervals: [CensorInterval]
+    ) -> AnalysisProgressSnapshot {
+        let adRanges = intervals
+            .filter { $0.source == .unrelatedContent }
+            .map { AdTimeRange(start: $0.start, end: $0.end) }
+        return AnalysisProgressSnapshot(
+            episodeDuration: duration,
+            processedEnd: duration,
+            processingStart: duration,
+            processingEnd: duration,
+            adRanges: adRanges
+        )
+    }
+
+    private static func resolveDuration(audioURL: URL) async -> Double {
+        let asset = AVURLAsset(url: audioURL)
+        do {
+            let loaded = try await asset.load(.duration)
+            let seconds = loaded.seconds
+            guard seconds.isFinite, seconds > 0 else { return 0 }
+            return seconds
+        } catch {
+            return 0
         }
     }
 }

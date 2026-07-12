@@ -67,19 +67,29 @@ final class AnalysisUIViewModel {
     @ObservationIgnored private let analyzer: any EpisodeAnalyzing
     @ObservationIgnored private let autoAnalyzeEpisodeEnable: Bool
     @ObservationIgnored private let settingsStore: SettingsStore
+    @ObservationIgnored private var progressHandlerID: UUID?
     @ObservationIgnored var onAnalyzingEpisodeIDChanged: (() -> Void)?
 
     init(
         store: any CleaningToggleStoring,
         analyzer: any EpisodeAnalyzing,
         autoAnalyzeOnEpisodeEnable: Bool = false,
-        settingsStore: SettingsStore = SettingsStore()
+        settingsStore: SettingsStore = SettingsStore(),
+        progressRelay: AnalysisProgressRelay? = nil
     ) {
         self.store = store
         self.analyzer = analyzer
         self.autoAnalyzeEpisodeEnable = autoAnalyzeOnEpisodeEnable
         self.settingsStore = settingsStore
-        wireProgressHandler()
+        if let progressRelay {
+            progressHandlerID = progressRelay.addHandler { [weak self] snapshot in
+                guard let self else { return }
+                self.progressSnapshot = snapshot
+                self.markContentChanged()
+            }
+        } else {
+            wireProgressHandler()
+        }
         syncStateFromStore()
     }
 
