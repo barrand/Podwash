@@ -1,0 +1,38 @@
+---
+description: Local device testing and rapid fixes — test-as-you-go, auto commit+push
+alwaysApply: true
+---
+
+# PodWash local dev (rapid iteration)
+
+Use this rule when the user is **testing on device** or sending rapid fix/tweak requests in Cursor. This is **not** the dark-factory slice pipeline.
+
+**Precedence:** When the user points at `docs/slices/slice-NN-*.md` for a formal slice or runs `slice-loop`, defer to `podwash-coordinator.mdc` instead.
+
+## Workflow
+
+1. **Fix directly** — edit app code yourself; no subagent delegation required.
+2. **Test every change** — add or update an automated test for each behavioral fix when assertable:
+   - UI/interaction/a11y bugs → `PodWashUITests/` (accessibility identifiers + state asserts)
+   - Logic/view-model bugs → `PodWashTests/`
+   - Skip a test only when automation is genuinely impossible; say why briefly.
+3. **Verify before landing** — run `scripts/verify.sh` filtered to touched tests for the inner loop; run the **full suite** before push when practical (always if the change is broad).
+4. **Test isolation** — never commit `PodWash/PodWash/**` and test targets in the same commit. When both change: commit tests first (`test: …`), then app (`fix: …`).
+
+## Auto commit & push (do not wait to be asked)
+
+After **each completed task** (not only end of chat):
+
+1. Confirm relevant verify is green.
+2. Stage only files for this task — never `__pycache__/`, `.env`, credentials, or unrelated dirty files.
+3. Run `scripts/check-test-isolation.sh --staged` before each commit.
+4. **Commit** with `fix: …` / `test: …` (not `slice-NN:`).
+5. **Push** to remote immediately (never force-push).
+
+Overrides the general user rule “only commit when asked” for this local-dev mode.
+
+## Do not
+
+- Block on slice gates, ADR reviews, or subagent spawning.
+- Commit on red verify.
+- Leave a finished fix uncommitted when the user moves to the next item.
