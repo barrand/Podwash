@@ -17,11 +17,11 @@ struct PlaybackSourceResolver: Sendable {
     }
 
     func playbackURL(for episode: Episode) -> URL? {
-        let localURL = DownloadPaths.localFileURL(
+        if let localURL = try? DownloadPaths.migrateLegacyLocalFileIfNeeded(
             episodeID: episode.id,
-            downloadsDirectory: downloadsDirectory
-        )
-        if fileManager.fileExists(atPath: localURL.path) {
+            downloadsDirectory: downloadsDirectory,
+            fileManager: fileManager
+        ) {
             return localURL
         }
         return episode.audioURL

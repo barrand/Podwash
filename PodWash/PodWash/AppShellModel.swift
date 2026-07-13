@@ -232,10 +232,20 @@ final class AppShellModel {
         if isFixtureLibraryMode {
             return FixtureAudio.bundledURL()
         }
-        let downloadsDirectory = downloadsDirectoryForTesting
-            ?? DownloadPaths.productionDownloadsDirectory
-        let resolver = PlaybackSourceResolver(downloadsDirectory: downloadsDirectory)
-        return resolver.playbackURL(for: episode)
+        if let localURL = resolvedLocalFileURL(for: episode.id) {
+            return localURL
+        }
+        return episode.audioURL
+    }
+
+    private func resolvedLocalFileURL(for episodeID: String) -> URL? {
+        if let testDirectory = downloadsDirectoryForTesting {
+            return try? DownloadPaths.migrateLegacyLocalFileIfNeeded(
+                episodeID: episodeID,
+                downloadsDirectory: testDirectory
+            )
+        }
+        return downloadManager.localFileURL(for: episodeID)
     }
 
     private func isLocalFileURL(_ url: URL) -> Bool {

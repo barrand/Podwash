@@ -97,6 +97,13 @@ final class DownloadStateStore {
         try context.save()
     }
 
+    func downloadedEpisodeIDs() -> [String] {
+        let request = CDEpisode.fetchRequest()
+        request.predicate = NSPredicate(format: "downloadStateRaw == %@", "downloaded")
+        guard let episodes = try? context.fetch(request) else { return [] }
+        return episodes.compactMap(\.id)
+    }
+
     private func fetchEpisode(id: String) -> CDEpisode? {
         let request = CDEpisode.fetchRequest()
         request.predicate = NSPredicate(format: "id == %@", id)
@@ -148,5 +155,9 @@ final class InMemoryDownloadStateStore {
 
     func clear() {
         try? store.clear()
+    }
+
+    func downloadedEpisodeIDs() -> [String] {
+        store.downloadedEpisodeIDs()
     }
 }

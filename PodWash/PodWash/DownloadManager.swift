@@ -60,6 +60,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         )
         ensureDownloadsDirectoryExists()
         seedDownloadedStateFromDisk()
+        migrateLegacyDownloadsFromPersistedState()
     }
 
     func download(
@@ -185,11 +186,16 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     }
 
     func localFileURL(for episodeID: String) -> URL? {
-        let url = DownloadPaths.localFileURL(
+        let resolved = try? DownloadPaths.migrateLegacyLocalFileIfNeeded(
             episodeID: episodeID,
-            downloadsDirectory: downloadsDirectory
+            downloadsDirectory: downloadsDirectory,
+            fileManager: fileManager
         )
-        return fileManager.fileExists(atPath: url.path) ? url : nil
+        if resolved == nil, state(for: episodeID) == .downloaded {
+            stateStore.setState(.notDownloaded, for: episodeID)
+            notifyStateChanged()
+        }
+        return resolved
     }
 
     func resumeData(for episodeID: String) -> Data? {
@@ -550,6 +556,16 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             at: downloadsDirectory,
             withIntermediateDirectories: true
         )
+    }
+
+    private func migrateLegacyDownloadsFromPersistedState() {
+        for episodeID in stateStore.downloadedEpisodeIDs() {
+            _ = try? DownloadPaths.migrateLegacyLocalFileIfNeeded(
+                episodeID: episodeID,
+                downloadsDirectory: downloadsDirectory,
+                fileManager: fileManager
+            )
+        }
     }
 
     private func seedDownloadedStateFromDisk() {

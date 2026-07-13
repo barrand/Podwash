@@ -22,6 +22,96 @@ enum DownloadPaths: Sendable {
         downloadsDirectory.appendingPathComponent("\(fileNameStem(for: episodeID)).m4a", isDirectory: false)
     }
 
+    /// Pre–hashing install path: raw `episodeID.m4a` (RSS GUIDs may include `:`).
+    nonisolated static func legacyRawLocalFileURL(episodeID: String, downloadsDirectory: URL) -> URL {
+        downloadsDirectory.appendingPathComponent("\(episodeID).m4a", isDirectory: false)
+    }
+
+    /// Canonical on-disk file when present, otherwise a legacy raw-name install.
+    nonisolated static func existingLocalFileURL(
+        episodeID: String,
+        downloadsDirectory: URL,
+        fileManager: FileManager = .default
+    ) -> URL? {
+        let canonical = localFileURL(episodeID: episodeID, downloadsDirectory: downloadsDirectory)
+        if fileManager.fileExists(atPath: canonical.path) {
+            return canonical
+        }
+        return discoverLegacyLocalFileURL(
+            episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory,
+            fileManager: fileManager
+        )
+    }
+
+    /// Locates pre-sanitization installs: flat `episodeID.m4a` or nested paths when `/`
+    /// in the RSS GUID was interpreted as directories during `moveItem`.
+    nonisolated static func discoverLegacyLocalFileURL(
+        episodeID: String,
+        downloadsDirectory: URL,
+        fileManager: FileManager = .default
+    ) -> URL? {
+        guard !isPathSafeFileNameStem(episodeID) else { return nil }
+
+        let flat = legacyRawLocalFileURL(episodeID: episodeID, downloadsDirectory: downloadsDirectory)
+        if fileManager.fileExists(atPath: flat.path) {
+            return flat
+        }
+
+        let suffix = legacyNestedFileNameSuffix(for: episodeID)
+        guard let enumerator = fileManager.enumerator(
+            at: downloadsDirectory,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else { return nil }
+
+        let canonical = localFileURL(episodeID: episodeID, downloadsDirectory: downloadsDirectory)
+        var matches: [URL] = []
+        for case let url as URL in enumerator {
+            guard url.pathExtension.lowercased() == "m4a" else { continue }
+            guard url.path != canonical.path else { continue }
+            if url.lastPathComponent == suffix {
+                matches.append(url)
+            }
+        }
+        return matches.count == 1 ? matches[0] : nil
+    }
+
+    nonisolated private static func legacyNestedFileNameSuffix(for episodeID: String) -> String {
+        let rawName = "\(episodeID).m4a"
+        if let last = rawName.split(separator: "/").last {
+            return String(last)
+        }
+        return rawName
+    }
+
+    /// Moves a legacy raw-name install onto the canonical hashed path when needed.
+    @discardableResult
+    nonisolated static func migrateLegacyLocalFileIfNeeded(
+        episodeID: String,
+        downloadsDirectory: URL,
+        fileManager: FileManager = .default
+    ) throws -> URL? {
+        guard let existing = existingLocalFileURL(
+            episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory,
+            fileManager: fileManager
+        ) else { return nil }
+
+        let canonical = localFileURL(episodeID: episodeID, downloadsDirectory: downloadsDirectory)
+        if existing.path == canonical.path {
+            return existing
+        }
+
+        try fileManager.createDirectory(at: downloadsDirectory, withIntermediateDirectories: true)
+        if fileManager.fileExists(atPath: canonical.path) {
+            try fileManager.removeItem(at: existing)
+            return canonical
+        }
+        try fileManager.moveItem(at: existing, to: canonical)
+        return canonical
+    }
+
     nonisolated static func partialFileURL(episodeID: String, downloadsDirectory: URL) -> URL {
         downloadsDirectory.appendingPathComponent("\(fileNameStem(for: episodeID)).m4a.part", isDirectory: false)
     }
