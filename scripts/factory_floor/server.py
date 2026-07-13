@@ -727,6 +727,31 @@ def board_snapshot() -> dict[str, Any]:
     }
 
 
+def _task_path_for_id(tid: int) -> Path | None:
+    tasks_dir = REPO_ROOT / "docs" / "tasks"
+    if not tasks_dir.is_dir():
+        return None
+    prefix = f"task-{int(tid):03d}-"
+    for path in tasks_dir.glob(f"{prefix}*.md"):
+        return path
+    return None
+
+
+def requeue_task(task_id: Any) -> str:
+    """Immediately move a Halted (or any) task back to Queued — do not wait for the loop."""
+    try:
+        tid = int(task_id)
+    except (TypeError, ValueError):
+        return f"invalid task_id {task_id!r}"
+    path = _task_path_for_id(tid)
+    if path is None:
+        return f"task-{tid:03d} not found"
+    from task_ticket import set_task_status
+
+    set_task_status(str(path), "Queued")
+    return f"requeued task-{tid:03d} → Queued"
+
+
 def start_runner() -> str:
     global _runner_proc
     with _runner_lock:
@@ -884,7 +909,12 @@ main {
   border-color: var(--ok);
   box-shadow: 0 0 0 1px var(--ok);
 }
-.card .phase { font-size: 0.75rem; color: var(--ok); margin-top: 0.25rem; }
+.card .card-actions {
+  display: flex; gap: 0.35rem; margin-top: 0.45rem; flex-wrap: wrap;
+}
+.card .card-actions button {
+  font-size: 0.72rem; padding: 0.2rem 0.45rem;
+}
 .needs-you.on { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn); }
 .needs-you .fail-list { margin: 0.5rem 0; padding-left: 1.1rem; font-size: 0.8rem; }
 .needs-you .fail-list li { margin: 0.25rem 0; }
@@ -1176,10 +1206,25 @@ function makeCard(item, st, activeTid) {
   if (isActive && st.phase) {
     phaseHtml = `<div class="phase">${esc(st.phase)}${st.role ? " · " + esc(st.role) : ""}${st.detail ? " — " + esc(st.detail) : ""}</div>`;
   }
+  const halted = item.type === "task" && /Halted/i.test(item.status || "");
+  let actionsHtml = "";
+  if (halted) {
+    actionsHtml = `<div class="card-actions"><button type="button" data-requeue="${esc(item.id)}">Requeue</button></div>`;
+  }
   card.innerHTML = `<div><span class="prio">${esc(item.priority||"")}</span> ${esc(item.type)} ${esc(item.id)}</div>
     <div>${esc(item.title||"")}</div>
-    <div class="meta">${esc(item.kind||"")} · ${esc((item.area||"").slice(0,40))}</div>${phaseHtml}`;
-  card.onclick = () => openDrawer(item);
+    <div class="meta">${esc(item.kind||"")} · ${esc((item.area||"").slice(0,40))}</div>${phaseHtml}${actionsHtml}`;
+  card.onclick = (e) => {
+    const btn = e.target && e.target.closest && e.target.closest("[data-requeue]");
+    if (btn) {
+      e.stopPropagation();
+      const id = parseInt(String(btn.getAttribute("data-requeue") || "").replace(/\D/g, ""), 10);
+      if (!id) return alert("Bad task id");
+      post("/api/control", {action: "requeue", task_id: id});
+      return;
+    }
+    openDrawer(item);
+  };
   return card;
 }
 
@@ -1583,7 +1628,8 @@ class Handler(BaseHTTPRequestHandler):
             ctrl["ship_now"] = True
             write_controls(ctrl)
         elif action == "requeue":
-            ctrl["requeue_task_id"] = data.get("task_id")
+            msg = requeue_task(data.get("task_id"))
+            ctrl["requeue_task_id"] = None
             write_controls(ctrl)
         elif action == "cancel":
             ctrl["cancel_task_id"] = data.get("task_id")

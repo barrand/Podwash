@@ -219,20 +219,26 @@ class ControlHandlerTests(unittest.TestCase):
         self.assertNotIn("--no-self-heal", argv)
         floor._runner_proc = None
 
-    def test_batch_hold_acknowledges(self):
+    def test_requeue_applies_immediately(self):
         import factory_floor.server as floor
+        from task_ticket import parse_task_ticket
 
         with tempfile.TemporaryDirectory() as td:
-            path = os.path.join(td, "batch-failure.json")
+            path = os.path.join(td, "task-005-t.md")
             with open(path, "w", encoding="utf-8") as fh:
-                json.dump({"status": "open", "head_sha": "abc", "failures": []}, fh)
-            with mock.patch.object(floor, "BATCH_FAILURE", type(floor.BATCH_FAILURE)(path)):
-                floor._write_batch_failure  # noqa: B018 — ensure helper exists
-                data = floor._read_batch_failure()
-                data["status"] = "acknowledged"
-                floor._write_batch_failure(data)
-                again = floor._read_batch_failure()
-                self.assertEqual(again["status"], "acknowledged")
+                fh.write(
+                    "# Task\n\n| Field | Value |\n|-------|-------|\n"
+                    "| **ID** | 005 |\n| **Status** | Halted |\n| **Title** | T |\n"
+                )
+            with mock.patch.object(floor, "REPO_ROOT", type(floor.REPO_ROOT)(td)):
+                # docs/tasks layout
+                tasks = os.path.join(td, "docs", "tasks")
+                os.makedirs(tasks)
+                dest = os.path.join(tasks, "task-005-t.md")
+                os.rename(path, dest)
+                msg = floor.requeue_task(5)
+                self.assertIn("requeued", msg)
+                self.assertEqual(parse_task_ticket(dest).status, "Queued")
 
 
 class SessionBundleNameTests(unittest.TestCase):
