@@ -247,4 +247,14 @@ final class CarPlayTemplateTests: XCTestCase {
             "UIApplicationSceneManifest must contain exactly 1 CPTemplateApplicationScene configuration (found \(count))"
         )
     }
+
+    // MARK: - Task 003: audio-app disconnect selector (ADR-016 §7)
+
+    func testSceneDelegateRespondsToAudioAppDisconnectSelector() {
+        let selector = NSSelectorFromString("templateApplicationScene:didDisconnectInterfaceController:")
+        XCTAssertTrue(
+            CarPlaySceneDelegate.instancesRespond(to: selector),
+            "CarPlaySceneDelegate must implement templateApplicationScene(_:didDisconnectInterfaceController:) for audio-app teardown"
+        )
+    }
 }

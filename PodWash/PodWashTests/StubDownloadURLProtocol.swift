@@ -64,15 +64,19 @@ final class StubDownloadURLProtocol: URLProtocol {
         }
 
         if url.path.contains("/redirect/") {
-            let location = "https://fixture.podwash.tests/audio/alpha.m4a"
+            // URLProtocol must report redirects via wasRedirectedTo — finishing with a
+            // bare 302 leaves downloadTask.response at 302 and DownloadManager correctly
+            // maps non-2xx to transportFailure (task-001 AC1).
+            let locationURL = URL(string: "https://fixture.podwash.tests/audio/alpha.m4a")!
             let response = HTTPURLResponse(
                 url: url,
                 statusCode: 302,
                 httpVersion: "HTTP/1.1",
-                headerFields: ["Location": location]
+                headerFields: ["Location": locationURL.absoluteString]
             )!
-            client.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client.urlProtocolDidFinishLoading(self)
+            var redirectRequest = URLRequest(url: locationURL)
+            redirectRequest.httpMethod = request.httpMethod
+            client.urlProtocol(self, wasRedirectedTo: redirectRequest, redirectResponse: response)
             return
         }
 

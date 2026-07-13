@@ -74,12 +74,18 @@ final class PlaybackRateTests: XCTestCase {
         return tempURL
     }
 
+    /// Poll `timeControlStatus` on the run loop — no XCTestExpectation / KVO.
+    /// `setRate` can re-notify status while still `.playing`; a live expectation
+    /// would double-fulfill (NSInternalInconsistencyException → signal term).
     private func waitForPlaying(_ engine: PlaybackEngine, timeout: TimeInterval = 5) {
-        let pred = NSPredicate { _, _ in
-            engine.avPlayer.timeControlStatus == .playing
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if engine.avPlayer.timeControlStatus == .playing {
+                return
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
         }
-        let exp = expectation(for: pred, evaluatedWith: nil)
-        wait(for: [exp], timeout: timeout)
+        XCTFail("Timed out waiting for AVPlayer.timeControlStatus == .playing")
     }
 
     // MARK: - AC1: supported rates match AVPlayer.rate while playing
