@@ -27,6 +27,7 @@ HOT_FLAG = os.path.join(REPO_ROOT, "build", "factory", "factory-hot")
 BATCH_GATE_PATH = os.path.join(REPO_ROOT, "build", "factory", "batch-gate.json")
 BATCH_FAILURE_PATH = os.path.join(REPO_ROOT, "build", "factory", "batch-failure.json")
 STATION_PATH = os.path.join(REPO_ROOT, "build", "factory", "station.json")
+HEARTBEAT_PATH = os.path.join(REPO_ROOT, "build", "factory", "heartbeat.json")
 VERIFY_RESULT_JSON = os.path.join(REPO_ROOT, "build", "test-results", "verify-result.json")
 VERIFY_OUTPUT_LATEST = os.path.join(
     REPO_ROOT, "build", "test-results", "verify-output-latest.txt"
@@ -401,6 +402,8 @@ def default_controls() -> dict[str, Any]:
         "priority_bumps": {},
         "batch_running": False,
         "mark_done_task_id": None,
+        "runner_pid": None,
+        "started_at": None,
         "updated_at": None,
     }
 
@@ -424,6 +427,15 @@ def write_controls(data: dict[str, Any]) -> None:
     data["updated_at"] = time.time()
     with open(CONTROLS_PATH, "w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2)
+        fh.write("\n")
+
+
+def write_heartbeat() -> None:
+    """Touch heartbeat.json so Forge Floor knows this loop is alive."""
+    os.makedirs(os.path.dirname(HEARTBEAT_PATH), exist_ok=True)
+    payload = {"pid": os.getpid(), "ts": time.time()}
+    with open(HEARTBEAT_PATH, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2)
         fh.write("\n")
 
 
@@ -521,6 +533,8 @@ def run_batch_gate(
     an incident at HEAD is acknowledged). Ship now passes force=True.
     """
     from factory_events import EventLog
+
+    write_heartbeat()
 
     if skip:
         log("batch gate skipped (--skip-batch-gate)")
@@ -754,6 +768,7 @@ def run_batch_gate(
 
 def wait_while_paused() -> None:
     while True:
+        write_heartbeat()
         ctrl = apply_control_side_effects(read_controls())
         if not ctrl.get("paused"):
             return
@@ -778,15 +793,20 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_STARTUP
 
     set_factory_hot(True)
+    write_heartbeat()
     ctrl = read_controls()
     ctrl["running"] = True
     ctrl["paused"] = False
+    ctrl["runner_pid"] = os.getpid()
+    if not ctrl.get("started_at"):
+        ctrl["started_at"] = time.time()
     write_controls(ctrl)
 
     ran = 0
     last_id: int | None = None
     try:
         while True:
+            write_heartbeat()
             wait_while_paused()
             ctrl = apply_control_side_effects(read_controls())
 

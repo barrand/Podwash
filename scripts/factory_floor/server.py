@@ -28,7 +28,12 @@ HOT = REPO_ROOT / "build" / "factory" / "factory-hot"
 BATCH_GATE = REPO_ROOT / "build" / "factory" / "batch-gate.json"
 BATCH_FAILURE = REPO_ROOT / "build" / "factory" / "batch-failure.json"
 STATION = REPO_ROOT / "build" / "factory" / "station.json"
+HEARTBEAT = REPO_ROOT / "build" / "factory" / "heartbeat.json"
 EVENTS_DIR = REPO_ROOT / "build" / "test-results"
+
+STARTING_GRACE_S = 30.0
+HEARTBEAT_FRESH_S = 300.0  # 5 min — treat loop as alive without pid check
+STALE_ACTIVITY_S = 180.0  # 3 min — UI warns while claiming work
 
 _runner_proc: subprocess.Popen | None = None
 _runner_lock = threading.Lock()
@@ -45,6 +50,8 @@ def _default_controls() -> dict[str, Any]:
         "priority_bumps": {},
         "batch_running": False,
         "mark_done_task_id": None,
+        "runner_pid": None,
+        "started_at": None,
         "updated_at": None,
     }
 
@@ -208,12 +215,92 @@ def _verify_running() -> bool:
     return False
 
 
-def _runner_alive() -> bool:
-    """True when the Floor-spawned or any task-loop process is live for this repo."""
+def _pid_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def _file_age_s(path: Path) -> float | None:
+    if not path.is_file():
+        return None
+    try:
+        return max(0.0, time.time() - path.stat().st_mtime)
+    except OSError:
+        return None
+
+
+def _parse_event_ts(raw: Any) -> float | None:
+    """Parse event timestamp (unix float or ISO-ish string) to epoch seconds."""
+    if raw is None:
+        return None
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    s = str(raw).strip()
+    if not s:
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        pass
+    # ISO: 2026-07-13T18:31:47Z or without Z
+    try:
+        from datetime import datetime
+
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        return datetime.fromisoformat(s).timestamp()
+    except ValueError:
+        return None
+
+
+def _last_event_age_s(events: list[dict[str, Any]]) -> float | None:
+    newest: float | None = None
+    for ev in events:
+        ts = _parse_event_ts(ev.get("ts"))
+        if ts is None:
+            continue
+        if newest is None or ts > newest:
+            newest = ts
+    if newest is None:
+        return None
+    return max(0.0, time.time() - newest)
+
+
+def _runner_alive(*, ctrl: dict[str, Any] | None = None) -> bool:
+    """True when the Floor-spawned or any task-loop process is live for this repo.
+
+    Order: in-process Popen → controls runner_pid → heartbeat pid → fresh
+    heartbeat timestamp → ps scan (last resort).
+    """
     global _runner_proc
     with _runner_lock:
         if _runner_proc is not None and _runner_proc.poll() is None:
             return True
+    c = ctrl if ctrl is not None else read_controls()
+    try:
+        ctrl_pid = int(c.get("runner_pid") or 0)
+    except (TypeError, ValueError):
+        ctrl_pid = 0
+    if ctrl_pid and _pid_alive(ctrl_pid):
+        return True
+    hb = _read_json_file(HEARTBEAT)
+    try:
+        hb_pid = int(hb.get("pid") or 0)
+    except (TypeError, ValueError):
+        hb_pid = 0
+    if hb_pid and _pid_alive(hb_pid):
+        return True
+    try:
+        hb_ts = float(hb.get("ts") or 0)
+    except (TypeError, ValueError):
+        hb_ts = 0.0
+    if hb_ts and (time.time() - hb_ts) < HEARTBEAT_FRESH_S:
+        return True
     root = str(REPO_ROOT)
     for line in _ps_commands():
         if "task_loop.py" in line or "task-loop.sh" in line:
@@ -277,16 +364,16 @@ def _batch_plain(reason: str, state: str) -> str:
         "not needed": "Full suite already green at this commit — nothing to batch-verify.",
         "skipped": "Batch gate skipped for this session.",
         "unavailable": "Batch status unavailable (task_loop import failed).",
-        "still_red": "Full suite still failing after Mechanic — decide in Needs you.",
+        "still_red": "Full suite still failing after Mechanic — decide in Your move.",
         "verified": "Last full suite was green.",
         "mechanic_retry": "Re-running full suite after Mechanic.",
         "held": "Held — not pushing. Ship now or Retry to run the full suite again.",
-        "verify aborted": "Full suite aborted (simulator/infra) — decide in Needs you.",
+        "verify aborted": "Full suite aborted (simulator/infra) — decide in Your move.",
     }
     if state == "verifying" or state == "running":
         return f"Full suite is running now ({r or 'tier-3'})."
     if state == "needs_decision":
-        return mapping.get(r, f"Can't ship ({r or 'failed'}). Open Needs you.")
+        return mapping.get(r, f"Can't ship ({r or 'failed'}). Decide in Your move.")
     if state == "held":
         return mapping["held"]
     if state == "green" and not r:
@@ -304,6 +391,29 @@ def _fmt_task_id(task_id: Any) -> str:
         if s.isdigit():
             return f"task-{int(s):03d}"
         return s if s.startswith("task-") else f"task-{s}"
+
+
+def _activity_ages(
+    events: list[dict[str, Any]],
+) -> dict[str, float | None]:
+    station_age_s = _file_age_s(STATION)
+    hb = _read_json_file(HEARTBEAT)
+    hb_age_s: float | None = None
+    try:
+        hb_ts = float(hb.get("ts") or 0)
+        if hb_ts:
+            hb_age_s = max(0.0, time.time() - hb_ts)
+    except (TypeError, ValueError):
+        hb_age_s = None
+    last_event_age_s = _last_event_age_s(events)
+    ages = [a for a in (station_age_s, hb_age_s, last_event_age_s) if a is not None]
+    activity_age_s = min(ages) if ages else None
+    return {
+        "station_age_s": station_age_s,
+        "heartbeat_age_s": hb_age_s,
+        "last_event_age_s": last_event_age_s,
+        "activity_age_s": activity_age_s,
+    }
 
 
 def _activity_snapshot(
@@ -358,155 +468,217 @@ def _activity_snapshot(
     ev_event = str(last_ev.get("event") or "").strip()
 
     batch_plain = _batch_plain(str(batch.get("reason") or ""), str(batch.get("state") or ""))
-    orphan = marked_running and not runner_alive and not bool(ctrl.get("batch_running"))
+    ages = _activity_ages(events)
+    verify_running = bool(batch.get("verify_running"))
+    batch_flag = bool(ctrl.get("batch_running")) or bool(batch.get("batch_running"))
+    started_at = ctrl.get("started_at")
+    try:
+        started_age_s = (
+            max(0.0, time.time() - float(started_at)) if started_at is not None else None
+        )
+    except (TypeError, ValueError):
+        started_age_s = None
 
-    if orphan:
-        stuck = ", ".join(_fmt_task_id(t.get("id")) or str(t.get("id")) for t in in_prog) or "none"
+    def pack(
+        *,
+        mode: str,
+        headline: str,
+        detail: str,
+        next_line: str,
+        orphan: bool = False,
+        agents_out: list[dict[str, str]] | None = None,
+        loop_stale: bool = False,
+    ) -> dict[str, Any]:
         return {
-            "mode": "orphan",
-            "headline": "Loop not running",
-            "detail": (
+            "mode": mode,
+            "headline": headline,
+            "detail": detail,
+            "agents": agents_out if agents_out is not None else agents,
+            "next": next_line,
+            "batch_plain": batch_plain,
+            "orphan": orphan,
+            "runner_alive": runner_alive,
+            "loop_stale": loop_stale,
+            "started_at": started_at,
+            "started_age_s": started_age_s,
+            **ages,
+        }
+
+    # Claimed running but no live loop — starting / orphan / mid-verify warning
+    if marked_running and not runner_alive:
+        if batch_flag and verify_running:
+            return pack(
+                mode="batch",
+                headline="FULL-VERIFY · children only",
+                detail=(
+                    "Loop process is gone, but verify/xcodebuild is still running. "
+                    "Wait for it to finish, or Stop then Restart factory."
+                ),
+                next_line="Wait for the full suite to finish, or Stop then Restart factory.",
+                agents_out=agents
+                or [
+                    {
+                        "role": "verify",
+                        "task": "",
+                        "phase": "FULL-VERIFY",
+                        "doing": "tier-3 children still running",
+                    }
+                ],
+                loop_stale=True,
+            )
+        if batch_flag and not verify_running:
+            stuck = (
+                ", ".join(_fmt_task_id(t.get("id")) or str(t.get("id")) for t in in_prog)
+                or "none"
+            )
+            return pack(
+                mode="orphan",
+                headline="Loop not running",
+                detail=(
+                    f"Batch flag was left on, but no loop or verify process is alive. "
+                    f"In Progress stuck: {stuck}."
+                ),
+                next_line="Click Restart factory. Or Pause then hand-edit if you meant to reclaim the tree.",
+                orphan=True,
+            )
+        if started_age_s is not None and started_age_s < STARTING_GRACE_S:
+            return pack(
+                mode="starting",
+                headline="Starting factory…",
+                detail=f"Waiting for the task-loop process ({int(started_age_s)}s).",
+                next_line="Wait a few seconds — the loop should come up. If this hangs, click Restart factory.",
+            )
+        stuck = (
+            ", ".join(_fmt_task_id(t.get("id")) or str(t.get("id")) for t in in_prog)
+            or "none"
+        )
+        return pack(
+            mode="orphan",
+            headline="Loop not running",
+            detail=(
                 f"UI says hot, but no task-loop process is alive. "
                 f"In Progress stuck: {stuck}."
             ),
-            "agents": agents,
-            "next": "Click Start factory to resume. Or Pause then hand-edit if you meant to reclaim the tree.",
-            "batch_plain": batch_plain,
-            "orphan": True,
-            "runner_alive": False,
-        }
+            next_line="Click Restart factory to resume. Or Pause then hand-edit if you meant to reclaim the tree.",
+            orphan=True,
+        )
 
     if paused:
-        return {
-            "mode": "paused",
-            "headline": "Paused",
-            "detail": "Agents are idle until you Resume.",
-            "agents": agents,
-            "next": "Click Resume to continue, or Stop to end the shift.",
-            "batch_plain": batch_plain,
-            "orphan": False,
-            "runner_alive": runner_alive,
-        }
+        return pack(
+            mode="paused",
+            headline="Paused",
+            detail="Agents are idle until you Resume.",
+            next_line="Click Resume to continue, or Stop to end the shift.",
+        )
 
     if not marked_running and not runner_alive:
         if halted:
-            return {
-                "mode": "stopped",
-                "headline": "Factory stopped",
-                "detail": f"Halted: {', '.join(str(t.get('id')) for t in halted)}.",
-                "agents": [],
-                "next": "Amend the ticket in Cursor if needed, Start factory, then Requeue from Needs you.",
-                "batch_plain": batch_plain,
-                "orphan": False,
-                "runner_alive": False,
-            }
+            return pack(
+                mode="stopped",
+                headline="Factory stopped",
+                detail=f"Halted: {', '.join(str(t.get('id')) for t in halted)}.",
+                next_line=(
+                    "Amend the ticket in Cursor if needed, Start factory, then Requeue Halted."
+                ),
+                agents_out=[],
+            )
         if needs_human:
-            return {
-                "mode": "stopped",
-                "headline": "Factory stopped",
-                "detail": "Needs-human tickets are waiting.",
-                "agents": [],
-                "next": "Handle Needs-human in Cursor, then Start factory.",
-                "batch_plain": batch_plain,
-                "orphan": False,
-                "runner_alive": False,
-            }
+            return pack(
+                mode="stopped",
+                headline="Factory stopped",
+                detail="Needs-human tickets are waiting.",
+                next_line="Handle Needs-human in Cursor, then Start factory.",
+                agents_out=[],
+            )
         if queued or in_prog:
-            return {
-                "mode": "stopped",
-                "headline": "Factory stopped",
-                "detail": f"{len(queued)} queued, {len(in_prog)} in progress — no workers.",
-                "agents": [],
-                "next": "Click Start factory.",
-                "batch_plain": batch_plain,
-                "orphan": False,
-                "runner_alive": False,
-            }
-        return {
-            "mode": "idle",
-            "headline": "Shift quiet",
-            "detail": "No workers on the floor.",
-            "agents": [],
-            "next": "Queue work with forge-intake in Cursor, then Start factory.",
-            "batch_plain": batch_plain,
-            "orphan": False,
-            "runner_alive": False,
-        }
+            return pack(
+                mode="stopped",
+                headline="Factory stopped",
+                detail=f"{len(queued)} queued, {len(in_prog)} in progress — no workers.",
+                next_line="Click Start factory.",
+                agents_out=[],
+            )
+        return pack(
+            mode="idle",
+            headline="Shift quiet",
+            detail="No workers on the floor.",
+            next_line="Queue work with forge-intake in Cursor, then Start factory.",
+            agents_out=[],
+        )
 
     # Live / claimed running — verifying always beats needs_decision
     batch_state = str(batch.get("state") or "")
-    if batch_state in ("verifying", "running") or ctrl.get("batch_running"):
-        return {
-            "mode": "batch",
-            "headline": "FULL-VERIFY · loop",
-            "detail": detail or f"Running full suite ({batch.get('reason') or 'tier-3'}).",
-            "agents": agents
-            or [{"role": "loop", "task": "", "phase": "FULL-VERIFY", "doing": "tier-3 full suite"}],
-            "next": "Wait — no action needed unless it fails (Needs you will light up).",
-            "batch_plain": batch_plain,
-            "orphan": False,
-            "runner_alive": runner_alive,
-        }
+    if batch_state in ("verifying", "running") or (
+        batch_flag and (runner_alive or verify_running)
+    ):
+        return pack(
+            mode="batch",
+            headline="FULL-VERIFY · loop",
+            detail=detail or f"Running full suite ({batch.get('reason') or 'tier-3'}).",
+            next_line="Wait — no action needed unless the full suite fails.",
+            agents_out=agents
+            or [
+                {
+                    "role": "loop",
+                    "task": "",
+                    "phase": "FULL-VERIFY",
+                    "doing": "tier-3 full suite",
+                }
+            ],
+        )
 
     if batch_state == "needs_decision":
-        fail_n = batch.get("failure", {}).get("failed") if isinstance(batch.get("failure"), dict) else None
+        fail_n = (
+            batch.get("failure", {}).get("failed")
+            if isinstance(batch.get("failure"), dict)
+            else None
+        )
         detail_line = "Can't ship — full suite still failing."
         if fail_n is not None:
             detail_line = f"Can't ship — {fail_n} test(s) failed."
         elif (batch.get("reason") or "") == "verify aborted":
             detail_line = "Can't ship — verify aborted."
-        return {
-            "mode": "needs_decision",
-            "headline": "Needs you",
-            "detail": detail_line,
-            "agents": agents,
-            "next": "Open Needs you: Don't push, Retry full suite, or Copy for Cursor.",
-            "batch_plain": batch_plain,
-            "orphan": False,
-            "runner_alive": runner_alive,
-        }
+        return pack(
+            mode="needs_decision",
+            headline="Can't ship",
+            detail=detail_line,
+            next_line="Use Your move: Don't push, Retry full suite, or Copy for Cursor.",
+        )
 
     if batch_state == "held":
-        return {
-            "mode": "held",
-            "headline": "Held — not pushing",
-            "detail": f"Incident acknowledged at {(batch.get('head_sha') or '')[:12] or 'HEAD'}.",
-            "agents": agents,
-            "next": "Ship now or Retry full suite when ready; or queue more work.",
-            "batch_plain": batch_plain,
-            "orphan": False,
-            "runner_alive": runner_alive,
-        }
+        return pack(
+            mode="held",
+            headline="Held — not pushing",
+            detail=f"Incident acknowledged at {(batch.get('head_sha') or '')[:12] or 'HEAD'}.",
+            next_line="Ship now or Retry full suite when ready; or queue more work.",
+        )
 
     if agents:
         who = agents[0]
         label = f"{who['phase']} · {who['role']}"
         if who.get("task"):
             label += f" · {who['task']}"
-        nxt = "Nothing — agents are working. Watch the active card and event feed."
+        nxt = "Nothing needed from you — agents are working. Watch the active card and event feed."
         if phase.lower() in ("halted",):
-            nxt = "Amend ticket in Cursor if needed, then Requeue from Needs you."
-        return {
-            "mode": "working",
-            "headline": label,
-            "detail": who.get("doing") or mission or detail,
-            "agents": agents,
-            "next": nxt,
-            "batch_plain": batch_plain,
-            "orphan": False,
-            "runner_alive": runner_alive,
-        }
+            nxt = "Amend ticket in Cursor if needed, then Requeue Halted."
+        return pack(
+            mode="working",
+            headline=label,
+            detail=who.get("doing") or mission or detail,
+            next_line=nxt,
+        )
 
     if in_prog:
         t0 = in_prog[0]
         hint = ""
         if ev_role or ev_event:
             hint = f" Last event: {ev_phase} {ev_role} {ev_event}".strip()
-        return {
-            "mode": "working",
-            "headline": f"In Progress · {_fmt_task_id(t0.get('id')) or t0.get('id')}",
-            "detail": (t0.get("title") or "") + ("." if hint else "") + hint,
-            "agents": [
+        return pack(
+            mode="working",
+            headline=f"In Progress · {_fmt_task_id(t0.get('id')) or t0.get('id')}",
+            detail=(t0.get("title") or "") + ("." if hint else "") + hint,
+            next_line="Wait — task is claimed. If this stalls for minutes, Stop then Start factory.",
+            agents_out=[
                 {
                     "role": ev_role or "pipeline",
                     "task": _fmt_task_id(t0.get("id")),
@@ -514,47 +686,48 @@ def _activity_snapshot(
                     "doing": (t0.get("title") or "working")[:80],
                 }
             ],
-            "next": "Wait — task is claimed. If this stalls for minutes, Stop then Start factory.",
-            "batch_plain": batch_plain,
-            "orphan": False,
-            "runner_alive": runner_alive,
-        }
+        )
 
     if queued and runner_alive:
-        return {
-            "mode": "picking",
-            "headline": "Queue · loop picking next task",
-            "detail": f"{len(queued)} queued.",
-            "agents": [{"role": "loop", "task": "", "phase": "queue", "doing": "selecting next task"}],
-            "next": "Nothing — next card will move to In Progress shortly.",
-            "batch_plain": batch_plain,
-            "orphan": False,
-            "runner_alive": runner_alive,
-        }
+        return pack(
+            mode="picking",
+            headline="Queue · loop picking next task",
+            detail=f"{len(queued)} queued.",
+            next_line="Nothing needed from you — next card will move to In Progress shortly.",
+            agents_out=[
+                {
+                    "role": "loop",
+                    "task": "",
+                    "phase": "queue",
+                    "doing": "selecting next task",
+                }
+            ],
+        )
 
     # Idle drain / batch pending while queue empty
     if batch.get("needed") and runner_alive:
-        return {
-            "mode": "batch_pending",
-            "headline": "Idle drain · batch pending",
-            "detail": batch_plain,
-            "agents": [{"role": "loop", "task": "", "phase": "batch", "doing": "waiting to run full suite"}],
-            "next": "Nothing — full suite runs when the queue is empty. Or click Ship now to force it.",
-            "batch_plain": batch_plain,
-            "orphan": False,
-            "runner_alive": runner_alive,
-        }
+        return pack(
+            mode="batch_pending",
+            headline="Idle drain · batch pending",
+            detail=batch_plain,
+            next_line="Nothing needed from you — full suite runs when the queue is empty. Or click Ship now to force it.",
+            agents_out=[
+                {
+                    "role": "loop",
+                    "task": "",
+                    "phase": "batch",
+                    "doing": "waiting to run full suite",
+                }
+            ],
+        )
 
-    return {
-        "mode": "quiet",
-        "headline": "Shift quiet — no workers on the floor yet.",
-        "detail": "",
-        "agents": [],
-        "next": "Queue work with forge-intake, or click Ship now if you only need a full verify/push.",
-        "batch_plain": batch_plain,
-        "orphan": False,
-        "runner_alive": runner_alive,
-    }
+    return pack(
+        mode="quiet",
+        headline="Shift quiet — no workers on the floor yet.",
+        detail="",
+        next_line="Queue work with forge-intake, or click Ship now if you only need a full verify/push.",
+        agents_out=[],
+    )
 
 
 def _batch_snapshot(ctrl: dict[str, Any]) -> dict[str, Any]:
@@ -577,11 +750,18 @@ def _batch_snapshot(ctrl: dict[str, Any]) -> dict[str, Any]:
     needed, reason = batch_needed(force=False)
     head = head_sha()
     last = str(stamp.get("sha") or "")
+    verify_live = _verify_running()
+    runner = _runner_alive(ctrl=ctrl)
     # Only treat live verify as batch when the loop marked batch_running / ship_now —
-    # otherwise surgical tier-2 would look like batch.
-    batch_running = bool(ctrl.get("batch_running")) or (
-        bool(ctrl.get("ship_now")) and _verify_running()
-    )
+    # otherwise surgical tier-2 would look like batch. Ignore a stale batch_running
+    # flag when neither the loop nor verify children are alive.
+    flag = bool(ctrl.get("batch_running"))
+    if flag:
+        batch_running = runner or verify_live
+    elif bool(ctrl.get("ship_now")) and verify_live:
+        batch_running = True
+    else:
+        batch_running = False
     verifying = bool(batch_running)
 
     incident = _read_batch_failure()
@@ -623,7 +803,7 @@ def _batch_snapshot(ctrl: dict[str, Any]) -> dict[str, Any]:
         "reason": reason_out,
         "last_green_sha": last,
         "head_sha": head,
-        "verify_running": _verify_running(),
+        "verify_running": verify_live,
         "batch_running": batch_running,
         "plain": _batch_plain(reason_out, state),
         "failure": failure_payload,
@@ -684,6 +864,7 @@ def board_snapshot() -> dict[str, Any]:
                 pass
     ctrl = read_controls()
     station = _read_json_file(STATION)
+    runner_alive = _runner_alive(ctrl=ctrl)
     batch = _batch_snapshot(ctrl)
     derived_state = batch.get("state")
     # Prefer live station.batch overlay for reason/detail, but derived state wins
@@ -694,7 +875,9 @@ def board_snapshot() -> dict[str, Any]:
             if k in ("state", "failure"):
                 continue
             merged[k] = v
-        if ctrl.get("batch_running"):
+        if ctrl.get("batch_running") and (
+            runner_alive or bool(batch.get("verify_running"))
+        ):
             merged["state"] = "verifying"
         else:
             merged["state"] = derived_state
@@ -702,7 +885,6 @@ def board_snapshot() -> dict[str, Any]:
             str(merged.get("reason") or ""), str(merged.get("state") or "")
         )
         batch = merged
-    runner_alive = _runner_alive()
     factory_hot = HOT.is_file()
     activity = _activity_snapshot(
         ctrl=ctrl,
@@ -769,6 +951,8 @@ def start_runner() -> str:
         ctrl = read_controls()
         ctrl["running"] = True
         ctrl["paused"] = False
+        ctrl["runner_pid"] = _runner_proc.pid
+        ctrl["started_at"] = time.time()
         write_controls(ctrl)
         return f"started pid={_runner_proc.pid}"
 
@@ -778,6 +962,9 @@ def stop_runner() -> str:
     ctrl = read_controls()
     ctrl["running"] = False
     ctrl["paused"] = True
+    ctrl["runner_pid"] = None
+    ctrl["started_at"] = None
+    ctrl["batch_running"] = False
     write_controls(ctrl)
     with _runner_lock:
         if _runner_proc is not None and _runner_proc.poll() is None:
@@ -881,10 +1068,10 @@ main {
   display: flex; flex-direction: column; gap: 0.75rem;
   max-height: calc(100vh - 6.5rem); min-height: 0;
 }
-.station, .feed, .needs-you {
+.station, .feed, .your-move {
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0.75rem;
 }
-.station h3, .feed h3, .needs-you h3 { margin: 0 0 0.5rem; font-size: 0.9rem; }
+.station h3, .feed h3, .your-move h3 { margin: 0 0 0.5rem; font-size: 0.9rem; }
 .station .label {
   font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--muted); margin: 0.55rem 0 0.2rem;
@@ -892,11 +1079,10 @@ main {
 .station .label:first-of-type { margin-top: 0; }
 .station .beat { color: var(--ink); font-size: 0.95rem; font-weight: 600; }
 .station .sub { color: var(--muted); font-size: 0.8rem; margin-top: 0.35rem; line-height: 1.35; }
-.station .next-line {
-  margin-top: 0.35rem; font-size: 0.82rem; color: var(--ink); line-height: 1.35;
-  padding: 0.45rem 0.55rem; background: #2a2f35; border-radius: 6px;
-  border-left: 3px solid var(--accent);
+.station .fresh {
+  margin-top: 0.4rem; font-size: 0.75rem; color: var(--muted); line-height: 1.3;
 }
+.station .fresh.warn { color: var(--warn); }
 .station .agents { margin-top: 0.35rem; display: flex; flex-direction: column; gap: 0.35rem; }
 .station .agent {
   font-size: 0.8rem; padding: 0.4rem 0.5rem; border-radius: 6px;
@@ -910,25 +1096,39 @@ main {
 .station .batch-line strong { color: var(--accent); }
 .station.running { border-color: var(--ok); }
 .station.pending { border-color: var(--accent); }
-.station.blocked, .station.orphan, .station.needs_decision { border-color: var(--warn); }
+.station.blocked, .station.orphan, .station.needs_decision, .station.starting { border-color: var(--warn); }
 .card.active {
   border-color: var(--ok);
   box-shadow: 0 0 0 1px var(--ok);
 }
+.card.stalled {
+  border-color: var(--warn);
+  box-shadow: 0 0 0 1px var(--warn);
+}
+.card .phase { font-size: 0.72rem; color: var(--muted); margin-top: 0.25rem; }
+.card .phase.warn { color: var(--warn); }
 .card .card-actions {
   display: flex; gap: 0.35rem; margin-top: 0.45rem; flex-wrap: wrap;
 }
 .card .card-actions button {
   font-size: 0.72rem; padding: 0.2rem 0.45rem;
 }
-.needs-you.on { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn); }
-.needs-you .fail-list { margin: 0.5rem 0; padding-left: 1.1rem; font-size: 0.8rem; }
-.needs-you .fail-list li { margin: 0.25rem 0; }
-.needs-you .consequence { color: var(--muted); font-size: 0.75rem; margin: 0.15rem 0 0.55rem; }
-.needs-you .ladder { color: var(--muted); font-size: 0.78rem; margin: 0.4rem 0; line-height: 1.35; }
-.needs-you .halted-strip { margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--line); font-size: 0.8rem; }
-.needs-you .evidence { color: var(--muted); font-size: 0.72rem; word-break: break-all; margin-top: 0.35rem; }
-.needs-you .repeat-warn { color: var(--warn); font-size: 0.78rem; margin: 0.4rem 0; }
+.your-move.on { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn); }
+.your-move.muted-panel { opacity: 0.85; }
+.your-move .fail-list { margin: 0.5rem 0; padding-left: 1.1rem; font-size: 0.8rem; }
+.your-move .fail-list li { margin: 0.25rem 0; }
+.your-move .consequence { color: var(--muted); font-size: 0.75rem; margin: 0.15rem 0 0.55rem; }
+.your-move .ladder { color: var(--muted); font-size: 0.78rem; margin: 0.4rem 0; line-height: 1.35; }
+.your-move .also-strip {
+  margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+}
+.your-move .also-strip .also-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  margin: 0.35rem 0;
+}
+.your-move .evidence { color: var(--muted); font-size: 0.72rem; word-break: break-all; margin-top: 0.35rem; }
+.your-move .repeat-warn { color: var(--warn); font-size: 0.78rem; margin: 0.4rem 0; }
 .feed { flex: 1; min-height: 120px; max-height: none; overflow: auto; font-size: 0.8rem; }
 .feed div { padding: 0.25rem 0; border-bottom: 1px solid var(--line); }
 .feed .ts { color: var(--muted); font-size: 0.72rem; margin-right: 0.35rem; }
@@ -1019,27 +1219,22 @@ main {
       <div class="label">Working on</div>
       <div class="beat" id="stationBeat">Shift quiet — no workers on the floor yet.</div>
       <div class="sub" id="stationSub"></div>
+      <div class="fresh" id="stationFresh"></div>
       <div class="agents" id="agentList"></div>
-      <div class="label">What you should do</div>
-      <div class="next-line" id="nextLine">—</div>
       <div class="label">Batch (full suite / ship)</div>
       <div class="batch-line" id="batchLine">—</div>
     </div>
-    <div class="needs-you" id="needsYou">
-      <h3>Needs you</h3>
-      <div id="needsYouBody">All clear.</div>
-      <div class="toolbar" id="needsYouActions" style="margin-top:0.5rem; display:none; flex-wrap:wrap; gap:0.35rem">
+    <div class="your-move" id="yourMove">
+      <h3 id="yourMoveTitle">Your move</h3>
+      <div id="yourMoveBody">Nothing needed from you.</div>
+      <div class="toolbar" id="yourMoveActions" style="margin-top:0.5rem; display:none; flex-wrap:wrap; gap:0.35rem">
         <button class="danger" id="btnHold">Don't push</button>
         <button id="btnRetry">Retry full suite</button>
         <button id="btnCopy">Copy for Cursor</button>
+        <button id="btnRequeue">Requeue Halted</button>
       </div>
-      <div class="consequence" id="needsYouHint" hidden></div>
-      <div class="halted-strip" id="haltedStrip" hidden>
-        <div id="haltedBody"></div>
-        <div class="toolbar" style="margin-top:0.35rem">
-          <button id="btnRequeue">Requeue Halted</button>
-        </div>
-      </div>
+      <div class="consequence" id="yourMoveHint" hidden></div>
+      <div class="also-strip" id="alsoStrip" hidden></div>
     </div>
     <div class="feed">
       <h3>Event feed</h3>
@@ -1177,13 +1372,13 @@ function batchLabel(b, activity) {
     return `<strong>Batch · verifying</strong><br/>${esc(b.plain || b.reason || "tier-3")}`;
   }
   if (b.state === "needs_decision") {
-    return `<strong>Batch · needs you</strong><br/>${esc(b.plain || "decide below")}`;
+    return `<strong>Batch · can't ship</strong><br/>${esc(b.plain || "decide in Your move")}`;
   }
   if (b.state === "held") {
     return `<strong>Batch · held</strong><br/>${esc(b.plain || "not pushing")}`;
   }
   if (b.state === "blocked") {
-    return `<strong>Batch · needs you</strong><br/>${esc(b.plain || "decide below")}`;
+    return `<strong>Batch · can't ship</strong><br/>${esc(b.plain || "decide in Your move")}`;
   }
   if (b.state === "pending" || b.needed) {
     return `<strong>Batch · pending</strong><br/>${esc(b.plain || b.reason || "full verify needed")}`;
@@ -1204,13 +1399,35 @@ function formatEvent(ev) {
   return { ts, text: parts.join(" ") };
 }
 
-function makeCard(item, st, activeTid) {
+function formatAge(sec) {
+  if (sec == null || !Number.isFinite(sec)) return null;
+  const s = Math.max(0, Math.floor(sec));
+  if (s < 60) return s + "s ago";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  return Math.floor(s / 3600) + "h ago";
+}
+
+function makeCard(item, st, activeTid, activity) {
   const card = document.createElement("div");
   const isActive = item.type==="task" && activeTid && String(item.id).padStart(3,"0")===activeTid;
-  card.className = "card" + (isActive ? " active" : "");
+  const mode = (activity && activity.mode) || "";
+  const stalled = isActive && (mode === "orphan" || mode === "starting");
+  card.className = "card" + (isActive ? " active" : "") + (stalled ? " stalled" : "");
   let phaseHtml = "";
-  if (isActive && st.phase) {
-    phaseHtml = `<div class="phase">${esc(st.phase)}${st.role ? " · " + esc(st.role) : ""}${st.detail ? " — " + esc(st.detail) : ""}</div>`;
+  if (isActive) {
+    if (stalled) {
+      const label = mode === "orphan"
+        ? "stalled — loop not running"
+        : "waiting for loop to start";
+      phaseHtml = `<div class="phase warn">${esc(label)}</div>`;
+    } else if (st.phase) {
+      const age = formatAge(activity && activity.activity_age_s);
+      phaseHtml = `<div class="phase">${esc(st.phase)}${st.role ? " · " + esc(st.role) : ""}${st.detail ? " — " + esc(st.detail) : ""}${age ? " · last activity " + esc(age) : ""}</div>`;
+    } else if (activity && activity.activity_age_s != null) {
+      const age = formatAge(activity.activity_age_s);
+      const stale = activity.activity_age_s > 180;
+      phaseHtml = `<div class="phase${stale ? " warn" : ""}">last activity ${esc(age || "?")}</div>`;
+    }
   }
   const halted = item.type === "task" && /Halted/i.test(item.status || "");
   let actionsHtml = "";
@@ -1237,22 +1454,34 @@ function makeCard(item, st, activeTid) {
 function render() {
   if (!snap) return;
   const hot = document.getElementById("hot");
-  const runnerAlive = !!snap.runner_alive;
-  const marked = !!(snap.controls && snap.controls.running) || snap.factory_hot;
-  const running = marked || runnerAlive;
   const activity = snap.activity || {};
-  if (activity.orphan) {
+  const mode = activity.mode || "";
+  const batch = snap.batch || {};
+  const st = snap.station || {};
+
+  // Hot pill maps 1:1 from server mode — never re-derive.
+  hot.style.background = "";
+  hot.style.color = "";
+  if (mode === "orphan") {
     hot.textContent = "orphan";
     hot.className = "status-pill";
     hot.style.background = "#40302c";
     hot.style.color = "var(--warn)";
+  } else if (mode === "starting") {
+    const age = activity.started_age_s != null ? Math.floor(activity.started_age_s) + "s" : "";
+    hot.textContent = age ? "starting " + age : "starting";
+    hot.className = "status-pill";
+    hot.style.background = "#40382c";
+    hot.style.color = "var(--accent)";
+  } else if (mode === "paused") {
+    hot.textContent = "paused";
+    hot.className = "status-pill hot";
+  } else if (["working","batch","picking","batch_pending","needs_decision","held"].includes(mode)) {
+    hot.textContent = "hot";
+    hot.className = "status-pill hot";
   } else {
-    hot.style.background = "";
-    hot.style.color = "";
-    hot.textContent = running
-      ? (snap.controls && snap.controls.paused ? "paused" : (runnerAlive ? "hot" : "hot?"))
-      : "stopped";
-    hot.className = "status-pill" + (running ? " hot" : "");
+    hot.textContent = "stopped";
+    hot.className = "status-pill";
   }
 
   const board = document.getElementById("board");
@@ -1261,17 +1490,17 @@ function render() {
   const idle = document.getElementById("idle");
   const queuedAuto = items.filter(i => colFor(i)==="Queued" && i.type==="task" && !/needs-human/i.test(i.kind||""));
   const inProg = items.filter(i => colFor(i)==="In Progress" && i.type==="task");
-  const batch = snap.batch || {};
-  const st = snap.station || {};
+  const liveModes = ["working","batch","picking","batch_pending","starting","needs_decision","held","paused"];
+  const looksLive = liveModes.includes(mode);
   let idleMsg = "Waiting for intake — queue a punch list with forge-intake";
-  if (activity.orphan) {
-    idleMsg = activity.detail || "Loop not running — click Start factory";
+  if (mode === "orphan") {
+    idleMsg = activity.detail || "Loop not running — click Restart factory";
     idle.hidden = false;
     idle.textContent = idleMsg;
-  } else if (running && queuedAuto.length===0 && inProg.length===0 && batch.state !== "needs_decision") {
-    if (batch.state === "running" || batch.state === "verifying" || batch.batch_running) {
+  } else if (looksLive && queuedAuto.length===0 && inProg.length===0 && batch.state !== "needs_decision") {
+    if (mode === "batch" || batch.state === "running" || batch.state === "verifying" || batch.batch_running) {
       idleMsg = `Queue empty · full verify running (${batch.reason||"tier-3"})`;
-    } else if (batch.state === "held") {
+    } else if (batch.state === "held" || mode === "held") {
       idleMsg = `Queue empty · held — not pushing`;
     } else if (batch.needed) {
       idleMsg = `Queue empty · full verify pending — ${batch.reason||"needed"}`;
@@ -1328,37 +1557,35 @@ function render() {
     const cards = document.createElement("div");
     cards.className = "cards";
     for (const item of colItems) {
-      cards.appendChild(makeCard(item, st, activeTid));
+      cards.appendChild(makeCard(item, st, activeTid, activity));
     }
     if (name === "Done" && doneSlices.length && showDoneSlices) {
       for (const item of doneSlices) {
-        cards.appendChild(makeCard(item, st, activeTid));
+        cards.appendChild(makeCard(item, st, activeTid, activity));
       }
     }
     col.appendChild(cards);
     board.appendChild(col);
   }
 
-  const ny = document.getElementById("needsYou");
-  const nyBody = document.getElementById("needsYouBody");
-  const nyActions = document.getElementById("needsYouActions");
-  const nyHint = document.getElementById("needsYouHint");
-  const haltedStrip = document.getElementById("haltedStrip");
-  const haltedBody = document.getElementById("haltedBody");
-  const needsDecision = batch.state === "needs_decision";
-  const held = batch.state === "held";
+  const ym = document.getElementById("yourMove");
+  const ymTitle = document.getElementById("yourMoveTitle");
+  const ymBody = document.getElementById("yourMoveBody");
+  const ymActions = document.getElementById("yourMoveActions");
+  const ymHint = document.getElementById("yourMoveHint");
+  const alsoStrip = document.getElementById("alsoStrip");
+  const btnHold = document.getElementById("btnHold");
+  const btnRetry = document.getElementById("btnRetry");
+  const btnCopy = document.getElementById("btnCopy");
+  const btnRequeue = document.getElementById("btnRequeue");
+  const needsDecision = batch.state === "needs_decision" || mode === "needs_decision";
+  const held = batch.state === "held" || mode === "held";
   const fail = batch.failure || null;
   const halted = items.filter(i => /Halted/i.test(i.status||""));
+  const factoryStopped = mode === "stopped" || mode === "idle" || mode === "quiet";
+  const hasQueuedWork = queuedAuto.length > 0 || inProg.length > 0;
 
-  function renderNeedsYouBody() {
-    if (activity.orphan) {
-      return "Loop died while marked hot — click Start factory to resume.";
-    }
-    if (held) {
-      const sha = (batch.head_sha || "").slice(0, 12) || "HEAD";
-      return `Held at ${sha} — not pushing. Ship now or Retry to run the full suite again.`;
-    }
-    if (!needsDecision) return "All clear.";
+  function cantShipHtml() {
     const reason = (fail && fail.reason) || batch.reason || "still_red";
     const fails = (fail && fail.failures) || [];
     const n = fail && fail.failed != null ? fail.failed : fails.length;
@@ -1396,24 +1623,94 @@ function render() {
     return html;
   }
 
-  nyBody.innerHTML = renderNeedsYouBody();
-  if (activity.orphan || needsDecision || held) {
-    ny.classList.add("on");
+  // Priority: orphan > can't-ship > held > halted > paused > start > quiet
+  let lead = "quiet";
+  if (mode === "orphan") lead = "orphan";
+  else if (needsDecision) lead = "cant_ship";
+  else if (held) lead = "held";
+  else if (halted.length) lead = "halted";
+  else if (mode === "paused") lead = "paused";
+  else if (mode === "starting") lead = "starting";
+  else if (factoryStopped && hasQueuedWork) lead = "start";
+  else if (factoryStopped) lead = "idle";
+  else lead = "quiet";
+
+  const titles = {
+    orphan: "Restart needed",
+    cant_ship: "Can't ship",
+    held: "Held — not pushing",
+    halted: "Halted",
+    paused: "Paused",
+    starting: "Starting…",
+    start: "Start factory",
+    idle: "Your move",
+    quiet: "Your move",
+  };
+  ymTitle.textContent = titles[lead] || "Your move";
+
+  if (lead === "orphan") {
+    ymBody.textContent = activity.next || activity.detail || "Loop not running — Restart factory.";
+  } else if (lead === "cant_ship") {
+    ymBody.innerHTML = cantShipHtml();
+  } else if (lead === "held") {
+    const sha = (batch.head_sha || "").slice(0, 12) || "HEAD";
+    ymBody.textContent = `Held at ${sha} — not pushing. Ship now or Retry to run the full suite again.`;
+  } else if (lead === "halted") {
+    ymBody.textContent = `Halted: ${halted.map(h => h.id).join(", ")}. Amend in Cursor if needed, then Requeue.`;
+  } else if (lead === "paused" || lead === "starting" || lead === "start" || lead === "idle") {
+    ymBody.textContent = activity.next || "Nothing needed from you.";
   } else {
-    ny.classList.remove("on");
+    ymBody.textContent = activity.next || "Nothing needed from you.";
   }
-  nyActions.style.display = needsDecision ? "flex" : "none";
-  if (needsDecision) {
-    nyHint.hidden = false;
-    nyHint.textContent = "Don't push leaves commits local. Retry reruns the full suite + one auto-fix pass (~10–15 min).";
+
+  const alertLeads = ["orphan","cant_ship","held","halted"];
+  ym.classList.toggle("on", alertLeads.includes(lead));
+  ym.classList.toggle("muted-panel", lead === "quiet" || lead === "idle");
+
+  // Lead-story buttons
+  const showCantShipBtns = lead === "cant_ship";
+  const showRequeueLead = lead === "halted";
+  btnHold.style.display = showCantShipBtns ? "" : "none";
+  btnRetry.style.display = showCantShipBtns ? "" : "none";
+  btnCopy.style.display = showCantShipBtns ? "" : "none";
+  btnRequeue.style.display = showRequeueLead ? "" : "none";
+  ymActions.style.display = (showCantShipBtns || showRequeueLead) ? "flex" : "none";
+  if (showCantShipBtns) {
+    ymHint.hidden = false;
+    ymHint.textContent = "Don't push leaves commits local. Retry reruns the full suite + one auto-fix pass (~10–15 min).";
   } else {
-    nyHint.hidden = true;
+    ymHint.hidden = true;
   }
-  if (halted.length) {
-    haltedStrip.hidden = false;
-    haltedBody.textContent = `Halted: ${halted.map(h => h.id).join(", ")}. Amend in Cursor if needed, then Requeue.`;
+
+  // Also-strip: lower-priority items still visible + actionable
+  const alsoBits = [];
+  if (lead !== "halted" && halted.length) {
+    alsoBits.push({
+      text: `Also: Halted ${halted.map(h => h.id).join(", ")}`,
+      btn: "requeue",
+    });
+  }
+  if (lead !== "cant_ship" && needsDecision) {
+    alsoBits.push({ text: "Also: Can't ship — full suite still failing", btn: null });
+  }
+  if (lead !== "held" && held) {
+    alsoBits.push({ text: "Also: Held — not pushing", btn: null });
+  }
+  if (alsoBits.length) {
+    alsoStrip.hidden = false;
+    alsoStrip.innerHTML = alsoBits.map(b => {
+      const action = b.btn === "requeue"
+        ? `<button type="button" id="btnRequeueAlso">Requeue</button>`
+        : "";
+      return `<div class="also-row"><span>${esc(b.text)}</span>${action}</div>`;
+    }).join("");
+    const alsoBtn = document.getElementById("btnRequeueAlso");
+    if (alsoBtn) {
+      alsoBtn.onclick = () => document.getElementById("btnRequeue").click();
+    }
   } else {
-    haltedStrip.hidden = true;
+    alsoStrip.hidden = true;
+    alsoStrip.innerHTML = "";
   }
 
   const feed = document.getElementById("feed");
@@ -1426,19 +1723,32 @@ function render() {
   }
 
   const stationEl = document.getElementById("station");
-  const mode = activity.mode || "";
   stationEl.className = "station" + (
-    mode === "orphan" || mode === "needs_decision" ? " orphan"
-    : batch.state === "verifying" || batch.state === "running" || batch.batch_running ? " running"
-    : batch.state === "needs_decision" || batch.state === "blocked" ? " blocked"
-    : batch.state === "held" ? " pending"
+    mode === "orphan" || mode === "needs_decision" || mode === "starting" ? " orphan"
+    : mode === "batch" || batch.state === "verifying" || batch.state === "running" || batch.batch_running ? " running"
+    : mode === "held" || batch.state === "held" ? " pending"
     : batch.needed && !activity.agents?.length ? " pending" : ""
   );
   document.getElementById("stationBeat").textContent = activity.headline
     || "Shift quiet — no workers on the floor yet.";
   document.getElementById("stationSub").textContent = activity.detail || "";
-  document.getElementById("nextLine").textContent = activity.next || "—";
   document.getElementById("batchLine").innerHTML = batchLabel(batch, activity);
+
+  const freshEl = document.getElementById("stationFresh");
+  const ageLabel = formatAge(activity.activity_age_s);
+  const claimsWork = ["working","batch","picking","batch_pending","starting"].includes(mode);
+  if (ageLabel) {
+    const stale = claimsWork && activity.activity_age_s != null && activity.activity_age_s > 180;
+    freshEl.textContent = "Last activity " + ageLabel
+      + (activity.loop_stale ? " · loop process missing" : "");
+    freshEl.className = "fresh" + (stale || activity.loop_stale ? " warn" : "");
+  } else if (claimsWork) {
+    freshEl.textContent = "No recent activity signal yet";
+    freshEl.className = "fresh warn";
+  } else {
+    freshEl.textContent = "";
+    freshEl.className = "fresh";
+  }
 
   const agentList = document.getElementById("agentList");
   agentList.innerHTML = "";
@@ -1459,14 +1769,12 @@ function render() {
     agentList.appendChild(row);
   }
 
-  syncToolbar(snap, activity, running, runnerAlive);
+  syncToolbar(snap, activity);
 }
 
-/** Primary action + enable/disable follow real factory state. */
-function syncToolbar(snap, activity, running, runnerAlive) {
-  const ctrl = (snap && snap.controls) || {};
-  const paused = !!ctrl.paused;
-  const orphan = !!(activity && activity.orphan);
+/** Primary action + enable/disable follow server activity.mode only. */
+function syncToolbar(snap, activity) {
+  const mode = (activity && activity.mode) || "";
   const btnStart = document.getElementById("btnStart");
   const btnPause = document.getElementById("btnPause");
   const btnResume = document.getElementById("btnResume");
@@ -1477,7 +1785,7 @@ function syncToolbar(snap, activity, running, runnerAlive) {
     if (b) b.classList.remove("primary");
   });
 
-  if (orphan) {
+  if (mode === "orphan") {
     btnStart.textContent = "Restart factory";
     btnStart.disabled = false;
     btnStart.classList.add("primary");
@@ -1488,18 +1796,18 @@ function syncToolbar(snap, activity, running, runnerAlive) {
     return;
   }
 
-  if (!running) {
-    btnStart.textContent = "Start factory";
-    btnStart.disabled = false;
-    btnStart.classList.add("primary");
+  if (mode === "starting") {
+    const age = activity.started_age_s != null ? Math.floor(activity.started_age_s) : null;
+    btnStart.textContent = age != null ? `Starting… (${age}s)` : "Starting…";
+    btnStart.disabled = true;
     btnPause.disabled = true;
     btnResume.disabled = true;
-    btnStop.disabled = true;
-    btnShip.disabled = false;
+    btnStop.disabled = false;
+    btnShip.disabled = true;
     return;
   }
 
-  if (paused) {
+  if (mode === "paused") {
     btnStart.textContent = "Paused";
     btnStart.disabled = true;
     btnPause.disabled = true;
@@ -1510,13 +1818,24 @@ function syncToolbar(snap, activity, running, runnerAlive) {
     return;
   }
 
-  // Live shift
-  btnStart.textContent = runnerAlive ? "Running" : "Starting…";
-  btnStart.disabled = true;
-  btnPause.disabled = false;
-  btnPause.classList.add("primary");
+  if (["working","batch","picking","batch_pending","needs_decision","held"].includes(mode)) {
+    btnStart.textContent = "Running";
+    btnStart.disabled = true;
+    btnPause.disabled = false;
+    btnPause.classList.add("primary");
+    btnResume.disabled = true;
+    btnStop.disabled = false;
+    btnShip.disabled = false;
+    return;
+  }
+
+  // stopped / idle / quiet
+  btnStart.textContent = "Start factory";
+  btnStart.disabled = false;
+  btnStart.classList.add("primary");
+  btnPause.disabled = true;
   btnResume.disabled = true;
-  btnStop.disabled = false;
+  btnStop.disabled = true;
   btnShip.disabled = false;
 }
 

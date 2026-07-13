@@ -7,9 +7,9 @@ Mission control for PodWash Factory v3. **MVP** = `forge-intake` + task board + 
 1. `scripts/forge-floor.sh` → open [http://127.0.0.1:7420](http://127.0.0.1:7420)
 2. **Start factory**
 3. In Cursor: invoke **forge-intake** for each punch-list item
-4. Watch stations / OS notify on Halted, Needs you, or Pushed
-5. Halted → decide on the Floor (Requeue); amend ticket in Cursor if the spec was wrong
-6. Needs you (can't ship) → Don't push, Retry full suite, or Copy for Cursor
+4. Watch **Now** (what's happening) and **Your move** (what you should do). OS notify on Halted, can't-ship, or Pushed
+5. Halted → **Your move** → Requeue (amend the ticket in Cursor if the spec was wrong)
+6. Can't ship (full suite still red) → **Your move** → Don't push, Retry full suite, or Copy for Cursor
 7. Idle drain runs full `scripts/verify.sh` **only when needed** (HEAD/dirty vs last green stamp; skips when incident is acknowledged), then auto-pushes — or click **Ship now** to force
 8. **Pause** before hand-editing app code (factory-hot owns the tree)
 
@@ -40,6 +40,7 @@ Live status for the Stations panel:
 |------|------|
 | `build/factory/station.json` | Current phase (QA / Engineer / tier-2 / FULL-VERIFY) |
 | `build/factory/batch-gate.json` | Last green tier-3 SHA stamp |
+| `build/factory/heartbeat.json` | Loop liveness (`pid`, `ts`) — Floor derives hot/orphan/starting from this + `runner_pid` |
 
 **Ship now** = force a full suite (tier-3) immediately, then `git push` if green. Not App Store submit.
 
@@ -49,7 +50,7 @@ Live status for the Stations panel:
 - **Idle drain** (queue empty): run tier-3 **only if** HEAD moved, worktree dirty, or never stamped green; otherwise skip (push-only if ahead of upstream)
 - Tier-3 uses xcodebuild `-retry-tests-on-failure` (same as tier-2 unit runs) so flakes are absorbed before Mechanic / Medic / human
 - **Ship now**: always force tier-3, then push
-- On persistent red: write `build/factory/batch-failure.json` (open incident), then Mechanic once, then Medic (Floor starts the loop with `--medic-no-push`). If still stuck → Floor **Needs you**
+- On persistent red: write `build/factory/batch-failure.json` (open incident), then Mechanic once, then Medic (Floor starts the loop with `--medic-no-push`). If still stuck → Floor **Your move** (Can't ship)
 - **Don't push** acknowledges the incident (idle drain skips until HEAD moves or Ship now / Retry)
 - **Retry full suite** reopens the incident and sets `ship_now`
 - Quarantine / sticky `batch_blocked` are gone — blocked state is derived from the incident file alone

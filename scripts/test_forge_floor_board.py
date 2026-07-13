@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -126,10 +127,32 @@ class DerivedBatchStateTests(unittest.TestCase):
             with mock.patch("task_loop.batch_needed", return_value=(True, "never verified")):
                 with mock.patch("task_loop.head_sha", return_value="abc"):
                     with mock.patch("task_loop.read_batch_gate", return_value={}):
-                        with mock.patch.object(floor, "_verify_running", return_value=False):
-                            snap = floor._batch_snapshot({"batch_running": True})
+                        with mock.patch.object(floor, "_verify_running", return_value=True):
+                            with mock.patch.object(floor, "_runner_alive", return_value=True):
+                                snap = floor._batch_snapshot({"batch_running": True})
         self.assertEqual(snap["state"], "verifying")
         self.assertIsNotNone(snap["failure"])
+
+    def test_stale_batch_running_flag_does_not_verify(self):
+        """batch_running flag alone (no loop, no children) is not verifying."""
+        import factory_floor.server as floor
+
+        with mock.patch.object(floor, "_read_batch_failure", return_value={
+            "status": "open",
+            "head_sha": "abc",
+            "reason": "still_red",
+            "failures": [],
+            "failed": 1,
+            "machine_tried": [],
+        }):
+            with mock.patch("task_loop.batch_needed", return_value=(True, "never verified")):
+                with mock.patch("task_loop.head_sha", return_value="abc"):
+                    with mock.patch("task_loop.read_batch_gate", return_value={}):
+                        with mock.patch.object(floor, "_verify_running", return_value=False):
+                            with mock.patch.object(floor, "_runner_alive", return_value=False):
+                                snap = floor._batch_snapshot({"batch_running": True})
+        self.assertEqual(snap["state"], "needs_decision")
+        self.assertFalse(snap["batch_running"])
 
     def test_open_incident_needs_decision(self):
         import factory_floor.server as floor
@@ -191,9 +214,13 @@ class DerivedBatchStateTests(unittest.TestCase):
         activity = floor._activity_snapshot(
             ctrl={"running": True, "paused": False, "batch_running": True},
             station={"phase": "FULL-VERIFY", "role": "loop", "detail": "tier-3"},
-            batch={"state": "verifying", "reason": "never verified", "failure": {
-                "status": "open", "failed": 2
-            }},
+            batch={
+                "state": "verifying",
+                "reason": "never verified",
+                "verify_running": True,
+                "batch_running": True,
+                "failure": {"status": "open", "failed": 2},
+            },
             tasks=[],
             events=[],
             factory_hot=True,
@@ -201,6 +228,199 @@ class DerivedBatchStateTests(unittest.TestCase):
         )
         self.assertEqual(activity["mode"], "batch")
         self.assertNotEqual(activity["mode"], "needs_decision")
+
+
+class ActivityCopyAndLivenessTests(unittest.TestCase):
+    def test_halted_stopped_next_says_requeue_halted(self):
+        import factory_floor.server as floor
+
+        activity = floor._activity_snapshot(
+            ctrl={"running": False, "paused": False, "batch_running": False},
+            station={},
+            batch={"state": "idle", "reason": "not needed"},
+            tasks=[{"id": "005", "status": "Halted", "title": "Pause"}],
+            events=[],
+            factory_hot=False,
+            runner_alive=False,
+        )
+        self.assertEqual(activity["mode"], "stopped")
+        self.assertIn("Requeue Halted", activity["next"])
+        self.assertNotIn("Needs you", activity["next"])
+
+    def test_needs_decision_headline_not_needs_you(self):
+        import factory_floor.server as floor
+
+        activity = floor._activity_snapshot(
+            ctrl={"running": True, "paused": False, "batch_running": False},
+            station={},
+            batch={
+                "state": "needs_decision",
+                "reason": "still_red",
+                "failure": {"failed": 2, "status": "open"},
+            },
+            tasks=[],
+            events=[],
+            factory_hot=True,
+            runner_alive=True,
+        )
+        self.assertEqual(activity["mode"], "needs_decision")
+        self.assertEqual(activity["headline"], "Can't ship")
+        self.assertNotIn("Needs you", activity["headline"])
+        self.assertNotIn("Needs you", activity["next"])
+        self.assertIn("Your move", activity["next"])
+
+    def test_batch_plain_needs_decision_says_your_move(self):
+        import factory_floor.server as floor
+
+        plain = floor._batch_plain("still_red", "needs_decision")
+        self.assertIn("Your move", plain)
+        self.assertNotIn("Needs you", plain)
+
+    def test_starting_grace_then_orphan(self):
+        import factory_floor.server as floor
+        import time as time_mod
+
+        now = time_mod.time()
+        fresh = floor._activity_snapshot(
+            ctrl={
+                "running": True,
+                "paused": False,
+                "batch_running": False,
+                "started_at": now - 5,
+            },
+            station={},
+            batch={"state": "idle", "verify_running": False},
+            tasks=[],
+            events=[],
+            factory_hot=True,
+            runner_alive=False,
+        )
+        self.assertEqual(fresh["mode"], "starting")
+
+        stale = floor._activity_snapshot(
+            ctrl={
+                "running": True,
+                "paused": False,
+                "batch_running": False,
+                "started_at": now - 60,
+            },
+            station={},
+            batch={"state": "idle", "verify_running": False},
+            tasks=[],
+            events=[],
+            factory_hot=True,
+            runner_alive=False,
+        )
+        self.assertEqual(stale["mode"], "orphan")
+        self.assertTrue(stale["orphan"])
+
+    def test_stale_batch_flag_is_orphan(self):
+        import factory_floor.server as floor
+
+        activity = floor._activity_snapshot(
+            ctrl={
+                "running": True,
+                "paused": False,
+                "batch_running": True,
+                "started_at": time.time() - 120,
+            },
+            station={"phase": "FULL-VERIFY", "role": "loop"},
+            batch={
+                "state": "verifying",
+                "batch_running": True,
+                "verify_running": False,
+            },
+            tasks=[{"id": "001", "status": "In Progress"}],
+            events=[],
+            factory_hot=True,
+            runner_alive=False,
+        )
+        self.assertEqual(activity["mode"], "orphan")
+        self.assertTrue(activity["orphan"])
+
+    def test_loop_dead_verify_children_alive(self):
+        import factory_floor.server as floor
+
+        activity = floor._activity_snapshot(
+            ctrl={
+                "running": True,
+                "paused": False,
+                "batch_running": True,
+                "started_at": time.time() - 120,
+            },
+            station={"phase": "FULL-VERIFY", "role": "loop"},
+            batch={
+                "state": "verifying",
+                "batch_running": True,
+                "verify_running": True,
+            },
+            tasks=[],
+            events=[],
+            factory_hot=True,
+            runner_alive=False,
+        )
+        self.assertEqual(activity["mode"], "batch")
+        self.assertTrue(activity.get("loop_stale"))
+        self.assertIn("gone", activity["detail"].lower())
+
+    def test_runner_alive_uses_ctrl_pid(self):
+        import factory_floor.server as floor
+
+        with mock.patch.object(floor, "_runner_proc", None):
+            with mock.patch.object(floor, "_pid_alive", return_value=True) as pid_alive:
+                with mock.patch.object(floor, "_ps_commands", return_value=[]):
+                    with mock.patch.object(floor, "_read_json_file", return_value={}):
+                        alive = floor._runner_alive(ctrl={"runner_pid": 4242})
+        self.assertTrue(alive)
+        pid_alive.assert_called_with(4242)
+
+    def test_runner_alive_fresh_heartbeat_without_pid(self):
+        import factory_floor.server as floor
+
+        with mock.patch.object(floor, "_runner_proc", None):
+            with mock.patch.object(floor, "_pid_alive", return_value=False):
+                with mock.patch.object(
+                    floor,
+                    "_read_json_file",
+                    return_value={"pid": 0, "ts": time.time()},
+                ):
+                    with mock.patch.object(floor, "_ps_commands", return_value=[]):
+                        alive = floor._runner_alive(ctrl={"runner_pid": None})
+        self.assertTrue(alive)
+
+    def test_runner_not_alive_stale_heartbeat(self):
+        import factory_floor.server as floor
+
+        with mock.patch.object(floor, "_runner_proc", None):
+            with mock.patch.object(floor, "_pid_alive", return_value=False):
+                with mock.patch.object(
+                    floor,
+                    "_read_json_file",
+                    return_value={"pid": 99, "ts": time.time() - 9999},
+                ):
+                    with mock.patch.object(floor, "_ps_commands", return_value=[]):
+                        alive = floor._runner_alive(ctrl={"runner_pid": None})
+        self.assertFalse(alive)
+
+    def test_start_runner_records_pid_and_started_at(self):
+        import factory_floor.server as floor
+
+        written: dict = {}
+
+        def capture(data):
+            written.update(data)
+
+        fake = mock.Mock(pid=55555, poll=mock.Mock(return_value=None))
+        with mock.patch.object(floor, "_runner_proc", None):
+            with mock.patch.object(floor.subprocess, "Popen", return_value=fake):
+                with mock.patch.object(
+                    floor, "read_controls", return_value=floor._default_controls()
+                ):
+                    with mock.patch.object(floor, "write_controls", side_effect=capture):
+                        floor.start_runner()
+        self.assertEqual(written.get("runner_pid"), 55555)
+        self.assertIsNotNone(written.get("started_at"))
+        floor._runner_proc = None
 
 
 class ControlHandlerTests(unittest.TestCase):
