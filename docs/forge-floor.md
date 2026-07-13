@@ -7,10 +7,11 @@ Mission control for PodWash Factory v3. **MVP** = `forge-intake` + task board + 
 1. `scripts/forge-floor.sh` → open [http://127.0.0.1:7420](http://127.0.0.1:7420)
 2. **Start factory**
 3. In Cursor: invoke **forge-intake** for each punch-list item
-4. Watch stations / OS notify on Halted, Batch blocked, or Pushed
-5. Halted → decide on the Floor (Requeue / Cancel); amend ticket in Cursor if the spec was wrong
-6. Idle drain runs full `scripts/verify.sh` **only when needed** (HEAD/dirty vs last green stamp), then auto-pushes — or click **Ship now** to force
-7. **Pause** before hand-editing app code (factory-hot owns the tree)
+4. Watch stations / OS notify on Halted, Needs you, or Pushed
+5. Halted → decide on the Floor (Requeue); amend ticket in Cursor if the spec was wrong
+6. Needs you (can't ship) → Don't push, Retry full suite, or Copy for Cursor
+7. Idle drain runs full `scripts/verify.sh` **only when needed** (HEAD/dirty vs last green stamp; skips when incident is acknowledged), then auto-pushes — or click **Ship now** to force
+8. **Pause** before hand-editing app code (factory-hot owns the tree)
 
 ## Commands
 
@@ -46,8 +47,12 @@ Live status for the Stations panel:
 
 - Per task: tier-2 surgical tests only (`filtered=1` OK for task Done)
 - **Idle drain** (queue empty): run tier-3 **only if** HEAD moved, worktree dirty, or never stamped green; otherwise skip (push-only if ahead of upstream)
+- Tier-3 uses xcodebuild `-retry-tests-on-failure` (same as tier-2 unit runs) so flakes are absorbed before Mechanic / Medic / human
 - **Ship now**: always force tier-3, then push
-- Batch still red after one Mechanic retry → Floor Batch blocked (quarantine vs hold-all)
+- On persistent red: write `build/factory/batch-failure.json` (open incident), then Mechanic once, then Medic (Floor starts the loop with `--medic-no-push`). If still stuck → Floor **Needs you**
+- **Don't push** acknowledges the incident (idle drain skips until HEAD moves or Ship now / Retry)
+- **Retry full suite** reopens the incident and sets `ship_now`
+- Quarantine / sticky `batch_blocked` are gone — blocked state is derived from the incident file alone
 
 ## MVP gate
 

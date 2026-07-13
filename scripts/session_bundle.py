@@ -34,9 +34,18 @@ def write_session_bundle(
     crashes: list[str] | None = None,
     phase: str = "HALT",
     extra: dict[str, Any] | None = None,
+    bundle_name: str | None = None,
 ) -> str:
-    """Materialize a halt session bundle; returns the directory path."""
-    dest = session_bundle_dir(repo_root, slice_id)
+    """Materialize a halt session bundle; returns the directory path.
+
+    ``bundle_name`` (e.g. ``session-task-batch``) overrides the default
+    ``session-slice-NN`` path so task-loop batch thrash has a dedicated bundle
+    for Medic without colliding with slice sessions.
+    """
+    if bundle_name:
+        dest = os.path.join(repo_root, "build", "test-results", bundle_name)
+    else:
+        dest = session_bundle_dir(repo_root, slice_id)
     os.makedirs(dest, exist_ok=True)
     tr = os.path.join(repo_root, "build", "test-results")
 

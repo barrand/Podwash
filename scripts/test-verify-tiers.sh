@@ -101,6 +101,7 @@ out=$(VERIFY_DRY_RUN=1 VERIFY_TIER=3 "$VERIFY" 2>&1)
 assert_contains "$out" "action=test" "tier 3 uses test"
 assert_contains "$out" "filtered=0" "tier 3 unfiltered"
 assert_contains "$out" "tier=3" "tier 3 VERIFY RESULT"
+assert_contains "$out" "-retry-tests-on-failure" "tier 3 retries flakes once"
 assert_not_contains "$out" "-only-testing:" "tier 3 has no only-testing from env"
 
 # Default (no VERIFY_TIER) is tier 3

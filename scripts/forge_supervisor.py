@@ -135,6 +135,21 @@ def run_medic(
         do_push=do_push,
         session_heal_count=session_heal_count,
     )
+    # Record Medic rung on the open batch incident (Floor Needs-you ladder line).
+    try:
+        from task_loop import read_batch_failure, write_batch_failure
+
+        incident = read_batch_failure()
+        if incident:
+            tried = list(incident.get("machine_tried") or [])
+            tag = f"medic:{result.outcome}"
+            if tag not in tried:
+                tried.append(tag)
+                incident["machine_tried"] = tried
+                write_batch_failure(incident)
+    except Exception as exc:
+        log(f"could not update batch incident machine_tried: {exc}")
+
     # Count only real heal attempts that burned budget
     if result.outcome in (
         "healed",

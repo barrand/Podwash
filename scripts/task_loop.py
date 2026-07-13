@@ -25,7 +25,12 @@ NEXT_TASK = os.path.join(REPO_ROOT, "scripts", "next-task.sh")
 CONTROLS_PATH = os.path.join(REPO_ROOT, "build", "factory", "controls.json")
 HOT_FLAG = os.path.join(REPO_ROOT, "build", "factory", "factory-hot")
 BATCH_GATE_PATH = os.path.join(REPO_ROOT, "build", "factory", "batch-gate.json")
+BATCH_FAILURE_PATH = os.path.join(REPO_ROOT, "build", "factory", "batch-failure.json")
 STATION_PATH = os.path.join(REPO_ROOT, "build", "factory", "station.json")
+VERIFY_RESULT_JSON = os.path.join(REPO_ROOT, "build", "test-results", "verify-result.json")
+VERIFY_OUTPUT_LATEST = os.path.join(
+    REPO_ROOT, "build", "test-results", "verify-output-latest.txt"
+)
 
 EXIT_OK = 0
 EXIT_STARTUP = 1
@@ -98,17 +103,26 @@ def batch_needed(
     force: bool = False,
     repo_root: str | None = None,
     stamp_path: str | None = None,
+    failure_path: str | None = None,
 ) -> tuple[bool, str]:
     """Whether idle-drain should run a full tier-3 verify.
 
     Ship now passes force=True. Otherwise skip when HEAD matches last green
-    stamp and the worktree is clean.
+    stamp and the worktree is clean, or when an incident at HEAD is acknowledged
+    (Don't push).
     """
     if force:
         return True, "ship_now"
     root = repo_root or REPO_ROOT
-    stamp = read_batch_gate(path=stamp_path)
     sha = head_sha(repo_root=root)
+    incident = read_batch_failure(path=failure_path)
+    if (
+        incident.get("status") == "acknowledged"
+        and sha
+        and str(incident.get("head_sha") or "").strip() == sha
+    ):
+        return False, "held"
+    stamp = read_batch_gate(path=stamp_path)
     last = str(stamp.get("sha") or "").strip()
     if not last:
         return True, "never verified"
@@ -119,6 +133,198 @@ def batch_needed(
     if worktree_dirty(repo_root=root):
         return True, "dirty tree"
     return False, "not needed"
+
+
+def read_batch_failure(*, path: str | None = None) -> dict[str, Any]:
+    """Read the open/acknowledged batch incident (or {})."""
+    p = path or BATCH_FAILURE_PATH
+    if not os.path.isfile(p):
+        return {}
+    try:
+        with open(p, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def write_batch_failure(data: dict[str, Any], *, path: str | None = None) -> None:
+    p = path or BATCH_FAILURE_PATH
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    payload = dict(data)
+    payload["updated_at"] = time.time()
+    with open(p, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2)
+        fh.write("\n")
+
+
+def clear_batch_failure(*, path: str | None = None) -> None:
+    p = path or BATCH_FAILURE_PATH
+    if os.path.isfile(p):
+        try:
+            os.remove(p)
+        except OSError:
+            pass
+
+
+def acknowledge_batch_failure(*, path: str | None = None) -> dict[str, Any]:
+    """Mark the incident acknowledged (Don't push). Returns the updated incident."""
+    data = read_batch_failure(path=path)
+    if not data:
+        return {}
+    data["status"] = "acknowledged"
+    write_batch_failure(data, path=path)
+    return data
+
+
+def collect_verify_failures(
+    *,
+    repo_root: str | None = None,
+) -> tuple[list[dict[str, str]], dict[str, Any]]:
+    """Return (failures[{id,assertion}], verify-result.json dict)."""
+    root = repo_root or REPO_ROOT
+    result_path = os.path.join(root, "build", "test-results", "verify-result.json")
+    result: dict[str, Any] = {}
+    if os.path.isfile(result_path):
+        try:
+            with open(result_path, encoding="utf-8") as fh:
+                raw = json.load(fh)
+            if isinstance(raw, dict):
+                result = raw
+        except (OSError, json.JSONDecodeError):
+            result = {}
+
+    bundle = str(result.get("bundle") or "").strip()
+    if bundle and not os.path.isabs(bundle):
+        bundle_abs = os.path.join(root, bundle)
+    else:
+        bundle_abs = bundle
+    if not bundle_abs or not os.path.isdir(bundle_abs):
+        tr = os.path.join(root, "build", "test-results")
+        try:
+            cands = [
+                os.path.join(tr, n)
+                for n in os.listdir(tr)
+                if n.startswith("verify-") and n.endswith(".xcresult")
+            ]
+            cands.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+            bundle_abs = cands[0] if cands else ""
+            if bundle_abs:
+                result.setdefault("bundle", os.path.relpath(bundle_abs, root))
+        except OSError:
+            bundle_abs = ""
+
+    failures: list[dict[str, str]] = []
+    if bundle_abs:
+        try:
+            from failure_packet import read_xcresult_summary, summary_test_failures
+
+            summary = read_xcresult_summary(bundle_abs)
+            if summary:
+                for tid, assertion in summary_test_failures(summary):
+                    failures.append({"id": tid, "assertion": assertion})
+        except Exception:
+            pass
+    return failures, result
+
+
+def build_batch_incident(
+    *,
+    reason: str,
+    machine_tried: list[str],
+    repo_root: str | None = None,
+    status: str = "open",
+) -> dict[str, Any]:
+    """Build a ticket-shaped incident from the latest verify artifacts."""
+    root = repo_root or REPO_ROOT
+    prior = read_batch_failure()
+    sha = head_sha(repo_root=root)
+    prior_ids: list[str] = []
+    if prior and str(prior.get("head_sha") or "") == sha:
+        prior_ids = [
+            str(f.get("id") or "")
+            for f in (prior.get("failures") or [])
+            if isinstance(f, dict) and f.get("id")
+        ]
+        if not prior_ids:
+            prior_ids = [str(x) for x in (prior.get("prior_failures") or []) if x]
+
+    failures, result = collect_verify_failures(repo_root=root)
+    bundle = str(result.get("bundle") or "")
+    output_rel = "build/test-results/verify-output-latest.txt"
+    output_abs = os.path.join(root, output_rel)
+    if not os.path.isfile(output_abs):
+        output_rel = ""
+
+    return {
+        "status": status,
+        "head_sha": sha,
+        "reason": reason,
+        "exit": result.get("exit"),
+        "passed": result.get("passed"),
+        "failed": result.get("failed") if result.get("failed") is not None else len(failures),
+        "total": result.get("total"),
+        "bundle": bundle,
+        "output": output_rel,
+        "failures": failures,
+        "prior_failures": prior_ids,
+        "retried_tests": list(prior.get("retried_tests") or []) if prior else [],
+        "machine_tried": list(machine_tried),
+    }
+
+
+def notify_cant_ship(incident: dict[str, Any]) -> None:
+    """macOS banner that names the failing test(s)."""
+    fails = [f for f in (incident.get("failures") or []) if isinstance(f, dict)]
+    n = int(incident.get("failed") or len(fails) or 0)
+    if not fails and incident.get("reason") == "verify aborted":
+        notify("Forge", "Can't ship — verify aborted")
+        return
+    if not fails:
+        notify("Forge", f"Can't ship — {n or '?'} test(s) failed")
+        return
+    first = str(fails[0].get("id") or "unknown")
+    # Prefer Class/method over Target/Class/method for the banner
+    short = first.split("/")[-2] + "/" + first.split("/")[-1] if first.count("/") >= 2 else first
+    extra = f" (+{n - 1})" if n > 1 else ""
+    notify("Forge", f"Can't ship — {n} failed: {short}{extra}")
+
+
+def write_batch_halt_bundle(incident: dict[str, Any], *, reason: str) -> str:
+    """Write session-task-batch halt.json so Medic can diagnose thrash/abort."""
+    from session_bundle import write_session_bundle
+
+    fail_ids = [
+        str(f.get("id") or "")
+        for f in (incident.get("failures") or [])
+        if isinstance(f, dict) and f.get("id")
+    ]
+    return write_session_bundle(
+        repo_root=REPO_ROOT,
+        slice_id=None,
+        reason=reason,
+        stuck_card=(
+            f"Batch gate {reason}\n"
+            f"HEAD {incident.get('head_sha') or '?'}\n"
+            f"failed={incident.get('failed')} passed={incident.get('passed')}\n"
+            + "\n".join(fail_ids[:10])
+        ),
+        verify_result={
+            "exit": incident.get("exit"),
+            "passed": incident.get("passed"),
+            "failed": incident.get("failed"),
+            "total": incident.get("total"),
+            "bundle": incident.get("bundle"),
+        },
+        failures=fail_ids,
+        phase="BATCH",
+        extra={
+            "kind": "task-batch",
+            "machine_tried": incident.get("machine_tried") or [],
+            "incident_reason": incident.get("reason"),
+        },
+        bundle_name="session-task-batch",
+    )
 
 
 def set_station(
@@ -193,8 +399,6 @@ def default_controls() -> dict[str, Any]:
         "cancel_task_id": None,
         "requeue_task_id": None,
         "priority_bumps": {},
-        "batch_action": None,
-        "batch_blocked": False,
         "batch_running": False,
         "mark_done_task_id": None,
         "updated_at": None,
@@ -313,8 +517,8 @@ def run_batch_gate(
 ) -> int:
     """Tier-3 full suite; on green push (unless no_push). Returns exit code.
 
-    Idle drain passes force=False (skip when already green at HEAD).
-    Ship now passes force=True.
+    Idle drain passes force=False (skip when already green at HEAD, or when
+    an incident at HEAD is acknowledged). Ship now passes force=True.
     """
     from factory_events import EventLog
 
@@ -326,12 +530,25 @@ def run_batch_gate(
     needed, reason = batch_needed(force=force)
     if not needed:
         log(f"batch gate skipped — already green at {head_sha()[:12] or '?'} ({reason})")
+        state = "held" if reason == "held" else "green"
         set_station(
             phase="batch",
             role="loop",
-            detail=f"green @ {(head_sha() or '')[:12]} — nothing to verify",
-            batch={"state": "green", "needed": False, "reason": reason, "last_green_sha": read_batch_gate().get("sha"), "head_sha": head_sha()},
+            detail=(
+                f"held @ {(head_sha() or '')[:12]} — not pushing"
+                if reason == "held"
+                else f"green @ {(head_sha() or '')[:12]} — nothing to verify"
+            ),
+            batch={
+                "state": state,
+                "needed": False,
+                "reason": reason,
+                "last_green_sha": read_batch_gate().get("sha"),
+                "head_sha": head_sha(),
+            },
         )
+        if reason == "held":
+            return EXIT_OK
         if not no_push and not no_commit and ahead_of_upstream():
             log("already green — push only (ahead of upstream)")
             proc = subprocess.run(["git", "push"], cwd=REPO_ROOT, capture_output=True, text=True)
@@ -372,6 +589,7 @@ def run_batch_gate(
     )
 
     log(f"BATCH GATE: full suite (tier 3) — {reason}")
+    machine_tried: list[str] = ["tier3_retries"]
     outcome = None
     try:
         outcome = run_verify(REPO_ROOT, log=log, tier=3)
@@ -381,13 +599,20 @@ def run_batch_gate(
         write_controls(ctrl)
 
     if outcome is None:
+        incident = build_batch_incident(
+            reason="verify aborted",
+            machine_tried=machine_tried,
+        )
+        write_batch_failure(incident)
+        write_batch_halt_bundle(incident, reason="verify aborted")
         set_station(
             phase="batch",
             role="loop",
-            detail="verify aborted",
-            batch={"state": "blocked", "needed": True, "reason": reason},
+            detail="verify aborted — Needs you",
+            batch={"state": "needs_decision", "needed": True, "reason": "verify aborted"},
         )
-        return EXIT_RUN_FAILED
+        notify_cant_ship(incident)
+        return EXIT_INFRA
 
     events.record(
         "FULL-VERIFY",
@@ -401,6 +626,7 @@ def run_batch_gate(
     if outcome.green:
         log("batch gate GREEN")
         sha = head_sha()
+        clear_batch_failure()
         write_batch_gate({"sha": sha, "green": True, "pushed": False, "tier": 3})
         set_station(
             phase="batch",
@@ -420,15 +646,16 @@ def run_batch_gate(
         return EXIT_OK
 
     log("batch gate RED — one Mechanic retry")
-    notify("Forge", "Batch blocked — needs decision")
-    ctrl = read_controls()
-    ctrl["batch_blocked"] = True
-    write_controls(ctrl)
+    machine_tried.append("mechanic")
+    # Snapshot failures before Mechanic so prior_failures is populated on still-red
+    pre = build_batch_incident(reason="mechanic_pending", machine_tried=list(machine_tried))
+    write_batch_failure(pre)
+    notify_cant_ship(pre)
     set_station(
         phase="FULL-VERIFY",
         role="Mechanic",
         detail="tier-3 red — Mechanic retry",
-        batch={"state": "blocked", "needed": True, "reason": reason},
+        batch={"state": "running", "needed": True, "reason": reason},
     )
 
     # One Mechanic tier-3 pass
@@ -475,12 +702,26 @@ def run_batch_gate(
         ctrl["batch_running"] = False
         write_controls(ctrl)
 
+    if outcome2 is None:
+        incident = build_batch_incident(
+            reason="verify aborted",
+            machine_tried=machine_tried,
+        )
+        write_batch_failure(incident)
+        write_batch_halt_bundle(incident, reason="verify aborted after Mechanic")
+        set_station(
+            phase="batch",
+            role="loop",
+            detail="verify aborted after Mechanic — Needs you",
+            batch={"state": "needs_decision", "needed": True, "reason": "verify aborted"},
+        )
+        notify_cant_ship(incident)
+        return EXIT_INFRA
+
     if outcome2.green:
         sha = head_sha()
+        clear_batch_failure()
         write_batch_gate({"sha": sha, "green": True, "pushed": False, "tier": 3})
-        ctrl = read_controls()
-        ctrl["batch_blocked"] = False
-        write_controls(ctrl)
         set_station(
             phase="batch",
             role="loop",
@@ -493,15 +734,21 @@ def run_batch_gate(
             notify("Forge", "Batch pushed after Mechanic")
         return EXIT_OK
 
-    # Still red — wait for soft control (batch_action)
-    log("BATCH BLOCKED — set controls.batch_action to quarantine|hold_all")
+    # Still red — write open incident + halt bundle for Medic, then EXIT_THRASH
+    incident = build_batch_incident(
+        reason="still_red",
+        machine_tried=machine_tried,
+    )
+    write_batch_failure(incident)
+    write_batch_halt_bundle(incident, reason="still_red")
+    log("BATCH BLOCKED — open incident written; Medic (supervisor) or Needs you")
     set_station(
         phase="batch",
         role="loop",
-        detail="batch blocked — open Klaxon",
-        batch={"state": "blocked", "needed": True, "reason": "still_red"},
+        detail="Can't ship — Needs you",
+        batch={"state": "needs_decision", "needed": True, "reason": "still_red"},
     )
-    notify("Forge", "Batch blocked — open Forge Floor")
+    notify_cant_ship(incident)
     return EXIT_THRASH
 
 

@@ -26,6 +26,7 @@ PORT = 7420
 CONTROLS = REPO_ROOT / "build" / "factory" / "controls.json"
 HOT = REPO_ROOT / "build" / "factory" / "factory-hot"
 BATCH_GATE = REPO_ROOT / "build" / "factory" / "batch-gate.json"
+BATCH_FAILURE = REPO_ROOT / "build" / "factory" / "batch-failure.json"
 STATION = REPO_ROOT / "build" / "factory" / "station.json"
 EVENTS_DIR = REPO_ROOT / "build" / "test-results"
 
@@ -42,8 +43,6 @@ def _default_controls() -> dict[str, Any]:
         "cancel_task_id": None,
         "requeue_task_id": None,
         "priority_bumps": {},
-        "batch_action": None,
-        "batch_blocked": False,
         "batch_running": False,
         "mark_done_task_id": None,
         "updated_at": None,
@@ -223,6 +222,47 @@ def _runner_alive() -> bool:
     return False
 
 
+def _read_batch_failure() -> dict[str, Any]:
+    if not BATCH_FAILURE.is_file():
+        return {}
+    try:
+        data = json.loads(BATCH_FAILURE.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _write_batch_failure(data: dict[str, Any]) -> None:
+    BATCH_FAILURE.parent.mkdir(parents=True, exist_ok=True)
+    payload = dict(data)
+    payload["updated_at"] = time.time()
+    BATCH_FAILURE.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _ladder_plain(machine_tried: list[Any]) -> str:
+    """Human-readable summary of what the factory already tried."""
+    labels: list[str] = []
+    for raw in machine_tried:
+        tag = str(raw or "")
+        if tag == "tier3_retries":
+            labels.append("full-suite retries")
+        elif tag == "mechanic":
+            labels.append("Mechanic fix")
+        elif tag.startswith("medic:"):
+            outcome = tag.split(":", 1)[1]
+            if outcome == "lane_test":
+                labels.append("Medic (declined — product tests aren't factory-healable)")
+            elif outcome == "healed":
+                labels.append("Medic heal")
+            else:
+                labels.append(f"Medic ({outcome})")
+        elif tag:
+            labels.append(tag)
+    if not labels:
+        return ""
+    return "Factory already tried: " + ", ".join(labels) + "."
+
+
 def _batch_plain(reason: str, state: str) -> str:
     """Human-readable batch gate copy — not agent status."""
     r = (reason or "").strip()
@@ -237,14 +277,18 @@ def _batch_plain(reason: str, state: str) -> str:
         "not needed": "Full suite already green at this commit — nothing to batch-verify.",
         "skipped": "Batch gate skipped for this session.",
         "unavailable": "Batch status unavailable (task_loop import failed).",
-        "still_red": "Full suite still red after Mechanic — decide in Klaxon.",
+        "still_red": "Full suite still failing after Mechanic — decide in Needs you.",
         "verified": "Last full suite was green.",
         "mechanic_retry": "Re-running full suite after Mechanic.",
+        "held": "Held — not pushing. Ship now or Retry to run the full suite again.",
+        "verify aborted": "Full suite aborted (simulator/infra) — decide in Needs you.",
     }
-    if state == "running":
+    if state == "verifying" or state == "running":
         return f"Full suite is running now ({r or 'tier-3'})."
-    if state == "blocked":
-        return mapping.get(r, f"Batch blocked ({r or 'red'}). Open Klaxon.")
+    if state == "needs_decision":
+        return mapping.get(r, f"Can't ship ({r or 'failed'}). Open Needs you.")
+    if state == "held":
+        return mapping["held"]
     if state == "green" and not r:
         return mapping["verified"]
     return mapping.get(r, f"Batch: {r or state or 'idle'}.")
@@ -351,7 +395,7 @@ def _activity_snapshot(
                 "headline": "Factory stopped",
                 "detail": f"Halted: {', '.join(str(t.get('id')) for t in halted)}.",
                 "agents": [],
-                "next": "Amend the ticket in Cursor if needed, Start factory, then Requeue from Klaxon.",
+                "next": "Amend the ticket in Cursor if needed, Start factory, then Requeue from Needs you.",
                 "batch_plain": batch_plain,
                 "orphan": False,
                 "runner_alive": False,
@@ -389,27 +433,46 @@ def _activity_snapshot(
             "runner_alive": False,
         }
 
-    # Live / claimed running
-    if batch.get("state") == "blocked" or ctrl.get("batch_blocked"):
-        return {
-            "mode": "batch_blocked",
-            "headline": "Batch blocked",
-            "detail": "Full suite still red — factory needs a human decision.",
-            "agents": agents,
-            "next": "Open Klaxon: Quarantine offenders or Hold-all (no push).",
-            "batch_plain": batch_plain,
-            "orphan": False,
-            "runner_alive": runner_alive,
-        }
-
-    if batch.get("state") == "running" or ctrl.get("batch_running"):
+    # Live / claimed running — verifying always beats needs_decision
+    batch_state = str(batch.get("state") or "")
+    if batch_state in ("verifying", "running") or ctrl.get("batch_running"):
         return {
             "mode": "batch",
             "headline": "FULL-VERIFY · loop",
             "detail": detail or f"Running full suite ({batch.get('reason') or 'tier-3'}).",
             "agents": agents
             or [{"role": "loop", "task": "", "phase": "FULL-VERIFY", "doing": "tier-3 full suite"}],
-            "next": "Wait — no action needed unless it fails (Klaxon will light up).",
+            "next": "Wait — no action needed unless it fails (Needs you will light up).",
+            "batch_plain": batch_plain,
+            "orphan": False,
+            "runner_alive": runner_alive,
+        }
+
+    if batch_state == "needs_decision":
+        fail_n = batch.get("failure", {}).get("failed") if isinstance(batch.get("failure"), dict) else None
+        detail_line = "Can't ship — full suite still failing."
+        if fail_n is not None:
+            detail_line = f"Can't ship — {fail_n} test(s) failed."
+        elif (batch.get("reason") or "") == "verify aborted":
+            detail_line = "Can't ship — verify aborted."
+        return {
+            "mode": "needs_decision",
+            "headline": "Needs you",
+            "detail": detail_line,
+            "agents": agents,
+            "next": "Open Needs you: Don't push, Retry full suite, or Copy for Cursor.",
+            "batch_plain": batch_plain,
+            "orphan": False,
+            "runner_alive": runner_alive,
+        }
+
+    if batch_state == "held":
+        return {
+            "mode": "held",
+            "headline": "Held — not pushing",
+            "detail": f"Incident acknowledged at {(batch.get('head_sha') or '')[:12] or 'HEAD'}.",
+            "agents": agents,
+            "next": "Ship now or Retry full suite when ready; or queue more work.",
             "batch_plain": batch_plain,
             "orphan": False,
             "runner_alive": runner_alive,
@@ -422,7 +485,7 @@ def _activity_snapshot(
             label += f" · {who['task']}"
         nxt = "Nothing — agents are working. Watch the active card and event feed."
         if phase.lower() in ("halted",):
-            nxt = "Amend ticket in Cursor if needed, then Requeue from Klaxon."
+            nxt = "Amend ticket in Cursor if needed, then Requeue from Needs you."
         return {
             "mode": "working",
             "headline": label,
@@ -495,7 +558,10 @@ def _activity_snapshot(
 
 
 def _batch_snapshot(ctrl: dict[str, Any]) -> dict[str, Any]:
-    """Derive batch gate UI state from stamp + live controls."""
+    """Derive batch gate UI state from incident + stamp + liveness.
+
+    Single enum: verifying | needs_decision | held | green | idle | pending
+    """
     try:
         from task_loop import batch_needed, head_sha, read_batch_gate
     except ImportError:
@@ -504,6 +570,7 @@ def _batch_snapshot(ctrl: dict[str, Any]) -> dict[str, Any]:
             "needed": False,
             "reason": "unavailable",
             "plain": _batch_plain("unavailable", "idle"),
+            "failure": None,
         }
 
     stamp = read_batch_gate(path=str(BATCH_GATE)) if BATCH_GATE.is_file() else {}
@@ -515,26 +582,51 @@ def _batch_snapshot(ctrl: dict[str, Any]) -> dict[str, Any]:
     batch_running = bool(ctrl.get("batch_running")) or (
         bool(ctrl.get("ship_now")) and _verify_running()
     )
-    blocked = bool(ctrl.get("batch_blocked"))
-    if blocked:
-        state = "blocked"
-    elif batch_running:
-        state = "running"
+    verifying = bool(batch_running)
+
+    incident = _read_batch_failure()
+    failure_payload: dict[str, Any] | None = None
+    incident_at_head = False
+    if incident:
+        inc_sha = str(incident.get("head_sha") or "").strip()
+        stale = bool(head and inc_sha and inc_sha != head)
+        failure_payload = dict(incident)
+        failure_payload["stale"] = stale
+        failure_payload["ladder"] = _ladder_plain(list(incident.get("machine_tried") or []))
+        incident_at_head = (not stale) and bool(inc_sha) and (not head or inc_sha == head)
+
+    if verifying:
+        state = "verifying"
+        reason_out = reason if needed else "tier-3"
+    elif incident_at_head and incident.get("status") == "open":
+        state = "needs_decision"
+        reason_out = str(incident.get("reason") or "still_red")
+    elif incident_at_head and incident.get("status") == "acknowledged":
+        state = "held"
+        reason_out = "held"
+    elif last and head and last == head and not needed:
+        state = "green"
+        reason_out = reason
     elif needed:
         state = "pending"
+        reason_out = reason
     elif last:
         state = "green"
+        reason_out = reason
     else:
         state = "idle"
+        reason_out = reason
+
     return {
         "state": state,
         "needed": needed,
-        "reason": reason,
+        "reason": reason_out,
         "last_green_sha": last,
         "head_sha": head,
         "verify_running": _verify_running(),
         "batch_running": batch_running,
-        "plain": _batch_plain(reason, state),
+        "plain": _batch_plain(reason_out, state),
+        "failure": failure_payload,
     }
 
 
@@ -593,14 +685,22 @@ def board_snapshot() -> dict[str, Any]:
     ctrl = read_controls()
     station = _read_json_file(STATION)
     batch = _batch_snapshot(ctrl)
-    # Prefer live station.batch overlay when present
+    derived_state = batch.get("state")
+    # Prefer live station.batch overlay for reason/detail, but derived state wins
+    # (prevents sticky "blocked" while verify is running).
     if isinstance(station.get("batch"), dict):
         merged = dict(batch)
-        merged.update(station["batch"])
-        if "plain" not in merged or not merged.get("plain"):
-            merged["plain"] = _batch_plain(
-                str(merged.get("reason") or ""), str(merged.get("state") or "")
-            )
+        for k, v in station["batch"].items():
+            if k in ("state", "failure"):
+                continue
+            merged[k] = v
+        if ctrl.get("batch_running"):
+            merged["state"] = "verifying"
+        else:
+            merged["state"] = derived_state
+        merged["plain"] = _batch_plain(
+            str(merged.get("reason") or ""), str(merged.get("state") or "")
+        )
         batch = merged
     runner_alive = _runner_alive()
     factory_hot = HOT.is_file()
@@ -635,7 +735,7 @@ def start_runner() -> str:
         env = os.environ.copy()
         env["PODWASH_FORGE_LOOP"] = "task_loop"
         _runner_proc = subprocess.Popen(
-            [str(SCRIPTS / "task-loop.sh"), "--no-self-heal"],
+            [str(SCRIPTS / "task-loop.sh"), "--medic-no-push"],
             cwd=str(REPO_ROOT),
             env=env,
             stdout=subprocess.DEVNULL,
@@ -750,10 +850,10 @@ main {
   display: flex; flex-direction: column; gap: 0.75rem;
   max-height: calc(100vh - 6.5rem); min-height: 0;
 }
-.station, .feed, .klaxon {
+.station, .feed, .needs-you {
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0.75rem;
 }
-.station h3, .feed h3, .klaxon h3 { margin: 0 0 0.5rem; font-size: 0.9rem; }
+.station h3, .feed h3, .needs-you h3 { margin: 0 0 0.5rem; font-size: 0.9rem; }
 .station .label {
   font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--muted); margin: 0.55rem 0 0.2rem;
@@ -779,13 +879,20 @@ main {
 .station .batch-line strong { color: var(--accent); }
 .station.running { border-color: var(--ok); }
 .station.pending { border-color: var(--accent); }
-.station.blocked, .station.orphan { border-color: var(--warn); }
+.station.blocked, .station.orphan, .station.needs_decision { border-color: var(--warn); }
 .card.active {
   border-color: var(--ok);
   box-shadow: 0 0 0 1px var(--ok);
 }
 .card .phase { font-size: 0.75rem; color: var(--ok); margin-top: 0.25rem; }
-.klaxon.on { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn); }
+.needs-you.on { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn); }
+.needs-you .fail-list { margin: 0.5rem 0; padding-left: 1.1rem; font-size: 0.8rem; }
+.needs-you .fail-list li { margin: 0.25rem 0; }
+.needs-you .consequence { color: var(--muted); font-size: 0.75rem; margin: 0.15rem 0 0.55rem; }
+.needs-you .ladder { color: var(--muted); font-size: 0.78rem; margin: 0.4rem 0; line-height: 1.35; }
+.needs-you .halted-strip { margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--line); font-size: 0.8rem; }
+.needs-you .evidence { color: var(--muted); font-size: 0.72rem; word-break: break-all; margin-top: 0.35rem; }
+.needs-you .repeat-warn { color: var(--warn); font-size: 0.78rem; margin: 0.4rem 0; }
 .feed { flex: 1; min-height: 120px; max-height: none; overflow: auto; font-size: 0.8rem; }
 .feed div { padding: 0.25rem 0; border-bottom: 1px solid var(--line); }
 .feed .ts { color: var(--muted); font-size: 0.72rem; margin-right: 0.35rem; }
@@ -882,13 +989,20 @@ main {
       <div class="label">Batch (full suite / ship)</div>
       <div class="batch-line" id="batchLine">—</div>
     </div>
-    <div class="klaxon" id="klaxon">
-      <h3>Klaxon</h3>
-      <div id="klaxonBody">All clear.</div>
-      <div class="toolbar" style="margin-top:0.5rem">
-        <button id="btnRequeue">Requeue Halted</button>
-        <button class="danger" id="btnHold">Hold-all batch</button>
-        <button id="btnQuarantine">Quarantine</button>
+    <div class="needs-you" id="needsYou">
+      <h3>Needs you</h3>
+      <div id="needsYouBody">All clear.</div>
+      <div class="toolbar" id="needsYouActions" style="margin-top:0.5rem; display:none; flex-wrap:wrap; gap:0.35rem">
+        <button class="danger" id="btnHold">Don't push</button>
+        <button id="btnRetry">Retry full suite</button>
+        <button id="btnCopy">Copy for Cursor</button>
+      </div>
+      <div class="consequence" id="needsYouHint" hidden></div>
+      <div class="halted-strip" id="haltedStrip" hidden>
+        <div id="haltedBody"></div>
+        <div class="toolbar" style="margin-top:0.35rem">
+          <button id="btnRequeue">Requeue Halted</button>
+        </div>
       </div>
     </div>
     <div class="feed">
@@ -1023,11 +1137,17 @@ function batchLabel(b, activity) {
   }
   if (!b) return "Batch · —";
   const short = (s) => (s ? String(s).slice(0, 12) : "?");
-  if (b.state === "running" || b.batch_running) {
-    return `<strong>Batch · running</strong><br/>${esc(b.plain || b.reason || "tier-3")}`;
+  if (b.state === "running" || b.state === "verifying" || b.batch_running) {
+    return `<strong>Batch · verifying</strong><br/>${esc(b.plain || b.reason || "tier-3")}`;
+  }
+  if (b.state === "needs_decision") {
+    return `<strong>Batch · needs you</strong><br/>${esc(b.plain || "decide below")}`;
+  }
+  if (b.state === "held") {
+    return `<strong>Batch · held</strong><br/>${esc(b.plain || "not pushing")}`;
   }
   if (b.state === "blocked") {
-    return `<strong>Batch · blocked</strong><br/>${esc(b.plain || "open Klaxon")}`;
+    return `<strong>Batch · needs you</strong><br/>${esc(b.plain || "decide below")}`;
   }
   if (b.state === "pending" || b.needed) {
     return `<strong>Batch · pending</strong><br/>${esc(b.plain || b.reason || "full verify needed")}`;
@@ -1097,9 +1217,11 @@ function render() {
     idleMsg = activity.detail || "Loop not running — click Start factory";
     idle.hidden = false;
     idle.textContent = idleMsg;
-  } else if (running && queuedAuto.length===0 && inProg.length===0 && !(snap.controls&&snap.controls.batch_blocked)) {
-    if (batch.state === "running" || batch.batch_running) {
+  } else if (running && queuedAuto.length===0 && inProg.length===0 && batch.state !== "needs_decision") {
+    if (batch.state === "running" || batch.state === "verifying" || batch.batch_running) {
       idleMsg = `Queue empty · full verify running (${batch.reason||"tier-3"})`;
+    } else if (batch.state === "held") {
+      idleMsg = `Queue empty · held — not pushing`;
     } else if (batch.needed) {
       idleMsg = `Queue empty · full verify pending — ${batch.reason||"needed"}`;
     } else if (batch.state === "green") {
@@ -1166,21 +1288,81 @@ function render() {
     board.appendChild(col);
   }
 
-  const k = document.getElementById("klaxon");
-  const kb = document.getElementById("klaxonBody");
-  const blocked = snap.controls && snap.controls.batch_blocked;
+  const ny = document.getElementById("needsYou");
+  const nyBody = document.getElementById("needsYouBody");
+  const nyActions = document.getElementById("needsYouActions");
+  const nyHint = document.getElementById("needsYouHint");
+  const haltedStrip = document.getElementById("haltedStrip");
+  const haltedBody = document.getElementById("haltedBody");
+  const needsDecision = batch.state === "needs_decision";
+  const held = batch.state === "held";
+  const fail = batch.failure || null;
   const halted = items.filter(i => /Halted/i.test(i.status||""));
-  if (activity.orphan) {
-    k.classList.add("on");
-    kb.textContent = "Loop died while marked hot — click Start factory to resume.";
-  } else if (blocked || halted.length) {
-    k.classList.add("on");
-    kb.textContent = blocked
-      ? "Batch blocked — choose Quarantine or Hold-all."
-      : `Halted: ${halted.map(h=>h.id).join(", ")}. Amend in Cursor if needed, then Requeue.`;
+
+  function renderNeedsYouBody() {
+    if (activity.orphan) {
+      return "Loop died while marked hot — click Start factory to resume.";
+    }
+    if (held) {
+      const sha = (batch.head_sha || "").slice(0, 12) || "HEAD";
+      return `Held at ${sha} — not pushing. Ship now or Retry to run the full suite again.`;
+    }
+    if (!needsDecision) return "All clear.";
+    const reason = (fail && fail.reason) || batch.reason || "still_red";
+    const fails = (fail && fail.failures) || [];
+    const n = fail && fail.failed != null ? fail.failed : fails.length;
+    let html = "";
+    if (reason === "verify aborted" && !fails.length) {
+      html += `<div><strong>Can't ship — verify aborted</strong></div>`;
+    } else {
+      html += `<div><strong>Can't ship — ${esc(String(n))} test(s) failed</strong></div>`;
+      if (fail && (fail.passed != null)) {
+        html += `<div class="consequence">${esc(String(fail.passed))} passed · ${esc(String(n))} failed</div>`;
+      }
+    }
+    if (fails.length) {
+      html += `<ul class="fail-list">` + fails.slice(0, 5).map(f => {
+        const id = (f && f.id) || "?";
+        const assertion = (f && f.assertion) || "";
+        return `<li><code>${esc(id)}</code>${assertion ? " — " + esc(assertion) : ""}</li>`;
+      }).join("") + `</ul>`;
+    }
+    if (fail && fail.ladder) {
+      html += `<div class="ladder">${esc(fail.ladder)}</div>`;
+    }
+    const prior = (fail && fail.prior_failures) || [];
+    const curIds = fails.map(f => f && f.id).filter(Boolean);
+    const repeat = curIds.length && prior.length && curIds.every(id => prior.includes(id));
+    if (repeat) {
+      html += `<div class="repeat-warn">Same tests failed twice — retry is unlikely to pass. Copy for Cursor and file a fix.</div>`;
+    }
+    const evidence = [];
+    if (fail && fail.bundle) evidence.push(fail.bundle);
+    if (fail && fail.output) evidence.push(fail.output);
+    if (evidence.length) {
+      html += `<div class="evidence">${evidence.map(esc).join(" · ")}</div>`;
+    }
+    return html;
+  }
+
+  nyBody.innerHTML = renderNeedsYouBody();
+  if (activity.orphan || needsDecision || held) {
+    ny.classList.add("on");
   } else {
-    k.classList.remove("on");
-    kb.textContent = "All clear.";
+    ny.classList.remove("on");
+  }
+  nyActions.style.display = needsDecision ? "flex" : "none";
+  if (needsDecision) {
+    nyHint.hidden = false;
+    nyHint.textContent = "Don't push leaves commits local. Retry reruns the full suite + one auto-fix pass (~10–15 min).";
+  } else {
+    nyHint.hidden = true;
+  }
+  if (halted.length) {
+    haltedStrip.hidden = false;
+    haltedBody.textContent = `Halted: ${halted.map(h => h.id).join(", ")}. Amend in Cursor if needed, then Requeue.`;
+  } else {
+    haltedStrip.hidden = true;
   }
 
   const feed = document.getElementById("feed");
@@ -1195,9 +1377,10 @@ function render() {
   const stationEl = document.getElementById("station");
   const mode = activity.mode || "";
   stationEl.className = "station" + (
-    mode === "orphan" || mode === "batch_blocked" ? " orphan"
-    : batch.state === "running" || batch.batch_running ? " running"
-    : batch.state === "blocked" ? " blocked"
+    mode === "orphan" || mode === "needs_decision" ? " orphan"
+    : batch.state === "verifying" || batch.state === "running" || batch.batch_running ? " running"
+    : batch.state === "needs_decision" || batch.state === "blocked" ? " blocked"
+    : batch.state === "held" ? " pending"
     : batch.needed && !activity.agents?.length ? " pending" : ""
   );
   document.getElementById("stationBeat").textContent = activity.headline
@@ -1269,10 +1452,37 @@ document.getElementById("btnPause").onclick = () => post("/api/control", {action
 document.getElementById("btnResume").onclick = () => post("/api/control", {action:"resume"});
 document.getElementById("btnShip").onclick = () => post("/api/control", {action:"ship_now"});
 document.getElementById("btnHold").onclick = () => {
-  if (confirm("Hold entire batch (no push)?")) post("/api/control", {action:"batch_hold"});
+  if (confirm("Don't push — leave commits local and idle until new work or Ship now?")) {
+    post("/api/control", {action:"batch_hold"});
+  }
 };
-document.getElementById("btnQuarantine").onclick = () => {
-  if (confirm("Quarantine offenders and retry ship?")) post("/api/control", {action:"batch_quarantine"});
+document.getElementById("btnRetry").onclick = () => {
+  if (confirm("Retry full suite? Reruns tier-3 + one auto-fix pass (~10–15 min).")) {
+    post("/api/control", {action:"batch_retry"});
+  }
+};
+document.getElementById("btnCopy").onclick = async () => {
+  const fail = (snap && snap.batch && snap.batch.failure) || {};
+  const fails = fail.failures || [];
+  const lines = [
+    "Forge batch can't ship",
+    `HEAD: ${fail.head_sha || (snap.batch && snap.batch.head_sha) || "?"}`,
+    `Reason: ${fail.reason || "still_red"}`,
+    `Passed: ${fail.passed ?? "?"}  Failed: ${fail.failed ?? fails.length}`,
+    fail.ladder ? fail.ladder : "",
+    "",
+    "Failures:",
+    ...(fails.length ? fails.map(f => `- ${(f && f.id) || "?"} — ${(f && f.assertion) || ""}`) : ["- (none listed)"]),
+    "",
+    fail.bundle ? `Bundle: ${fail.bundle}` : "",
+    fail.output ? `Output: ${fail.output}` : "Output: build/test-results/verify-output-latest.txt",
+  ].filter(Boolean).join("\n");
+  try {
+    await navigator.clipboard.writeText(lines);
+    alert("Copied failure details for Cursor.");
+  } catch (_) {
+    prompt("Copy this for Cursor:", lines);
+  }
 };
 document.getElementById("btnRequeue").onclick = () => {
   const halted = (snap.tasks||[]).find(t => /Halted/i.test(t.status||""));
@@ -1382,12 +1592,26 @@ class Handler(BaseHTTPRequestHandler):
             ctrl["mark_done_task_id"] = data.get("task_id")
             write_controls(ctrl)
         elif action == "batch_hold":
-            ctrl["batch_action"] = "hold_all"
-            ctrl["batch_blocked"] = True
+            incident = _read_batch_failure()
+            if incident:
+                incident["status"] = "acknowledged"
+                _write_batch_failure(incident)
+                msg = "held — not pushing"
+            else:
+                msg = "no open incident to hold"
             write_controls(ctrl)
-        elif action == "batch_quarantine":
-            ctrl["batch_action"] = "quarantine"
+        elif action == "batch_retry":
+            incident = _read_batch_failure()
+            if incident:
+                incident["status"] = "open"
+                _write_batch_failure(incident)
+            ctrl["ship_now"] = True
+            ctrl["paused"] = False
             write_controls(ctrl)
+            if not _runner_alive():
+                msg = start_runner()
+            else:
+                msg = "retry queued (ship_now)"
         elif action == "bump":
             bumps = ctrl.get("priority_bumps") or {}
             bumps[str(data.get("task_id"))] = data.get("priority", "P0")

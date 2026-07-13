@@ -183,8 +183,9 @@ if [ "$XCODE_ACTION" != "build-for-testing" ]; then
     echo "verify.sh: result bundle: $RESULT_BUNDLE"
 fi
 
-# Factory v3: retry only for unit-only filtered runs. UITest filters and full
-# unfiltered suites omit -retry-tests-on-failure so flakes surface to the Mechanic.
+# Factory v3: retry flaky unit failures once for filtered (tier-2) and full
+# unfiltered (tier-3) suites. UITest filters omit retries — UI flakes stay
+# visible. Tier-3 retries absorb transport/signal flakes before Mechanic/Medic.
 RETRY_FLAGS=""
 _ALL_TEST_ARGS="$ONLY_FLAGS $*"
 case "$_ALL_TEST_ARGS" in
@@ -192,11 +193,7 @@ case "$_ALL_TEST_ARGS" in
         RETRY_FLAGS=""
         ;;
     *)
-        if [ "$FILTERED" -eq 0 ]; then
-            RETRY_FLAGS=""
-        else
-            RETRY_FLAGS="-retry-tests-on-failure -test-iterations 2"
-        fi
+        RETRY_FLAGS="-retry-tests-on-failure -test-iterations 2"
         ;;
 esac
 
