@@ -30,8 +30,11 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     private nonisolated(unsafe) let player: AVPlayer
     private let title: String
     private let artist: String
-    private let nowPlayingUpdater: any NowPlayingInfoUpdating
-    private let audioSessionConfigurator: any AudioSessionConfiguring
+    /// `nonisolated(unsafe)`: released from `nonisolated deinit` without a MainActor hop
+    /// (OverlaySyncTests / PlaybackRateTests otherwise SIGABRT via swift_task_deinitOnExecutorImpl).
+    private nonisolated(unsafe) let nowPlayingUpdater: any NowPlayingInfoUpdating
+    /// `nonisolated(unsafe)`: same deinit constraint as `nowPlayingUpdater`.
+    private nonisolated(unsafe) let audioSessionConfigurator: any AudioSessionConfiguring
 
     /// Title pushed to Now Playing / CarPlay seams (Slice 15).
     var nowPlayingTitle: String { title }
@@ -60,7 +63,8 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     /// Needed because `automaticallyWaitsToMinimizeStalling = false` makes
     /// `playImmediately` a no-op if the item is not yet ready.
     private var pendingPlayWhenReady = false
-    private var itemStatusObservation: NSKeyValueObservation?
+    /// `nonisolated(unsafe)`: invalidated from `nonisolated deinit` without a MainActor hop.
+    private nonisolated(unsafe) var itemStatusObservation: NSKeyValueObservation?
 
     /// Exposed for unit tests that observe `timeControlStatus` via KVO.
     var avPlayer: AVPlayer { player }
@@ -401,6 +405,8 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     nonisolated deinit {
         onPlayPauseIntent = nil
         onSeekCompleted = nil
+        itemStatusObservation?.invalidate()
+        itemStatusObservation = nil
         if let token = skipObserverToken {
             player.removeTimeObserver(token)
             skipObserverToken = nil

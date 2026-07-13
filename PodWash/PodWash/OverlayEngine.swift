@@ -15,12 +15,14 @@ final class OverlayEngine {
     /// `nonisolated(unsafe)`: immutable after init; `deinit` must remove observers
     /// without a MainActor TaskLocal hop (test-host abort class).
     private nonisolated(unsafe) let player: AVPlayer
-    private let eventRecorder: (any OverlayEventRecording)?
+    /// `nonisolated(unsafe)`: released from `nonisolated deinit` without a MainActor hop.
+    private nonisolated(unsafe) let eventRecorder: (any OverlayEventRecording)?
     private let assetBundle: Bundle
 
     /// `nonisolated(unsafe)`: torn down from `deinit` as well as MainActor methods.
     private nonisolated(unsafe) var boundaryObserverToken: Any?
-    private var audioPlayer: AVAudioPlayer?
+    /// `nonisolated(unsafe)`: stopped/released from `nonisolated deinit`.
+    private nonisolated(unsafe) var audioPlayer: AVAudioPlayer?
     private var muteIntervals: [(start: TimeInterval, end: TimeInterval)] = []
     private var mode: MuteOverlayMode = .off
     private var assetID: String = "beep"
@@ -44,6 +46,8 @@ final class OverlayEngine {
             player.removeTimeObserver(token)
             boundaryObserverToken = nil
         }
+        audioPlayer?.stop()
+        audioPlayer = nil
     }
 
     /// Arm start/stop observers for mute intervals. Clears prior arms.

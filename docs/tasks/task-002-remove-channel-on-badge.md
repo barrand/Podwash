@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 002 |
 | **Title** | Remove redundant “Channel on” badge under Clean channel toggle |
-| **Status** | In Progress |
+| **Status** | Done |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/PodcastDetailView.swift`, `PodWash/PodWashUITests/AnalysisProgressUITests.swift` |
