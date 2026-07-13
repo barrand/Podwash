@@ -29,7 +29,7 @@ Punch-list work for Factory v3: bugs, tweaks, and Needs-human items. Features la
 | feature → slice | P3 |
 | needs-human | P2 (unless stated) |
 
-Dispatcher order: highest Priority, then lowest id. Soft controls can bump.
+Dispatcher order: **In Progress (reclaim)** first, then highest Priority among Queued/Ready, then lowest id. Soft controls can bump. Halted is never auto-started (Requeue on Floor).
 
 ## Done signal
 
@@ -39,7 +39,7 @@ Unlike slices, task Done accepts **tier-2 filtered** green:
 VERIFY RESULT: exit=0 … failed=0 skipped=0 filtered=1 … tier=2 …
 ```
 
-Full-suite (tier-3) runs at **idle drain** / **Ship now**, not per task.
+Full-suite (tier-3) runs at **idle drain** / **Ship now**, not per task. Idle drain only runs when there is no Queued/Ready work **and** no In Progress ticket (In Progress is reclaimed first). Halted tickets park the loop for Requeue — they do not trigger full verify.
 
 ## Queue brain
 

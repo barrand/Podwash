@@ -10,8 +10,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
+import threading
 import time
 from typing import Any
 
@@ -391,6 +393,27 @@ def query_next() -> dict[str, Any]:
     return json.loads(proc.stdout.strip() or "{}")
 
 
+def list_in_progress_task_ids(*, tasks_dir: str | None = None) -> list[int]:
+    """Ids currently marked In Progress (for idle-drain safety net)."""
+    from task_ticket import parse_task_ticket
+
+    root = tasks_dir or os.path.join(REPO_ROOT, "docs", "tasks")
+    if not os.path.isdir(root):
+        return []
+    out: list[int] = []
+    for name in sorted(os.listdir(root)):
+        if not name.startswith("task-") or not name.endswith(".md"):
+            continue
+        path = os.path.join(root, name)
+        try:
+            ticket = parse_task_ticket(path)
+        except (OSError, ValueError):
+            continue
+        if re.search(r"In Progress", ticket.status or "", re.I):
+            out.append(int(ticket.id))
+    return out
+
+
 def default_controls() -> dict[str, Any]:
     return {
         "running": False,
@@ -501,9 +524,7 @@ def _task_path_for_id(tid: int) -> str | None:
 
 
 def notify(title: str, body: str) -> None:
-    """macOS notification + terminal bell (best-effort)."""
-    sys.stdout.write("\a")
-    sys.stdout.flush()
+    """macOS notification only (no terminal bell — Floor/terminals stay quiet)."""
     try:
         subprocess.run(
             [
@@ -516,6 +537,53 @@ def notify(title: str, body: str) -> None:
         )
     except OSError:
         pass
+
+
+def _fmt_elapsed(seconds: float) -> str:
+    s = max(0, int(seconds))
+    if s < 60:
+        return f"{s}s"
+    return f"{s // 60}m {s % 60:02d}s"
+
+
+def _batch_verify_ticker(
+    *,
+    events: Any,
+    reason: str,
+    started: float,
+    stop: threading.Event,
+    force: bool,
+) -> None:
+    """Heartbeat + station/event progress while tier-3 verify runs (often 10–15 min)."""
+    while not stop.wait(45.0):
+        elapsed = time.time() - started
+        label = _fmt_elapsed(elapsed)
+        write_heartbeat()
+        set_station(
+            phase="FULL-VERIFY",
+            role="loop",
+            detail=f"tier-3 full suite ({reason}) — {label} elapsed",
+            batch={
+                "state": "running",
+                "needed": True,
+                "reason": reason,
+                "head_sha": head_sha(),
+                "verify_started_at": started,
+                "elapsed_s": int(elapsed),
+            },
+        )
+        try:
+            events.record(
+                "FULL-VERIFY",
+                "loop",
+                "verify_progress",
+                timeline=True,
+                mission=f"still running ({label})",
+                detail={"elapsed_s": int(elapsed), "reason": reason, "force": force},
+            )
+        except Exception:
+            pass
+        log(f"BATCH GATE: still running ({label})")
 
 
 def run_batch_gate(
@@ -587,11 +655,19 @@ def run_batch_gate(
     ctrl = read_controls()
     ctrl["batch_running"] = True
     write_controls(ctrl)
+    verify_started = time.time()
     set_station(
         phase="FULL-VERIFY",
         role="loop",
-        detail=f"tier-3 full suite ({reason})",
-        batch={"state": "running", "needed": True, "reason": reason, "head_sha": head_sha()},
+        detail=f"tier-3 full suite ({reason}) — starting",
+        batch={
+            "state": "running",
+            "needed": True,
+            "reason": reason,
+            "head_sha": head_sha(),
+            "verify_started_at": verify_started,
+            "elapsed_s": 0,
+        },
     )
     events.record(
         "FULL-VERIFY",
@@ -605,9 +681,25 @@ def run_batch_gate(
     log(f"BATCH GATE: full suite (tier 3) — {reason}")
     machine_tried: list[str] = ["tier3_retries"]
     outcome = None
+    stop_ticker = threading.Event()
+    ticker = threading.Thread(
+        target=_batch_verify_ticker,
+        kwargs={
+            "events": events,
+            "reason": reason,
+            "started": verify_started,
+            "stop": stop_ticker,
+            "force": force,
+        },
+        daemon=True,
+        name="batch-verify-ticker",
+    )
+    ticker.start()
     try:
         outcome = run_verify(REPO_ROOT, log=log, tier=3)
     finally:
+        stop_ticker.set()
+        ticker.join(timeout=2.0)
         ctrl = read_controls()
         ctrl["batch_running"] = False
         write_controls(ctrl)
@@ -622,7 +714,7 @@ def run_batch_gate(
         set_station(
             phase="batch",
             role="loop",
-            detail="verify aborted — Needs you",
+            detail="verify aborted — decide in Your move",
             batch={"state": "needs_decision", "needed": True, "reason": "verify aborted"},
         )
         notify_cant_ship(incident)
@@ -827,6 +919,24 @@ def main(argv: list[str] | None = None) -> int:
             decision = query_next()
             action = decision.get("action")
             if action == "done":
+                stuck = list_in_progress_task_ids()
+                if stuck:
+                    ids = ", ".join(f"{i:03d}" for i in stuck)
+                    log(
+                        f"idle drain blocked — In Progress still open: {ids} "
+                        "(next-task should have reclaimed; refusing FULL-VERIFY)"
+                    )
+                    set_station(
+                        phase="task",
+                        role="loop",
+                        task_id=stuck[0],
+                        detail=f"In Progress stuck: {ids} — Restart factory to reclaim",
+                    )
+                    notify(
+                        "Forge",
+                        f"In Progress stuck ({ids}) — not running full verify",
+                    )
+                    return EXIT_WAIT
                 needed, reason = batch_needed(force=False)
                 log(f"queue empty — idle drain ({reason})")
                 if args.once:
@@ -841,6 +951,12 @@ def main(argv: list[str] | None = None) -> int:
                 )
             if action == "wait":
                 log(decision.get("message", "wait"))
+                set_station(
+                    phase="paused",
+                    role="loop",
+                    detail=(decision.get("message") or "waiting")[:200],
+                    task_id=int(decision["id"]) if decision.get("id") is not None else None,
+                )
                 return EXIT_WAIT
             if action != "start":
                 log(f"unexpected action: {action}")

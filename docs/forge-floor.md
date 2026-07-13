@@ -10,7 +10,7 @@ Mission control for PodWash Factory v3. **MVP** = `forge-intake` + task board + 
 4. Watch **Now** (what's happening) and **Your move** (what you should do). OS notify on Halted, can't-ship, or Pushed
 5. Halted → **Your move** → Requeue (amend the ticket in Cursor if the spec was wrong)
 6. Can't ship (full suite still red) → **Your move** → Don't push, Retry full suite, or Copy for Cursor
-7. Idle drain runs full `scripts/verify.sh` **only when needed** (HEAD/dirty vs last green stamp; skips when incident is acknowledged), then auto-pushes — or click **Ship now** to force
+7. Idle drain runs full `scripts/verify.sh` **only when needed** (HEAD/dirty vs last green stamp; skips when incident is acknowledged) **and** the punch-list has no Queued/In Progress work — then auto-pushes — or click **Ship now** to force. Halted tickets park for Requeue first.
 8. **Pause** before hand-editing app code (factory-hot owns the tree)
 
 ## Commands

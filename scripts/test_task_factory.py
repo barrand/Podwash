@@ -145,6 +145,72 @@ class TestNextTask(unittest.TestCase):
             data = json.loads(proc.stdout)
             self.assertEqual(data["id"], 2)
 
+    def test_reclaims_in_progress_before_queued(self):
+        with tempfile.TemporaryDirectory() as td:
+            _write_task(td, 1, status="In Progress", prio="P2")
+            _write_task(td, 2, status="Queued", prio="P1")
+            env = {**os.environ, "PODWASH_TASKS_DIR": td}
+            proc = subprocess.run(
+                [NEXT_TASK, "--json"], capture_output=True, text=True, env=env
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            data = json.loads(proc.stdout)
+            self.assertEqual(data["action"], "start")
+            self.assertEqual(data["id"], 1)
+
+    def test_in_progress_blocks_done_when_nothing_queued(self):
+        with tempfile.TemporaryDirectory() as td:
+            _write_task(td, 1, status="In Progress", prio="P1")
+            env = {**os.environ, "PODWASH_TASKS_DIR": td}
+            proc = subprocess.run(
+                [NEXT_TASK, "--json"], capture_output=True, text=True, env=env
+            )
+            data = json.loads(proc.stdout)
+            self.assertEqual(data["action"], "start")
+            self.assertEqual(data["id"], 1)
+
+    def test_halted_only_parks_not_done(self):
+        with tempfile.TemporaryDirectory() as td:
+            _write_task(td, 5, status="Halted", prio="P1")
+            env = {**os.environ, "PODWASH_TASKS_DIR": td}
+            proc = subprocess.run(
+                [NEXT_TASK, "--json"], capture_output=True, text=True, env=env
+            )
+            data = json.loads(proc.stdout)
+            self.assertEqual(data["action"], "wait")
+            self.assertIn("Halted", data["message"])
+            self.assertIn("Requeue", data["message"])
+            self.assertNotEqual(data["action"], "done")
+
+
+class TestNotifyNoBell(unittest.TestCase):
+    def test_notify_omits_terminal_bell(self):
+        from io import StringIO
+        from unittest import mock
+
+        import task_loop
+
+        buf = StringIO()
+        with mock.patch.object(task_loop.sys, "stdout", buf):
+            with mock.patch.object(task_loop.subprocess, "run") as run:
+                task_loop.notify("Forge", "test body")
+        self.assertNotIn("\a", buf.getvalue())
+        run.assert_called_once()
+        argv = run.call_args[0][0]
+        self.assertEqual(argv[0], "osascript")
+
+
+class TestIdleDrainSafety(unittest.TestCase):
+    def test_list_in_progress_task_ids(self):
+        import task_loop as tl
+
+        with tempfile.TemporaryDirectory() as td:
+            _write_task(td, 1, status="In Progress")
+            _write_task(td, 2, status="Queued")
+            _write_task(td, 3, status="Halted")
+            ids = tl.list_in_progress_task_ids(tasks_dir=td)
+            self.assertEqual(ids, [1])
+
 
 class TestTaskDispatch(unittest.TestCase):
     def test_disjoint_scheduler(self):

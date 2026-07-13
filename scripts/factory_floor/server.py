@@ -1731,7 +1731,17 @@ function render() {
   );
   document.getElementById("stationBeat").textContent = activity.headline
     || "Shift quiet — no workers on the floor yet.";
-  document.getElementById("stationSub").textContent = activity.detail || "";
+  let subText = activity.detail || "";
+  const verifyStarted = batch.verify_started_at != null ? Number(batch.verify_started_at) : null;
+  if ((mode === "batch" || batch.state === "verifying" || batch.batch_running) && verifyStarted) {
+    const elapsed = Math.max(0, Math.floor(Date.now() / 1000 - verifyStarted));
+    const label = elapsed < 60
+      ? (elapsed + "s")
+      : (Math.floor(elapsed / 60) + "m " + String(elapsed % 60).padStart(2, "0") + "s");
+    subText = subText.replace(/\s*—\s*[\dm\s:]+s?\s*elapsed/i, "").replace(/\s*—\s*starting$/i, "");
+    subText = (subText ? subText + " — " : "") + label + " elapsed";
+  }
+  document.getElementById("stationSub").textContent = subText;
   document.getElementById("batchLine").innerHTML = batchLabel(batch, activity);
 
   const freshEl = document.getElementById("stationFresh");

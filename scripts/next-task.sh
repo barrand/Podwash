@@ -141,6 +141,25 @@ END {
     for (k in ids) arr[++n]=k+0
     for (i=1; i<=n; i++) for (j=i+1; j<=n; j++) if (arr[i] > arr[j]) { t=arr[i]; arr[i]=arr[j]; arr[j]=t }
 
+    # Pass A: reclaim In Progress before offering Queued (never idle-drain past stuck work)
+    candidate=-1
+    for (pass = 0; pass <= 3; pass++) {
+        for (i=1; i<=n; i++) {
+            id=arr[i]
+            if (needs_human[id]) continue
+            if (status[id] !~ /^In Progress/) continue
+            if (prio_rank(prio[id]) != pass) continue
+            candidate=id
+            break
+        }
+        if (candidate >= 0) break
+    }
+    if (candidate >= 0) {
+        id=candidate
+        printf "start\t%d\t%s\t%s\t\t%s\t%s\t%s\n", id, file[id], title[id], prio[id], kind[id], area[id]
+        exit
+    }
+
     candidate=-1
     lowest_blocked=-1
     blocked_miss=""
@@ -149,8 +168,7 @@ END {
             id=arr[i]
             if (done_[id]) continue
             if (needs_human[id]) continue
-            if (!(status[id] ~ /^Queued/ || status[id] == "Ready" || status[id] ~ /^Halted/)) continue
-            if (status[id] ~ /^Halted/) continue
+            if (!(status[id] ~ /^Queued/ || status[id] == "Ready")) continue
             if (prio_rank(prio[id]) != pass) continue
             ok=1
             miss=""
@@ -166,6 +184,21 @@ END {
     }
 
     if (candidate < 0) {
+        # Halted open work — park for Requeue; do not report done (idle-drain FULL-VERIFY)
+        halted_first=-1
+        halted_ids=""
+        for (i=1; i<=n; i++) {
+            id=arr[i]
+            if (status[id] ~ /^Halted/) {
+                if (halted_first < 0) halted_first=id
+                halted_ids = halted_ids " " id
+            }
+        }
+        if (halted_first >= 0) {
+            gsub(/^ +/, "", halted_ids)
+            printf "park\t%d\t%s\t%s\t%s\t%s\t%s\t%s\n", halted_first, file[halted_first], title[halted_first], halted_ids, prio[halted_first], kind[halted_first], area[halted_first]
+            exit
+        }
         any_open=0
         for (i=1; i<=n; i++) {
             id=arr[i]
@@ -230,6 +263,10 @@ if [ "$MODE" = json ]; then
             for d in $REXTRA; do arr="${arr:+$arr,}$d"; done
             printf '{"action":"wait","id":%d,"blocked_by":[%s],"message":"Task %03d waiting on task(s) %s"}\n' "$RID" "$arr" "$RID" "$REXTRA"
             ;;
+        park)
+            printf '{"action":"wait","id":%d,"blocked_by":[],"message":"Halted task(s) %s need Requeue — not idle-draining to full verify"}\n' \
+                "$RID" "$(json_escape "$REXTRA")"
+            ;;
         done)
             printf '{"action":"done","message":"No eligible automatable tasks remaining"}\n'
             ;;
@@ -246,6 +283,9 @@ case "$ACTION" in
         ;;
     wait)
         printf 'WAIT — Task %03d blocked by: %s\n' "$RID" "$REXTRA"
+        ;;
+    park)
+        printf 'WAIT — Halted task(s) %s need Requeue before idle drain / full verify\n' "$REXTRA"
         ;;
     done)
         printf 'DONE — no eligible automatable tasks remaining.\n'
