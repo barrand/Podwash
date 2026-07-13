@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 008 |
 | **Title** | Visible build datestamp in Settings |
-| **Status** | Queued |
+| **Status** | In Progress |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/SettingsView.swift`, new small build-stamp helper (e.g. `BuildStamp.swift`), Xcode build-phase / Info.plist key as needed, `PodWash/PodWashUITests/SettingsUITests.swift`, `PodWash/PodWashTests/` (formatter unit test) |
@@ -58,5 +58,5 @@
 > Loop writes `VERIFY RESULT:` here. For tasks, `tier=2` and `filtered=1` are valid for Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=3 passed=3 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260713-170606.xcresult tier=2 class=tests
 ```

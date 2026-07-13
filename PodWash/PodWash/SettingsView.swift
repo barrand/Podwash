@@ -35,6 +35,7 @@ struct SettingsView: View {
                     wordCategoriesSection
                     customWordsSection
                     episodeBehaviorSection
+                    buildStampSection
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
@@ -293,6 +294,22 @@ struct SettingsView: View {
             .accessibilityLabel("Auto-delete after played")
             .accessibilityValue(store.autoDeleteAfterPlayedEnabled ? "1" : "0")
         }
+    }
+
+    private var buildStampSection: some View {
+        HStack {
+            Text("Build")
+            Spacer()
+            Text(BuildStamp.bundled)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityElement(children: .ignore)
+        .accessibilityIdentifier("buildStamp")
+        .accessibilityLabel("Build")
+        .accessibilityValue(BuildStamp.bundled)
     }
 
     // MARK: - Actions

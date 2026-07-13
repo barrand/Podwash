@@ -166,6 +166,7 @@
 				E3E16DCD2FFF1BCC00E398A5 /* Frameworks */,
 				E3E16DCE2FFF1BCC00E398A5 /* Resources */,
 				AC2400000000000000000001 /* Copy Bundled Whisper Model */,
+				AC0800000000000000000001 /* Inject Build Stamp */,
 			);
 			buildRules = (
 			);
@@ -312,6 +313,25 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		AC0800000000000000000001 /* Inject Build Stamp */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Inject Build Stamp";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/../scripts/inject-build-stamp.sh\"\n";
+		};
 		AC2400000000000000000001 /* Copy Bundled Whisper Model */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;

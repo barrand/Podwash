@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 007 |
 | **Title** | Device episode download still fails (silent) |
-| **Status** | In Progress |
+| **Status** | Done |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/DownloadManager.swift`, `PodWash/PodWashTests/DownloadManagerTests.swift` |
