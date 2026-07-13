@@ -307,6 +307,12 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
                 if (error as? URLError)?.code == .cancelled, activeDownloads[episodeID] == nil {
                     return
                 }
+                // `didFinishDownloadingTo` may have already moved the sandbox file while
+                // `activeDownloads` still awaits `completeDownload` — a late transport
+                // error on device must not delete the `.m4a` or flip UI to `.failed`.
+                if localFileURL(for: episodeID) != nil {
+                    return
+                }
                 failDownload(episodeID: episodeID, error: error)
             }
         }
