@@ -53,9 +53,11 @@ final class AnalysisTimelineBarView: UIView {
         stack.isAccessibilityElement = false
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
+        let stackTrailing = stack.trailingAnchor.constraint(equalTo: trailingAnchor)
+        stackTrailing.priority = UILayoutPriority(999)
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stackTrailing,
             stack.topAnchor.constraint(equalTo: topAnchor),
             stack.bottomAnchor.constraint(equalTo: bottomAnchor),
             heightAnchor.constraint(equalToConstant: 8),

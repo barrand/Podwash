@@ -148,7 +148,7 @@ private final class EpisodeTableViewController: UITableViewController {
             refreshAnalysisDisplayOnVisibleRows()
             refreshQueueDisplayOnVisibleRows()
         }
-        tableView.layoutIfNeeded()
+        layoutEpisodeTableIfReady()
     }
 
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
@@ -174,7 +174,7 @@ private final class EpisodeTableViewController: UITableViewController {
                 index: indexPath.row
             )
         }
-        tableView.layoutIfNeeded()
+        layoutEpisodeTableIfReady()
         UIAccessibility.post(notification: .layoutChanged, argument: nil)
     }
 
@@ -196,8 +196,15 @@ private final class EpisodeTableViewController: UITableViewController {
                 episodeID: episode.id
             )
         }
-        tableView.layoutIfNeeded()
+        layoutEpisodeTableIfReady()
         UIAccessibility.post(notification: .layoutChanged, argument: nil)
+    }
+
+    /// Avoids UITableView layout-outside-hierarchy warnings and zero-width constraint
+    /// recoveries while SwiftUI is still embedding the representable.
+    private func layoutEpisodeTableIfReady() {
+        guard tableView.window != nil, tableView.bounds.width > 0 else { return }
+        tableView.layoutIfNeeded()
     }
 
     private func queueAddHandler(for indexPath: IndexPath) -> () -> Void {
@@ -329,8 +336,11 @@ private final class EpisodeTableViewController: UITableViewController {
     }
 }
 
-private final class EpisodeTableViewCell: UITableViewCell {
+final class EpisodeTableViewCell: UITableViewCell {
     static let reuseID = "episode"
+
+    /// Horizontal pins that can yield during UITableView's transient zero-width pass.
+    private static let deferredHorizontalPriority = UILayoutPriority(999)
 
     private let titleLabel = UILabel()
     private let dateLabel = UILabel()
@@ -352,6 +362,13 @@ private final class EpisodeTableViewCell: UITableViewCell {
     private var onPlay: (() -> Void)?
     private var rowIndex: Int = 0
     private var cellAccessibilityValue: String?
+    private var layoutTestingWidthConstraint: NSLayoutConstraint?
+    private var downloadWidthConstraint: NSLayoutConstraint!
+    private var queueAddWidthConstraint: NSLayoutConstraint!
+    private var textLeadingConstraint: NSLayoutConstraint!
+    private var textTrailingConstraint: NSLayoutConstraint!
+    private var accessoryTrailingConstraint: NSLayoutConstraint!
+    private var timelineTrailingConstraint: NSLayoutConstraint!
 
     override var accessibilityValue: String? {
         get { cellAccessibilityValue }
@@ -402,9 +419,12 @@ private final class EpisodeTableViewCell: UITableViewCell {
         progressAccessibilityHost.isUserInteractionEnabled = false
         progressAccessibilityHost.addSubview(timelineBar)
         timelineBar.translatesAutoresizingMaskIntoConstraints = false
+        let timelineTrailing = timelineBar.trailingAnchor.constraint(equalTo: progressAccessibilityHost.trailingAnchor)
+        timelineTrailing.priority = Self.deferredHorizontalPriority
+        timelineTrailingConstraint = timelineTrailing
         NSLayoutConstraint.activate([
             timelineBar.leadingAnchor.constraint(equalTo: progressAccessibilityHost.leadingAnchor),
-            timelineBar.trailingAnchor.constraint(equalTo: progressAccessibilityHost.trailingAnchor),
+            timelineTrailing,
             timelineBar.topAnchor.constraint(equalTo: progressAccessibilityHost.topAnchor, constant: 4),
             timelineBar.bottomAnchor.constraint(equalTo: progressAccessibilityHost.bottomAnchor, constant: -4),
             progressAccessibilityHost.heightAnchor.constraint(greaterThanOrEqualToConstant: 16),
@@ -462,9 +482,12 @@ private final class EpisodeTableViewCell: UITableViewCell {
         // "Add to queue" instead of starting playback (Library mini-player miss).
         downloadButton.translatesAutoresizingMaskIntoConstraints = false
         downloadButton.setContentHuggingPriority(.required, for: .horizontal)
-        downloadButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+        downloadButton.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        let downloadWidth = downloadButton.widthAnchor.constraint(equalToConstant: 44)
+        downloadWidth.priority = Self.deferredHorizontalPriority
+        downloadWidthConstraint = downloadWidth
         NSLayoutConstraint.activate([
-            downloadButton.widthAnchor.constraint(equalToConstant: 44),
+            downloadWidth,
             downloadButton.heightAnchor.constraint(equalToConstant: 44),
         ])
 
@@ -478,9 +501,12 @@ private final class EpisodeTableViewCell: UITableViewCell {
         )
         queueAddButton.translatesAutoresizingMaskIntoConstraints = false
         queueAddButton.setContentHuggingPriority(.required, for: .horizontal)
-        queueAddButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+        queueAddButton.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        let queueAddWidth = queueAddButton.widthAnchor.constraint(equalToConstant: 44)
+        queueAddWidth.priority = Self.deferredHorizontalPriority
+        queueAddWidthConstraint = queueAddWidth
         NSLayoutConstraint.activate([
-            queueAddButton.widthAnchor.constraint(equalToConstant: 44),
+            queueAddWidth,
             queueAddButton.heightAnchor.constraint(equalToConstant: 44),
         ])
 
@@ -495,7 +521,7 @@ private final class EpisodeTableViewCell: UITableViewCell {
         accessoryStack.addArrangedSubview(cleaningSwitch)
         accessoryStack.translatesAutoresizingMaskIntoConstraints = false
         accessoryStack.setContentHuggingPriority(.required, for: .horizontal)
-        accessoryStack.setContentCompressionResistancePriority(.required, for: .horizontal)
+        accessoryStack.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
 
         // Pin accessories in contentView (not UITableView's accessoryView) so SwiftUI
         // representable layout passes position controls on the trailing edge, not over titles.
@@ -503,13 +529,22 @@ private final class EpisodeTableViewCell: UITableViewCell {
         contentView.addSubview(accessoryStack)
         textStack.translatesAutoresizingMaskIntoConstraints = false
         textStack.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let textLeading = textStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16)
+        let textTrailing = textStack.trailingAnchor.constraint(equalTo: accessoryStack.leadingAnchor, constant: -8)
+        let accessoryTrailing = accessoryStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16)
+        textLeading.priority = Self.deferredHorizontalPriority
+        textTrailing.priority = Self.deferredHorizontalPriority
+        accessoryTrailing.priority = Self.deferredHorizontalPriority
+        textLeadingConstraint = textLeading
+        textTrailingConstraint = textTrailing
+        accessoryTrailingConstraint = accessoryTrailing
         NSLayoutConstraint.activate([
-            textStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            textLeading,
             textStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
             textStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
-            textStack.trailingAnchor.constraint(equalTo: accessoryStack.leadingAnchor, constant: -8),
+            textTrailing,
 
-            accessoryStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            accessoryTrailing,
             accessoryStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
             accessoryStack.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
 
@@ -529,6 +564,29 @@ private final class EpisodeTableViewCell: UITableViewCell {
             showsDownloadProgress: false,
             showsBadge: false
         )
+    }
+
+    override func updateConstraints() {
+        updateHorizontalConstraintPriorities()
+        super.updateConstraints()
+    }
+
+    /// Tighten horizontal pins once the cell has a real width; defer during UITableView's
+    /// transient zero-width SwiftUI embed pass so Auto Layout does not recover loudly.
+    private func updateHorizontalConstraintPriorities() {
+        let tight = contentView.bounds.width > 1
+        let priority: UILayoutPriority = tight ? .required : Self.deferredHorizontalPriority
+        downloadWidthConstraint.priority = priority
+        queueAddWidthConstraint.priority = priority
+        textLeadingConstraint.priority = priority
+        textTrailingConstraint.priority = priority
+        accessoryTrailingConstraint.priority = priority
+        timelineTrailingConstraint.priority = priority
+
+        let compression: UILayoutPriority = tight ? .required : .defaultHigh
+        downloadButton.setContentCompressionResistancePriority(compression, for: .horizontal)
+        queueAddButton.setContentCompressionResistancePriority(compression, for: .horizontal)
+        accessoryStack.setContentCompressionResistancePriority(compression, for: .horizontal)
     }
 
     func configure(
@@ -835,6 +893,83 @@ private final class EpisodeTableViewCell: UITableViewCell {
             return textStack
         }
         return super.hitTest(point, with: event)
+    }
+
+    // MARK: - Layout testing (Task 006)
+
+    func layoutTesting_applyContentWidth(_ width: CGFloat) {
+        let height: CGFloat = 140
+        bounds = CGRect(x: 0, y: 0, width: width, height: height)
+        contentView.bounds = CGRect(x: 0, y: 0, width: width, height: height)
+
+        layoutTestingWidthConstraint?.isActive = false
+        let widthConstraint = contentView.widthAnchor.constraint(equalToConstant: width)
+        widthConstraint.priority = .required
+        widthConstraint.isActive = true
+        layoutTestingWidthConstraint = widthConstraint
+
+        setNeedsUpdateConstraints()
+        updateConstraintsIfNeeded()
+        setNeedsLayout()
+        layoutIfNeeded()
+    }
+
+    var layoutTesting_textStack: UIStackView { textStack }
+    var layoutTesting_accessoryStack: UIStackView { accessoryStack }
+    var layoutTesting_queueAddButton: UIButton { queueAddButton }
+    var layoutTesting_downloadButton: UIButton { downloadButton }
+    var layoutTesting_timelineHost: UIView { progressAccessibilityHost }
+    var layoutTesting_timelineBar: AnalysisTimelineBarView { timelineBar }
+}
+
+enum EpisodeTableViewCellLayoutTesting {
+    static func makeConfiguredCell(
+        episode: Episode,
+        index: Int,
+        analysisViewModel: AnalysisUIViewModel,
+        downloadManager: DownloadManager,
+        isQueued: Bool
+    ) -> EpisodeTableViewCell {
+        let cell = EpisodeTableViewCell(style: .default, reuseIdentifier: EpisodeTableViewCell.reuseID)
+        cell.configure(
+            episode: episode,
+            index: index,
+            analysisViewModel: analysisViewModel,
+            downloadManager: downloadManager,
+            isQueued: isQueued,
+            onToggle: { _ in },
+            onDownload: {},
+            onQueueAdd: {}
+        )
+        return cell
+    }
+
+    static func layoutAtContentWidth(_ width: CGFloat, cell: EpisodeTableViewCell) {
+        cell.layoutTesting_applyContentWidth(width)
+    }
+
+    static func queueAddButton(in cell: EpisodeTableViewCell) -> UIButton {
+        cell.layoutTesting_queueAddButton
+    }
+
+    static func downloadButton(in cell: EpisodeTableViewCell) -> UIButton {
+        cell.layoutTesting_downloadButton
+    }
+
+    static func textStack(in cell: EpisodeTableViewCell) -> UIStackView {
+        cell.layoutTesting_textStack
+    }
+
+    static func accessoryStack(in cell: EpisodeTableViewCell) -> UIStackView {
+        cell.layoutTesting_accessoryStack
+    }
+
+    static func timelineHost(in cell: EpisodeTableViewCell) -> UIView {
+        cell.layoutTesting_timelineHost
+    }
+
+    static func timelineBar(in cell: EpisodeTableViewCell) -> AnalysisTimelineBarView {
+        cell.layoutTesting_timelineBar
     }
 }
 
