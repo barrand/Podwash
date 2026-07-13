@@ -3,6 +3,7 @@
 //  PodWashTests
 //
 //  Slice 16 — Beep/quack overlay sync + offline energy (ADR-017). AC1–AC5.
+//  Task-004 — overlay AVAudioPlayer silent under XCTest (volume 0).
 //
 //  Fixture provenance:
 //  - Episode: `sine-300hz-5s.wav` (Slice 04; see Fixtures/audio/sine-300hz-5s.provenance.md).
@@ -209,6 +210,56 @@ final class OverlaySyncTests: XCTestCase {
         engine.play()
         await waitUntilPastLastBoundary(engine: engine, lastEnd: 3.4)
         engine.pause()
+    }
+
+    /// Task-004 AC1: while overlay is active under XCTest, `AVAudioPlayer.volume` is 0
+    /// (or a silent injectable double with no audible output).
+    private func assertOverlayPlayerSilentWhenActive(
+        mode: MuteOverlayMode,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        let recorder = OverlayEventRecorder()
+        let singleInterval: [(start: TimeInterval, end: TimeInterval)] = [
+            (pinnedMuteIntervals[0].start, pinnedMuteIntervals[0].end),
+        ]
+        let engine = makeTestEngine(title: "Silent \(mode.rawValue)")
+        await waitForEngineReady(engine)
+
+        let censor = singleInterval.map {
+            CensorInterval(start: $0.start, end: $0.end, action: .mute)
+        }
+        await engine.applySchedule(IntervalSchedule(intervals: censor))
+
+        let overlay = makeOverlayEngine(on: engine, recorder: recorder)
+        overlay.apply(muteIntervals: singleInterval, mode: mode)
+
+        addTeardownBlock {
+            overlay.reset()
+            engine.pause()
+        }
+
+        engine.play()
+        await waitUntilPlayhead(singleInterval[0].start + 0.05, engine: engine)
+
+        XCTAssertGreaterThan(
+            recorder.startEvents.count, 0,
+            "\(mode.rawValue): overlay must start before volume assert",
+            file: file, line: line
+        )
+        XCTAssertEqual(
+            overlay.overlayPlayerVolumeForTesting, 0.0, accuracy: 0.0001,
+            "\(mode.rawValue): overlay AVAudioPlayer.volume must be 0 under XCTest",
+            file: file, line: line
+        )
+        engine.pause()
+    }
+
+    // MARK: - Task-004 AC1: overlay player silent under XCTest
+
+    func testOverlayPlayerSilentUnderXCTest() async throws {
+        try await assertOverlayPlayerSilentWhenActive(mode: .beep)
+        try await assertOverlayPlayerSilentWhenActive(mode: .quack)
     }
 
     // MARK: - AC1: overlay start sync
