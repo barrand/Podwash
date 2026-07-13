@@ -79,6 +79,107 @@ def parse_meta(path: Path) -> dict[str, str]:
     return meta
 
 
+def _md_section(text: str, *headings: str) -> str:
+    """Return body under the first matching ## heading (case-insensitive)."""
+    for heading in headings:
+        m = re.search(
+            rf"^##\s+{re.escape(heading)}\s*$",
+            text,
+            re.MULTILINE | re.IGNORECASE,
+        )
+        if not m:
+            continue
+        start = m.end()
+        n = re.search(r"^##\s+", text[start:], re.MULTILINE)
+        end = start + n.start() if n else len(text)
+        return text[start:end].strip()
+    return ""
+
+
+def _checklist_items(section: str) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for line in section.splitlines():
+        m = re.match(r"^[-*]\s+\[([ xX])\]\s+(.*)$", line.strip())
+        if m:
+            items.append({"done": m.group(1).lower() == "x", "text": m.group(2).strip()})
+            continue
+        m2 = re.match(r"^[-*]\s+(\d+\.\s+.+)$", line.strip())
+        if m2:
+            items.append({"done": False, "text": m2.group(1).strip()})
+    return items
+
+
+def _plain_bullets(section: str) -> list[str]:
+    out: list[str] = []
+    for line in section.splitlines():
+        s = line.strip()
+        if s.startswith("- ") or s.startswith("* "):
+            out.append(s[2:].strip())
+    return out
+
+
+def _safe_ticket_path(rel: str) -> Path | None:
+    """Resolve a docs/tasks or docs/slices path under the repo; reject traversal."""
+    if not rel or ".." in rel or rel.startswith("/"):
+        return None
+    if not (rel.startswith("docs/tasks/") or rel.startswith("docs/slices/")):
+        return None
+    path = (REPO_ROOT / rel).resolve()
+    try:
+        path.relative_to(REPO_ROOT.resolve())
+    except ValueError:
+        return None
+    if not path.is_file():
+        return None
+    return path
+
+
+def ticket_detail(rel_path: str) -> dict[str, Any] | None:
+    """Human-readable ticket payload for the Floor drawer."""
+    path = _safe_ticket_path(rel_path)
+    if path is None:
+        return None
+    text = path.read_text(encoding="utf-8")
+    meta = parse_meta(path)
+    item_type = "task" if path.parent.name == "tasks" else "slice"
+
+    crux = meta.get("Crux", "")
+    outcome = _md_section(text, "Outcome", "Goal")
+    ac_sec = _md_section(text, "Acceptance criteria")
+    oos = _md_section(text, "Out of scope", "Out-of-scope")
+    tests_sec = _md_section(text, "Surgical test scope", "Verification mapping")
+    human = _md_section(text, "Human checklist")
+    depends = _md_section(text, "Depends on")
+    auth = _md_section(text, "Authorized test changes")
+    verify = _md_section(text, "Verification record", "Verification record (QA fills at Verify)")
+
+    verify_line = ""
+    vm = re.search(r"^VERIFY RESULT:\s*(.+)$", text, re.MULTILINE | re.IGNORECASE)
+    if vm:
+        verify_line = vm.group(0).strip()
+
+    return {
+        "type": item_type,
+        "path": str(path.relative_to(REPO_ROOT)),
+        "id": meta.get("ID", path.stem),
+        "title": meta.get("Title", path.stem),
+        "status": meta.get("Status", ""),
+        "kind": meta.get("Kind", item_type),
+        "priority": meta.get("Priority", ""),
+        "area": meta.get("Area", ""),
+        "crux": crux,
+        "outcome": outcome,
+        "acceptance": _checklist_items(ac_sec) or _plain_bullets(ac_sec),
+        "out_of_scope": _plain_bullets(oos),
+        "tests": tests_sec,
+        "authorized_test_changes": _plain_bullets(auth),
+        "depends_on": _plain_bullets(depends) or ([depends] if depends else []),
+        "human_checklist": _checklist_items(human),
+        "verify_result": verify_line,
+        "verification": verify,
+    }
+
+
 def _read_json_file(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}
@@ -89,14 +190,18 @@ def _read_json_file(path: Path) -> dict[str, Any]:
         return {}
 
 
-def _verify_running() -> bool:
-    """Best-effort: xcodebuild test or verify.sh alive under this repo."""
+def _ps_commands() -> list[str]:
     try:
         out = subprocess.check_output(["ps", "-ax", "-o", "command="], text=True)
     except (OSError, subprocess.CalledProcessError):
-        return False
+        return []
+    return out.splitlines()
+
+
+def _verify_running() -> bool:
+    """Best-effort: xcodebuild test or verify.sh alive under this repo."""
     root = str(REPO_ROOT)
-    for line in out.splitlines():
+    for line in _ps_commands():
         if "xcodebuild" in line and "test" in line and ("PodWash" in line or root in line):
             return True
         if "verify.sh" in line and root in line:
@@ -104,27 +209,317 @@ def _verify_running() -> bool:
     return False
 
 
+def _runner_alive() -> bool:
+    """True when the Floor-spawned or any task-loop process is live for this repo."""
+    global _runner_proc
+    with _runner_lock:
+        if _runner_proc is not None and _runner_proc.poll() is None:
+            return True
+    root = str(REPO_ROOT)
+    for line in _ps_commands():
+        if "task_loop.py" in line or "task-loop.sh" in line:
+            if root in line or "PodWash" in line or "task_loop" in line:
+                return True
+    return False
+
+
+def _batch_plain(reason: str, state: str) -> str:
+    """Human-readable batch gate copy — not agent status."""
+    r = (reason or "").strip()
+    mapping = {
+        "never verified": (
+            "No full-suite green stamp yet. After the punch-list queue empties, "
+            "the loop runs the full test suite (tier-3) and pushes if green."
+        ),
+        "HEAD moved": "Commits landed since the last green full suite — a batch verify is queued for idle drain.",
+        "dirty tree": "Uncommitted changes in the tree — full suite needed before ship.",
+        "ship_now": "Ship now requested — full suite will run next.",
+        "not needed": "Full suite already green at this commit — nothing to batch-verify.",
+        "skipped": "Batch gate skipped for this session.",
+        "unavailable": "Batch status unavailable (task_loop import failed).",
+        "still_red": "Full suite still red after Mechanic — decide in Klaxon.",
+        "verified": "Last full suite was green.",
+        "mechanic_retry": "Re-running full suite after Mechanic.",
+    }
+    if state == "running":
+        return f"Full suite is running now ({r or 'tier-3'})."
+    if state == "blocked":
+        return mapping.get(r, f"Batch blocked ({r or 'red'}). Open Klaxon.")
+    if state == "green" and not r:
+        return mapping["verified"]
+    return mapping.get(r, f"Batch: {r or state or 'idle'}.")
+
+
+def _fmt_task_id(task_id: Any) -> str:
+    if task_id is None or task_id == "":
+        return ""
+    try:
+        return f"task-{int(task_id):03d}"
+    except (TypeError, ValueError):
+        s = str(task_id)
+        if s.isdigit():
+            return f"task-{int(s):03d}"
+        return s if s.startswith("task-") else f"task-{s}"
+
+
+def _activity_snapshot(
+    *,
+    ctrl: dict[str, Any],
+    station: dict[str, Any],
+    batch: dict[str, Any],
+    tasks: list[dict[str, Any]],
+    events: list[dict[str, Any]],
+    factory_hot: bool,
+    runner_alive: bool,
+) -> dict[str, Any]:
+    """Plain-English Now / agents / next for the Stations panel."""
+    paused = bool(ctrl.get("paused"))
+    marked_running = bool(ctrl.get("running")) or factory_hot
+    in_prog = [t for t in tasks if re.search(r"In Progress", t.get("status") or "", re.I)]
+    halted = [t for t in tasks if re.search(r"Halted", t.get("status") or "", re.I)]
+    queued = [
+        t
+        for t in tasks
+        if re.search(r"Queued|Ready|Draft", t.get("status") or "", re.I)
+        and not re.search(r"needs-human", t.get("kind") or "", re.I)
+    ]
+    needs_human = [
+        t
+        for t in tasks
+        if re.search(r"Needs-human", t.get("status") or "", re.I)
+        or re.search(r"needs-human", t.get("kind") or "", re.I)
+    ]
+
+    agents: list[dict[str, str]] = []
+    phase = str(station.get("phase") or "").strip()
+    role = str(station.get("role") or "").strip()
+    detail = str(station.get("detail") or station.get("mission") or "").strip()
+    tid = _fmt_task_id(station.get("task_id"))
+    mission = str(station.get("mission") or "").strip()
+
+    if phase and role:
+        agents.append(
+            {
+                "role": role,
+                "task": tid,
+                "phase": phase,
+                "doing": detail or mission or phase,
+            }
+        )
+
+    # Recent event hint when station is thin
+    last_ev = events[-1] if events else {}
+    ev_role = str(last_ev.get("role") or last_ev.get("agent_name") or "").strip()
+    ev_phase = str(last_ev.get("phase") or "").strip()
+    ev_event = str(last_ev.get("event") or "").strip()
+
+    batch_plain = _batch_plain(str(batch.get("reason") or ""), str(batch.get("state") or ""))
+    orphan = marked_running and not runner_alive and not bool(ctrl.get("batch_running"))
+
+    if orphan:
+        stuck = ", ".join(_fmt_task_id(t.get("id")) or str(t.get("id")) for t in in_prog) or "none"
+        return {
+            "mode": "orphan",
+            "headline": "Loop not running",
+            "detail": (
+                f"UI says hot, but no task-loop process is alive. "
+                f"In Progress stuck: {stuck}."
+            ),
+            "agents": agents,
+            "next": "Click Start factory to resume. Or Pause then hand-edit if you meant to reclaim the tree.",
+            "batch_plain": batch_plain,
+            "orphan": True,
+            "runner_alive": False,
+        }
+
+    if paused:
+        return {
+            "mode": "paused",
+            "headline": "Paused",
+            "detail": "Agents are idle until you Resume.",
+            "agents": agents,
+            "next": "Click Resume to continue, or Stop to end the shift.",
+            "batch_plain": batch_plain,
+            "orphan": False,
+            "runner_alive": runner_alive,
+        }
+
+    if not marked_running and not runner_alive:
+        if halted:
+            return {
+                "mode": "stopped",
+                "headline": "Factory stopped",
+                "detail": f"Halted: {', '.join(str(t.get('id')) for t in halted)}.",
+                "agents": [],
+                "next": "Amend the ticket in Cursor if needed, Start factory, then Requeue from Klaxon.",
+                "batch_plain": batch_plain,
+                "orphan": False,
+                "runner_alive": False,
+            }
+        if needs_human:
+            return {
+                "mode": "stopped",
+                "headline": "Factory stopped",
+                "detail": "Needs-human tickets are waiting.",
+                "agents": [],
+                "next": "Handle Needs-human in Cursor, then Start factory.",
+                "batch_plain": batch_plain,
+                "orphan": False,
+                "runner_alive": False,
+            }
+        if queued or in_prog:
+            return {
+                "mode": "stopped",
+                "headline": "Factory stopped",
+                "detail": f"{len(queued)} queued, {len(in_prog)} in progress — no workers.",
+                "agents": [],
+                "next": "Click Start factory.",
+                "batch_plain": batch_plain,
+                "orphan": False,
+                "runner_alive": False,
+            }
+        return {
+            "mode": "idle",
+            "headline": "Shift quiet",
+            "detail": "No workers on the floor.",
+            "agents": [],
+            "next": "Queue work with forge-intake in Cursor, then Start factory.",
+            "batch_plain": batch_plain,
+            "orphan": False,
+            "runner_alive": False,
+        }
+
+    # Live / claimed running
+    if batch.get("state") == "blocked" or ctrl.get("batch_blocked"):
+        return {
+            "mode": "batch_blocked",
+            "headline": "Batch blocked",
+            "detail": "Full suite still red — factory needs a human decision.",
+            "agents": agents,
+            "next": "Open Klaxon: Quarantine offenders or Hold-all (no push).",
+            "batch_plain": batch_plain,
+            "orphan": False,
+            "runner_alive": runner_alive,
+        }
+
+    if batch.get("state") == "running" or ctrl.get("batch_running"):
+        return {
+            "mode": "batch",
+            "headline": "FULL-VERIFY · loop",
+            "detail": detail or f"Running full suite ({batch.get('reason') or 'tier-3'}).",
+            "agents": agents
+            or [{"role": "loop", "task": "", "phase": "FULL-VERIFY", "doing": "tier-3 full suite"}],
+            "next": "Wait — no action needed unless it fails (Klaxon will light up).",
+            "batch_plain": batch_plain,
+            "orphan": False,
+            "runner_alive": runner_alive,
+        }
+
+    if agents:
+        who = agents[0]
+        label = f"{who['phase']} · {who['role']}"
+        if who.get("task"):
+            label += f" · {who['task']}"
+        nxt = "Nothing — agents are working. Watch the active card and event feed."
+        if phase.lower() in ("halted",):
+            nxt = "Amend ticket in Cursor if needed, then Requeue from Klaxon."
+        return {
+            "mode": "working",
+            "headline": label,
+            "detail": who.get("doing") or mission or detail,
+            "agents": agents,
+            "next": nxt,
+            "batch_plain": batch_plain,
+            "orphan": False,
+            "runner_alive": runner_alive,
+        }
+
+    if in_prog:
+        t0 = in_prog[0]
+        hint = ""
+        if ev_role or ev_event:
+            hint = f" Last event: {ev_phase} {ev_role} {ev_event}".strip()
+        return {
+            "mode": "working",
+            "headline": f"In Progress · {_fmt_task_id(t0.get('id')) or t0.get('id')}",
+            "detail": (t0.get("title") or "") + ("." if hint else "") + hint,
+            "agents": [
+                {
+                    "role": ev_role or "pipeline",
+                    "task": _fmt_task_id(t0.get("id")),
+                    "phase": ev_phase or "task",
+                    "doing": (t0.get("title") or "working")[:80],
+                }
+            ],
+            "next": "Wait — task is claimed. If this stalls for minutes, Stop then Start factory.",
+            "batch_plain": batch_plain,
+            "orphan": False,
+            "runner_alive": runner_alive,
+        }
+
+    if queued and runner_alive:
+        return {
+            "mode": "picking",
+            "headline": "Queue · loop picking next task",
+            "detail": f"{len(queued)} queued.",
+            "agents": [{"role": "loop", "task": "", "phase": "queue", "doing": "selecting next task"}],
+            "next": "Nothing — next card will move to In Progress shortly.",
+            "batch_plain": batch_plain,
+            "orphan": False,
+            "runner_alive": runner_alive,
+        }
+
+    # Idle drain / batch pending while queue empty
+    if batch.get("needed") and runner_alive:
+        return {
+            "mode": "batch_pending",
+            "headline": "Idle drain · batch pending",
+            "detail": batch_plain,
+            "agents": [{"role": "loop", "task": "", "phase": "batch", "doing": "waiting to run full suite"}],
+            "next": "Nothing — full suite runs when the queue is empty. Or click Ship now to force it.",
+            "batch_plain": batch_plain,
+            "orphan": False,
+            "runner_alive": runner_alive,
+        }
+
+    return {
+        "mode": "quiet",
+        "headline": "Shift quiet — no workers on the floor yet.",
+        "detail": "",
+        "agents": [],
+        "next": "Queue work with forge-intake, or click Ship now if you only need a full verify/push.",
+        "batch_plain": batch_plain,
+        "orphan": False,
+        "runner_alive": runner_alive,
+    }
+
+
 def _batch_snapshot(ctrl: dict[str, Any]) -> dict[str, Any]:
     """Derive batch gate UI state from stamp + live controls."""
     try:
         from task_loop import batch_needed, head_sha, read_batch_gate
     except ImportError:
-        return {"state": "idle", "needed": False, "reason": "unavailable"}
+        return {
+            "state": "idle",
+            "needed": False,
+            "reason": "unavailable",
+            "plain": _batch_plain("unavailable", "idle"),
+        }
 
     stamp = read_batch_gate(path=str(BATCH_GATE)) if BATCH_GATE.is_file() else {}
-    # Prefer shared helpers when paths match defaults
     needed, reason = batch_needed(force=False)
     head = head_sha()
     last = str(stamp.get("sha") or "")
-    running = bool(ctrl.get("batch_running")) or _verify_running()
+    # Only treat live verify as batch when the loop marked batch_running / ship_now —
+    # otherwise surgical tier-2 would look like batch.
+    batch_running = bool(ctrl.get("batch_running")) or (
+        bool(ctrl.get("ship_now")) and _verify_running()
+    )
     blocked = bool(ctrl.get("batch_blocked"))
     if blocked:
         state = "blocked"
-    elif running and (needed or ctrl.get("batch_running") or ctrl.get("ship_now")):
+    elif batch_running:
         state = "running"
-    elif running:
-        # Surgical tier-2 also uses xcodebuild — treat as task verify, not batch
-        state = "green" if last and last == head and not needed else "pending" if needed else "idle"
     elif needed:
         state = "pending"
     elif last:
@@ -137,8 +532,9 @@ def _batch_snapshot(ctrl: dict[str, Any]) -> dict[str, Any]:
         "reason": reason,
         "last_green_sha": last,
         "head_sha": head,
-        "verify_running": running,
-        "batch_running": bool(ctrl.get("batch_running")),
+        "verify_running": _verify_running(),
+        "batch_running": batch_running,
+        "plain": _batch_plain(reason, state),
     }
 
 
@@ -201,14 +597,31 @@ def board_snapshot() -> dict[str, Any]:
     if isinstance(station.get("batch"), dict):
         merged = dict(batch)
         merged.update(station["batch"])
+        if "plain" not in merged or not merged.get("plain"):
+            merged["plain"] = _batch_plain(
+                str(merged.get("reason") or ""), str(merged.get("state") or "")
+            )
         batch = merged
+    runner_alive = _runner_alive()
+    factory_hot = HOT.is_file()
+    activity = _activity_snapshot(
+        ctrl=ctrl,
+        station=station,
+        batch=batch,
+        tasks=tasks,
+        events=events[-40:],
+        factory_hot=factory_hot,
+        runner_alive=runner_alive,
+    )
     return {
         "tasks": tasks,
         "slices": slices,
         "controls": ctrl,
-        "factory_hot": HOT.is_file(),
+        "factory_hot": factory_hot,
+        "runner_alive": runner_alive,
         "station": station,
         "batch": batch,
+        "activity": activity,
         "events": events[-40:],
         "ts": time.time(),
     }
@@ -291,51 +704,143 @@ button {
 button.primary { background: var(--accent); color: #1a1c1e; border-color: transparent; font-weight: 600; }
 button.danger { border-color: var(--warn); color: var(--warn); }
 button:hover { filter: brightness(1.08); }
-main { display: grid; grid-template-columns: 1fr 320px; gap: 1rem; padding: 1rem; }
-@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
-.columns { display: grid; grid-template-columns: repeat(5, minmax(140px, 1fr)); gap: 0.75rem; }
-.col { background: var(--panel); border-radius: 10px; border: 1px solid var(--line); min-height: 280px; }
-.col h2 { margin: 0; padding: 0.6rem 0.75rem; font-size: 0.8rem; text-transform: uppercase;
-  letter-spacing: 0.06em; color: var(--muted); border-bottom: 1px solid var(--line); }
+main {
+  display: grid; grid-template-columns: 1fr 340px; gap: 1rem; padding: 1rem;
+  align-items: start;
+  height: calc(100vh - 4.5rem);
+}
+@media (max-width: 900px) {
+  main { grid-template-columns: 1fr; height: auto; }
+}
+.columns {
+  display: grid; grid-template-columns: repeat(5, minmax(140px, 1fr)); gap: 0.75rem;
+  height: 100%; min-height: 0;
+}
+.col {
+  background: var(--panel); border-radius: 10px; border: 1px solid var(--line);
+  display: flex; flex-direction: column; min-height: 0;
+  max-height: calc(100vh - 6.5rem); overflow: hidden;
+}
+.col h2 {
+  margin: 0; padding: 0.6rem 0.75rem; font-size: 0.8rem; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--muted); border-bottom: 1px solid var(--line);
+  flex-shrink: 0; background: var(--panel); position: sticky; top: 0; z-index: 1;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 0.35rem;
+}
+.col h2 .count { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--muted); }
+.col .cards {
+  overflow-y: auto; flex: 1; min-height: 0; padding-bottom: 0.35rem;
+}
 .card {
   margin: 0.5rem; padding: 0.65rem; border-radius: 8px; background: #2c3136;
   border: 1px solid var(--line); cursor: pointer;
 }
+.card.summary {
+  border-style: dashed; color: var(--muted); font-size: 0.82rem; cursor: pointer;
+}
 .card .meta { font-size: 0.75rem; color: var(--muted); }
 .card .prio { color: var(--accent); font-weight: 600; }
-.side { display: flex; flex-direction: column; gap: 0.75rem; }
+.side {
+  display: flex; flex-direction: column; gap: 0.75rem;
+  max-height: calc(100vh - 6.5rem); min-height: 0;
+}
 .station, .feed, .klaxon {
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0.75rem;
 }
 .station h3, .feed h3, .klaxon h3 { margin: 0 0 0.5rem; font-size: 0.9rem; }
+.station .label {
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); margin: 0.55rem 0 0.2rem;
+}
+.station .label:first-of-type { margin-top: 0; }
 .station .beat { color: var(--ink); font-size: 0.95rem; font-weight: 600; }
-.station .sub { color: var(--muted); font-size: 0.8rem; margin-top: 0.35rem; }
+.station .sub { color: var(--muted); font-size: 0.8rem; margin-top: 0.35rem; line-height: 1.35; }
+.station .next-line {
+  margin-top: 0.35rem; font-size: 0.82rem; color: var(--ink); line-height: 1.35;
+  padding: 0.45rem 0.55rem; background: #2a2f35; border-radius: 6px;
+  border-left: 3px solid var(--accent);
+}
+.station .agents { margin-top: 0.35rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.station .agent {
+  font-size: 0.8rem; padding: 0.4rem 0.5rem; border-radius: 6px;
+  background: #2c3136; border: 1px solid var(--line); line-height: 1.3;
+}
+.station .agent strong { color: var(--ok); }
+.station .agent .muted { color: var(--muted); font-size: 0.75rem; }
 .station .batch-line {
-  margin-top: 0.65rem; padding-top: 0.55rem; border-top: 1px solid var(--line);
-  font-size: 0.8rem; color: var(--muted);
+  margin-top: 0.35rem; font-size: 0.78rem; color: var(--muted); line-height: 1.4;
 }
 .station .batch-line strong { color: var(--accent); }
 .station.running { border-color: var(--ok); }
 .station.pending { border-color: var(--accent); }
-.station.blocked { border-color: var(--warn); }
+.station.blocked, .station.orphan { border-color: var(--warn); }
 .card.active {
   border-color: var(--ok);
   box-shadow: 0 0 0 1px var(--ok);
 }
 .card .phase { font-size: 0.75rem; color: var(--ok); margin-top: 0.25rem; }
 .klaxon.on { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn); }
-.feed { max-height: 360px; overflow: auto; font-size: 0.8rem; }
+.feed { flex: 1; min-height: 120px; max-height: none; overflow: auto; font-size: 0.8rem; }
 .feed div { padding: 0.25rem 0; border-bottom: 1px solid var(--line); }
+.feed .ts { color: var(--muted); font-size: 0.72rem; margin-right: 0.35rem; }
 .status-pill { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px;
   background: #333; font-size: 0.75rem; }
 .status-pill.hot { background: #3a4a3a; color: var(--ok); }
 .drawer {
-  position: fixed; right: 0; top: 0; bottom: 0; width: min(420px, 100%);
-  background: #1e2226; border-left: 1px solid var(--line); padding: 1rem;
+  position: fixed; right: 0; top: 0; bottom: 0; width: min(520px, 100%);
+  background: #1e2226; border-left: 1px solid var(--line); padding: 1rem 1.1rem 2rem;
   transform: translateX(100%); transition: transform 0.2s ease; z-index: 20;
+  overflow-y: auto;
 }
 .drawer.open { transform: translateX(0); }
-.drawer pre { white-space: pre-wrap; font-size: 0.8rem; color: var(--muted); }
+.drawer h2 { margin: 0.65rem 0 0.4rem; font-size: 1.15rem; line-height: 1.3; }
+.drawer .ticket-meta {
+  display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.5rem 0 1rem;
+}
+.drawer .chip {
+  display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
+  background: #333940; color: var(--ink); border: 1px solid var(--line);
+}
+.drawer .chip.status-queued { background: #2f3540; }
+.drawer .chip.status-progress { background: #2a4038; color: var(--ok); border-color: #3d5c4c; }
+.drawer .chip.status-halted, .drawer .chip.status-needs { background: #40302c; color: var(--warn); border-color: #6a4538; }
+.drawer .chip.status-done { background: #2a4038; color: var(--ok); }
+.drawer .chip.prio { color: var(--accent); border-color: #6a5530; }
+.drawer .ticket-section { margin: 1rem 0; }
+.drawer .ticket-section h3 {
+  margin: 0 0 0.4rem; font-size: 0.72rem; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--muted); font-weight: 600;
+}
+.drawer .ticket-section p, .drawer .ticket-section .prose {
+  margin: 0; font-size: 0.9rem; line-height: 1.45; color: var(--ink);
+  white-space: pre-wrap;
+}
+.drawer .crux {
+  background: #2a2f35; border-left: 3px solid var(--accent);
+  padding: 0.65rem 0.75rem; border-radius: 0 8px 8px 0; font-size: 0.92rem;
+  line-height: 1.4;
+}
+.drawer ul.ac { list-style: none; margin: 0; padding: 0; }
+.drawer ul.ac li {
+  display: flex; gap: 0.5rem; align-items: flex-start;
+  padding: 0.4rem 0; border-bottom: 1px solid var(--line);
+  font-size: 0.88rem; line-height: 1.35;
+}
+.drawer ul.ac li:last-child { border-bottom: none; }
+.drawer .box {
+  width: 1rem; height: 1rem; flex-shrink: 0; margin-top: 0.15rem;
+  border: 1.5px solid var(--muted); border-radius: 3px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; color: var(--ok);
+}
+.drawer .box.done { border-color: var(--ok); background: #2a4038; }
+.drawer ul.plain { margin: 0; padding-left: 1.1rem; }
+.drawer ul.plain li { margin: 0.25rem 0; font-size: 0.88rem; color: var(--muted); }
+.drawer .area { font-size: 0.8rem; color: var(--muted); word-break: break-word; }
+.drawer .path-link { font-size: 0.75rem; color: var(--muted); margin-top: 1.25rem; }
+.drawer .loading, .drawer .error { color: var(--muted); font-size: 0.9rem; margin-top: 1rem; }
+.drawer .error { color: var(--warn); }
 .idle { text-align: center; padding: 2rem; color: var(--muted); }
 </style>
 </head>
@@ -361,10 +866,15 @@ main { display: grid; grid-template-columns: 1fr 320px; gap: 1rem; padding: 1rem
   </section>
   <aside class="side">
     <div class="station" id="station">
-      <h3>Stations</h3>
+      <h3>Now</h3>
+      <div class="label">Working on</div>
       <div class="beat" id="stationBeat">Shift quiet — no workers on the floor yet.</div>
       <div class="sub" id="stationSub"></div>
-      <div class="batch-line" id="batchLine">Batch · —</div>
+      <div class="agents" id="agentList"></div>
+      <div class="label">What you should do</div>
+      <div class="next-line" id="nextLine">—</div>
+      <div class="label">Batch (full suite / ship)</div>
+      <div class="batch-line" id="batchLine">—</div>
     </div>
     <div class="klaxon" id="klaxon">
       <h3>Klaxon</h3>
@@ -384,12 +894,13 @@ main { display: grid; grid-template-columns: 1fr 320px; gap: 1rem; padding: 1rem
 <div class="drawer" id="drawer">
   <button id="btnClose">Close</button>
   <h2 id="drawerTitle"></h2>
-  <pre id="drawerBody"></pre>
+  <div id="drawerBody"></div>
 </div>
 <script>
 const cols = ["Queued","In Progress","Needs-human","Halted","Done"];
 let snap = null;
 let selected = null;
+let showDoneSlices = false;
 
 function colFor(item) {
   const s = (item.status||"");
@@ -401,47 +912,171 @@ function colFor(item) {
   return "Queued";
 }
 
-function batchLabel(b) {
+function statusChipClass(status) {
+  const s = status || "";
+  if (/Needs-human/i.test(s)) return "status-needs";
+  if (/Halted/i.test(s)) return "status-halted";
+  if (/In Progress/i.test(s)) return "status-progress";
+  if (/^Done/i.test(s)) return "status-done";
+  return "status-queued";
+}
+
+function esc(s) {
+  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+/** Light markdown → HTML after escaping: **bold**, `code` */
+function md(s) {
+  return esc(s)
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code style=\"font-size:0.85em;background:#333;padding:0.05em 0.3em;border-radius:3px\">$1</code>");
+}
+
+function renderChecklist(items) {
+  if (!items || !items.length) return "";
+  // acceptance may be checklist objects or plain strings
+  const lis = items.map(it => {
+    if (typeof it === "string") {
+      return `<li><span class="box"></span><span>${md(it)}</span></li>`;
+    }
+    return `<li><span class="box${it.done?" done":""}">${it.done?"✓":""}</span><span>${md(it.text)}</span></li>`;
+  }).join("");
+  return `<ul class="ac">${lis}</ul>`;
+}
+
+function renderBullets(items) {
+  if (!items || !items.length) return "";
+  const filtered = items.filter(x => x && !/^none$/i.test(String(x).trim()));
+  if (!filtered.length) return `<p class="prose" style="color:var(--muted)">(none)</p>`;
+  return `<ul class="plain">${filtered.map(x => `<li>${md(x)}</li>`).join("")}</ul>`;
+}
+
+function renderTicket(t) {
+  const meta = `
+    <div class="ticket-meta">
+      <span class="chip ${statusChipClass(t.status)}">${esc(t.status || "?")}</span>
+      ${t.priority ? `<span class="chip prio">${esc(t.priority)}</span>` : ""}
+      ${t.kind ? `<span class="chip">${esc(t.kind)}</span>` : ""}
+      <span class="chip">${esc(t.type || "task")}</span>
+    </div>`;
+
+  const crux = t.crux
+    ? `<div class="ticket-section"><h3>What this proves</h3><div class="crux">${md(t.crux)}</div></div>`
+    : "";
+
+  const outcomeLabel = t.type === "slice" ? "Goal" : "Outcome";
+  const outcome = t.outcome
+    ? `<div class="ticket-section"><h3>${outcomeLabel}</h3><div class="prose">${md(t.outcome)}</div></div>`
+    : "";
+
+  const ac = (t.acceptance && t.acceptance.length)
+    ? `<div class="ticket-section"><h3>Acceptance criteria</h3>${renderChecklist(t.acceptance)}</div>`
+    : "";
+
+  const human = (t.human_checklist && t.human_checklist.length)
+    ? `<div class="ticket-section"><h3>Human checklist</h3>${renderChecklist(t.human_checklist)}</div>`
+    : "";
+
+  const tests = t.tests
+    ? `<div class="ticket-section"><h3>Tests</h3><div class="prose">${md(t.tests)}</div></div>`
+    : "";
+
+  const auth = (t.authorized_test_changes && t.authorized_test_changes.length)
+    ? `<div class="ticket-section"><h3>Authorized test changes</h3>${renderBullets(t.authorized_test_changes)}</div>`
+    : "";
+
+  const oos = (t.out_of_scope && t.out_of_scope.length)
+    ? `<div class="ticket-section"><h3>Out of scope</h3>${renderBullets(t.out_of_scope)}</div>`
+    : "";
+
+  const area = t.area
+    ? `<div class="ticket-section"><h3>Area</h3><div class="area">${md(t.area)}</div></div>`
+    : "";
+
+  const depends = (t.depends_on && t.depends_on.length)
+    ? `<div class="ticket-section"><h3>Depends on</h3>${renderBullets(t.depends_on)}</div>`
+    : "";
+
+  const verify = t.verify_result
+    ? `<div class="ticket-section"><h3>Verification</h3><div class="prose">${esc(t.verify_result)}</div></div>`
+    : "";
+
+  const path = t.path
+    ? `<div class="path-link">${esc(t.path)}</div>`
+    : "";
+
+  return meta + crux + outcome + ac + human + tests + auth + oos + area + depends + verify + path;
+}
+
+function batchLabel(b, activity) {
+  if (activity && activity.batch_plain) {
+    const short = (s) => (s ? String(s).slice(0, 12) : "");
+    const sha = short(b && b.last_green_sha);
+    const head = `Batch · ${b && b.state ? b.state : "—"}${sha ? " @ " + sha : ""}`;
+    return `<strong>${esc(head)}</strong><br/>${esc(activity.batch_plain)}`;
+  }
   if (!b) return "Batch · —";
   const short = (s) => (s ? String(s).slice(0, 12) : "?");
   if (b.state === "running" || b.batch_running) {
-    return `Batch · running tier-3 (${b.reason || "verify"})`;
+    return `<strong>Batch · running</strong><br/>${esc(b.plain || b.reason || "tier-3")}`;
   }
   if (b.state === "blocked") {
-    return `Batch · blocked — open Klaxon`;
+    return `<strong>Batch · blocked</strong><br/>${esc(b.plain || "open Klaxon")}`;
   }
   if (b.state === "pending" || b.needed) {
-    return `Batch · needed — ${b.reason || "pending"}`;
+    return `<strong>Batch · pending</strong><br/>${esc(b.plain || b.reason || "full verify needed")}`;
   }
   if (b.state === "green" || b.last_green_sha) {
-    return `Batch · green @ ${short(b.last_green_sha)} · ${b.reason === "not needed" ? "nothing to ship" : (b.reason || "ok")}`;
+    return `<strong>Batch · green @ ${esc(short(b.last_green_sha))}</strong><br/>${esc(b.plain || "ok")}`;
   }
-  return `Batch · idle`;
+  return `<strong>Batch · idle</strong>`;
 }
 
-function stationLabel(st, batch) {
-  if (st && st.phase) {
-    const tid = st.task_id != null ? `task-${String(st.task_id).padStart(3,"0")}` : "";
-    const who = st.role || "loop";
-    const phase = st.phase;
-    const detail = st.detail || st.mission || "";
-    return { beat: `${phase} · ${who}${tid ? " · " + tid : ""}`, sub: detail };
+function formatEvent(ev) {
+  const ts = (ev.ts || "").replace("T", " ").replace("Z", "").slice(11, 19) || "";
+  const slice = ev.slice != null ? `task/slice ${ev.slice}` : "";
+  const parts = [ev.phase, ev.role || ev.agent_name, ev.event, slice]
+    .filter(Boolean).map(String);
+  const mission = (ev.detail && ev.detail.mission) || ev.mission || "";
+  if (mission) parts.push("— " + mission);
+  return { ts, text: parts.join(" ") };
+}
+
+function makeCard(item, st, activeTid) {
+  const card = document.createElement("div");
+  const isActive = item.type==="task" && activeTid && String(item.id).padStart(3,"0")===activeTid;
+  card.className = "card" + (isActive ? " active" : "");
+  let phaseHtml = "";
+  if (isActive && st.phase) {
+    phaseHtml = `<div class="phase">${esc(st.phase)}${st.role ? " · " + esc(st.role) : ""}${st.detail ? " — " + esc(st.detail) : ""}</div>`;
   }
-  if (batch && (batch.state === "running" || batch.batch_running)) {
-    return { beat: `FULL-VERIFY · loop`, sub: `tier-3 (${batch.reason || "verify"})` };
-  }
-  if (batch && batch.needed) {
-    return { beat: `Batch pending`, sub: batch.reason || "full verify needed" };
-  }
-  return { beat: "Shift quiet — no workers on the floor yet.", sub: "" };
+  card.innerHTML = `<div><span class="prio">${esc(item.priority||"")}</span> ${esc(item.type)} ${esc(item.id)}</div>
+    <div>${esc(item.title||"")}</div>
+    <div class="meta">${esc(item.kind||"")} · ${esc((item.area||"").slice(0,40))}</div>${phaseHtml}`;
+  card.onclick = () => openDrawer(item);
+  return card;
 }
 
 function render() {
   if (!snap) return;
   const hot = document.getElementById("hot");
-  const running = !!(snap.controls && snap.controls.running) || snap.factory_hot;
-  hot.textContent = running ? (snap.controls.paused ? "paused" : "hot") : "stopped";
-  hot.className = "status-pill" + (running ? " hot" : "");
+  const runnerAlive = !!snap.runner_alive;
+  const marked = !!(snap.controls && snap.controls.running) || snap.factory_hot;
+  const running = marked || runnerAlive;
+  const activity = snap.activity || {};
+  if (activity.orphan) {
+    hot.textContent = "orphan";
+    hot.className = "status-pill";
+    hot.style.background = "#40302c";
+    hot.style.color = "var(--warn)";
+  } else {
+    hot.style.background = "";
+    hot.style.color = "";
+    hot.textContent = running
+      ? (snap.controls && snap.controls.paused ? "paused" : (runnerAlive ? "hot" : "hot?"))
+      : "stopped";
+    hot.className = "status-pill" + (running ? " hot" : "");
+  }
 
   const board = document.getElementById("board");
   board.innerHTML = "";
@@ -452,7 +1087,11 @@ function render() {
   const batch = snap.batch || {};
   const st = snap.station || {};
   let idleMsg = "Waiting for intake — queue a punch list with forge-intake";
-  if (running && queuedAuto.length===0 && inProg.length===0 && !(snap.controls&&snap.controls.batch_blocked)) {
+  if (activity.orphan) {
+    idleMsg = activity.detail || "Loop not running — click Start factory";
+    idle.hidden = false;
+    idle.textContent = idleMsg;
+  } else if (running && queuedAuto.length===0 && inProg.length===0 && !(snap.controls&&snap.controls.batch_blocked)) {
     if (batch.state === "running" || batch.batch_running) {
       idleMsg = `Queue empty · full verify running (${batch.reason||"tier-3"})`;
     } else if (batch.needed) {
@@ -470,21 +1109,40 @@ function render() {
   for (const name of cols) {
     const col = document.createElement("div");
     col.className = "col";
-    col.innerHTML = `<h2>${name}</h2>`;
-    for (const item of items.filter(i => colFor(i)===name)) {
-      const card = document.createElement("div");
-      const isActive = item.type==="task" && activeTid && String(item.id).padStart(3,"0")===activeTid;
-      card.className = "card" + (isActive ? " active" : "");
-      let phaseHtml = "";
-      if (isActive && st.phase) {
-        phaseHtml = `<div class="phase">${st.phase}${st.detail ? " — " + st.detail : ""}</div>`;
-      }
-      card.innerHTML = `<div><span class="prio">${item.priority||""}</span> ${item.type} ${item.id}</div>
-        <div>${item.title||""}</div>
-        <div class="meta">${item.kind||""} · ${(item.area||"").slice(0,40)}</div>${phaseHtml}`;
-      card.onclick = () => openDrawer(item);
-      col.appendChild(card);
+    let colItems = items.filter(i => colFor(i)===name);
+    const doneSlices = name === "Done" ? colItems.filter(i => i.type === "slice") : [];
+    const doneTasks = name === "Done" ? colItems.filter(i => i.type === "task") : [];
+    if (name === "Done" && !showDoneSlices) {
+      colItems = doneTasks;
     }
+    const h2 = document.createElement("h2");
+    const totalCount = name === "Done"
+      ? (doneTasks.length + doneSlices.length)
+      : colItems.length;
+    h2.innerHTML = `<span>${name}</span><span class="count">${totalCount}</span>`;
+    col.appendChild(h2);
+    const cards = document.createElement("div");
+    cards.className = "cards";
+    for (const item of colItems) {
+      cards.appendChild(makeCard(item, st, activeTid));
+    }
+    if (name === "Done" && doneSlices.length && !showDoneSlices) {
+      const summary = document.createElement("div");
+      summary.className = "card summary";
+      summary.textContent = `${doneSlices.length} done slices hidden — click to show`;
+      summary.onclick = () => { showDoneSlices = true; render(); };
+      cards.appendChild(summary);
+    } else if (name === "Done" && doneSlices.length && showDoneSlices) {
+      for (const item of doneSlices) {
+        cards.appendChild(makeCard(item, st, activeTid));
+      }
+      const hide = document.createElement("div");
+      hide.className = "card summary";
+      hide.textContent = "Hide done slices";
+      hide.onclick = () => { showDoneSlices = false; render(); };
+      cards.appendChild(hide);
+    }
+    col.appendChild(cards);
     board.appendChild(col);
   }
 
@@ -492,7 +1150,10 @@ function render() {
   const kb = document.getElementById("klaxonBody");
   const blocked = snap.controls && snap.controls.batch_blocked;
   const halted = items.filter(i => /Halted/i.test(i.status||""));
-  if (blocked || halted.length) {
+  if (activity.orphan) {
+    k.classList.add("on");
+    kb.textContent = "Loop died while marked hot — click Start factory to resume.";
+  } else if (blocked || halted.length) {
     k.classList.add("on");
     kb.textContent = blocked
       ? "Batch blocked — choose Quarantine or Hold-all."
@@ -506,25 +1167,68 @@ function render() {
   feed.innerHTML = "";
   for (const ev of (snap.events||[]).slice().reverse()) {
     const d = document.createElement("div");
-    d.textContent = `${ev.phase||""} ${ev.role||""} ${ev.event||""} ${(ev.detail&&ev.detail.mission)||ev.mission||""}`;
+    const { ts, text } = formatEvent(ev);
+    d.innerHTML = (ts ? `<span class="ts">${esc(ts)}</span>` : "") + esc(text);
     feed.appendChild(d);
   }
 
   const stationEl = document.getElementById("station");
-  stationEl.className = "station" + (batch.state === "running" || batch.batch_running ? " running"
+  const mode = activity.mode || "";
+  stationEl.className = "station" + (
+    mode === "orphan" || mode === "batch_blocked" ? " orphan"
+    : batch.state === "running" || batch.batch_running ? " running"
     : batch.state === "blocked" ? " blocked"
-    : batch.needed ? " pending" : "");
-  const labels = stationLabel(st, batch);
-  document.getElementById("stationBeat").textContent = labels.beat;
-  document.getElementById("stationSub").textContent = labels.sub || "";
-  document.getElementById("batchLine").textContent = batchLabel(batch);
+    : batch.needed && !activity.agents?.length ? " pending" : ""
+  );
+  document.getElementById("stationBeat").textContent = activity.headline
+    || "Shift quiet — no workers on the floor yet.";
+  document.getElementById("stationSub").textContent = activity.detail || "";
+  document.getElementById("nextLine").textContent = activity.next || "—";
+  document.getElementById("batchLine").innerHTML = batchLabel(batch, activity);
+
+  const agentList = document.getElementById("agentList");
+  agentList.innerHTML = "";
+  const agents = activity.agents || [];
+  if (agents.length) {
+    for (const a of agents) {
+      const row = document.createElement("div");
+      row.className = "agent";
+      const taskBit = a.task ? ` on ${esc(a.task)}` : "";
+      row.innerHTML = `<strong>${esc(a.role || "?")}</strong>${taskBit}`
+        + `<div class="muted">${esc(a.phase || "")}${a.doing ? " — " + esc(a.doing) : ""}</div>`;
+      agentList.appendChild(row);
+    }
+  } else {
+    const row = document.createElement("div");
+    row.className = "agent";
+    row.innerHTML = `<span class="muted">No agents active</span>`;
+    agentList.appendChild(row);
+  }
 }
 
-function openDrawer(item) {
+async function openDrawer(item) {
   selected = item;
-  document.getElementById("drawer").classList.add("open");
+  const drawer = document.getElementById("drawer");
+  const body = document.getElementById("drawerBody");
+  drawer.classList.add("open");
   document.getElementById("drawerTitle").textContent = `${item.type} ${item.id} — ${item.title}`;
-  document.getElementById("drawerBody").textContent = JSON.stringify(item, null, 2);
+  body.innerHTML = `<div class="loading">Loading ticket…</div>`;
+  if (!item.path) {
+    body.innerHTML = `<div class="error">No ticket path on this card.</div>`;
+    return;
+  }
+  try {
+    const r = await fetch("/api/ticket?path=" + encodeURIComponent(item.path));
+    if (!r.ok) {
+      body.innerHTML = `<div class="error">Could not load ticket (${r.status}).</div>`;
+      return;
+    }
+    const t = await r.json();
+    document.getElementById("drawerTitle").textContent = `${t.type} ${t.id} — ${t.title}`;
+    body.innerHTML = renderTicket(t);
+  } catch (e) {
+    body.innerHTML = `<div class="error">Failed to load ticket.</div>`;
+  }
 }
 
 async function post(path, body) {
@@ -588,12 +1292,22 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(raw)
 
     def do_GET(self) -> None:  # noqa: N802
-        path = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        path = parsed.path
         if path in ("/", "/index.html"):
             self._html(INDEX_HTML)
             return
         if path == "/api/board":
             self._json(200, board_snapshot())
+            return
+        if path == "/api/ticket":
+            qs = parse_qs(parsed.query)
+            rel = (qs.get("path") or [""])[0]
+            detail = ticket_detail(rel)
+            if detail is None:
+                self._json(404, {"error": "ticket not found", "path": rel})
+                return
+            self._json(200, detail)
             return
         if path == "/api/events":
             self.send_response(200)
