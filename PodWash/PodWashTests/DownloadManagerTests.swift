@@ -314,6 +314,56 @@ final class DownloadManagerTests: XCTestCase {
         XCTAssertEqual(returnedURL.path, expectedLocalFileURL(for: unsafeID).path)
     }
 
+    func testPlaybackMigratesLegacyDownloadPathWithURLCharacters() throws {
+        let unsafeID = "46176 at https://www.thisamericanlife.org"
+        let legacyURL = try installNestedLegacyDownload(for: unsafeID)
+        let canonicalURL = expectedLocalFileURL(for: unsafeID)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: legacyURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: canonicalURL.path))
+
+        let episode = Episode(
+            id: unsafeID,
+            title: "Legacy Path Episode",
+            pubDate: Date(timeIntervalSince1970: 0),
+            artworkURL: nil,
+            showNotes: nil,
+            audioURL: Self.fixtureRemoteURL
+        )
+        let resolver = PlaybackSourceResolver(
+            downloadsDirectory: downloadsDirectory,
+            fileManager: .default
+        )
+
+        let playbackURL = resolver.playbackURL(for: episode)
+        XCTAssertEqual(playbackURL?.path, canonicalURL.path)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: canonicalURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: legacyURL.path))
+    }
+
+    func testLocalFileURLMigratesLegacyInstallOnLookup() throws {
+        let unsafeID = "46176 at https://www.thisamericanlife.org"
+        let legacyURL = try installNestedLegacyDownload(for: unsafeID)
+        let canonicalURL = expectedLocalFileURL(for: unsafeID)
+
+        let resolved = manager.localFileURL(for: unsafeID)
+        XCTAssertEqual(resolved?.path, canonicalURL.path)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: canonicalURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: legacyURL.path))
+    }
+
+    private func installNestedLegacyDownload(for episodeID: String) throws -> URL {
+        let nested = downloadsDirectory
+            .appendingPathComponent("46176 at https:", isDirectory: true)
+            .appendingPathComponent("www.thisamericanlife.org.m4a", isDirectory: false)
+        try FileManager.default.createDirectory(
+            at: nested.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try Data([0x00, 0x01, 0x02, 0x03]).write(to: nested)
+        return nested
+    }
+
     private func expectedLocalFileURL(for episodeID: String) -> URL {
         DownloadPaths.localFileURL(episodeID: episodeID, downloadsDirectory: downloadsDirectory)
     }
