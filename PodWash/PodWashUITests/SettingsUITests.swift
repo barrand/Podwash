@@ -236,4 +236,28 @@ final class SettingsUITests: XCTestCase {
             "customWordRow_0 label must contain testword (case-insensitive); got: \(firstRow.label)"
         )
     }
+
+    // MARK: - Task 008: build stamp footer (AC2)
+
+    @MainActor
+    func testBuildStampVisibleWithExpectedPattern() throws {
+        let app = launchSettingsApp()
+        waitForSettingsRoot(app, timeout: 10)
+
+        let buildStamp = app.descendants(matching: .any)["buildStamp"]
+        XCTAssertTrue(
+            buildStamp.waitForExistence(timeout: 10),
+            "buildStamp must exist under settingsRoot within 10s"
+        )
+
+        let value = buildStamp.value as? String
+        XCTAssertNotNil(value, "buildStamp must expose accessibilityValue")
+        XCTAssertFalse(value?.isEmpty ?? true, "buildStamp accessibilityValue must be non-empty")
+
+        let pattern = #"^\d{2}\.\d{1,2}\.\d{1,2}\.\d{1,2}\.\d{2}\.\d{2}$"#
+        XCTAssertNotNil(
+            value?.range(of: pattern, options: .regularExpression),
+            "buildStamp accessibilityValue must match YY.M.D.H.MM.SS pattern; got \(value ?? "nil")"
+        )
+    }
 }
