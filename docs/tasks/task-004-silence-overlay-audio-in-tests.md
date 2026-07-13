@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 004 |
 | **Title** | Silence overlay audio during unit tests |
-| **Status** | In Progress |
+| **Status** | Done |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/OverlayEngine.swift`, `PodWash/PodWashTests/OverlaySyncTests.swift` |
