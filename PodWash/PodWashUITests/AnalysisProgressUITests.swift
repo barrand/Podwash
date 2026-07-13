@@ -15,6 +15,22 @@ final class AnalysisProgressUITests: XCTestCase {
     }
 
     @MainActor
+    func testEpisodeCleaningTogglesAbsentChannelTogglePresent() throws {
+        let app = XCUIApplication()
+        app.launchArguments.append("-UITestFixtureFeed")
+        app.launch()
+
+        let episodeList = app.descendants(matching: .any)["episodeList"]
+        XCTAssertTrue(episodeList.waitForExistence(timeout: 10))
+
+        XCTAssertFalse(app.switches["episodeCleaningToggle_0"].exists)
+        XCTAssertFalse(app.switches["episodeCleaningToggle_1"].exists)
+
+        let channelToggle = app.switches["channelCleaningToggle"]
+        XCTAssertTrue(channelToggle.waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testToggleBadges() throws {
         let app = XCUIApplication()
         app.launchArguments.append("-UITestFixtureFeed")
@@ -25,6 +41,7 @@ final class AnalysisProgressUITests: XCTestCase {
 
         XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_channelOn"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_episodeOn"].exists)
+        XCTAssertFalse(app.switches["episodeCleaningToggle_0"].exists)
 
         let channelToggle = app.switches["channelCleaningToggle"]
         XCTAssertTrue(channelToggle.waitForExistence(timeout: 5))
@@ -36,6 +53,7 @@ final class AnalysisProgressUITests: XCTestCase {
         )
         XCTAssertEqual(XCTWaiter().wait(for: [channelOnExpectation], timeout: 2), .completed)
         XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_channelOn"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_episodeOn"].exists)
 
         channelToggle.tap()
 
@@ -45,17 +63,11 @@ final class AnalysisProgressUITests: XCTestCase {
         )
         XCTAssertEqual(XCTWaiter().wait(for: [channelOffExpectation], timeout: 2), .completed)
         XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_channelOn"].exists)
-
-        let episodeToggle = app.switches["episodeCleaningToggle_0"]
-        XCTAssertTrue(episodeToggle.waitForExistence(timeout: 5))
-        episodeToggle.tap()
-
-        let episodeBadge = app.descendants(matching: .any)["cleaningBadge_episodeOn"]
-        XCTAssertTrue(episodeBadge.waitForExistence(timeout: 2))
+        XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_episodeOn"].exists)
     }
 
     @MainActor
-    func testProgressIndicatorLifecycle() throws {
+    func testAnalysisProgressLifecycle() throws {
         let app = XCUIApplication()
         app.launchArguments.append(contentsOf: ["-UITestFixtureFeed", "-UITestFixtureAnalysis"])
         app.launch()
@@ -63,8 +75,8 @@ final class AnalysisProgressUITests: XCTestCase {
         let episodeList = app.descendants(matching: .any)["episodeList"]
         XCTAssertTrue(episodeList.waitForExistence(timeout: 10))
 
-        let episodeToggle = app.switches["episodeCleaningToggle_0"]
-        XCTAssertTrue(episodeToggle.waitForExistence(timeout: 5))
+        let channelToggle = app.switches["channelCleaningToggle"]
+        XCTAssertTrue(channelToggle.waitForExistence(timeout: 5))
 
         let episodeCell = app.cells["episodeCell_0"]
         XCTAssertTrue(episodeCell.waitForExistence(timeout: 5))
@@ -73,7 +85,7 @@ final class AnalysisProgressUITests: XCTestCase {
         // UIKit switch is hittable so the tap lands on the content WindowGroup.
         let toggleHittable = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "isHittable == true"),
-            object: episodeToggle
+            object: channelToggle
         )
         XCTAssertEqual(XCTWaiter().wait(for: [toggleHittable], timeout: 3), .completed)
 
@@ -85,7 +97,7 @@ final class AnalysisProgressUITests: XCTestCase {
             handler: nil
         )
 
-        episodeToggle.tap()
+        channelToggle.tap()
 
         wait(for: [timelineAppeared], timeout: 2)
 
@@ -95,9 +107,7 @@ final class AnalysisProgressUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter().wait(for: [timelineExpectation], timeout: 5), .completed)
 
         XCTAssertFalse(app.descendants(matching: .any)["analysisProgress"].exists)
-
-        let episodeBadge = app.descendants(matching: .any)["cleaningBadge_episodeOn"]
-        XCTAssertTrue(episodeBadge.waitForExistence(timeout: 2))
+        XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_episodeOn"].exists)
     }
 
     private static var analysisTimelineVisiblePredicate: NSPredicate {

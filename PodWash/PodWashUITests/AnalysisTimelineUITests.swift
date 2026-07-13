@@ -36,7 +36,7 @@ final class AnalysisTimelineUITests: XCTestCase {
         }
         RunLoop.current.add(timer, forMode: .common)
 
-        enableCleaningOnRow0(in: app)
+        enableChannelCleaning(in: app)
 
         defer { timer.invalidate() }
         wait(for: [firstSnapshot], timeout: 2)
@@ -61,15 +61,13 @@ final class AnalysisTimelineUITests: XCTestCase {
         }
         RunLoop.current.add(timer, forMode: .common)
 
-        enableCleaningOnRow0(in: app)
+        enableChannelCleaning(in: app)
 
         defer { timer.invalidate() }
         wait(for: [terminalSnapshot], timeout: 5)
 
         XCTAssertFalse(app.descendants(matching: .any)["analysisProgress"].exists)
-
-        let episodeBadge = app.descendants(matching: .any)["cleaningBadge_episodeOn"]
-        XCTAssertTrue(episodeBadge.waitForExistence(timeout: 2))
+        XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_episodeOn"].exists)
     }
 
     // MARK: - AC5
@@ -100,7 +98,7 @@ final class AnalysisTimelineUITests: XCTestCase {
         }
         RunLoop.current.add(timer, forMode: .common)
 
-        enableCleaningOnRow0(in: app)
+        enableChannelCleaning(in: app)
 
         defer { timer.invalidate() }
         wait(for: [midRunSnapshot], timeout: 5)
@@ -121,18 +119,18 @@ final class AnalysisTimelineUITests: XCTestCase {
     }
 
     @MainActor
-    private func enableCleaningOnRow0(in app: XCUIApplication) {
-        let episodeToggle = app.switches["episodeCleaningToggle_0"]
-        XCTAssertTrue(episodeToggle.waitForExistence(timeout: 5))
+    private func enableChannelCleaning(in app: XCUIApplication) {
+        let channelToggle = app.switches["channelCleaningToggle"]
+        XCTAssertTrue(channelToggle.waitForExistence(timeout: 5))
 
         let toggleHittable = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "isHittable == true"),
-            object: episodeToggle
+            object: channelToggle
         )
         // Hittable is usually false until after launch settle — safe for XCTWaiter.
         XCTAssertEqual(XCTWaiter().wait(for: [toggleHittable], timeout: 3), .completed)
 
-        episodeToggle.tap()
+        channelToggle.tap()
     }
 
     /// Current `analysisTimeline` accessibilityValue, or nil if missing.

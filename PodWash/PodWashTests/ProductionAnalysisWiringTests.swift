@@ -275,7 +275,7 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         XCTAssertEqual(model.playbackCoordinator?.cachedIntervals.count ?? 0, 0)
     }
 
-    // MARK: - AC4: episode cleaning + local file + injected §8 transcript
+    // MARK: - AC4: channel cleaning + local file + injected §8 transcript
 
     func testPlayEpisodePreparesIntervalsWithSettingsTargetSet() async throws {
         let settings = makePinnedSettingsStore()
@@ -285,8 +285,8 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         let episode = fixtureEpisode()
         try installLocalDownload(for: episode.id)
 
-        try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: true)
-        try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: false)
+        try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: false)
+        try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
 
         model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
 
@@ -316,7 +316,8 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         let episode = fixtureEpisode()
         try installLocalDownload(for: episode.id)
 
-        try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: true)
+        try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: false)
+        try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
 
         model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
 
@@ -354,9 +355,9 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         }
     }
 
-    // MARK: - AC6: channel cleaning triggers analysis when episode cleaning is off
+    // MARK: - AC6: channel-only cleaning gate
 
-    func testChannelCleaningTriggersAnalysisOnPlay() async throws {
+    func testPlayEpisodeRunsAnalysisWhenChannelOnEpisodeFlagOff() async throws {
         let model = makeShell(injectedTranscript: try loadTranscript())
         let episode = fixtureEpisode()
         try installLocalDownload(for: episode.id)
@@ -367,7 +368,28 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
 
         await waitUntil { self.pipelineSpy.analyzeCallCount >= 1 }
-        XCTAssertEqual(pipelineSpy.analyzeCallCount, 1, "Channel cleaning must trigger analyze once")
+        XCTAssertEqual(pipelineSpy.analyzeCallCount, 1, "Channel cleaning alone must trigger analyze once")
+    }
+
+    func testPlayEpisodeSkipsAnalysisWhenChannelOffEvenIfEpisodeFlagOn() async throws {
+        let model = makeShell(injectedTranscript: try loadTranscript())
+        let episode = fixtureEpisode()
+        try installLocalDownload(for: episode.id)
+
+        try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: true)
+        try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: false)
+
+        model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+
+        await waitUntil { model.playbackCoordinator != nil }
+        try await Task.sleep(for: .milliseconds(300))
+
+        XCTAssertEqual(
+            pipelineSpy.analyzeCallCount,
+            0,
+            "Channel off must skip analyze even when a stale episode cleaning flag remains on"
+        )
+        XCTAssertEqual(model.playbackCoordinator?.cachedIntervals.count ?? 0, 0)
     }
 
     // MARK: - AC7: streaming-only URL skips analysis even when cleaning is on
@@ -377,7 +399,7 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         let episode = fixtureEpisode()
         // No local download — resolver must return remote enclosure URL only.
 
-        try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: true)
+        try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: false)
         try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
 
         model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
@@ -412,7 +434,8 @@ final class ProductionAnalysisWiringTests: XCTestCase {
 
         let episode = fixtureEpisode()
         try installLocalDownload(for: episode.id)
-        try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: true)
+        try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: false)
+        try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
 
         model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
 
@@ -422,7 +445,7 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         XCTAssertEqual(
             pipelineSpy.analyzeCallCount,
             0,
-            "Injected spy must not be called — fixture mode skips preparePlayback even when cleaning is on and local file exists"
+            "Injected spy must not be called — fixture mode skips preparePlayback even when channel cleaning is on and local file exists"
         )
         XCTAssertEqual(
             model.playbackCoordinator?.cachedIntervals.count ?? 0,
