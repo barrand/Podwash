@@ -46,12 +46,24 @@ class FactoryEvent:
         return asdict(self)
 
 
-def event_log_path(repo_root: str, slice_id: int | None) -> str:
-    name = (
-        f"events-slice-{slice_id:02d}.jsonl"
-        if slice_id is not None
-        else "events-slice.jsonl"
-    )
+def event_log_path(
+    repo_root: str,
+    slice_id: int | None,
+    *,
+    kind: str = "slice",
+) -> str:
+    if kind == "task":
+        name = (
+            f"events-task-{slice_id:03d}.jsonl"
+            if slice_id is not None
+            else "events-task.jsonl"
+        )
+    else:
+        name = (
+            f"events-slice-{slice_id:02d}.jsonl"
+            if slice_id is not None
+            else "events-slice.jsonl"
+        )
     return os.path.join(repo_root, "build", "test-results", name)
 
 
@@ -60,9 +72,10 @@ def append_event(
     *,
     repo_root: str,
     slice_id: int | None = None,
+    kind: str = "slice",
 ) -> str:
     sid = event.slice if event.slice is not None else slice_id
-    path = event_log_path(repo_root, sid)
+    path = event_log_path(repo_root, sid, kind=kind)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     if not event.ts:
         event.ts = _utc_now()
@@ -152,11 +165,13 @@ class EventLog:
         slice_id: int | None,
         *,
         log: LogFn | None = None,
+        kind: str = "slice",
     ):
         self.repo_root = repo_root
         self.slice_id = slice_id
+        self.kind = kind
         self.log = log or (lambda m: None)
-        self.path = event_log_path(repo_root, slice_id)
+        self.path = event_log_path(repo_root, slice_id, kind=kind)
 
     def record(
         self,
@@ -177,7 +192,12 @@ class EventLog:
             detail=detail,
             agent_name=agent_name,
         )
-        append_event(ev, repo_root=self.repo_root, slice_id=self.slice_id)
+        append_event(
+            ev,
+            repo_root=self.repo_root,
+            slice_id=self.slice_id,
+            kind=self.kind,
+        )
         if timeline:
             emit_timeline(
                 phase,
