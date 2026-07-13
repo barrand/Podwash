@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 005 |
 | **Title** | Pause interrupts in-flight verify |
-| **Status** | Queued |
+| **Status** | In Progress |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `scripts/factory_floor/server.py`, `scripts/task_loop.py`, `scripts/test_task_factory.py` (or new `scripts/test_forge_floor_controls.py`) |
@@ -61,5 +61,5 @@
 > Loop writes `VERIFY RESULT:` here. For this scripts-only task, record the unittest line (treat as Done evidence in lieu of xcodebuild tier-2).
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=4 passed=4 failed=0 skipped=0 filtered=1 bundle=scripts-unittest tier=2 class=unittest
 ```

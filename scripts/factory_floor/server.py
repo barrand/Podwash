@@ -959,6 +959,9 @@ def start_runner() -> str:
 
 def stop_runner() -> str:
     global _runner_proc
+    from task_loop import interrupt_inflight_on_pause
+
+    interrupt_inflight_on_pause()
     ctrl = read_controls()
     ctrl["running"] = False
     ctrl["paused"] = True
@@ -2023,6 +2026,9 @@ class Handler(BaseHTTPRequestHandler):
         elif action == "pause":
             ctrl["paused"] = True
             write_controls(ctrl)
+            from task_loop import interrupt_inflight_on_pause
+
+            interrupt_inflight_on_pause()
         elif action == "resume":
             ctrl["paused"] = False
             write_controls(ctrl)

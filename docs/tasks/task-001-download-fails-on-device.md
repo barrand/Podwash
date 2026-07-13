@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 001 |
 | **Title** | Episode download fails on device after spinner |
-| **Status** | In Progress |
+| **Status** | Done |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/DownloadManager.swift`, `PodWash/PodWash/EpisodeListView.swift`, `PodWash/PodWashTests/DownloadManagerTests.swift`, `PodWash/PodWashTests/StubDownloadURLProtocol.swift` |

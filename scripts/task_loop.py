@@ -651,6 +651,10 @@ def run_batch_gate(
         log(f"dry-run batch gate: would run VERIFY_TIER=3 ({reason}) and push")
         return EXIT_OK
 
+    if read_controls().get("paused"):
+        set_station(phase="paused", role="loop", detail="paused — verify not started")
+        return EXIT_WAIT
+
     events = EventLog(REPO_ROOT, None, kind="task", log=log)
     ctrl = read_controls()
     ctrl["batch_running"] = True
@@ -705,6 +709,9 @@ def run_batch_gate(
         write_controls(ctrl)
 
     if outcome is None:
+        if read_controls().get("paused"):
+            set_station(phase="paused", role="loop", detail="paused — verify stopped")
+            return EXIT_WAIT
         incident = build_batch_incident(
             reason="verify aborted",
             machine_tried=machine_tried,
@@ -801,6 +808,12 @@ def run_batch_gate(
         detail="tier-3 re-verify after Mechanic",
         batch={"state": "running", "needed": True, "reason": "mechanic_retry"},
     )
+    if read_controls().get("paused"):
+        ctrl = read_controls()
+        ctrl["batch_running"] = False
+        write_controls(ctrl)
+        set_station(phase="paused", role="loop", detail="paused — verify not started")
+        return EXIT_WAIT
     try:
         outcome2 = run_verify(REPO_ROOT, log=log, tier=3)
     finally:
@@ -809,6 +822,9 @@ def run_batch_gate(
         write_controls(ctrl)
 
     if outcome2 is None:
+        if read_controls().get("paused"):
+            set_station(phase="paused", role="loop", detail="paused — verify stopped")
+            return EXIT_WAIT
         incident = build_batch_incident(
             reason="verify aborted",
             machine_tried=machine_tried,
@@ -856,6 +872,17 @@ def run_batch_gate(
     )
     notify_cant_ship(incident)
     return EXIT_THRASH
+
+
+def interrupt_inflight_on_pause() -> None:
+    """Floor Pause: kill active verify children and park batch/station state."""
+    from slice_pipeline import interrupt_active_verify
+
+    interrupt_active_verify()
+    ctrl = read_controls()
+    ctrl["batch_running"] = False
+    write_controls(ctrl)
+    set_station(phase="paused", role="loop", detail="paused — in-flight work stopped")
 
 
 def wait_while_paused() -> None:

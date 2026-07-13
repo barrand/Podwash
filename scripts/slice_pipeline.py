@@ -912,6 +912,69 @@ def should_loop_own_verify(slice_file: str, repo_root: str) -> bool:
 # Verify ownership
 # ---------------------------------------------------------------------------
 
+_ACTIVE_VERIFY_PROC: subprocess.Popen[str] | None = None
+
+
+def _terminate_proc(proc: subprocess.Popen[str]) -> None:
+    """SIGTERM a verify process group, then SIGKILL if it does not exit within 5 s."""
+    import signal
+
+    if proc.poll() is not None:
+        return
+    pid = proc.pid
+    if pid:
+        try:
+            os.killpg(os.getpgid(pid), signal.SIGTERM)
+        except (ProcessLookupError, PermissionError, OSError):
+            try:
+                proc.terminate()
+            except OSError:
+                pass
+    else:
+        try:
+            proc.terminate()
+        except OSError:
+            pass
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        if pid:
+            try:
+                os.killpg(os.getpgid(pid), signal.SIGKILL)
+            except (ProcessLookupError, PermissionError, OSError):
+                try:
+                    proc.kill()
+                except OSError:
+                    pass
+        else:
+            try:
+                proc.kill()
+            except OSError:
+                pass
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            pass
+
+
+def interrupt_active_verify() -> None:
+    """Terminate in-flight verify.sh / xcodebuild child if one is tracked."""
+    global _ACTIVE_VERIFY_PROC
+    proc = _ACTIVE_VERIFY_PROC
+    if proc is None:
+        return
+    _ACTIVE_VERIFY_PROC = None
+    _terminate_proc(proc)
+
+
+def _controls_paused() -> bool:
+    try:
+        import task_loop as tl
+
+        return bool(tl.read_controls().get("paused"))
+    except Exception:
+        return False
+
 
 def run_verify(
     repo_root: str,
@@ -923,7 +986,7 @@ def run_verify(
     failed_tests: list[str] | None = None,
     slice_tests: list[str] | None = None,
     env: dict[str, str] | None = None,
-) -> VerifyOutcome:
+) -> VerifyOutcome | None:
     """Run scripts/verify.sh as a subprocess; parse VERIFY RESULT as truth.
 
     ``tier`` maps to VERIFY_TIER (0 build / 1 failed-tests / 2 slice / 3 full).
@@ -983,15 +1046,27 @@ def run_verify(
         run_env.update(env)
     _log(f"loop-owned verify: tier={tier} {' '.join(cmd)}")
     t0 = time.time()
-    proc = subprocess.run(
+    proc = subprocess.Popen(
         cmd,
         cwd=repo_root,
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
         env=run_env,
+        start_new_session=True,
     )
+    global _ACTIVE_VERIFY_PROC
+    _ACTIVE_VERIFY_PROC = proc
+    try:
+        stdout, stderr = proc.communicate()
+    finally:
+        if _ACTIVE_VERIFY_PROC is proc:
+            _ACTIVE_VERIFY_PROC = None
     elapsed = time.time() - t0
-    output = (proc.stdout or "") + "\n" + (proc.stderr or "")
+    output = (stdout or "") + "\n" + (stderr or "")
+    if _controls_paused():
+        _log("loop-owned verify aborted — paused")
+        return None
     result = parse_verify_result(output)
     # Prefer machine-readable contract when verify.sh wrote it.
     json_path = os.path.join(repo_root, "build", "test-results", "verify-result.json")
