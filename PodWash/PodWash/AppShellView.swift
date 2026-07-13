@@ -26,6 +26,9 @@ struct AppShellView: View {
     @State private var discoverViewModel: DiscoverViewModel
     @State private var librarySettingsRoute: ShellSettingsRoute?
     @State private var discoverSettingsRoute: ShellSettingsRoute?
+    @State private var libraryNavigationPath = NavigationPath()
+    /// Measured `UITabBar` height so the mini-player inset clears tab-bar hit targets (task-010).
+    @State private var tabBarHeight: CGFloat = 54
 
     init(model: AppShellModel) {
         self.model = model
@@ -54,18 +57,12 @@ struct AppShellView: View {
                     Label("Library", systemImage: "books.vertical")
                 }
                 .tag(AppShellTab.library)
-                .accessibilityIdentifier("tabLibrary")
-                .accessibilityLabel("Library")
-                .accessibilityHint("Shows your subscribed podcasts.")
 
             discoverTab
                 .tabItem {
                     Label("Discover", systemImage: "magnifyingglass")
                 }
                 .tag(AppShellTab.discover)
-                .accessibilityIdentifier("tabDiscover")
-                .accessibilityLabel("Discover")
-                .accessibilityHint("Search and subscribe to podcasts.")
         }
         .background(BrandTheme.surface)
         .background {
@@ -76,6 +73,10 @@ struct AppShellView: View {
                 .accessibilityValue("1")
         }
         .onChange(of: selectedTab) { oldTab, newTab in
+            if newTab == .library, oldTab != .library {
+                libraryNavigationPath = NavigationPath()
+                librarySettingsRoute = nil
+            }
             if oldTab == .discover, newTab != .discover {
                 UIApplication.shared.sendAction(
                     #selector(UIResponder.resignFirstResponder),
@@ -87,14 +88,21 @@ struct AppShellView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if model.isMiniPlayerVisible, let engine = model.engine {
-                MiniPlayerBar(
-                    engine: engine,
-                    episodeTitle: model.nowPlayingEpisodeTitle,
-                    podcastTitle: model.nowPlayingPodcastTitle,
-                    timelineColors: model.miniPlayerTimelineColors,
-                    onExpand: { model.expandFullPlayer() },
-                    onTogglePlayPause: { model.toggleMiniPlayerPlayPause() }
-                )
+                VStack(spacing: 0) {
+                    MiniPlayerBar(
+                        engine: engine,
+                        episodeTitle: model.nowPlayingEpisodeTitle,
+                        podcastTitle: model.nowPlayingPodcastTitle,
+                        timelineColors: model.miniPlayerTimelineColors,
+                        onExpand: { model.expandFullPlayer() },
+                        onTogglePlayPause: { model.toggleMiniPlayerPlayPause() }
+                    )
+                    // iOS 26 TabView bottom inset overlaps the tab bar unless we reserve its height.
+                    Color.clear
+                        .frame(height: tabBarHeight)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
             }
         }
         // Content-tree Settings control (not ToolbarItem). iOS 26 nav-bar glass +
@@ -132,7 +140,7 @@ struct AppShellView: View {
                 }
             }
         }
-        .background(TabBarAccessibilityConfigurator())
+        .background(TabBarAccessibilityConfigurator(tabBarHeight: $tabBarHeight))
     }
 
     /// Hide when a pushed Settings screen or full player would cover the affordance.
@@ -152,7 +160,7 @@ struct AppShellView: View {
     }
 
     private var libraryTab: some View {
-        NavigationStack {
+        NavigationStack(path: $libraryNavigationPath) {
             LibraryView(viewModel: libraryViewModel, onDiscover: { selectedTab = .discover })
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(for: PodcastSummary.self) { summary in
@@ -243,23 +251,41 @@ private struct LibraryPodcastDetailView: View {
 
 /// Applies tab-bar accessibility identifiers that SwiftUI `tabItem` does not always expose.
 private struct TabBarAccessibilityConfigurator: UIViewRepresentable {
+    @Binding var tabBarHeight: CGFloat
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(tabBarHeight: $tabBarHeight)
+    }
+
     func makeUIView(context: Context) -> UIView {
         let view = UIView(frame: .zero)
         view.isUserInteractionEnabled = false
         DispatchQueue.main.async {
-            Self.applyIdentifiers(from: view)
+            Self.apply(from: view, coordinator: context.coordinator)
         }
         return view
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
         DispatchQueue.main.async {
-            Self.applyIdentifiers(from: uiView)
+            Self.apply(from: uiView, coordinator: context.coordinator)
         }
     }
 
-    private static func applyIdentifiers(from view: UIView) {
+    final class Coordinator {
+        var tabBarHeight: Binding<CGFloat>
+
+        init(tabBarHeight: Binding<CGFloat>) {
+            self.tabBarHeight = tabBarHeight
+        }
+    }
+
+    private static func apply(from view: UIView, coordinator: Coordinator) {
         guard let tabBar = findTabBar(from: view) else { return }
+        let measuredHeight = tabBar.bounds.height
+        if measuredHeight > 0, coordinator.tabBarHeight.wrappedValue != measuredHeight {
+            coordinator.tabBarHeight.wrappedValue = measuredHeight
+        }
         guard let items = tabBar.items, items.count >= 2 else { return }
         items[0].accessibilityIdentifier = "tabLibrary"
         items[0].accessibilityLabel = "Library"

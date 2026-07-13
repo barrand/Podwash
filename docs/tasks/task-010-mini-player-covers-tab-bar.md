@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 010 |
 | **Title** | Mini player covers tab bar navigation |
-| **Status** | Queued |
+| **Status** | In Progress |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/AppShellView.swift`, `PodWash/PodWash/MiniPlayerBar.swift`, `PodWash/PodWashUITests/LibraryUITests.swift` |
@@ -57,5 +57,5 @@
 > Loop writes `VERIFY RESULT:` here. For tasks, `tier=2` and `filtered=1` are valid for Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=2 passed=2 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260713-172013.xcresult tier=2 class=tests
 ```

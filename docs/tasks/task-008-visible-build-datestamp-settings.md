@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 008 |
 | **Title** | Visible build datestamp in Settings |
-| **Status** | In Progress |
+| **Status** | Done |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/SettingsView.swift`, new small build-stamp helper (e.g. `BuildStamp.swift`), Xcode build-phase / Info.plist key as needed, `PodWash/PodWashUITests/SettingsUITests.swift`, `PodWash/PodWashTests/` (formatter unit test) |
