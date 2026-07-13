@@ -241,4 +241,75 @@ final class DownloadManagerTests: XCTestCase {
         XCTAssertEqual(manager.state(for: Self.fixtureEpisodeID), .failed)
         XCTAssertFalse(FileManager.default.fileExists(atPath: localURL.path))
     }
+
+    // MARK: - Task 007 AC1: transport failure retains non-empty diagnostic
+
+    func testFailedDownloadExposesNonEmptyDiagnostic() async throws {
+        let underlyingError = DownloadError.transportFailure
+
+        do {
+            _ = try await manager.download(
+                episodeID: Self.fixtureEpisodeID,
+                from: Self.transportErrorRemoteURL
+            ) { _ in }
+            XCTFail("Expected download to throw DownloadError.transportFailure")
+        } catch let error as DownloadError {
+            XCTAssertEqual(error, .transportFailure)
+        }
+
+        XCTAssertEqual(manager.state(for: Self.fixtureEpisodeID), .failed)
+        assertNonEmptyFailureDiagnostic(
+            for: Self.fixtureEpisodeID,
+            underlyingError: underlyingError
+        )
+    }
+
+    // MARK: - Task 007 AC2: successful download leaves no failure diagnostic
+
+    func testSuccessfulDownloadClearsFailureDiagnostic() async throws {
+        _ = try await manager.download(
+            episodeID: Self.fixtureEpisodeID,
+            from: Self.redirectRemoteURL
+        ) { _ in }
+
+        XCTAssertEqual(manager.state(for: Self.fixtureEpisodeID), .downloaded)
+        XCTAssertNilOrEmpty(manager.lastFailureDiagnostic(for: Self.fixtureEpisodeID))
+    }
+
+    // MARK: - Task 007 helpers
+
+    private func assertNonEmptyFailureDiagnostic(
+        for episodeID: String,
+        underlyingError: Error,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let diagnostic = manager.lastFailureDiagnostic(for: episodeID)
+        XCTAssertNotNil(diagnostic, file: file, line: line)
+        guard let text = diagnostic, !text.isEmpty else {
+            XCTFail("Expected non-empty failure diagnostic", file: file, line: line)
+            return
+        }
+
+        let nsError = underlyingError as NSError
+        let mentionsDescription = text.contains(nsError.localizedDescription)
+        let mentionsDomainCode = text.contains(nsError.domain)
+            && text.range(of: String(nsError.code)) != nil
+        XCTAssertTrue(
+            mentionsDescription || mentionsDomainCode,
+            "Diagnostic should include localizedDescription or NSError domain+code; got: \(text)",
+            file: file,
+            line: line
+        )
+    }
+
+    private func XCTAssertNilOrEmpty(
+        _ value: String?,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        if let value, !value.isEmpty {
+            XCTFail("Expected nil or empty failure diagnostic, got: \(value)", file: file, line: line)
+        }
+    }
 }
