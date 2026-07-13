@@ -387,6 +387,195 @@ class PauseInterruptsInflightTests(unittest.TestCase):
         self.assertEqual(argv[0], "osascript")
 
 
+class PauseAfterCurrentTests(unittest.TestCase):
+    """Task 013 — Pause after current arms at boundary without mid-ticket interrupt."""
+
+    def setUp(self) -> None:
+        from pathlib import Path
+
+        import factory_floor.server as floor
+        import task_loop as tl
+
+        self.tl = tl
+        self.floor = floor
+        self._td = tempfile.TemporaryDirectory()
+        self._td.__enter__()
+        self.controls_path = os.path.join(self._td.name, "controls.json")
+        self.station_path = os.path.join(self._td.name, "station.json")
+        self._orig_tl_controls = tl.CONTROLS_PATH
+        self._orig_tl_station = tl.STATION_PATH
+        self._orig_floor_controls = floor.CONTROLS
+        tl.CONTROLS_PATH = self.controls_path
+        tl.STATION_PATH = self.station_path
+        floor.CONTROLS = Path(self.controls_path)
+        tl.write_controls(tl.default_controls())
+
+    def tearDown(self) -> None:
+        self.tl.CONTROLS_PATH = self._orig_tl_controls
+        self.tl.STATION_PATH = self._orig_tl_station
+        self.floor.CONTROLS = self._orig_floor_controls
+        self._td.__exit__(None, None, None)
+
+    def test_api_arms_flag_without_pausing(self) -> None:
+        from unittest import mock
+
+        with mock.patch("task_loop.interrupt_inflight_on_pause") as intr:
+            result = self.floor.apply_control("pause_after_current", {})
+
+        back = self.tl.read_controls()
+        self.assertTrue(back.get("pause_after_current"))
+        self.assertFalse(back.get("paused"))
+        intr.assert_not_called()
+        self.assertTrue(result.get("ok"))
+
+    def test_pauses_after_task_done_before_next_pick(self) -> None:
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as tasks_td:
+            task_path = _write_task(tasks_td, 13, status="Queued")
+            picks: list[int] = []
+
+            def fake_query_next() -> dict:
+                picks.append(1)
+                if len(picks) == 1:
+                    return {"action": "start", "id": 13, "file": task_path}
+                return {"action": "start", "id": 99, "file": task_path}
+
+            def fake_pipeline(*_a, **_k):
+                mid = self.tl.read_controls()
+                self.assertFalse(mid.get("paused"))
+                mid["pause_after_current"] = True
+                self.tl.write_controls(mid)
+                armed = self.tl.read_controls()
+                self.assertTrue(armed.get("pause_after_current"))
+                self.assertFalse(armed.get("paused"))
+                return True, {}
+
+            with mock.patch.object(self.tl, "query_next", side_effect=fake_query_next):
+                with mock.patch.object(self.tl, "run_task_pipeline", side_effect=fake_pipeline):
+                    with mock.patch.object(self.tl, "wait_while_paused"):
+                        with mock.patch.object(
+                            self.tl, "batch_needed", return_value=(False, "not needed")
+                        ):
+                            self.tl.main(["--dry-run"])
+
+        final = self.tl.read_controls()
+        self.assertTrue(final.get("paused"))
+        self.assertFalse(final.get("pause_after_current"))
+        self.assertEqual(picks, [1])
+        self.assertEqual(self.tl.read_station().get("phase"), "paused")
+
+    def test_pauses_after_inflight_batch_before_next_work(self) -> None:
+        from unittest import mock
+
+        ctrl = self.tl.read_controls()
+        ctrl["ship_now"] = True
+        ctrl["pause_after_current"] = True
+        ctrl["batch_running"] = True
+        self.tl.write_controls(ctrl)
+
+        def fake_batch_gate(**_k):
+            mid = self.tl.read_controls()
+            self.assertFalse(mid.get("paused"))
+            self.assertTrue(mid.get("pause_after_current"))
+            mid["batch_running"] = False
+            self.tl.write_controls(mid)
+            return self.tl.EXIT_OK
+
+        qn_calls: list[int] = []
+        with mock.patch.object(self.tl, "run_batch_gate", side_effect=fake_batch_gate):
+            with mock.patch.object(
+                self.tl,
+                "query_next",
+                side_effect=lambda: qn_calls.append(1) or {"action": "done"},
+            ):
+                with mock.patch.object(self.tl, "wait_while_paused"):
+                    self.tl.main(["--dry-run"])
+
+        self.assertEqual(qn_calls, [])
+        final = self.tl.read_controls()
+        self.assertTrue(final.get("paused"))
+        self.assertFalse(final.get("pause_after_current"))
+
+    def test_idle_arm_pauses_at_next_boundary(self) -> None:
+        from unittest import mock
+
+        ctrl = self.tl.read_controls()
+        ctrl["pause_after_current"] = True
+        self.tl.write_controls(ctrl)
+
+        qn_calls: list[int] = []
+        batch_calls: list[int] = []
+        with mock.patch.object(
+            self.tl,
+            "query_next",
+            side_effect=lambda: qn_calls.append(1) or {"action": "done"},
+        ):
+            with mock.patch.object(
+                self.tl,
+                "run_batch_gate",
+                side_effect=lambda **_k: batch_calls.append(1) or self.tl.EXIT_OK,
+            ):
+                with mock.patch.object(self.tl, "wait_while_paused"):
+                    self.tl.main(["--dry-run"])
+
+        self.assertEqual(qn_calls, [])
+        self.assertEqual(batch_calls, [])
+        final = self.tl.read_controls()
+        self.assertTrue(final.get("paused"))
+        self.assertFalse(final.get("pause_after_current"))
+
+    def test_resume_clears_arm_and_pause(self) -> None:
+        ctrl = self.tl.read_controls()
+        ctrl["paused"] = True
+        ctrl["pause_after_current"] = True
+        self.tl.write_controls(ctrl)
+
+        self.floor.apply_control("resume", {})
+
+        back = self.tl.read_controls()
+        self.assertFalse(back.get("paused"))
+        self.assertFalse(back.get("pause_after_current"))
+
+    def test_immediate_pause_clears_arm(self) -> None:
+        from unittest import mock
+
+        ctrl = self.tl.read_controls()
+        ctrl["pause_after_current"] = True
+        self.tl.write_controls(ctrl)
+
+        with mock.patch("task_loop.interrupt_inflight_on_pause") as intr:
+            self.floor.apply_control("pause", {})
+
+        back = self.tl.read_controls()
+        self.assertTrue(back.get("paused"))
+        self.assertFalse(back.get("pause_after_current"))
+        intr.assert_called_once()
+
+    def test_board_snapshot_shows_armed_indicator(self) -> None:
+        activity = self.floor._activity_snapshot(
+            ctrl={
+                **self.floor._default_controls(),
+                "running": True,
+                "paused": False,
+                "pause_after_current": True,
+                "batch_running": False,
+            },
+            station={"phase": "task", "role": "pipeline", "detail": "task-013 running"},
+            batch={"state": "idle", "reason": "not needed", "verify_running": False},
+            tasks=[{"id": "013", "status": "In Progress", "title": "Pause after current"}],
+            events=[],
+            factory_hot=True,
+            runner_alive=True,
+        )
+        blob = " ".join(
+            str(activity.get(k) or "")
+            for k in ("headline", "detail", "next", "mode")
+        ).lower()
+        self.assertIn("pause after current", blob)
+        self.assertNotEqual(activity.get("mode"), "paused")
+
+
 class TestNotifyNoBell(unittest.TestCase):
     def test_notify_omits_terminal_bell(self):
         from io import StringIO
