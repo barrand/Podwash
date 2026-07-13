@@ -278,6 +278,115 @@ class TestNextTask(unittest.TestCase):
             self.assertNotEqual(data["action"], "done")
 
 
+class PauseInterruptsInflightTests(unittest.TestCase):
+    """Task 005 — Pause must interrupt in-flight verify, not only the next loop tick."""
+
+    def setUp(self) -> None:
+        import task_loop as tl
+
+        self.tl = tl
+        self._td = tempfile.TemporaryDirectory()
+        self._td.__enter__()
+        self.controls_path = os.path.join(self._td.name, "controls.json")
+        self.station_path = os.path.join(self._td.name, "station.json")
+        self._orig_controls = tl.CONTROLS_PATH
+        self._orig_station = tl.STATION_PATH
+        tl.CONTROLS_PATH = self.controls_path
+        tl.STATION_PATH = self.station_path
+        tl.write_controls(tl.default_controls())
+
+    def tearDown(self) -> None:
+        self.tl.CONTROLS_PATH = self._orig_controls
+        self.tl.STATION_PATH = self._orig_station
+        self._td.__exit__(None, None, None)
+
+    def _apply_pause_interrupt(self) -> None:
+        ctrl = self.tl.read_controls()
+        ctrl["paused"] = True
+        self.tl.write_controls(ctrl)
+        self.tl.interrupt_inflight_on_pause()
+
+    def test_pause_kills_inflight_verify_child(self) -> None:
+        import slice_pipeline as sp
+
+        proc = subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(300)"],
+            start_new_session=True,
+        )
+        try:
+            ctrl = self.tl.default_controls()
+            ctrl["batch_running"] = True
+            self.tl.write_controls(ctrl)
+            sp._ACTIVE_VERIFY_PROC = proc  # noqa: SLF001 — contract for pause interrupt
+
+            self._apply_pause_interrupt()
+
+            proc.wait(timeout=5)
+            self.assertIsNotNone(proc.poll())
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait(timeout=2)
+
+    def test_pause_clears_batch_running_and_station(self) -> None:
+        self.tl.set_station(
+            phase="FULL-VERIFY",
+            role="loop",
+            detail="tier-3 full suite (ship_now) — running",
+            batch={"state": "running", "needed": True, "reason": "ship_now"},
+        )
+        ctrl = self.tl.default_controls()
+        ctrl["batch_running"] = True
+        self.tl.write_controls(ctrl)
+
+        self._apply_pause_interrupt()
+
+        back = self.tl.read_controls()
+        self.assertTrue(back["paused"])
+        self.assertFalse(back["batch_running"])
+        station = self.tl.read_station()
+        self.assertEqual(station.get("phase"), "paused")
+
+    def test_paused_loop_does_not_start_verify(self) -> None:
+        from unittest import mock
+
+        ctrl = self.tl.default_controls()
+        ctrl["paused"] = True
+        self.tl.write_controls(ctrl)
+
+        verify_calls: list[int] = []
+        with mock.patch("slice_pipeline.run_verify", side_effect=lambda *a, **k: verify_calls.append(1)):
+            with mock.patch.object(self.tl, "batch_needed", return_value=(True, "ship_now")):
+                with mock.patch.object(self.tl, "head_sha", return_value="abc123"):
+                    code = self.tl.run_batch_gate(
+                        api_key="k",
+                        dry_run=False,
+                        no_commit=True,
+                        no_push=True,
+                        skip=False,
+                        force=True,
+                    )
+
+        self.assertEqual(verify_calls, [])
+        self.assertFalse(self.tl.read_controls().get("batch_running"))
+        self.assertEqual(code, self.tl.EXIT_WAIT)
+
+    def test_notify_omits_terminal_bell(self) -> None:
+        from io import StringIO
+        from unittest import mock
+
+        import task_loop
+
+        buf = StringIO()
+        with mock.patch.object(task_loop.sys, "stdout", buf):
+            with mock.patch.object(task_loop.subprocess, "run") as run:
+                task_loop.notify("Forge", "test body")
+        self.assertNotIn("\a", buf.getvalue())
+        run.assert_called_once()
+        argv = run.call_args[0][0]
+        self.assertEqual(argv[0], "osascript")
+
+
 class TestNotifyNoBell(unittest.TestCase):
     def test_notify_omits_terminal_bell(self):
         from io import StringIO
