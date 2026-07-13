@@ -51,6 +51,31 @@ final class StubDownloadURLProtocol: URLProtocol {
     override func startLoading() {
         guard let client, let url = request.url else { return }
 
+        if url.path.contains("/transport-error") {
+            let response = HTTPURLResponse(
+                url: url,
+                statusCode: 500,
+                httpVersion: "HTTP/1.1",
+                headerFields: [:]
+            )!
+            client.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client.urlProtocolDidFinishLoading(self)
+            return
+        }
+
+        if url.path.contains("/redirect/") {
+            let location = "https://fixture.podwash.tests/audio/alpha.m4a"
+            let response = HTTPURLResponse(
+                url: url,
+                statusCode: 302,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["Location": location]
+            )!
+            client.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client.urlProtocolDidFinishLoading(self)
+            return
+        }
+
         let payload: Data
         do {
             payload = try Self.loadPayload()

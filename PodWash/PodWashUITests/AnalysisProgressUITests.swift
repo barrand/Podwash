@@ -30,8 +30,21 @@ final class AnalysisProgressUITests: XCTestCase {
         XCTAssertTrue(channelToggle.waitForExistence(timeout: 5))
         channelToggle.tap()
 
-        let channelBadge = app.descendants(matching: .any)["cleaningBadge_channelOn"]
-        XCTAssertTrue(channelBadge.waitForExistence(timeout: 2))
+        let channelOnExpectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "on"),
+            object: channelToggle
+        )
+        XCTAssertEqual(XCTWaiter().wait(for: [channelOnExpectation], timeout: 2), .completed)
+        XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_channelOn"].exists)
+
+        channelToggle.tap()
+
+        let channelOffExpectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "off"),
+            object: channelToggle
+        )
+        XCTAssertEqual(XCTWaiter().wait(for: [channelOffExpectation], timeout: 2), .completed)
+        XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_channelOn"].exists)
 
         let episodeToggle = app.switches["episodeCleaningToggle_0"]
         XCTAssertTrue(episodeToggle.waitForExistence(timeout: 5))
