@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 21 |
 | **Title** | Visual identity & branding |
-| **Status** | Ready |
+| **Status** | Done |
 | **Crux** | Brand tokens, display name, and App Icon assets are pinned to user-approved values and assertable in unit/structural tests; existing primary screens (player shell, episode list, settings entry) consume those tokens so chrome is branded without subjective visual review. |
 
 ## PRD / spec references

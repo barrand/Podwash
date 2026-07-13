@@ -210,6 +210,16 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
     nonisolated func urlSession(
         _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        completionHandler(request)
+    }
+
+    nonisolated func urlSession(
+        _ session: URLSession,
         downloadTask: URLSessionDownloadTask,
         didWriteData bytesWritten: Int64,
         totalBytesWritten: Int64,
@@ -243,6 +253,15 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         }
         if isCancelled {
             try? fileManager.removeItem(at: location)
+            return
+        }
+
+        if let httpResponse = downloadTask.response as? HTTPURLResponse,
+           !(200 ... 299).contains(httpResponse.statusCode) {
+            try? fileManager.removeItem(at: location)
+            Task { @MainActor in
+                failDownload(episodeID: episodeID, error: DownloadError.transportFailure)
+            }
             return
         }
 
@@ -461,12 +480,15 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     }
 
     private func failDownload(episodeID: String, error: Error) {
-        if let active = activeDownloads.removeValue(forKey: episodeID) {
-            if (error as? URLError)?.code == .cancelled {
-                active.continuation.resume(throwing: DownloadError.cancelled)
-            } else {
-                active.continuation.resume(throwing: DownloadError.transportFailure)
-            }
+        // Only fail an in-flight download. `didCompleteWithError` can arrive after
+        // `didFinishDownloadingTo` has already moved the file — without this guard a
+        // late transport error would delete the sandbox `.m4a` and flip UI to `.failed`.
+        guard let active = activeDownloads.removeValue(forKey: episodeID) else { return }
+
+        if (error as? URLError)?.code == .cancelled {
+            active.continuation.resume(throwing: DownloadError.cancelled)
+        } else {
+            active.continuation.resume(throwing: DownloadError.transportFailure)
         }
 
         removePartialFiles(for: episodeID)

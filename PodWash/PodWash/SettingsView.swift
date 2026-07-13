@@ -122,24 +122,24 @@ struct SettingsView: View {
 
     private var unrelatedContentSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Unrelated content")
+            Text("Ads")
                 .font(.headline)
 
             Toggle(isOn: $store.unrelatedContentEnabled) {
-                Text("Skip unrelated content")
+                Text("Skip ads")
             }
             .padding(.vertical, 2)
             .padding(.horizontal, 12)
             .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
             .accessibilityIdentifier("unrelatedContentToggle")
-            .accessibilityLabel("Skip unrelated content")
+            .accessibilityLabel("Skip ads")
             .accessibilityValue(store.unrelatedContentEnabled ? "1" : "0")
-            .accessibilityHint("Skips or mutes segments that seem unrelated to the story.")
+            .accessibilityHint("Skips or mutes segments that seem like ads.")
 
             if store.unrelatedContentEnabled {
                 Button(action: cycleUnrelatedContentAction) {
                     HStack {
-                        Text("Unrelated content action")
+                        Text("Ads action")
                         Spacer()
                         Text(store.unrelatedContentAction.rawValue.capitalized)
                             .foregroundStyle(.secondary)
@@ -151,9 +151,9 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("unrelatedContentActionControl")
-                .accessibilityLabel("Unrelated content action")
+                .accessibilityLabel("Ads action")
                 .accessibilityValue(store.unrelatedContentAction.rawValue)
-                .accessibilityHint("Chooses skip or mute for unrelated segments.")
+                .accessibilityHint("Chooses skip or mute for ad segments.")
             }
         }
     }

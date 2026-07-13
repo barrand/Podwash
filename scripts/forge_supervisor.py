@@ -28,7 +28,29 @@ EXIT_THRASH = 5
 EXIT_INFRA = 6
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOOP_PY = os.path.join(REPO_ROOT, "scripts", "slice_loop.py")
+
+
+def _resolve_loop_py() -> str:
+    raw = os.environ.get("PODWASH_FORGE_LOOP", "slice_loop").strip()
+    aliases = {
+        "slice": "slice_loop.py",
+        "slice_loop": "slice_loop.py",
+        "task": "task_loop.py",
+        "tasks": "task_loop.py",
+        "task_loop": "task_loop.py",
+        "forge": "forge_loop.py",
+        "forge_loop": "forge_loop.py",
+        "unified": "forge_loop.py",
+    }
+    name = aliases.get(raw, raw)
+    if not name.endswith(".py"):
+        name = f"{name}.py"
+    path = name if os.path.isabs(name) else os.path.join(REPO_ROOT, "scripts", name)
+    return path
+
+
+LOOP_PY = _resolve_loop_py()
+
 
 
 def log(msg: str) -> None:

@@ -7,7 +7,10 @@ alwaysApply: true
 
 Use this rule when the user is **testing on device** or sending rapid fix/tweak requests in Cursor. This is **not** the dark-factory slice pipeline.
 
-**Precedence:** When the user points at `docs/slices/slice-NN-*.md` for a formal slice or runs `slice-loop`, defer to `podwash-coordinator.mdc` instead.
+**Precedence:**
+- When the user points at `docs/slices/slice-NN-*.md` for a formal slice or runs `slice-loop`, defer to `podwash-coordinator.mdc`.
+- When `build/factory/factory-hot` exists or **Forge Floor / task-loop** is running: **do not hand-edit** app/test sources — file work via **forge-intake** and let the factory run. Pause the Floor first to reclaim the tree for local-dev.
+- Punch-list bugs/tweaks: prefer **forge-intake** → task board over ad-hoc local-dev when the factory is the intended path.
 
 ## Workflow
 

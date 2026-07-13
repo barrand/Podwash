@@ -75,20 +75,31 @@ struct LibraryView: View {
 
     @ViewBuilder
     private func libraryArtwork(_ artworkURL: URL?) -> some View {
-        if artworkURL != nil {
-            Image(systemName: "photo.artframe")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 48, height: 48)
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
+        if let artworkURL {
+            AsyncImage(url: artworkURL) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                default:
+                    libraryArtworkPlaceholder
+                }
+            }
+            .frame(width: 48, height: 48)
+            .clipped()
+            .accessibilityHidden(true)
         } else {
-            Image(systemName: "mic.circle.fill")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 48, height: 48)
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
+            libraryArtworkPlaceholder
         }
+    }
+
+    private var libraryArtworkPlaceholder: some View {
+        Image(systemName: "mic.circle.fill")
+            .resizable()
+            .scaledToFit()
+            .frame(width: 48, height: 48)
+            .foregroundStyle(.secondary)
+            .accessibilityHidden(true)
     }
 }

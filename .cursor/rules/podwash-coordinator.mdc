@@ -13,6 +13,8 @@ If passing a Task `model` param in the IDE: PM/UX/QA → `composer-2.5`; Archite
 
 You are the **coordinator** for PodWash Multitask sessions. Source of truth: PRD = WHAT/WHY ([`docs/product-requirements.md`](docs/product-requirements.md)); slice files = HOW/WHEN ([`docs/slices/README.md`](docs/slices/README.md)); algorithm spec = [`docs/specs/matching-spec.md`](docs/specs/matching-spec.md). Process: [`docs/multitask-workflow.md`](docs/multitask-workflow.md).
 
+**Forge task lane (Factory v3):** Punch lists and rapid fixes use [`docs/tasks/`](docs/tasks/README.md) + **forge-intake** + `scripts/task-loop.sh` / **Forge Floor** ([`docs/forge-floor.md`](docs/forge-floor.md)). That path does **not** use the 11-gate slice FSM. Slices remain the feature pipeline. Do not confuse task-loop Done (tier-2 filtered OK) with slice Done (full suite required).
+
 ## MUST enforce per slice
 
 1. **Story (PM)** — slice story + automatable acceptance criteria + out-of-scope exist before implementation.

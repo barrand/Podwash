@@ -144,63 +144,75 @@ struct PodcastDetailView: View {
     }
 
     private func podcastHeader(_ feed: PodcastFeed) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            artworkView(feed.artworkURL)
-                .frame(width: 72, height: 72)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                artworkView(feed.artworkURL)
+                    .frame(width: 72, height: 72)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(feed.title)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .accessibilityHidden(true)
-
-                if let description = feed.description {
-                    Text(description)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(feed.title)
+                        .font(.title3)
+                        .fontWeight(.semibold)
                         .accessibilityHidden(true)
+
+                    if let description = feed.description {
+                        Text(description)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .accessibilityHidden(true)
+                    }
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier("podcastTitle")
+                .accessibilityLabel("Podcast title")
+                .accessibilityValue(feed.title)
+
+                Spacer(minLength: 0)
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityIdentifier("podcastTitle")
-            .accessibilityLabel("Podcast title")
-            .accessibilityValue(feed.title)
 
-            Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Clean channel")
+                            .font(.caption)
+                            .accessibilityHidden(true)
 
-            VStack(alignment: .trailing, spacing: 6) {
-                Toggle(isOn: channelCleaningBinding) {
-                    Text("Clean channel")
+                        Spacer(minLength: 8)
+
+                        Toggle(isOn: channelCleaningBinding) {
+                            Text("Clean channel")
+                        }
+                        .labelsHidden()
+                        .accessibilityIdentifier("channelCleaningToggle")
+                        .accessibilityLabel("Channel cleaning")
+                        .accessibilityValue(analysisViewModel.isChannelCleaningEnabled ? "on" : "off")
+                    }
+                    .padding(.vertical, 2)
+                    .padding(.horizontal, 12)
+                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+                }
+
+                HStack {
+                    Text("Skip ads on channel")
                         .font(.caption)
-                }
-                .labelsHidden()
-                .accessibilityIdentifier("channelCleaningToggle")
-                .accessibilityLabel("Channel cleaning")
-                .accessibilityValue(analysisViewModel.isChannelCleaningEnabled ? "on" : "off")
+                        .accessibilityHidden(true)
 
-                Toggle(isOn: channelUnrelatedContentBinding) {
-                    Text("Skip unrelated on channel")
-                        .font(.caption)
-                }
-                .labelsHidden()
-                .accessibilityIdentifier("channelUnrelatedContentToggle")
-                .accessibilityLabel("Channel unrelated content")
-                .accessibilityValue(analysisViewModel.isChannelUnrelatedContentEnabled ? "1" : "0")
-                .accessibilityHint("Enables unrelated-content handling for this podcast when on.")
+                    Spacer(minLength: 8)
 
-                if analysisViewModel.isChannelCleaningEnabled {
-                    Text("Channel on")
-                        .font(.caption2)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.accentColor.opacity(0.15))
-                        .clipShape(Capsule())
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityIdentifier("cleaningBadge_channelOn")
-                        .accessibilityLabel("Channel cleaning on")
+                    Toggle(isOn: channelUnrelatedContentBinding) {
+                        Text("Skip ads on channel")
+                    }
+                    .labelsHidden()
+                    .accessibilityIdentifier("channelUnrelatedContentToggle")
+                    .accessibilityLabel("Skip ads on channel")
+                    .accessibilityValue(analysisViewModel.isChannelUnrelatedContentEnabled ? "1" : "0")
+                    .accessibilityHint("Enables ad skipping for this podcast when on.")
                 }
+                .padding(.vertical, 2)
+                .padding(.horizontal, 12)
+                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
             }
         }
         .padding()
@@ -222,25 +234,47 @@ struct PodcastDetailView: View {
 
     @ViewBuilder
     private func artworkView(_ artworkURL: URL?) -> some View {
-        if artworkURL != nil {
-            Image(systemName: "photo.artframe")
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(.secondary)
+        if let artworkURL {
+            AsyncImage(url: artworkURL) { phase in
+                Group {
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        detailArtworkPlaceholderIcon
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityElement(children: .ignore)
                 .accessibilityIdentifier("podcastArtwork")
                 .accessibilityLabel("Podcast artwork")
-                .accessibilityValue("loaded")
+                .accessibilityValue(Self.artworkAccessibilityValue(for: phase))
+            }
+            .frame(width: 72, height: 72)
+            .clipped()
         } else {
-            Image(systemName: "mic.circle.fill")
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(.secondary)
+            detailArtworkPlaceholderIcon
                 .accessibilityElement(children: .ignore)
                 .accessibilityIdentifier("podcastArtwork")
                 .accessibilityLabel("Podcast artwork")
                 .accessibilityValue("placeholder")
         }
+    }
+
+    private var detailArtworkPlaceholderIcon: some View {
+        Image(systemName: "mic.circle.fill")
+            .resizable()
+            .scaledToFit()
+            .foregroundStyle(.secondary)
+    }
+
+    private static func artworkAccessibilityValue(for phase: AsyncImagePhase) -> String {
+        if case .success = phase {
+            return "loaded"
+        }
+        return "placeholder"
     }
 
     private func errorSummary(for error: RSSParserError) -> String {
