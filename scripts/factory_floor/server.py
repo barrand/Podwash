@@ -827,6 +827,12 @@ button {
   border-radius: 6px; padding: 0.45rem 0.75rem; cursor: pointer; font: inherit;
 }
 button.primary { background: var(--accent); color: #1a1c1e; border-color: transparent; font-weight: 600; }
+button:disabled {
+  opacity: 0.45; cursor: not-allowed;
+}
+button.primary:disabled {
+  background: #3a3f45; color: var(--muted); border-color: var(--line);
+}
 button.danger { border-color: var(--warn); color: var(--warn); }
 button:hover { filter: brightness(1.08); }
 main {
@@ -1452,6 +1458,66 @@ function render() {
     row.innerHTML = `<span class="muted">No agents active</span>`;
     agentList.appendChild(row);
   }
+
+  syncToolbar(snap, activity, running, runnerAlive);
+}
+
+/** Primary action + enable/disable follow real factory state. */
+function syncToolbar(snap, activity, running, runnerAlive) {
+  const ctrl = (snap && snap.controls) || {};
+  const paused = !!ctrl.paused;
+  const orphan = !!(activity && activity.orphan);
+  const btnStart = document.getElementById("btnStart");
+  const btnPause = document.getElementById("btnPause");
+  const btnResume = document.getElementById("btnResume");
+  const btnStop = document.getElementById("btnStop");
+  const btnShip = document.getElementById("btnShip");
+
+  [btnStart, btnPause, btnResume, btnStop, btnShip].forEach((b) => {
+    if (b) b.classList.remove("primary");
+  });
+
+  if (orphan) {
+    btnStart.textContent = "Restart factory";
+    btnStart.disabled = false;
+    btnStart.classList.add("primary");
+    btnPause.disabled = true;
+    btnResume.disabled = true;
+    btnStop.disabled = false;
+    btnShip.disabled = true;
+    return;
+  }
+
+  if (!running) {
+    btnStart.textContent = "Start factory";
+    btnStart.disabled = false;
+    btnStart.classList.add("primary");
+    btnPause.disabled = true;
+    btnResume.disabled = true;
+    btnStop.disabled = true;
+    btnShip.disabled = false;
+    return;
+  }
+
+  if (paused) {
+    btnStart.textContent = "Paused";
+    btnStart.disabled = true;
+    btnPause.disabled = true;
+    btnResume.disabled = false;
+    btnResume.classList.add("primary");
+    btnStop.disabled = false;
+    btnShip.disabled = false;
+    return;
+  }
+
+  // Live shift
+  btnStart.textContent = runnerAlive ? "Running" : "Starting…";
+  btnStart.disabled = true;
+  btnPause.disabled = false;
+  btnPause.classList.add("primary");
+  btnResume.disabled = true;
+  btnStop.disabled = false;
+  btnShip.disabled = false;
 }
 
 async function openDrawer(item) {
