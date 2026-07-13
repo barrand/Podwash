@@ -19,6 +19,14 @@ final class DownloadManagerTests: XCTestCase {
     private static let fixtureEpisodeID = "fixture-ep-001"
     private static let fixtureRemoteURL = URL(string: "https://fixture.podwash.tests/audio/alpha.m4a")!
     private static let fixtureRemoteURLString = "https://fixture.podwash.tests/audio/alpha.m4a"
+    /// Stub contract: HTTP 302 → `fixtureRemoteURL`, then normative 200 chunked body.
+    private static let redirectRemoteURL = URL(
+        string: "https://fixture.podwash.tests/audio/redirect/alpha.m4a"
+    )!
+    /// Stub contract: non-recoverable HTTP 500 with no body.
+    private static let transportErrorRemoteURL = URL(
+        string: "https://fixture.podwash.tests/audio/transport-error.m4a"
+    )!
     private static let expectedByteCount = 1024
 
     private var downloadsDirectory: URL!
@@ -194,6 +202,43 @@ final class DownloadManagerTests: XCTestCase {
 
         let afterDelete = resolver.playbackURL(for: episode)
         XCTAssertEqual(afterDelete?.absoluteString, Self.fixtureRemoteURLString)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: localURL.path))
+    }
+
+    // MARK: - Task 001 AC1: HTTP redirect then 200 completes download
+
+    func testDownloadCompletesAfterHTTPRedirect() async throws {
+        let localURL = expectedLocalFileURL()
+
+        let returnedURL = try await manager.download(
+            episodeID: Self.fixtureEpisodeID,
+            from: Self.redirectRemoteURL
+        ) { _ in }
+
+        XCTAssertEqual(manager.state(for: Self.fixtureEpisodeID), .downloaded)
+        XCTAssertEqual(returnedURL.path, localURL.path)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: localURL.path))
+
+        let onDisk = try Data(contentsOf: localURL)
+        XCTAssertGreaterThanOrEqual(onDisk.count, 1)
+    }
+
+    // MARK: - Task 001 AC2: transport error marks failed, no final file
+
+    func testDownloadMarksFailedOnTransportError() async throws {
+        let localURL = expectedLocalFileURL()
+
+        do {
+            _ = try await manager.download(
+                episodeID: Self.fixtureEpisodeID,
+                from: Self.transportErrorRemoteURL
+            ) { _ in }
+            XCTFail("Expected download to throw DownloadError.transportFailure")
+        } catch let error as DownloadError {
+            XCTAssertEqual(error, .transportFailure)
+        }
+
+        XCTAssertEqual(manager.state(for: Self.fixtureEpisodeID), .failed)
         XCTAssertFalse(FileManager.default.fileExists(atPath: localURL.path))
     }
 }
