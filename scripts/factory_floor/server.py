@@ -1616,6 +1616,13 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt: str, *args: Any) -> None:
         sys.stderr.write("[forge-floor] " + (fmt % args) + "\n")
 
+    def handle(self) -> None:
+        """Swallow client disconnects (SSE refresh / tab close) — not Start failures."""
+        try:
+            super().handle()
+        except (ConnectionResetError, BrokenPipeError, TimeoutError):
+            pass
+
     def _json(self, code: int, obj: Any) -> None:
         raw = json.dumps(obj).encode("utf-8")
         self.send_response(code)
@@ -1735,9 +1742,19 @@ class Handler(BaseHTTPRequestHandler):
         self._json(200, {"ok": True, "message": msg, "controls": read_controls()})
 
 
+class QuietThreadingHTTPServer(ThreadingHTTPServer):
+    """Don't dump ConnectionResetError stack traces when the browser drops SSE."""
+
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        err = sys.exc_info()[1]
+        if isinstance(err, (ConnectionResetError, BrokenPipeError, TimeoutError)):
+            return
+        super().handle_error(request, client_address)
+
+
 def main() -> int:
     try:
-        server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+        server = QuietThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     except OSError as exc:
         print(f"forge-floor: port {PORT} busy — {exc}", file=sys.stderr)
         return 1
