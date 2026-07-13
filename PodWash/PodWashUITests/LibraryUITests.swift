@@ -202,4 +202,73 @@ final class LibraryUITests: XCTestCase {
         let discoverRoot = element("discoverRoot", in: app)
         XCTAssertTrue(discoverRoot.waitForExistence(timeout: fixtureTimeout), "discoverRoot must appear within \(fixtureTimeout)s")
     }
+
+    // MARK: - Task 010: mini-player must not cover tab bar
+
+    @MainActor
+    func testTabsRemainHittableWithMiniPlayerVisible() throws {
+        let app = launchLibraryApp()
+        playFirstEpisodeAndWaitForMiniPlayer(app)
+
+        let miniPlayer = element("miniPlayer", in: app)
+        XCTAssertTrue(miniPlayer.exists, "miniPlayer must remain visible while switching tabs")
+
+        let discoverTab = element("tabDiscover", in: app)
+        XCTAssertTrue(discoverTab.waitForExistence(timeout: fixtureTimeout))
+        waitForHittable(discoverTab, timeout: fixtureTimeout, message: "tabDiscover must be hittable with miniPlayer visible")
+        discoverTab.tap()
+
+        let discoverRoot = element("discoverRoot", in: app)
+        XCTAssertTrue(
+            discoverRoot.waitForExistence(timeout: fixtureTimeout),
+            "discoverRoot must appear within \(fixtureTimeout)s after tapping tabDiscover with miniPlayer visible"
+        )
+
+        XCTAssertTrue(miniPlayer.exists, "miniPlayer must remain visible after switching to Discover")
+
+        let libraryTab = element("tabLibrary", in: app)
+        XCTAssertTrue(libraryTab.waitForExistence(timeout: fixtureTimeout))
+        waitForHittable(libraryTab, timeout: fixtureTimeout, message: "tabLibrary must be hittable with miniPlayer visible")
+        libraryTab.tap()
+
+        let libraryRoot = element("libraryRoot", in: app)
+        XCTAssertTrue(
+            libraryRoot.waitForExistence(timeout: fixtureTimeout),
+            "libraryRoot must appear within \(fixtureTimeout)s after tapping tabLibrary with miniPlayer visible"
+        )
+    }
+
+    @MainActor
+    func testMiniPlayerDoesNotOverlapTabBarFrames() throws {
+        let app = launchLibraryApp()
+        playFirstEpisodeAndWaitForMiniPlayer(app)
+
+        let miniPlayer = element("miniPlayer", in: app)
+        XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout))
+
+        for (tabID, tabName) in [("tabDiscover", "tabDiscover"), ("tabLibrary", "tabLibrary")] {
+            let tab = element(tabID, in: app)
+            XCTAssertTrue(tab.waitForExistence(timeout: fixtureTimeout), "\(tabName) must exist with miniPlayer visible")
+
+            let miniFrame = miniPlayer.frame
+            let tabFrame = tab.frame
+            XCTAssertFalse(
+                miniFrame.intersects(tabFrame),
+                "\(tabName) frame must not intersect miniPlayer frame; miniPlayer=\(miniFrame) \(tabName)=\(tabFrame)"
+            )
+            XCTAssertGreaterThanOrEqual(
+                tabFrame.minY,
+                miniFrame.maxY,
+                "\(tabName) must sit at or below miniPlayer (≥0pt vertical separation); miniPlayer.maxY=\(miniFrame.maxY) \(tabName).minY=\(tabFrame.minY)"
+            )
+        }
+    }
+
+    private func waitForHittable(_ control: XCUIElement, timeout: TimeInterval, message: String) {
+        let predicate = NSPredicate(format: "isHittable == true")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: control)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(result, .completed, message)
+        XCTAssertTrue(control.isHittable, message)
+    }
 }
