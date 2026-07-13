@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 004 |
 | **Title** | Silence overlay audio during unit tests |
-| **Status** | Queued |
+| **Status** | In Progress |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/OverlayEngine.swift`, `PodWash/PodWashTests/OverlaySyncTests.swift` |
@@ -60,5 +60,5 @@
 > Loop writes `VERIFY RESULT:` here. For tasks, `tier=2` and `filtered=1` are valid for Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=6 passed=6 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260713-102908.xcresult tier=2 class=tests
 ```

@@ -31,6 +31,11 @@ final class OverlayEngine {
     private var isSeekResyncing = false
     private let matchEpsilon: TimeInterval = 0.05
 
+    /// Under XCTest, overlay `AVAudioPlayer` volume is 0 so verify emits no host-audible beeps (task-004).
+    private static let silenceOverlayForTests: Bool = {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }()
+
     init(
         player: AVPlayer,
         eventRecorder: (any OverlayEventRecording)? = nil,
@@ -107,6 +112,11 @@ final class OverlayEngine {
         }
     }
 
+    /// Test seam: volume of the active overlay player (0 when silent under XCTest).
+    var overlayPlayerVolumeForTesting: Float {
+        audioPlayer?.volume ?? 0
+    }
+
     /// Tear down observers + stop playback.
     func reset() {
         removeBoundaryObserver()
@@ -130,6 +140,9 @@ final class OverlayEngine {
         do {
             let prepared = try AVAudioPlayer(contentsOf: url)
             prepared.numberOfLoops = -1
+            if Self.silenceOverlayForTests {
+                prepared.volume = 0
+            }
             prepared.prepareToPlay()
             audioPlayer = prepared
             return true
@@ -193,6 +206,9 @@ final class OverlayEngine {
         let resumeRate: Float = abs(player.rate) > 0.0001 ? player.rate : 1.0
 
         audioPlayer.currentTime = 0
+        if Self.silenceOverlayForTests {
+            audioPlayer.volume = 0
+        }
         audioPlayer.play()
         isOverlayActive = true
         eventRecorder?.overlayStart(at: time, assetID: assetID)

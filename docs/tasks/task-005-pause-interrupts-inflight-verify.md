@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 005 |
 | **Title** | Pause interrupts in-flight verify |
-| **Status** | Queued |
+| **Status** | Halted |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `scripts/factory_floor/server.py`, `scripts/task_loop.py`, `scripts/test_task_factory.py` (or new `scripts/test_forge_floor_controls.py`) |

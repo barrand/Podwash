@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 003 |
 | **Title** | CarPlay disconnect uses wrong protocol selector |
-| **Status** | In Progress |
+| **Status** | Done |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/CarPlaySceneDelegate.swift`, `PodWash/PodWashTests/CarPlayTemplateTests.swift`, `docs/adr/016-carplay-templates.md` |
