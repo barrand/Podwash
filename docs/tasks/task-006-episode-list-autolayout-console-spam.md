@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 006 |
 | **Title** | Episode list Auto Layout console spam on podcast detail |
-| **Status** | In Progress |
+| **Status** | Done |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/EpisodeListView.swift`, `PodWash/PodWash/AnalysisTimelineView.swift`, `PodWash/PodWashTests/` (new layout tests; cell/controller are currently `private` — expose `@testable`/`internal` seam as needed) |

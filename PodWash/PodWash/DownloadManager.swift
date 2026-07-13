@@ -6,9 +6,15 @@
 //
 
 import Foundation
+import os
 
 @MainActor
 final class DownloadManager: NSObject, URLSessionDownloadDelegate {
+    private static let logger = Logger(
+        subsystem: "com.barrandfarm.PodWash",
+        category: "DownloadManager"
+    )
+
     private struct ActiveDownload {
         var progressHandler: (Double) -> Void
         var continuation: CheckedContinuation<URL, Error>
@@ -24,6 +30,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     private var activeDownloads: [String: ActiveDownload] = [:]
     private var activeTasks: [String: URLSessionDownloadTask] = [:]
     private var resumeDataByEpisodeID: [String: Data] = [:]
+    private var lastFailureDiagnosticByEpisodeID: [String: String] = [:]
     /// Continuations waiting for cancel + didCompleteWithError to settle resume data.
     private var cancelWaiters: [String: CheckedContinuation<Data?, Never>] = [:]
     private let cancelLock = NSLock()
@@ -191,6 +198,10 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
     func state(for episodeID: String) -> DownloadState {
         stateStore.state(for: episodeID)
+    }
+
+    func lastFailureDiagnostic(for episodeID: String) -> String? {
+        lastFailureDiagnosticByEpisodeID[episodeID]
     }
 
     /// Surfaces a failed download affordance when download cannot start (e.g. missing audio URL).
@@ -364,6 +375,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
         ensureDownloadsDirectoryExists()
         removePartialFiles(for: episodeID)
+        lastFailureDiagnosticByEpisodeID.removeValue(forKey: episodeID)
         stateStore.setState(.downloading(progress: 0), for: episodeID)
         notifyStateChanged()
 
@@ -458,7 +470,15 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             return
         }
 
-        guard var active = activeDownloads.removeValue(forKey: episodeID) else { return }
+        lastFailureDiagnosticByEpisodeID.removeValue(forKey: episodeID)
+
+        guard var active = activeDownloads.removeValue(forKey: episodeID) else {
+            // `didCompleteWithError` may have marked failure before this finish delegate ran;
+            // the sandbox file is already in place — publish downloaded state for the UI.
+            stateStore.setState(.downloaded, for: episodeID)
+            notifyStateChanged()
+            return
+        }
 
         reportChunkedProgress(
             episodeID: episodeID,
@@ -490,6 +510,12 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         // `didFinishDownloadingTo` has already moved the file — without this guard a
         // late transport error would delete the sandbox `.m4a` and flip UI to `.failed`.
         guard let active = activeDownloads.removeValue(forKey: episodeID) else { return }
+
+        let diagnostic = Self.formatFailureDiagnostic(for: error)
+        lastFailureDiagnosticByEpisodeID[episodeID] = diagnostic
+        Self.logger.error(
+            "Download failed for \(episodeID, privacy: .public): \(diagnostic, privacy: .public)"
+        )
 
         if (error as? URLError)?.code == .cancelled {
             active.continuation.resume(throwing: DownloadError.cancelled)
@@ -543,6 +569,11 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
     private func notifyStateChanged() {
         onStateChanged?()
+    }
+
+    private static func formatFailureDiagnostic(for error: Error) -> String {
+        let nsError = error as NSError
+        return "\(nsError.domain) (\(nsError.code)): \(nsError.localizedDescription)"
     }
 
     /// Emits monotonic progress at equal chunk boundaries so coalesced URLSession
