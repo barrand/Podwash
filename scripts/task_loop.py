@@ -418,6 +418,7 @@ def default_controls() -> dict[str, Any]:
     return {
         "running": False,
         "paused": False,
+        "pause_after_current": False,
         "ship_now": False,
         "skip_batch_gate": False,
         "cancel_task_id": None,
@@ -885,6 +886,28 @@ def interrupt_inflight_on_pause() -> None:
     set_station(phase="paused", role="loop", detail="paused — in-flight work stopped")
 
 
+def park_pause_after_current() -> bool:
+    """Commit soft pause at unit-of-work boundary; clear arm."""
+    ctrl = read_controls()
+    if not ctrl.get("pause_after_current"):
+        return False
+    ctrl["paused"] = True
+    ctrl["pause_after_current"] = False
+    write_controls(ctrl)
+    set_station(phase="paused", role="loop", detail="paused — waiting for Resume")
+    return True
+
+
+def park_pause_after_current_at_idle_boundary(ctrl: dict[str, Any] | None = None) -> bool:
+    """Park at loop start when armed and no in-flight / pending batch work."""
+    c = ctrl if ctrl is not None else read_controls()
+    if not c.get("pause_after_current"):
+        return False
+    if c.get("batch_running") or c.get("ship_now"):
+        return False
+    return park_pause_after_current()
+
+
 def wait_while_paused() -> None:
     while True:
         write_heartbeat()
@@ -926,8 +949,13 @@ def main(argv: list[str] | None = None) -> int:
     try:
         while True:
             write_heartbeat()
-            wait_while_paused()
+            if read_controls().get("paused"):
+                wait_while_paused()
+                if read_controls().get("paused"):
+                    return EXIT_WAIT
             ctrl = apply_control_side_effects(read_controls())
+            if park_pause_after_current_at_idle_boundary(ctrl):
+                continue
 
             if ctrl.get("ship_now"):
                 ctrl["ship_now"] = False
@@ -942,6 +970,8 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 if code != EXIT_OK:
                     return code
+                if park_pause_after_current():
+                    continue
 
             decision = query_next()
             action = decision.get("action")
@@ -968,7 +998,7 @@ def main(argv: list[str] | None = None) -> int:
                 log(f"queue empty — idle drain ({reason})")
                 if args.once:
                     return EXIT_OK
-                return run_batch_gate(
+                code = run_batch_gate(
                     api_key=api_key,
                     dry_run=args.dry_run,
                     no_commit=args.no_commit,
@@ -976,6 +1006,9 @@ def main(argv: list[str] | None = None) -> int:
                     skip=args.skip_batch_gate or ctrl.get("skip_batch_gate", False),
                     force=False,
                 )
+                if park_pause_after_current():
+                    continue
+                return code
             if action == "wait":
                 log(decision.get("message", "wait"))
                 set_station(
@@ -1037,6 +1070,8 @@ def main(argv: list[str] | None = None) -> int:
                     return EXIT_OK
                 if args.once:
                     return EXIT_THRASH
+                if park_pause_after_current():
+                    continue
                 continue
 
             ran += 1
@@ -1046,10 +1081,16 @@ def main(argv: list[str] | None = None) -> int:
                 return EXIT_OK
             if args.once:
                 return EXIT_OK
+            if park_pause_after_current():
+                continue
     finally:
-        clear_station()
-        set_factory_hot(False)
         ctrl = read_controls()
+        if ctrl.get("paused"):
+            set_station(phase="paused", role="loop", detail="paused — waiting for Resume")
+        else:
+            clear_station()
+        set_factory_hot(False)
+        ctrl = dict(ctrl)
         ctrl["running"] = False
         ctrl["batch_running"] = False
         write_controls(ctrl)

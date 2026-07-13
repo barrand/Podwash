@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 013 |
 | **Title** | Pause after current soft control |
-| **Status** | Queued |
+| **Status** | In Progress |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `scripts/task_loop.py`, `scripts/factory_floor/server.py`, `scripts/test_task_factory.py` (and/or `scripts/test_forge_floor_controls.py`) |
@@ -66,5 +66,5 @@
 > Loop writes `VERIFY RESULT:` here. For this scripts-only task, record the unittest line (treat as Done evidence in lieu of xcodebuild tier-2).
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=7 passed=7 failed=0 skipped=0 filtered=1 bundle=scripts-unittest tier=2 class=unittest
 ```

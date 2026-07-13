@@ -43,6 +43,7 @@ def _default_controls() -> dict[str, Any]:
     return {
         "running": False,
         "paused": False,
+        "pause_after_current": False,
         "ship_now": False,
         "skip_batch_gate": False,
         "cancel_task_id": None,
@@ -428,6 +429,7 @@ def _activity_snapshot(
 ) -> dict[str, Any]:
     """Plain-English Now / agents / next for the Stations panel."""
     paused = bool(ctrl.get("paused"))
+    pause_armed = bool(ctrl.get("pause_after_current")) and not paused
     marked_running = bool(ctrl.get("running")) or factory_hot
     in_prog = [t for t in tasks if re.search(r"In Progress", t.get("status") or "", re.I)]
     halted = [t for t in tasks if re.search(r"Halted", t.get("status") or "", re.I)]
@@ -489,10 +491,14 @@ def _activity_snapshot(
         agents_out: list[dict[str, str]] | None = None,
         loop_stale: bool = False,
     ) -> dict[str, Any]:
+        detail_out = detail
+        if pause_armed:
+            hint = "Will pause after current"
+            detail_out = f"{hint} — {detail}" if detail else hint
         return {
             "mode": mode,
             "headline": headline,
-            "detail": detail,
+            "detail": detail_out,
             "agents": agents_out if agents_out is not None else agents,
             "next": next_line,
             "batch_plain": batch_plain,
@@ -934,6 +940,73 @@ def requeue_task(task_id: Any) -> str:
     return f"requeued task-{tid:03d} → Queued"
 
 
+def apply_control(action: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Apply a Floor control action; return {ok, message?, controls?, error?}."""
+    data = data or {}
+    ctrl = read_controls()
+    msg = "ok"
+    if action == "start":
+        msg = start_runner()
+    elif action == "stop":
+        msg = stop_runner()
+    elif action == "pause":
+        ctrl["paused"] = True
+        ctrl["pause_after_current"] = False
+        write_controls(ctrl)
+        from task_loop import interrupt_inflight_on_pause
+
+        interrupt_inflight_on_pause()
+    elif action == "pause_after_current":
+        ctrl["pause_after_current"] = True
+        write_controls(ctrl)
+    elif action == "resume":
+        ctrl["paused"] = False
+        ctrl["pause_after_current"] = False
+        write_controls(ctrl)
+    elif action == "ship_now":
+        ctrl["ship_now"] = True
+        write_controls(ctrl)
+    elif action == "requeue":
+        msg = requeue_task(data.get("task_id"))
+        ctrl["requeue_task_id"] = None
+        write_controls(ctrl)
+    elif action == "cancel":
+        ctrl["cancel_task_id"] = data.get("task_id")
+        write_controls(ctrl)
+    elif action == "mark_done":
+        ctrl["mark_done_task_id"] = data.get("task_id")
+        write_controls(ctrl)
+    elif action == "batch_hold":
+        incident = _read_batch_failure()
+        if incident:
+            incident["status"] = "acknowledged"
+            _write_batch_failure(incident)
+            msg = "held — not pushing"
+        else:
+            msg = "no open incident to hold"
+        write_controls(ctrl)
+    elif action == "batch_retry":
+        incident = _read_batch_failure()
+        if incident:
+            incident["status"] = "open"
+            _write_batch_failure(incident)
+        ctrl["ship_now"] = True
+        ctrl["paused"] = False
+        write_controls(ctrl)
+        if not _runner_alive():
+            msg = start_runner()
+        else:
+            msg = "retry queued (ship_now)"
+    elif action == "bump":
+        bumps = ctrl.get("priority_bumps") or {}
+        bumps[str(data.get("task_id"))] = data.get("priority", "P0")
+        ctrl["priority_bumps"] = bumps
+        write_controls(ctrl)
+    else:
+        return {"ok": False, "error": f"unknown action {action}"}
+    return {"ok": True, "message": msg, "controls": read_controls()}
+
+
 def start_runner() -> str:
     global _runner_proc
     with _runner_lock:
@@ -1206,6 +1279,7 @@ main {
   <div class="toolbar">
     <button class="primary" id="btnStart">Start factory</button>
     <button id="btnPause">Pause</button>
+    <button id="btnPauseAfter">Pause after current</button>
     <button id="btnResume">Resume</button>
     <button id="btnShip">Ship now</button>
     <button id="btnStop">Stop</button>
@@ -1478,6 +1552,9 @@ function render() {
     hot.style.color = "var(--accent)";
   } else if (mode === "paused") {
     hot.textContent = "paused";
+    hot.className = "status-pill hot";
+  } else if (snap.controls && snap.controls.pause_after_current && !snap.controls.paused) {
+    hot.textContent = "will pause after current";
     hot.className = "status-pill hot";
   } else if (["working","batch","picking","batch_pending","needs_decision","held"].includes(mode)) {
     hot.textContent = "hot";
@@ -1790,11 +1867,13 @@ function syncToolbar(snap, activity) {
   const mode = (activity && activity.mode) || "";
   const btnStart = document.getElementById("btnStart");
   const btnPause = document.getElementById("btnPause");
+  const btnPauseAfter = document.getElementById("btnPauseAfter");
   const btnResume = document.getElementById("btnResume");
   const btnStop = document.getElementById("btnStop");
   const btnShip = document.getElementById("btnShip");
+  const pauseAfterArmed = !!(snap.controls && snap.controls.pause_after_current && !snap.controls.paused);
 
-  [btnStart, btnPause, btnResume, btnStop, btnShip].forEach((b) => {
+  [btnStart, btnPause, btnPauseAfter, btnResume, btnStop, btnShip].forEach((b) => {
     if (b) b.classList.remove("primary");
   });
 
@@ -1803,6 +1882,7 @@ function syncToolbar(snap, activity) {
     btnStart.disabled = false;
     btnStart.classList.add("primary");
     btnPause.disabled = true;
+    btnPauseAfter.disabled = true;
     btnResume.disabled = true;
     btnStop.disabled = false;
     btnShip.disabled = true;
@@ -1814,6 +1894,7 @@ function syncToolbar(snap, activity) {
     btnStart.textContent = age != null ? `Starting… (${age}s)` : "Starting…";
     btnStart.disabled = true;
     btnPause.disabled = true;
+    btnPauseAfter.disabled = true;
     btnResume.disabled = true;
     btnStop.disabled = false;
     btnShip.disabled = true;
@@ -1824,6 +1905,7 @@ function syncToolbar(snap, activity) {
     btnStart.textContent = "Paused";
     btnStart.disabled = true;
     btnPause.disabled = true;
+    btnPauseAfter.disabled = true;
     btnResume.disabled = false;
     btnResume.classList.add("primary");
     btnStop.disabled = false;
@@ -1836,7 +1918,9 @@ function syncToolbar(snap, activity) {
     btnStart.disabled = true;
     btnPause.disabled = false;
     btnPause.classList.add("primary");
-    btnResume.disabled = true;
+    btnPauseAfter.disabled = pauseAfterArmed;
+    btnResume.disabled = !pauseAfterArmed;
+    if (pauseAfterArmed) btnResume.classList.add("primary");
     btnStop.disabled = false;
     btnShip.disabled = false;
     return;
@@ -1847,6 +1931,7 @@ function syncToolbar(snap, activity) {
   btnStart.disabled = false;
   btnStart.classList.add("primary");
   btnPause.disabled = true;
+  btnPauseAfter.disabled = true;
   btnResume.disabled = true;
   btnStop.disabled = true;
   btnShip.disabled = false;
@@ -1892,6 +1977,7 @@ document.getElementById("btnClose").onclick = () => document.getElementById("dra
 document.getElementById("btnStart").onclick = () => post("/api/control", {action:"start"});
 document.getElementById("btnStop").onclick = () => post("/api/control", {action:"stop"});
 document.getElementById("btnPause").onclick = () => post("/api/control", {action:"pause"});
+document.getElementById("btnPauseAfter").onclick = () => post("/api/control", {action:"pause_after_current"});
 document.getElementById("btnResume").onclick = () => post("/api/control", {action:"resume"});
 document.getElementById("btnShip").onclick = () => post("/api/control", {action:"ship_now"});
 document.getElementById("btnHold").onclick = () => {
@@ -2016,65 +2102,11 @@ class Handler(BaseHTTPRequestHandler):
         if path != "/api/control":
             self.send_error(404)
             return
-        action = data.get("action")
-        ctrl = read_controls()
-        msg = "ok"
-        if action == "start":
-            msg = start_runner()
-        elif action == "stop":
-            msg = stop_runner()
-        elif action == "pause":
-            ctrl["paused"] = True
-            write_controls(ctrl)
-            from task_loop import interrupt_inflight_on_pause
-
-            interrupt_inflight_on_pause()
-        elif action == "resume":
-            ctrl["paused"] = False
-            write_controls(ctrl)
-        elif action == "ship_now":
-            ctrl["ship_now"] = True
-            write_controls(ctrl)
-        elif action == "requeue":
-            msg = requeue_task(data.get("task_id"))
-            ctrl["requeue_task_id"] = None
-            write_controls(ctrl)
-        elif action == "cancel":
-            ctrl["cancel_task_id"] = data.get("task_id")
-            write_controls(ctrl)
-        elif action == "mark_done":
-            ctrl["mark_done_task_id"] = data.get("task_id")
-            write_controls(ctrl)
-        elif action == "batch_hold":
-            incident = _read_batch_failure()
-            if incident:
-                incident["status"] = "acknowledged"
-                _write_batch_failure(incident)
-                msg = "held — not pushing"
-            else:
-                msg = "no open incident to hold"
-            write_controls(ctrl)
-        elif action == "batch_retry":
-            incident = _read_batch_failure()
-            if incident:
-                incident["status"] = "open"
-                _write_batch_failure(incident)
-            ctrl["ship_now"] = True
-            ctrl["paused"] = False
-            write_controls(ctrl)
-            if not _runner_alive():
-                msg = start_runner()
-            else:
-                msg = "retry queued (ship_now)"
-        elif action == "bump":
-            bumps = ctrl.get("priority_bumps") or {}
-            bumps[str(data.get("task_id"))] = data.get("priority", "P0")
-            ctrl["priority_bumps"] = bumps
-            write_controls(ctrl)
-        else:
-            self._json(400, {"error": f"unknown action {action}"})
+        result = apply_control(data.get("action"), data)
+        if not result.get("ok"):
+            self._json(400, {"error": result.get("error")})
             return
-        self._json(200, {"ok": True, "message": msg, "controls": read_controls()})
+        self._json(200, result)
 
 
 class QuietThreadingHTTPServer(ThreadingHTTPServer):

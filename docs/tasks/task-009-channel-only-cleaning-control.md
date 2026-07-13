@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 009 |
 | **Title** | Channel-only cleaning control (remove per-episode toggles) |
-| **Status** | In Progress |
+| **Status** | Done |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/EpisodeListView.swift`, `PodWash/PodWash/AnalysisUIViewModel.swift`, `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWashUITests/AnalysisProgressUITests.swift`, `PodWash/PodWashUITests/AnalysisTimelineUITests.swift`, `PodWash/PodWashTests/ProductionAnalysisWiringTests.swift` (plus any other tests that tap `episodeCleaningToggle_*`) |
