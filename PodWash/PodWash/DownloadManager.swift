@@ -562,8 +562,11 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         }
 
         for url in contents where url.pathExtension == "m4a" {
-            let episodeID = url.deletingPathExtension().lastPathComponent
-            stateStore.setState(.downloaded, for: episodeID)
+            let stem = url.deletingPathExtension().lastPathComponent
+            // Hashed stems (`ep-<sha256>`) cannot be reversed to RSS GUIDs; rely on
+            // persisted download state for those episodes.
+            guard DownloadPaths.isPathSafeFileNameStem(stem) else { continue }
+            stateStore.setState(.downloaded, for: stem)
         }
     }
 
