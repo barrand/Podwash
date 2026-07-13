@@ -728,6 +728,12 @@ main {
   display: flex; align-items: baseline; justify-content: space-between; gap: 0.35rem;
 }
 .col h2 .count { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--muted); }
+.col h2 .col-toggle {
+  font: inherit; font-size: 0.68rem; font-weight: 600; text-transform: none;
+  letter-spacing: 0; color: var(--accent); background: transparent; border: none;
+  padding: 0; cursor: pointer; white-space: nowrap;
+}
+.col h2 .col-toggle:hover { filter: brightness(1.15); text-decoration: underline; }
 .col .cards {
   overflow-y: auto; flex: 1; min-height: 0; padding-bottom: 0.35rem;
 }
@@ -1116,31 +1122,45 @@ function render() {
       colItems = doneTasks;
     }
     const h2 = document.createElement("h2");
+    const left = document.createElement("span");
+    left.textContent = name;
+    const right = document.createElement("span");
+    right.style.display = "inline-flex";
+    right.style.alignItems = "baseline";
+    right.style.gap = "0.45rem";
     const totalCount = name === "Done"
       ? (doneTasks.length + doneSlices.length)
       : colItems.length;
-    h2.innerHTML = `<span>${name}</span><span class="count">${totalCount}</span>`;
+    const countEl = document.createElement("span");
+    countEl.className = "count";
+    countEl.textContent = String(totalCount);
+    right.appendChild(countEl);
+    if (name === "Done" && doneSlices.length) {
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "col-toggle";
+      toggle.textContent = showDoneSlices
+        ? "Collapse slices"
+        : `Show ${doneSlices.length} slices`;
+      toggle.onclick = (e) => {
+        e.stopPropagation();
+        showDoneSlices = !showDoneSlices;
+        render();
+      };
+      right.appendChild(toggle);
+    }
+    h2.appendChild(left);
+    h2.appendChild(right);
     col.appendChild(h2);
     const cards = document.createElement("div");
     cards.className = "cards";
     for (const item of colItems) {
       cards.appendChild(makeCard(item, st, activeTid));
     }
-    if (name === "Done" && doneSlices.length && !showDoneSlices) {
-      const summary = document.createElement("div");
-      summary.className = "card summary";
-      summary.textContent = `${doneSlices.length} done slices hidden — click to show`;
-      summary.onclick = () => { showDoneSlices = true; render(); };
-      cards.appendChild(summary);
-    } else if (name === "Done" && doneSlices.length && showDoneSlices) {
+    if (name === "Done" && doneSlices.length && showDoneSlices) {
       for (const item of doneSlices) {
         cards.appendChild(makeCard(item, st, activeTid));
       }
-      const hide = document.createElement("div");
-      hide.className = "card summary";
-      hide.textContent = "Hide done slices";
-      hide.onclick = () => { showDoneSlices = false; render(); };
-      cards.appendChild(hide);
     }
     col.appendChild(cards);
     board.appendChild(col);
