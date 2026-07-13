@@ -19,8 +19,10 @@ from factory_events import EventLog
 from factory_progress import ProgressTracker
 from factory_narrator import NameAssigner
 from task_ticket import (
+    is_scripts_test_id,
     parse_task_ticket,
     set_task_status,
+    surgical_backend,
     write_task_verify_result,
 )
 
@@ -65,14 +67,22 @@ def _persona(role: str) -> str:
 def _qa_prompt(ticket_path: str, ticket: Any) -> str:
     tests = "\n".join(f"- {t}" for t in ticket.surgical_tests) or "- (none listed — derive from ACs)"
     auth = "\n".join(f"- {t}" for t in ticket.authorized_test_changes) or "- (none)"
+    scripts = surgical_backend(ticket.surgical_tests) == "scripts"
+    where = (
+        "Write **Python unittest** cases under `scripts/test_*.py` matching Surgical "
+        "test scope (`scripts.test_…` ids). Do not edit PodWash app or XCTest targets."
+        if scripts
+        else "Write **only** the XCTest cases in Surgical test scope. Do not edit app "
+        "sources under PodWash/PodWash/**."
+    )
     return f"""{_persona("qa")}
 
 # Task ticket (read-only contract)
 File: {ticket_path}
 
-Write **only** the tests in Surgical test scope. Touch only Authorized test changes
-when Kind is tweak. Do not edit app sources under PodWash/PodWash/**.
-Do not run scripts/verify.sh — the loop owns verify.
+{where}
+Touch only Authorized test changes when Kind is tweak.
+Do not run scripts/verify.sh or `python3 -m unittest` — the loop owns verify.
 
 ## Surgical test scope
 {tests}
@@ -87,13 +97,21 @@ After writing tests, stop.
 def _eng_prompt(ticket_path: str, ticket: Any) -> str:
     tests = "\n".join(f"- {t}" for t in ticket.surgical_tests) or "- (see ticket)"
     auth = "\n".join(f"- {t}" for t in ticket.authorized_test_changes) or "- (none)"
+    scripts = surgical_backend(ticket.surgical_tests) == "scripts"
+    where = (
+        "Implement under `scripts/**` (factory/floor/task-loop). Do **not** modify "
+        "tests except Authorized test changes. Do not touch PodWash app/XCTest."
+        if scripts
+        else "Implement the outcome and ACs. Do **not** modify tests except those "
+        "listed under Authorized test changes."
+    )
     return f"""{_persona("engineer")}
 
 # Task ticket
 File: {ticket_path}
 
-Implement the outcome and ACs. Do **not** modify tests except those listed under
-Authorized test changes. Do not run scripts/verify.sh — the loop owns verify.
+{where}
+Do not run scripts/verify.sh or `python3 -m unittest` — the loop owns verify.
 
 ## Surgical tests that must pass
 {tests}
@@ -101,6 +119,61 @@ Authorized test changes. Do not run scripts/verify.sh — the loop owns verify.
 ## Authorized test changes
 {auth}
 """
+
+
+def run_scripts_surgical_verify(
+    repo_root: str,
+    surgical_tests: list[str],
+    *,
+    log: LogFn | None = None,
+    tier: int = 2,
+) -> Any:
+    """Run surgical ``scripts.test_*`` ids via unittest; return VerifyOutcome."""
+    import time
+
+    from forge_medic import resolve_regression_unittest, run_unittest_module
+    from slice_pipeline import VerifyOutcome
+
+    _log = log or log_default
+    t0 = time.time()
+    failures: list[str] = []
+    output_parts: list[str] = []
+    passed = 0
+    for tid in surgical_tests:
+        if not is_scripts_test_id(tid):
+            failures.append(f"factory_config: not a scripts.test id: {tid}")
+            continue
+        module, qual = resolve_regression_unittest(tid)
+        target = module if not qual else f"{module}.{qual}"
+        _log(f"scripts verify: {target}")
+        rc = run_unittest_module(repo_root, module, qual=qual, log=_log)
+        output_parts.append(f"{target} → exit={rc}")
+        if rc == 0:
+            passed += 1
+        else:
+            failures.append(f"{tid} failed (exit={rc})")
+
+    total = len(surgical_tests)
+    green = not failures and total > 0
+    result = {
+        "exit": "0" if green else "1",
+        "total": str(total),
+        "passed": str(passed),
+        "failed": str(len(failures)),
+        "skipped": "0",
+        "filtered": "1",
+        "tier": str(tier),
+        "class": "unittest",
+        "bundle": "scripts-unittest",
+    }
+    return VerifyOutcome(
+        result=result,
+        green=green,
+        failures=failures,
+        output="\n".join(output_parts) + ("\n" if output_parts else ""),
+        elapsed_secs=time.time() - t0,
+        tier=tier,
+    )
 
 
 def commit_task_changes(
@@ -125,6 +198,17 @@ def commit_task_changes(
         _log("commit: nothing to commit")
         return True
     tests, apps, other = split_paths_for_commits(paths)
+    # Forge scripts-only tasks: surgical tests live under scripts/test_*.py
+    script_tests = [
+        p
+        for p in other
+        if p.startswith("scripts/")
+        and os.path.basename(p).startswith("test_")
+        and p.endswith(".py")
+    ]
+    if script_tests:
+        tests = list(tests) + script_tests
+        other = [p for p in other if p not in script_tests]
 
     def stage_and_commit(files: list[str], message: str) -> bool:
         if not files:
@@ -192,13 +276,26 @@ def run_task_pipeline(
         meta["halt"] = "no_surgical_tests"
         return False, meta
 
-    set_task_status(path, "In Progress")
-    from sim_hygiene import ensure_sim_booted, resolve_sim_udid
+    backend = surgical_backend(ticket.surgical_tests)
+    if backend == "mixed":
+        _log(
+            "FACTORY CONFIG: surgical scope mixes PodWashTests/… and scripts.test_… — "
+            "split into separate tickets"
+        )
+        set_task_status(path, "Halted")
+        meta["halt"] = "mixed_surgical_tests"
+        return False, meta
+    scripts_only = backend == "scripts"
+    meta["backend"] = backend
 
-    udid = resolve_sim_udid(log=_log)
-    if udid:
-        os.environ.setdefault("PODWASH_SIM_UDID", udid)
-        ensure_sim_booted(udid, log=_log)
+    set_task_status(path, "In Progress")
+    if not scripts_only:
+        from sim_hygiene import ensure_sim_booted, resolve_sim_udid
+
+        udid = resolve_sim_udid(log=_log)
+        if udid:
+            os.environ.setdefault("PODWASH_SIM_UDID", udid)
+            ensure_sim_booted(udid, log=_log)
 
     own_client = client is None
     if own_client:
@@ -266,14 +363,36 @@ def run_task_pipeline(
             return False, meta
 
         # --- tier-2 verify + Mechanic ---
+        verify_detail = "scripts unittest" if scripts_only else "surgical tests"
         _set_phase(
             task_id=ticket.id,
             phase="TIER2-VERIFY",
             role="loop",
             mission=ticket.title,
-            detail="surgical tests",
+            detail=verify_detail,
         )
         tracker = ProgressTracker(max_spawns=TASK_MAX_SPAWNS, max_minutes=TASK_MAX_MINUTES)
+        if scripts_only:
+            surgical = list(ticket.surgical_tests)
+
+            def _scripts_verify(**kw: Any) -> Any:
+                return run_scripts_surgical_verify(
+                    root,
+                    surgical,
+                    log=_log,
+                    tier=int(kw.get("tier") or 2),
+                )
+
+            verify_fn = _scripts_verify
+        else:
+            verify_fn = lambda **kw: run_verify(
+                root,
+                log=_log,
+                slice_file=path,
+                tier=2,
+                slice_tests=ticket.surgical_tests,
+                **{k: v for k, v in kw.items() if k not in ("tier", "slice_file", "slice_tests")},
+            )
         try:
             outcome = run_fix_cycle(
                 client,
@@ -285,14 +404,7 @@ def run_task_pipeline(
                 log=_log,
                 event_log=events,
                 names=NameAssigner(),
-                verify_fn=lambda **kw: run_verify(
-                    root,
-                    log=_log,
-                    slice_file=path,
-                    tier=2,
-                    slice_tests=ticket.surgical_tests,
-                    **{k: v for k, v in kw.items() if k not in ("tier", "slice_file", "slice_tests")},
-                ),
+                verify_fn=verify_fn,
             )
         except ThrashHalt as exc:
             _log(f"THRASH HALT task-{ticket.id:03d}: {exc}")
@@ -323,7 +435,7 @@ def run_task_pipeline(
             phase="done",
             role="pipeline",
             mission=ticket.title,
-            detail="tier-2 green",
+            detail="tier-2 green" if not scripts_only else "scripts unittest green",
         )
         meta["verify"] = result
         return True, meta

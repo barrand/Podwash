@@ -23,7 +23,13 @@ Automatable only. Every item maps to an assertion. Numeric thresholds where thre
 
 ## Surgical test scope
 
-Concrete `Target/Class/test()` identifiers for `VERIFY_SLICE_TESTS` / `VERIFY_TIER=2`.
+Concrete test identifiers for Done evidence:
+
+- **App / XCTest tasks:** `Target/Class/test()` for `VERIFY_SLICE_TESTS` / `VERIFY_TIER=2`
+  (e.g. `PodWashTests/FooTests/testBar()`).
+- **Scripts-only tasks** (factory / floor / task-loop): `scripts.test_<module>.Class.method`
+  (slash form `Class/method` is accepted and normalized). Done runs
+  `python3 -m unittest`, not xcodebuild.
 
 | AC# | Test id | New? |
 |-----|---------|------|

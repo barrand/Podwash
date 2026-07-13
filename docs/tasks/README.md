@@ -39,6 +39,11 @@ Unlike slices, task Done accepts **tier-2 filtered** green:
 VERIFY RESULT: exit=0 … failed=0 skipped=0 filtered=1 … tier=2 …
 ```
 
+**Scripts-only tickets** (`scripts.test_…` surgical ids): Done evidence is the same
+`VERIFY RESULT` line with `class=unittest` / `bundle=scripts-unittest` from
+`python3 -m unittest` (no simulator / xcodebuild). Do not mix PodWashTests and
+`scripts.test_*` ids on one ticket — split them.
+
 Full-suite (tier-3) runs at **idle drain** / **Ship now**, not per task. Idle drain only runs when there is no Queued/Ready work **and** no In Progress ticket (In Progress is reclaimed first). Halted tickets park the loop for Requeue — they do not trigger full verify.
 
 ## Queue brain

@@ -17,8 +17,11 @@ sys.path.insert(0, SCRIPTS)
 
 from task_ticket import (  # noqa: E402
     areas_overlap,
+    is_scripts_test_id,
+    normalize_scripts_test_id,
     parse_task_ticket,
     set_task_status,
+    surgical_backend,
     write_task_verify_result,
 )
 
@@ -77,6 +80,70 @@ class TestTaskTicket(unittest.TestCase):
             t2 = parse_task_ticket(path)
             self.assertEqual(t2.status, "Done")
 
+    def test_parse_scripts_surgical_slash_and_dotted(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = os.path.join(td, "task-005-pause.md")
+            body = textwrap.dedent(
+                """\
+                # Task 005 — Pause
+
+                | Field | Value |
+                |-------|-------|
+                | **ID** | 005 |
+                | **Title** | Pause |
+                | **Status** | Queued |
+                | **Kind** | fix |
+                | **Priority** | P1 |
+                | **Area** | scripts/task_loop.py |
+                | **Crux** | c |
+
+                ## Surgical test scope
+
+                | AC# | Test id | New? |
+                |-----|---------|------|
+                | 1 | `scripts.test_task_factory.PauseInterruptsInflightTests/test_pause_kills_inflight_verify_child` | yes |
+                | 2 | `scripts.test_task_factory.PauseInterruptsInflightTests.test_notify_omits_terminal_bell` | yes |
+
+                ## Verification record
+
+                ```
+                VERIFY RESULT: (pending)
+                ```
+                """
+            )
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(body)
+            t = parse_task_ticket(path)
+            self.assertEqual(
+                t.surgical_tests,
+                [
+                    "scripts.test_task_factory.PauseInterruptsInflightTests.test_pause_kills_inflight_verify_child",
+                    "scripts.test_task_factory.PauseInterruptsInflightTests.test_notify_omits_terminal_bell",
+                ],
+            )
+            self.assertTrue(all(is_scripts_test_id(x) for x in t.surgical_tests))
+            self.assertEqual(surgical_backend(t.surgical_tests), "scripts")
+
+    def test_surgical_backend_mixed_and_normalize(self):
+        self.assertEqual(
+            normalize_scripts_test_id("scripts.test_foo.Bar/test_baz"),
+            "scripts.test_foo.Bar.test_baz",
+        )
+        self.assertEqual(surgical_backend([]), "empty")
+        self.assertEqual(
+            surgical_backend(["PodWashTests/FooTests/testBar()"]),
+            "xcode",
+        )
+        self.assertEqual(
+            surgical_backend(
+                [
+                    "scripts.test_foo.Bar.test_a",
+                    "PodWashTests/FooTests/testBar()",
+                ]
+            ),
+            "mixed",
+        )
+
     def test_write_verify_result(self):
         with tempfile.TemporaryDirectory() as td:
             path = _write_task(td, 2)
@@ -102,6 +169,34 @@ class TestTaskTicket(unittest.TestCase):
     def test_areas_overlap(self):
         self.assertTrue(areas_overlap("PodWash/Foo.swift", "Foo.swift, Bar.swift"))
         self.assertFalse(areas_overlap("A.swift", "B.swift"))
+
+
+class TestScriptsSurgicalVerify(unittest.TestCase):
+    def test_run_scripts_surgical_verify_green(self):
+        from rapid_task_pipeline import run_scripts_surgical_verify
+
+        # Existing factory test that should always be importable/green
+        outcome = run_scripts_surgical_verify(
+            REPO,
+            ["scripts.test_task_factory.TestNotifyNoBell.test_notify_omits_terminal_bell"],
+            log=lambda _m: None,
+        )
+        self.assertTrue(outcome.green, outcome.failures)
+        self.assertEqual(outcome.result["class"], "unittest")
+        self.assertEqual(outcome.result["exit"], "0")
+        self.assertEqual(outcome.result["filtered"], "1")
+
+    def test_run_scripts_surgical_verify_missing_red(self):
+        from rapid_task_pipeline import run_scripts_surgical_verify
+
+        outcome = run_scripts_surgical_verify(
+            REPO,
+            ["scripts.test_task_factory.NoSuchClass.test_missing"],
+            log=lambda _m: None,
+        )
+        self.assertFalse(outcome.green)
+        self.assertEqual(outcome.result["exit"], "1")
+        self.assertTrue(outcome.failures)
 
 
 class TestNextTask(unittest.TestCase):

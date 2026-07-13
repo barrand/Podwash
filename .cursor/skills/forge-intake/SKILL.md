@@ -56,7 +56,9 @@ Clear human checklist (device steps). No fake `VERIFY_SLICE_TESTS`. Kind = needs
 
 - One crux per ticket (two cruxes → two tickets)
 - Every AC maps to an assertion (or Needs-human checklist item)
-- Surgical test scope as concrete `Target/Class/test()` ids (automatable tasks)
+- Surgical test scope as concrete ids (automatable tasks):
+  - App: `Target/Class/test()` (e.g. `PodWashTests/FooTests/testBar()`)
+  - Scripts-only: `scripts.test_<module>.Class.method` (factory/floor punch lists)
 - **Area** tags: source paths/modules the change will touch
 - Framing: “what test, if it existed and passed, would let you never manually check this again?”
 
