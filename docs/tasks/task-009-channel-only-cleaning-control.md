@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 009 |
 | **Title** | Channel-only cleaning control (remove per-episode toggles) |
-| **Status** | Queued |
+| **Status** | In Progress |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/EpisodeListView.swift`, `PodWash/PodWash/AnalysisUIViewModel.swift`, `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWashUITests/AnalysisProgressUITests.swift`, `PodWash/PodWashUITests/AnalysisTimelineUITests.swift`, `PodWash/PodWashTests/ProductionAnalysisWiringTests.swift` (plus any other tests that tap `episodeCleaningToggle_*`) |
@@ -65,5 +65,5 @@
 > Loop writes `VERIFY RESULT:` here. For tasks, `tier=2` and `filtered=1` are valid for Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=8 passed=8 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260713-172526.xcresult tier=2 class=tests
 ```

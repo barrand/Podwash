@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 010 |
 | **Title** | Mini player covers tab bar navigation |
-| **Status** | In Progress |
+| **Status** | Done |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/AppShellView.swift`, `PodWash/PodWash/MiniPlayerBar.swift`, `PodWash/PodWashUITests/LibraryUITests.swift` |

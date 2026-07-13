@@ -243,10 +243,7 @@ final class AppShellModel {
     }
 
     private func cleaningApplies(for episode: Episode, feedURL: URL?) -> Bool {
-        if cleaningStore.isEpisodeCleaningEnabled(episode.id) {
-            return true
-        }
-        return channelCleaningEnabled(forFeedURL: feedURL)
+        channelCleaningEnabled(forFeedURL: feedURL)
     }
 
     private func channelCleaningEnabled(forFeedURL feedURL: URL?) -> Bool {

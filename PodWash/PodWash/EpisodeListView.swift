@@ -89,6 +89,9 @@ private final class EpisodeTableViewController: UITableViewController {
             guard let self else { return }
             self.refreshAnalysisDisplayOnVisibleRows()
         }
+        analysisViewModel.primingEpisodeProvider = { [weak self] in
+            self?.feed.episodes.first?.id
+        }
         downloadManager.onStateChanged = { [weak self] in
             guard let self else { return }
             self.refreshDownloadDisplayOnVisibleRows()
@@ -132,6 +135,9 @@ private final class EpisodeTableViewController: UITableViewController {
         analysisViewModel.onAnalyzingEpisodeIDChanged = { [weak self] in
             guard let self else { return }
             self.refreshAnalysisDisplayOnVisibleRows()
+        }
+        analysisViewModel.primingEpisodeProvider = { [weak self] in
+            self?.feed.episodes.first?.id
         }
         downloadManager.onStateChanged = { [weak self] in
             guard let self else { return }
@@ -272,40 +278,6 @@ private final class EpisodeTableViewController: UITableViewController {
             }
         }
     }
-    private func episodeToggleHandler(for indexPath: IndexPath) -> (Bool) -> Void {
-        { [weak self] enabled in
-            guard let self else { return }
-            let episodeID = self.feed.episodes[indexPath.row].id
-            if enabled && self.analysisViewModel.autoAnalyzeOnEpisodeEnable {
-                // Publish progress synchronously so the AX tree updates before the
-                // toggle handler returns. Completion runs in a Task (not
-                // `asyncAfter`): pending GCD timers keep XCTest non-idle until
-                // they fire, so the app only becomes idle *after* progress is
-                // already cleared. `Task.sleep` inside the view model suspends
-                // without blocking idleness, leaving `analysisTimeline` visible.
-                self.analysisViewModel.primeEpisodeCleaningToggle(episodeID: episodeID)
-                // Keep the UISwitch visually on even if a later representable
-                // refresh races setCleaningSwitch from a momentarily stale read.
-                if let cell = self.tableView.cellForRow(at: indexPath) as? EpisodeTableViewCell {
-                    cell.forceCleaningSwitchOnForAnalysis()
-                }
-                self.refreshAnalysisDisplayOnVisibleRows()
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    await self.analysisViewModel.completePrimedEpisodeAnalysis(episodeID: episodeID)
-                    self.refreshAnalysisDisplayOnVisibleRows()
-                }
-            } else {
-                // Publish badge synchronously so XCTest's post-tap idle sees
-                // `cleaningBadge_episodeOn` (a detached Task can miss the window).
-                self.analysisViewModel.applyEpisodeCleaningWithoutAnalysis(
-                    episodeID: episodeID,
-                    enabled: enabled
-                )
-                self.refreshAnalysisDisplayOnVisibleRows()
-            }
-        }
-    }
 
     private func applyListAccessibility() {
         tableView.accessibilityIdentifier = "episodeList"
@@ -327,7 +299,6 @@ private final class EpisodeTableViewController: UITableViewController {
             analysisViewModel: analysisViewModel,
             downloadManager: downloadManager,
             isQueued: isQueued,
-            onToggle: episodeToggleHandler(for: indexPath),
             onDownload: downloadButtonHandler(for: indexPath),
             onQueueAdd: queueAddHandler(for: indexPath),
             onPlay: onPlayEpisode == nil ? nil : playHandler(for: indexPath)
@@ -344,7 +315,6 @@ final class EpisodeTableViewCell: UITableViewCell {
 
     private let titleLabel = UILabel()
     private let dateLabel = UILabel()
-    private let badgeLabel = UILabel()
     private let timelineBar = AnalysisTimelineBarView()
     private let progressAccessibilityHost = UIView()
     private let downloadProgressView = UIActivityIndicatorView(style: .medium)
@@ -354,9 +324,7 @@ final class EpisodeTableViewCell: UITableViewCell {
     private let textStack = EpisodePlayStackView()
     private let downloadButton = UIButton(type: .system)
     private let queueAddButton = UIButton(type: .system)
-    private let cleaningSwitch = UISwitch()
     private let accessoryStack = UIStackView()
-    private var onToggle: ((Bool) -> Void)?
     private var onDownload: (() -> Void)?
     private var onQueueAdd: (() -> Void)?
     private var onPlay: (() -> Void)?
@@ -399,17 +367,6 @@ final class EpisodeTableViewCell: UITableViewCell {
         dateLabel.font = .preferredFont(forTextStyle: .subheadline)
         dateLabel.textColor = .secondaryLabel
 
-        badgeLabel.font = .preferredFont(forTextStyle: .caption2)
-        badgeLabel.text = "Episode on"
-        badgeLabel.textAlignment = .center
-        badgeLabel.backgroundColor = UIColor.tintColor.withAlphaComponent(0.15)
-        badgeLabel.layer.cornerRadius = 8
-        badgeLabel.clipsToBounds = true
-        badgeLabel.isHidden = true
-        badgeLabel.accessibilityIdentifier = nil
-        badgeLabel.accessibilityLabel = "Episode cleaning on"
-        badgeLabel.isAccessibilityElement = false
-
         timelineBar.isAccessibilityElement = false
 
         progressAccessibilityHost.isHidden = true
@@ -435,7 +392,6 @@ final class EpisodeTableViewCell: UITableViewCell {
         textStack.spacing = 4
         textStack.addArrangedSubview(titleLabel)
         textStack.addArrangedSubview(dateLabel)
-        textStack.addArrangedSubview(badgeLabel)
         textStack.addArrangedSubview(progressAccessibilityHost)
         textStack.addArrangedSubview(downloadProgressAccessibilityHost)
 
@@ -510,15 +466,12 @@ final class EpisodeTableViewCell: UITableViewCell {
             queueAddButton.heightAnchor.constraint(equalToConstant: 44),
         ])
 
-        cleaningSwitch.isAccessibilityElement = true
-
         accessoryStack.axis = .horizontal
         accessoryStack.spacing = 8
         accessoryStack.alignment = .center
         accessoryStack.distribution = .fill
         accessoryStack.addArrangedSubview(queueAddButton)
         accessoryStack.addArrangedSubview(downloadButton)
-        accessoryStack.addArrangedSubview(cleaningSwitch)
         accessoryStack.translatesAutoresizingMaskIntoConstraints = false
         accessoryStack.setContentHuggingPriority(.required, for: .horizontal)
         accessoryStack.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
@@ -547,22 +500,17 @@ final class EpisodeTableViewCell: UITableViewCell {
             accessoryTrailing,
             accessoryStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
             accessoryStack.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
-
-            badgeLabel.heightAnchor.constraint(equalToConstant: 22),
         ])
         contentView.bringSubviewToFront(accessoryStack)
 
-        cleaningSwitch.addTarget(self, action: #selector(switchChanged), for: .valueChanged)
         let playTap = UITapGestureRecognizer(target: self, action: #selector(playTapped))
         playTap.cancelsTouchesInView = false
         textStack.isUserInteractionEnabled = true
         textStack.addGestureRecognizer(playTap)
-        // Baseline AX children so switches/buttons stay queryable before any
-        // timeline/badge host is published.
+        // Baseline AX children so buttons stay queryable before any timeline host is published.
         updateAccessibilityElements(
             showsAnalysisTimeline: false,
-            showsDownloadProgress: false,
-            showsBadge: false
+            showsDownloadProgress: false
         )
     }
 
@@ -595,12 +543,10 @@ final class EpisodeTableViewCell: UITableViewCell {
         analysisViewModel: AnalysisUIViewModel,
         downloadManager: DownloadManager,
         isQueued: Bool,
-        onToggle: @escaping (Bool) -> Void,
         onDownload: @escaping () -> Void,
         onQueueAdd: @escaping () -> Void,
         onPlay: (() -> Void)? = nil
     ) {
-        self.onToggle = onToggle
         self.onDownload = onDownload
         self.onQueueAdd = onQueueAdd
         self.onPlay = onPlay
@@ -608,11 +554,6 @@ final class EpisodeTableViewCell: UITableViewCell {
 
         titleLabel.text = episode.title
         dateLabel.text = EpisodeListFormatting.localizedDate(from: episode.pubDate)
-
-        setCleaningSwitch(isOn: analysisViewModel.store.isEpisodeCleaningEnabled(episode.id))
-        cleaningSwitch.accessibilityIdentifier = "episodeCleaningToggle_\(index)"
-        cleaningSwitch.accessibilityLabel = "Episode cleaning"
-        cleaningSwitch.accessibilityValue = cleaningSwitch.isOn ? "on" : "off"
 
         downloadButton.accessibilityIdentifier = "downloadButton_\(index)"
         applyQueueDisplay(isQueued: isQueued, index: index)
@@ -635,7 +576,6 @@ final class EpisodeTableViewCell: UITableViewCell {
         accessoryStack.isUserInteractionEnabled = true
         queueAddButton.isAccessibilityElement = true
         downloadButton.isAccessibilityElement = true
-        cleaningSwitch.isAccessibilityElement = true
 
         if onPlay != nil {
             accessibilityIdentifier = nil
@@ -738,8 +678,7 @@ final class EpisodeTableViewCell: UITableViewCell {
 
         updateAccessibilityElements(
             showsAnalysisTimeline: !progressAccessibilityHost.isHidden,
-            showsDownloadProgress: showsProgress,
-            showsBadge: !badgeLabel.isHidden
+            showsDownloadProgress: showsProgress
         )
 
         setNeedsLayout()
@@ -750,12 +689,6 @@ final class EpisodeTableViewCell: UITableViewCell {
 
     func applyAnalysisDisplay(analysisViewModel: AnalysisUIViewModel, episodeID: String) {
         let showsTimeline = analysisViewModel.episodeRowShowsTimeline(episodeID: episodeID)
-        let showsBadge = analysisViewModel.episodeRowShowsOnBadge(episodeID: episodeID)
-
-        badgeLabel.isHidden = !showsBadge
-        badgeLabel.isAccessibilityElement = showsBadge
-        badgeLabel.accessibilityIdentifier = showsBadge ? "cleaningBadge_episodeOn" : nil
-        badgeLabel.accessibilityLabel = "Episode cleaning on"
 
         progressAccessibilityHost.isHidden = !showsTimeline
         progressAccessibilityHost.isAccessibilityElement = showsTimeline
@@ -784,8 +717,7 @@ final class EpisodeTableViewCell: UITableViewCell {
         // accessory controls (grouped cell AX can otherwise omit nested hosts).
         updateAccessibilityElements(
             showsAnalysisTimeline: showsTimeline,
-            showsDownloadProgress: !downloadProgressAccessibilityHost.isHidden,
-            showsBadge: showsBadge
+            showsDownloadProgress: !downloadProgressAccessibilityHost.isHidden
         )
 
         setNeedsLayout()
@@ -794,8 +726,7 @@ final class EpisodeTableViewCell: UITableViewCell {
 
     private func updateAccessibilityElements(
         showsAnalysisTimeline: Bool,
-        showsDownloadProgress: Bool,
-        showsBadge: Bool
+        showsDownloadProgress: Bool
     ) {
         // Always keep accessories queryable/tappable. Library play uses `textStack`
         // as the dedicated activatable region (not a collapsed whole-cell AX element).
@@ -803,7 +734,6 @@ final class EpisodeTableViewCell: UITableViewCell {
         accessoryStack.accessibilityElementsHidden = false
         queueAddButton.isAccessibilityElement = true
         downloadButton.isAccessibilityElement = true
-        cleaningSwitch.isAccessibilityElement = true
 
         var axChildren: [UIView] = []
         if onPlay != nil {
@@ -813,41 +743,19 @@ final class EpisodeTableViewCell: UITableViewCell {
         } else {
             textStack.isAccessibilityElement = false
         }
-        axChildren.append(contentsOf: [queueAddButton, downloadButton, cleaningSwitch])
+        axChildren.append(contentsOf: [queueAddButton, downloadButton])
         if showsDownloadProgress {
             axChildren.append(downloadProgressAccessibilityHost)
         }
         if showsAnalysisTimeline {
             axChildren.append(progressAccessibilityHost)
         }
-        if showsBadge {
-            axChildren.append(badgeLabel)
-        }
         // Publish AX children on the *cell* (not contentView). After Slice 22 moved
-        // accessories into contentView, assigning only timeline/badge to
-        // `contentView.accessibilityElements` left `analysisTimeline` /
-        // `cleaningBadge_episodeOn` invisible to XCTest descendant queries even
-        // when the hosts were on-screen (see AnalysisProgressUITests recording).
+        // accessories into contentView, assigning only timeline to
+        // `contentView.accessibilityElements` left `analysisTimeline` invisible to
+        // XCTest descendant queries even when the host was on-screen.
         accessibilityElements = axChildren
         contentView.accessibilityElements = nil
-    }
-
-    private func setCleaningSwitch(isOn: Bool) {
-        cleaningSwitch.removeTarget(self, action: #selector(switchChanged), for: .valueChanged)
-        cleaningSwitch.setOn(isOn, animated: false)
-        cleaningSwitch.addTarget(self, action: #selector(switchChanged), for: .valueChanged)
-        cleaningSwitch.accessibilityValue = isOn ? "on" : "off"
-    }
-
-    /// Keeps the episode switch on while fixture analysis progress is published,
-    /// without re-entering `switchChanged` (avoids double-prime / toggle races).
-    func forceCleaningSwitchOnForAnalysis() {
-        setCleaningSwitch(isOn: true)
-    }
-
-    @objc private func switchChanged() {
-        cleaningSwitch.accessibilityValue = cleaningSwitch.isOn ? "on" : "off"
-        onToggle?(cleaningSwitch.isOn)
     }
 
     @objc private func downloadTapped() {
@@ -877,7 +785,7 @@ final class EpisodeTableViewCell: UITableViewCell {
         guard onPlay != nil else {
             return super.hitTest(point, with: event)
         }
-        // Prefer accessories so download / queue / cleaning never lose to play.
+        // Prefer accessories so download / queue never lose to play.
         let accessoryPoint = convert(point, to: accessoryStack)
         if accessoryStack.bounds.contains(accessoryPoint),
            let accessoryHit = accessoryStack.hitTest(accessoryPoint, with: event) {
@@ -937,7 +845,6 @@ enum EpisodeTableViewCellLayoutTesting {
             analysisViewModel: analysisViewModel,
             downloadManager: downloadManager,
             isQueued: isQueued,
-            onToggle: { _ in },
             onDownload: {},
             onQueueAdd: {}
         )

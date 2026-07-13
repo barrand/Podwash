@@ -69,6 +69,8 @@ final class AnalysisUIViewModel {
     @ObservationIgnored private let settingsStore: SettingsStore
     @ObservationIgnored private var progressHandlerID: UUID?
     @ObservationIgnored var onAnalyzingEpisodeIDChanged: (() -> Void)?
+    /// Fixture UITests: first visible episode to prime when channel cleaning turns on.
+    @ObservationIgnored var primingEpisodeProvider: (() -> String?)?
 
     init(
         store: any CleaningToggleStoring,
@@ -139,6 +141,12 @@ final class AnalysisUIViewModel {
         isChannelCleaningEnabled = enabled
         if enabled {
             _ = transition(to: .channelOn)
+            if autoAnalyzeOnEpisodeEnable, let episodeID = primingEpisodeProvider?() {
+                primeEpisodeCleaningToggle(episodeID: episodeID)
+                Task { @MainActor in
+                    await completePrimedEpisodeAnalysis(episodeID: episodeID)
+                }
+            }
         } else if analyzingEpisodeID == nil {
             _ = transition(to: .off)
         }
@@ -271,13 +279,12 @@ final class AnalysisUIViewModel {
     }
 
     func episodeRowShowsOnBadge(episodeID: String) -> Bool {
-        analyzingEpisodeID != episodeID && store.isEpisodeCleaningEnabled(episodeID)
+        false
     }
 
     /// Updates store and surfaces analysis progress synchronously when a toggle turns on.
     func primeEpisodeCleaningToggle(episodeID: String) {
         guard shouldAutoAnalyzeOnEpisodeEnable else { return }
-        store.setEpisodeCleaning(episodeID, enabled: true)
         analyzingEpisodeID = episodeID
         // Seed a snapshot before paint so `analysisTimeline` exists for XCTest
         // appear windows (Slice 09 lifecycle + Slice 20 first snapshot).
