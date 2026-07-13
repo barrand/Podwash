@@ -276,6 +276,48 @@ final class DownloadManagerTests: XCTestCase {
         XCTAssertNilOrEmpty(manager.lastFailureDiagnostic(for: Self.fixtureEpisodeID))
     }
 
+    // MARK: - Download path sanitization (RSS GUIDs with URL characters)
+
+    func testLocalFileURLSanitizesGUIDWithURLCharacters() {
+        let unsafeID = "46176 at https://www.thisamericanlife.org"
+        let url = DownloadPaths.localFileURL(episodeID: unsafeID, downloadsDirectory: downloadsDirectory)
+
+        XCTAssertFalse(url.path.contains("://"))
+        XCTAssertFalse(url.path.contains("/www."))
+        XCTAssertTrue(url.lastPathComponent.hasPrefix("ep-"))
+        XCTAssertTrue(url.lastPathComponent.hasSuffix(".m4a"))
+
+        let again = DownloadPaths.localFileURL(episodeID: unsafeID, downloadsDirectory: downloadsDirectory)
+        XCTAssertEqual(url.path, again.path, "Sanitized path must be stable for the same episode ID")
+    }
+
+    func testLocalFileURLPreservesSafeFixtureEpisodeID() {
+        let url = DownloadPaths.localFileURL(
+            episodeID: Self.fixtureEpisodeID,
+            downloadsDirectory: downloadsDirectory
+        )
+        XCTAssertEqual(url.lastPathComponent, "\(Self.fixtureEpisodeID).m4a")
+    }
+
+    func testDownloadCompletesForEpisodeIDContainingURLCharacters() async throws {
+        let unsafeID = "46176 at https://www.thisamericanlife.org"
+
+        let returnedURL = try await manager.download(
+            episodeID: unsafeID,
+            from: Self.fixtureRemoteURL
+        ) { _ in }
+
+        XCTAssertEqual(manager.state(for: unsafeID), .downloaded)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: returnedURL.path))
+        XCTAssertFalse(returnedURL.path.contains("://"))
+        XCTAssertTrue(returnedURL.lastPathComponent.hasPrefix("ep-"))
+        XCTAssertEqual(returnedURL.path, expectedLocalFileURL(for: unsafeID).path)
+    }
+
+    private func expectedLocalFileURL(for episodeID: String) -> URL {
+        DownloadPaths.localFileURL(episodeID: episodeID, downloadsDirectory: downloadsDirectory)
+    }
+
     // MARK: - Task 007 helpers
 
     private func assertNonEmptyFailureDiagnostic(
