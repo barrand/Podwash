@@ -56,3 +56,6 @@ fastlane/test_output
 
 # ASR models are never committed (downloaded by scripts/setup-asr-models.sh)
 Models/
+
+# Ad detection eval harness (downloaded audio + transcripts)
+tmp/ad-eval/

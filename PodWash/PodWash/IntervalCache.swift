@@ -65,7 +65,7 @@ struct IntervalCache: Sendable {
             + "\n"
             + "interval-format:v2"
             + "\n"
-            + "segmenter:heuristic-cue-v2"
+            + "segmenter:heuristic-cue-v5"
         let digest = SHA256.hash(data: Data(fp.utf8))
         let hash = digest.map { String(format: "%02x", $0) }.joined()
         let safeStem = DownloadPaths.fileNameStem(for: episodeID)
