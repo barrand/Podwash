@@ -57,4 +57,18 @@ final class PersistenceMigrationTests: XCTestCase {
         XCTAssertTrue(reloadedCleaning.isEpisodeCleaningEnabled("fixture-ep-001"))
         XCTAssertEqual(reloadedDownload.state(for: "fixture-ep-001"), .downloaded)
     }
+
+    func testFeedRefreshPreservesDownloadStateOnEpisodeRows() throws {
+        let persistence = harness.makeController()
+        let podcastStore = PodcastStore(context: persistence.viewContext)
+        let downloadStore = DownloadStateStore(context: persistence.viewContext)
+
+        let feed = try FixtureFeedLoader.loadSampleFeed()
+        try podcastStore.save(feed)
+        try downloadStore.setState(.downloaded, for: "fixture-ep-001")
+
+        try podcastStore.save(feed)
+
+        XCTAssertEqual(downloadStore.state(for: "fixture-ep-001"), .downloaded)
+    }
 }
