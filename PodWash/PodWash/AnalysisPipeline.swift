@@ -14,6 +14,22 @@ import Foundation
 /// ASR → matcher → segmenter → cache pipeline.
 final class AnalysisPipeline: @unchecked Sendable {
 
+    /// Signals live transcription progress emission to stop.
+    private final class TranscriptionProgressGate: @unchecked Sendable {
+        private let lock = NSLock()
+        private var finished = false
+        func markFinished() {
+            lock.lock()
+            finished = true
+            lock.unlock()
+        }
+        var isFinished: Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            return finished
+        }
+    }
+
     /// `nonisolated(unsafe)`: released from `nonisolated deinit` without a MainActor hop
     /// (existentials of MainActor-isolated ASR types otherwise crash boxed destroy).
     nonisolated(unsafe) private let transcriber: any ASRTranscribing
@@ -80,7 +96,7 @@ final class AnalysisPipeline: @unchecked Sendable {
     ) async throws -> [CensorInterval] {
         let duration = await Self.resolveDuration(audioURL: audioURL)
         if duration > 0 {
-            await emitProgress(Self.startSnapshot(duration: duration))
+            await emitProgress(AnalysisTimelineModel.startSnapshot(duration: duration))
         }
 
         let union: [CensorInterval]
@@ -91,7 +107,10 @@ final class AnalysisPipeline: @unchecked Sendable {
             if let injected = injectedTranscript {
                 transcript = injected
             } else {
-                transcript = try await transcriber.transcribe(fileURL: audioURL)
+                transcript = try await transcribeWithLiveProgress(
+                    fileURL: audioURL,
+                    duration: duration
+                )
             }
 
             let profanity = IntervalBuilder.buildIntervals(
@@ -134,6 +153,43 @@ final class AnalysisPipeline: @unchecked Sendable {
         return projected
     }
 
+    /// Runs ASR while emitting time-based timeline progress (ADR-018 §6 — not Whisper chunk truth).
+    private func transcribeWithLiveProgress(fileURL: URL, duration: Double) async throws -> [TimedWord] {
+        guard duration > 0 else {
+            return try await transcriber.transcribe(fileURL: fileURL)
+        }
+
+        let gate = TranscriptionProgressGate()
+        let progressTask = Task {
+            await emitTimeBasedProgressDuringTranscription(duration: duration, gate: gate)
+        }
+        defer {
+            gate.markFinished()
+            progressTask.cancel()
+        }
+        return try await transcriber.transcribe(fileURL: fileURL)
+    }
+
+    private func emitTimeBasedProgressDuringTranscription(
+        duration: Double,
+        gate: TranscriptionProgressGate
+    ) async {
+        let bucketWidth = duration / Double(AnalysisTimelineModel.defaultSegmentCount)
+        var processedEnd = 0.0
+        while !gate.isFinished {
+            try? await Task.sleep(for: .milliseconds(350))
+            if gate.isFinished { break }
+            processedEnd = min(max(0, duration - bucketWidth), processedEnd + bucketWidth)
+            await emitProgress(
+                AnalysisTimelineModel.inFlightSnapshot(
+                    duration: duration,
+                    processedEnd: processedEnd
+                )
+            )
+            if processedEnd >= duration - bucketWidth { break }
+        }
+    }
+
     /// Remap actions by source; drop unrelated when disabled.
     private static func project(
         union: [CensorInterval],
@@ -166,17 +222,6 @@ final class AnalysisPipeline: @unchecked Sendable {
             onMainActorProgress?(snapshot)
             onProgress?(snapshot)
         }
-    }
-
-    private static func startSnapshot(duration: Double) -> AnalysisProgressSnapshot {
-        let bucketWidth = duration / Double(AnalysisTimelineModel.defaultSegmentCount)
-        return AnalysisProgressSnapshot(
-            episodeDuration: duration,
-            processedEnd: 0,
-            processingStart: 0,
-            processingEnd: bucketWidth,
-            adRanges: []
-        )
     }
 
     private static func completeSnapshot(

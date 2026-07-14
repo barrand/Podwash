@@ -94,6 +94,7 @@ struct AppShellView: View {
                         episodeTitle: model.nowPlayingEpisodeTitle,
                         podcastTitle: model.nowPlayingPodcastTitle,
                         timelineColors: model.miniPlayerTimelineColors,
+                        isPreparingPlayback: model.isPreparingPlayback,
                         onExpand: { model.expandFullPlayer() },
                         onTogglePlayPause: { model.toggleMiniPlayerPlayPause() }
                     )
@@ -131,7 +132,9 @@ struct AppShellView: View {
                 NavigationStack {
                     PlaybackControlsView(
                         engine: engine,
-                        timelineColors: model.fullPlayerTimelineColors
+                        timelineColors: model.fullPlayerTimelineColors,
+                        isPreparingPlayback: model.isPreparingPlayback,
+                        onTogglePlayPause: { model.toggleMiniPlayerPlayPause() }
                     )
                         .toolbar {
                             ToolbarItem(placement: .topBarTrailing) {

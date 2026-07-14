@@ -235,6 +235,11 @@ final class AppShellModel {
             localFile: isLocalFile
         )
         Task { @MainActor in
+            let duration = await resolvedEpisodeDuration(audioURL: audioURL)
+            if duration > 0 {
+                playbackAnalysisSnapshot = AnalysisTimelineModel.startSnapshot(duration: duration)
+            }
+
             defer {
                 acceptingPlaybackProgress = false
                 isPreparingPlayback = false
@@ -286,10 +291,20 @@ final class AppShellModel {
             engine.pause()
         } else if isPreparingPlayback {
             pendingPlayAfterPrepare = true
-            PlaybackDiagnostics.info("miniPlayer play deferred — preparePlayback in flight")
+            PlaybackDiagnostics.info("miniPlayer play queued — waiting for analysis")
         } else {
             engine.play()
         }
+    }
+
+    /// Starts playback when allowed, or queues play until analysis finishes.
+    func startPlaybackWhenReady() {
+        if isPreparingPlayback {
+            pendingPlayAfterPrepare = true
+            PlaybackDiagnostics.info("playback queued — analysis in flight")
+            return
+        }
+        engine?.play()
     }
 
     func expandFullPlayer() {
@@ -410,8 +425,7 @@ extension AppShellModel: EpisodePlaying {
                 let episode = feed.episodes.first(where: { $0.id == episodeID })
             else { continue }
             playEpisode(episode, podcastTitle: summary.title, feedURL: summary.feedURL)
-            // CarPlay selection starts playback immediately (phone mini-player stays paused until tap).
-            engine?.play()
+            startPlaybackWhenReady()
             return
         }
     }

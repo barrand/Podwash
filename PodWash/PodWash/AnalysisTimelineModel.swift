@@ -39,6 +39,35 @@ enum AnalysisTimelineModel {
         )
     }
 
+    /// First snapshot when analysis begins (one blue bucket at the start).
+    static func startSnapshot(duration: Double) -> AnalysisProgressSnapshot {
+        let bucketWidth = duration / Double(defaultSegmentCount)
+        return AnalysisProgressSnapshot(
+            episodeDuration: duration,
+            processedEnd: 0,
+            processingStart: 0,
+            processingEnd: bucketWidth,
+            adRanges: []
+        )
+    }
+
+    /// Mid-analysis snapshot while ASR is in flight (time-based UI progress; not ASR chunk truth).
+    static func inFlightSnapshot(
+        duration: Double,
+        processedEnd: Double
+    ) -> AnalysisProgressSnapshot {
+        let bucketWidth = duration / Double(defaultSegmentCount)
+        let clampedProcessed = min(max(0, processedEnd), duration)
+        let processingEnd = min(duration, clampedProcessed + bucketWidth)
+        return AnalysisProgressSnapshot(
+            episodeDuration: duration,
+            processedEnd: clampedProcessed,
+            processingStart: clampedProcessed,
+            processingEnd: processingEnd,
+            adRanges: []
+        )
+    }
+
     /// Returns exactly `segmentCount` colors. Bucket width = duration / segmentCount.
     static func segmentColors(
         snapshot: AnalysisProgressSnapshot,

@@ -12,6 +12,7 @@ struct MiniPlayerBar: View {
     let episodeTitle: String
     let podcastTitle: String
     let timelineColors: [TimelineSegmentColor]?
+    let isPreparingPlayback: Bool
     let onExpand: () -> Void
     let onTogglePlayPause: () -> Void
 
@@ -19,6 +20,7 @@ struct MiniPlayerBar: View {
         TimelineView(.periodic(from: .now, by: 0.25)) { _ in
             let _ = engine.uiRefreshToken
             let isPlaying = engine.isPlaying
+            let isAnalyzing = isPreparingPlayback && !isPlaying
 
             VStack(spacing: 0) {
                 HStack(spacing: 12) {
@@ -52,13 +54,15 @@ struct MiniPlayerBar: View {
                     .accessibilityHint("Opens full playback controls.")
 
                     Button(action: onTogglePlayPause) {
-                        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                        Image(systemName: isAnalyzing ? "waveform" : (isPlaying ? "pause.fill" : "play.fill"))
                             .font(.title3)
                             .frame(width: 44, height: 44)
+                            .symbolEffect(.variableColor.iterative, isActive: isAnalyzing)
                     }
                     .accessibilityIdentifier("miniPlayerPlayPause")
-                    .accessibilityLabel(isPlaying ? "Pause" : "Play")
-                    .accessibilityValue(isPlaying ? "playing" : "paused")
+                    .accessibilityLabel(isAnalyzing ? "Analyzing" : (isPlaying ? "Pause" : "Play"))
+                    .accessibilityValue(isAnalyzing ? "analyzing" : (isPlaying ? "playing" : "paused"))
+                    .accessibilityHint(isAnalyzing ? "Playback starts when analysis finishes." : "")
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)

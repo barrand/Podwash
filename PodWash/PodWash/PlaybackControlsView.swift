@@ -11,12 +11,21 @@ import SwiftUI
 struct PlaybackControlsView: View {
     @Bindable var engine: PlaybackEngine
     let timelineColors: [TimelineSegmentColor]?
+    let isPreparingPlayback: Bool
+    let onTogglePlayPause: (() -> Void)?
 
     @State private var sleepClock = SystemMonotonicClock()
 
-    init(engine: PlaybackEngine, timelineColors: [TimelineSegmentColor]? = nil) {
+    init(
+        engine: PlaybackEngine,
+        timelineColors: [TimelineSegmentColor]? = nil,
+        isPreparingPlayback: Bool = false,
+        onTogglePlayPause: (() -> Void)? = nil
+    ) {
         self.engine = engine
         self.timelineColors = timelineColors
+        self.isPreparingPlayback = isPreparingPlayback
+        self.onTogglePlayPause = onTogglePlayPause
     }
     @State private var sleepTimer: SleepTimer?
     /// Drives sleep-button accessibility; mirrors timer arm/cancel/fire.
@@ -26,6 +35,7 @@ struct PlaybackControlsView: View {
         TimelineView(.periodic(from: .now, by: 0.25)) { _ in
             let _ = engine.uiRefreshToken
             let isPlaying = engine.avPlayer.timeControlStatus == .playing
+            let isAnalyzing = isPreparingPlayback && !isPlaying
             let elapsedSeconds = engine.avPlayer.currentTime().seconds
 
             VStack(spacing: 24) {
@@ -53,13 +63,15 @@ struct PlaybackControlsView: View {
                     .accessibilityLabel("Seek back 15 seconds")
 
                     Button(action: togglePlayPause) {
-                        Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                        Image(systemName: isAnalyzing ? "waveform" : (isPlaying ? "pause.circle.fill" : "play.circle.fill"))
                             .font(.system(size: 56))
                             .foregroundStyle(BrandTheme.primary)
+                            .symbolEffect(.variableColor.iterative, isActive: isAnalyzing)
                     }
                     .accessibilityIdentifier("playback.playPause")
-                    .accessibilityLabel(isPlaying ? "Pause" : "Play")
-                    .accessibilityValue(isPlaying ? "playing" : "paused")
+                    .accessibilityLabel(isAnalyzing ? "Analyzing" : (isPlaying ? "Pause" : "Play"))
+                    .accessibilityValue(isAnalyzing ? "analyzing" : (isPlaying ? "playing" : "paused"))
+                    .accessibilityHint(isAnalyzing ? "Playback starts when analysis finishes." : "")
 
                     Button(action: { engine.seek(by: 15) }) {
                         Image(systemName: "goforward.15")
@@ -125,6 +137,13 @@ struct PlaybackControlsView: View {
     }
 
     private func togglePlayPause() {
+        if let onTogglePlayPause {
+            onTogglePlayPause()
+            return
+        }
+        if isPreparingPlayback && !engine.isPlaying {
+            return
+        }
         if engine.isPlaying {
             engine.pause()
         } else {
