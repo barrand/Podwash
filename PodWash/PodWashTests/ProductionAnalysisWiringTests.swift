@@ -131,6 +131,25 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         return store
     }
 
+    private func makeDefaultSettingsStore() -> SettingsStore {
+        guard let defaults = UserDefaults(suiteName: settingsDefaultsSuite!) else {
+            XCTFail("Could not create isolated UserDefaults suite for default target set")
+            return SettingsStore()
+        }
+        defaults.removePersistentDomain(forName: settingsDefaultsSuite!)
+        let store = SettingsStore(userDefaults: defaults)
+        XCTAssertTrue(
+            WordMatcher.matches("fuck", in: store.activeNormalizedTargetSet()),
+            "Precondition: fresh default settings store must include fWord seeds"
+        )
+        return store
+    }
+
+    /// Injected ASR token for task-015 AC1–AC2 (first-minute fuck, no live Whisper).
+    private func fuckInjectedTranscript() -> [TimedWord] {
+        [TimedWord(word: "fuck", start: 0.52, end: 0.78)]
+    }
+
     private func fixtureEpisode() -> Episode {
         Episode(
             id: episodeID,
@@ -441,6 +460,92 @@ final class ProductionAnalysisWiringTests: XCTestCase {
             }
             assertBoundary(release, near: expected.end, label: "release at end \(expected.end)")
         }
+    }
+
+    // MARK: - Task 015: default fWord target + injected fuck transcript
+
+    func testPlayEpisodeMutesFuckFromInjectedTranscriptWhenChannelCleaningOn() async throws {
+        let settings = makeDefaultSettingsStore()
+        let transcript = fuckInjectedTranscript()
+        let expectedFuck = IntervalBuilder.paddedInterval(wordStart: 0.52, wordEnd: 0.78)
+        let model = makeShell(settingsStore: settings, injectedTranscript: transcript)
+        let episode = fixtureEpisode()
+        try installLocalDownload(for: episode.id)
+
+        try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: false)
+        try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
+
+        model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+
+        await waitUntil { self.pipelineSpy.analyzeCallCount >= 1 }
+
+        XCTAssertEqual(
+            pipelineSpy.lastTargetWords,
+            settings.activeNormalizedTargetSet(),
+            "preparePlayback must pass default settingsStore.activeNormalizedTargetSet() including fWord"
+        )
+
+        let cached = model.playbackCoordinator?.cachedIntervals ?? []
+        let profanityMutes = cached.filter { $0.source == .profanity && $0.action == .mute }
+        XCTAssertGreaterThanOrEqual(
+            profanityMutes.count,
+            1,
+            "Channel cleaning on with injected fuck must yield ≥ 1 profanity mute interval"
+        )
+
+        let match = profanityMutes.contains { interval in
+            abs(interval.start - expectedFuck.start) <= pipelineTolerance
+                && abs(interval.end - expectedFuck.end) <= pipelineTolerance
+        }
+        XCTAssertTrue(
+            match,
+            "Profanity mute bounds must match IntervalBuilder padding for fuck within ±\(pipelineTolerance)s"
+        )
+    }
+
+    func testPlayEpisodeAppliesProfanityMuteRampsForFuckInterval() async throws {
+        let settings = makeDefaultSettingsStore()
+        let transcript = fuckInjectedTranscript()
+        let expectedFuck = IntervalBuilder.paddedInterval(wordStart: 0.52, wordEnd: 0.78)
+        let model = makeShell(settingsStore: settings, injectedTranscript: transcript)
+        let episode = fixtureEpisode()
+        try installLocalDownload(for: episode.id)
+
+        try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: false)
+        try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
+
+        model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+
+        await waitUntil {
+            (model.playbackCoordinator?.cachedIntervals.filter { $0.source == .profanity }.count ?? 0) >= 1
+        }
+
+        guard let engine = model.engine,
+              let playerItem = engine.avPlayer.currentItem,
+              let mix = playerItem.audioMix else {
+            XCTFail("Expected PlaybackEngine with non-nil audioMix after profanity mute prepare")
+            return
+        }
+
+        let audioURL = (playerItem.asset as? AVURLAsset)?.url ?? bundledSineURL()
+        let duration = try await AVURLAsset(url: audioURL).load(.duration).seconds
+        let onsets = AudioMixRampInspector.muteOnsetBoundaries(from: mix, duration: duration)
+        let releases = AudioMixRampInspector.muteReleaseBoundaries(from: mix, duration: duration)
+
+        XCTAssertFalse(onsets.isEmpty, "Expected mute onset ramp for fuck profanity interval")
+        XCTAssertFalse(releases.isEmpty, "Expected mute release ramp for fuck profanity interval")
+
+        guard let onset = onsets.min(by: { abs($0 - expectedFuck.start) < abs($1 - expectedFuck.start) }) else {
+            XCTFail("No onset boundary for fuck start \(expectedFuck.start)")
+            return
+        }
+        assertBoundary(onset, near: expectedFuck.start, label: "fuck profanity mute onset")
+
+        guard let release = releases.min(by: { abs($0 - expectedFuck.end) < abs($1 - expectedFuck.end) }) else {
+            XCTFail("No release boundary for fuck end \(expectedFuck.end)")
+            return
+        }
+        assertBoundary(release, near: expectedFuck.end, label: "fuck profanity mute release")
     }
 
     // MARK: - AC6: channel-only cleaning gate

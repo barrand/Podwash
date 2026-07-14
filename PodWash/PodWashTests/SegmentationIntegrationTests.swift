@@ -241,6 +241,79 @@ final class SegmentationIntegrationTests: XCTestCase {
         XCTAssertEqual(pipelineSpy.analyzeCallCount, 2, "Second analyze still invokes pipeline (cache load inside)")
     }
 
+    // MARK: - Task 015 AC3: dual-source projection regression (H5)
+
+    func testProfanityMuteAndUnrelatedSkipBothProjected() async throws {
+        let transcript = try loadIntegrationTranscript().map { word in
+            guard WordMatcher.normalize(word.word) == "damn" else { return word }
+            return TimedWord(word: "fuck", start: word.start, end: word.end)
+        }
+        let golden = try loadIntegrationGolden()
+        let targetWords: Set<String> = ["fuck"]
+        let unrelatedEnabled = UnrelatedContentOptions(enabled: true, action: .skip)
+
+        let (coordinator, engine) = makeCoordinator(audioURL: sineFixtureURL())
+        try await coordinator.preparePlayback(
+            episode: EpisodeIdentity(id: "\(episodeID)-dual-fuck"),
+            audioURL: dummyAudioURL(),
+            targetWords: targetWords,
+            action: .mute,
+            unrelatedContent: unrelatedEnabled,
+            injectedTranscript: transcript
+        )
+
+        let cached = coordinator.cachedIntervals
+        let profanityIntervals = cached.filter { $0.source == .profanity }
+        let segmentIntervals = cached.filter { $0.source == .unrelatedContent }
+
+        XCTAssertGreaterThanOrEqual(
+            profanityIntervals.count,
+            1,
+            "Profanity mute intervals must survive projection alongside unrelated skip"
+        )
+        XCTAssertGreaterThanOrEqual(
+            segmentIntervals.count,
+            2,
+            "Unrelated skip intervals must survive projection alongside profanity mute"
+        )
+        XCTAssertTrue(profanityIntervals.allSatisfy { $0.action == .mute })
+        XCTAssertTrue(segmentIntervals.allSatisfy { $0.action == .skip })
+
+        for expected in golden.segments {
+            let match = segmentIntervals.contains { interval in
+                abs(interval.start - expected.start) <= segmentTolerance
+                    && abs(interval.end - expected.end) <= segmentTolerance
+            }
+            XCTAssertTrue(
+                match,
+                "No segment interval matching [\(expected.start), \(expected.end)] within ±\(segmentTolerance)s"
+            )
+        }
+
+        for expected in golden.profanity {
+            let match = profanityIntervals.contains { interval in
+                abs(interval.start - expected.start) <= profanityTolerance
+                    && abs(interval.end - expected.end) <= profanityTolerance
+            }
+            XCTAssertTrue(
+                match,
+                "No profanity interval matching fuck bounds [\(expected.start), \(expected.end)] within ±\(profanityTolerance)s"
+            )
+        }
+
+        let scheduled = engine.activeSchedule?.intervals ?? []
+        XCTAssertGreaterThanOrEqual(
+            scheduled.filter { $0.source == .profanity && $0.action == .mute }.count,
+            1,
+            "Applied schedule must include profanity mute ramps"
+        )
+        XCTAssertGreaterThanOrEqual(
+            scheduled.filter { $0.source == .unrelatedContent && $0.action == .skip }.count,
+            2,
+            "Applied schedule must include unrelated skip observers"
+        )
+    }
+
     // MARK: - AC2: off-by-default excludes segment intervals from scheduler
 
     func testOffByDefaultExcludesSegmentIntervals() async throws {
