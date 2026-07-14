@@ -20,7 +20,24 @@ final class AVAudioSessionPlaybackConfigurator: AudioSessionConfiguring {
 
     func activatePlaybackSession() {
         let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .spokenAudio)
-        try? session.setActive(true)
+        do {
+            try session.setCategory(.playback, mode: .spokenAudio)
+            try session.setActive(true)
+            Task { @MainActor in
+                PlaybackDiagnostics.logAudioSessionActivated(
+                    category: AVAudioSession.Category.playback.rawValue,
+                    mode: AVAudioSession.Mode.spokenAudio.rawValue,
+                    error: nil
+                )
+            }
+        } catch {
+            Task { @MainActor in
+                PlaybackDiagnostics.logAudioSessionActivated(
+                    category: AVAudioSession.Category.playback.rawValue,
+                    mode: AVAudioSession.Mode.spokenAudio.rawValue,
+                    error: error
+                )
+            }
+        }
     }
 }

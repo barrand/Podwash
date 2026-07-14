@@ -130,7 +130,30 @@ final class AppShellModel {
     /// Playback starts when the user taps `miniPlayerPlayPause` (AC4).
     /// Synchronous so episode-row taps publish `miniPlayer` before XCTest post-tap idle.
     func playEpisode(_ episode: Episode, podcastTitle: String, feedURL: URL? = nil) {
-        guard let audioURL = resolveAudioURL(for: episode) else { return }
+        PlaybackDiagnostics.logEpisodeTap(episodeID: episode.id, title: episode.title)
+
+        let localCandidate = resolvedLocalFileURL(for: episode.id)
+        let remoteCandidate = episode.audioURL
+        guard let audioURL = resolveAudioURL(for: episode) else {
+            PlaybackDiagnostics.logAudioURLResolution(
+                episodeID: episode.id,
+                localURL: localCandidate,
+                remoteURL: remoteCandidate,
+                chosen: nil
+            )
+            PlaybackDiagnostics.error(
+                "playEpisode aborted — no playable URL episodeID=\(episode.id) "
+                    + "downloadState=\(downloadStateLabel(for: episode.id))"
+            )
+            return
+        }
+
+        PlaybackDiagnostics.logAudioURLResolution(
+            episodeID: episode.id,
+            localURL: localCandidate,
+            remoteURL: remoteCandidate,
+            chosen: audioURL
+        )
 
         clearPlaybackAnalysisProgress()
 
@@ -162,14 +185,25 @@ final class AppShellModel {
         nowPlayingEpisodeTitle = episode.title
         nowPlayingPodcastTitle = podcastTitle
         isMiniPlayerVisible = true
+        PlaybackDiagnostics.info(
+            "playEpisode session ready episodeID=\(episode.id) miniPlayer=visible paused=true"
+        )
         // Leave paused so AC4's play-button tap yields "playing".
 
         // Fixture Library play skips analysis even when cleaning is on (AC8).
-        if isFixtureLibraryMode { return }
+        if isFixtureLibraryMode {
+            PlaybackDiagnostics.info("playEpisode skip prepare — fixture library mode")
+            return
+        }
 
         let cleaningApplies = cleaningApplies(for: episode, feedURL: feedURL)
         let isLocalFile = isLocalFileURL(audioURL)
-        guard cleaningApplies, isLocalFile else { return }
+        guard cleaningApplies, isLocalFile else {
+            PlaybackDiagnostics.info(
+                "playEpisode skip prepare cleaning=\(cleaningApplies) localFile=\(isLocalFile)"
+            )
+            return
+        }
 
         let targetWords = settingsStore.activeNormalizedTargetSet()
         let action = settingsStore.censorAction()
@@ -181,22 +215,48 @@ final class AppShellModel {
         let injected = injectedTranscriptForTesting
 
         acceptingPlaybackProgress = true
+        PlaybackDiagnostics.logPreparePlaybackStart(
+            episodeID: episode.id,
+            cleaning: cleaningApplies,
+            localFile: isLocalFile
+        )
         Task { @MainActor in
-            try? await coordinator.preparePlayback(
-                episode: EpisodeIdentity(id: episode.id),
-                audioURL: audioURL,
-                targetWords: targetWords,
-                action: action,
-                unrelatedContent: unrelated,
-                injectedTranscript: injected
-            )
+            do {
+                try await coordinator.preparePlayback(
+                    episode: EpisodeIdentity(id: episode.id),
+                    audioURL: audioURL,
+                    targetWords: targetWords,
+                    action: action,
+                    unrelatedContent: unrelated,
+                    injectedTranscript: injected
+                )
+                PlaybackDiagnostics.logPreparePlaybackEnd(
+                    episodeID: episode.id,
+                    intervalCount: coordinator.cachedIntervals.count,
+                    error: nil
+                )
+            } catch {
+                PlaybackDiagnostics.logPreparePlaybackEnd(
+                    episodeID: episode.id,
+                    intervalCount: coordinator.cachedIntervals.count,
+                    error: error
+                )
+            }
             // Keep terminal snapshot for mini-player; stop accepting further relay noise.
             acceptingPlaybackProgress = false
         }
     }
 
     func toggleMiniPlayerPlayPause() {
-        guard let engine else { return }
+        let willPlay = !(engine?.isPlaying ?? false)
+        PlaybackDiagnostics.logMiniPlayerToggle(
+            willPlay: willPlay,
+            enginePresent: engine != nil
+        )
+        guard let engine else {
+            PlaybackDiagnostics.warning("miniPlayer toggle ignored — engine nil")
+            return
+        }
         if engine.isPlaying {
             engine.pause()
         } else {
@@ -268,6 +328,15 @@ final class AppShellModel {
             return cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: feedURL)
         }
         return cleaningStore.isChannelUnrelatedContentEnabled
+    }
+
+    private func downloadStateLabel(for episodeID: String) -> String {
+        switch downloadManager.state(for: episodeID) {
+        case .notDownloaded: return "notDownloaded"
+        case .downloading(let progress): return String(format: "downloading(%.2f)", progress)
+        case .downloaded: return "downloaded"
+        case .failed: return "failed"
+        }
     }
 }
 

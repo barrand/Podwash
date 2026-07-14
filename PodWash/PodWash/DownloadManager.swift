@@ -191,7 +191,11 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             downloadsDirectory: downloadsDirectory,
             fileManager: fileManager
         )
-        if resolved == nil, state(for: episodeID) == .downloaded {
+        if resolved == nil, stateStore.state(for: episodeID) == .downloaded {
+            PlaybackDiagnostics.logDownloadStateCleared(
+                episodeID: episodeID,
+                reason: "missing sandbox file"
+            )
             stateStore.setState(.notDownloaded, for: episodeID)
             notifyStateChanged()
         }
@@ -203,7 +207,14 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     }
 
     func state(for episodeID: String) -> DownloadState {
-        stateStore.state(for: episodeID)
+        let stored = stateStore.state(for: episodeID)
+        if case .downloading = stored { return stored }
+        if stored == .downloaded { return .downloaded }
+        if localFileURL(for: episodeID) != nil {
+            stateStore.setState(.downloaded, for: episodeID)
+            return .downloaded
+        }
+        return stored
     }
 
     func lastFailureDiagnostic(for episodeID: String) -> String? {
@@ -508,6 +519,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
         stateStore.setState(.downloaded, for: episodeID)
         notifyStateChanged()
+        PlaybackDiagnostics.logDownloadReady(episodeID: episodeID, url: finalURL)
         active.continuation.resume(returning: finalURL)
     }
 

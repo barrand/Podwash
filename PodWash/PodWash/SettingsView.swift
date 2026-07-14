@@ -35,6 +35,7 @@ struct SettingsView: View {
                     wordCategoriesSection
                     customWordsSection
                     episodeBehaviorSection
+                    playbackDiagnosticsSection
                     buildStampSection
                 }
                 .padding(.horizontal, 12)
@@ -293,6 +294,43 @@ struct SettingsView: View {
             .accessibilityIdentifier("autoDeleteToggle")
             .accessibilityLabel("Auto-delete after played")
             .accessibilityValue(store.autoDeleteAfterPlayedEnabled ? "1" : "0")
+        }
+    }
+
+    private var playbackDiagnosticsSection: some View {
+        TimelineView(.periodic(from: .now, by: 1.0)) { _ in
+            let _ = PlaybackDiagnostics.contentRevision
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Playback diagnostics")
+                    .font(.headline)
+
+                Text(
+                    "Recent play/download events. In Console, filter subsystem "
+                        + "com.barrandfarm.PodWash category Playback."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+                ScrollView {
+                    Text(
+                        PlaybackDiagnostics.recentLines.isEmpty
+                            ? "No playback events yet. Tap an episode, then play."
+                            : PlaybackDiagnostics.recentLines.joined(separator: "\n")
+                    )
+                    .font(.system(.caption2, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+                }
+                .frame(minHeight: 120, maxHeight: 220)
+                .padding(8)
+                .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
+                .accessibilityIdentifier("playbackDiagnosticsLog")
+
+                Button("Clear playback log") {
+                    PlaybackDiagnostics.clear()
+                }
+                .accessibilityIdentifier("playbackDiagnosticsClear")
+            }
         }
     }
 

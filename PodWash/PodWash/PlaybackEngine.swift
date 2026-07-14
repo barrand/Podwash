@@ -7,6 +7,7 @@
 
 import AVFoundation
 import Foundation
+import os
 
 @MainActor
 @Observable
@@ -65,6 +66,9 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     private var pendingPlayWhenReady = false
     /// `nonisolated(unsafe)`: invalidated from `nonisolated deinit` without a MainActor hop.
     private nonisolated(unsafe) var itemStatusObservation: NSKeyValueObservation?
+    /// `nonisolated(unsafe)`: playback stall / waiting diagnostics.
+    private nonisolated(unsafe) var timeControlObservation: NSKeyValueObservation?
+    private let sourceURL: URL
 
     /// Exposed for unit tests that observe `timeControlStatus` via KVO.
     var avPlayer: AVPlayer { player }
@@ -100,6 +104,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         // Test download stand-ins copy WAV bytes to `{id}.m4a` (ADR-008 path). AVFoundation
         // refuses that pairing ("Cannot Open"); remap WAVE payloads to a temp `.wav` for mix.
         let playableURL = Self.avFoundationPlayableURL(for: url)
+        sourceURL = playableURL
         let item = AVPlayerItem(url: playableURL)
         player = AVPlayer(playerItem: item)
         // Prefer in-place rate changes without bouncing through
@@ -110,9 +115,22 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         self.nowPlayingUpdater = nowPlayingUpdater ?? MPNowPlayingInfoCenterUpdater()
         self.audioSessionConfigurator = audioSessionConfigurator ?? AVAudioSessionPlaybackConfigurator()
 
+        PlaybackDiagnostics.logEngineCreated(url: playableURL, title: title)
+
         itemStatusObservation = item.observe(\.status, options: [.new]) { [weak self] observed, _ in
             Task { @MainActor [weak self] in
                 self?.handleItemStatusChange(observed.status)
+            }
+        }
+
+        timeControlObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] observed, _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                PlaybackDiagnostics.logTimeControlStatus(
+                    observed.timeControlStatus,
+                    rate: self.player.rate
+                )
+                self.touchUI()
             }
         }
 
@@ -122,6 +140,11 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     }
 
     func play() {
+        PlaybackDiagnostics.logPlayIntent(
+            source: "engine.play",
+            itemStatus: player.currentItem?.status ?? .unknown,
+            timeControl: PlaybackDiagnostics.timeControlLabel(player.timeControlStatus)
+        )
         audioSessionConfigurator.activatePlaybackSession()
         startOrPendPlayback()
         refreshCurrentTime()
@@ -153,6 +176,16 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     }
 
     private func handleItemStatusChange(_ status: AVPlayerItem.Status) {
+        let item = player.currentItem
+        let url = (item?.asset as? AVURLAsset)?.url ?? sourceURL
+        PlaybackDiagnostics.logItemStatus(status, url: url, error: item?.error)
+
+        if status == .failed {
+            pendingPlayWhenReady = false
+            touchUI()
+            return
+        }
+
         guard pendingPlayWhenReady, status == .readyToPlay else { return }
         pendingPlayWhenReady = false
         player.playImmediately(atRate: selectedRate)
@@ -235,6 +268,11 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         try? FileManager.default.removeItem(at: temp)
         do {
             try FileManager.default.copyItem(at: url, to: temp)
+            Task { @MainActor in
+                PlaybackDiagnostics.warning(
+                    "remapped WAVE payload from .m4a to temp wav path=\(temp.lastPathComponent)"
+                )
+            }
             return temp
         } catch {
             return url
@@ -407,6 +445,8 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         onSeekCompleted = nil
         itemStatusObservation?.invalidate()
         itemStatusObservation = nil
+        timeControlObservation?.invalidate()
+        timeControlObservation = nil
         if let token = skipObserverToken {
             player.removeTimeObserver(token)
             skipObserverToken = nil
@@ -434,9 +474,15 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         do {
             let loadedDuration = try await asset.load(.duration)
             duration = loadedDuration.seconds
+            let assetURL = (asset as? AVURLAsset)?.url ?? sourceURL
+            PlaybackDiagnostics.logDuration(seconds: duration, url: assetURL)
             touchUI()
         } catch {
             duration = 0
+            let assetURL = (asset as? AVURLAsset)?.url ?? sourceURL
+            PlaybackDiagnostics.logDuration(seconds: 0, url: assetURL)
+            PlaybackDiagnostics.error("duration load failed error=\(error.localizedDescription)")
+            touchUI()
         }
     }
 }

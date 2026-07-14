@@ -155,10 +155,18 @@ nonisolated final class PodcastStore: @unchecked Sendable {
             // these IDs — including this podcast's prior set and collisions left by other
             // fixture subscriptions — before inserting replacements.
             let incomingIDs = feed.episodes.map(\.id).filter { !$0.isEmpty }
+            var preservedEpisodeState: [String: (downloadStateRaw: String?, playbackPosition: Double, isPlayed: Bool)] = [:]
             if !incomingIDs.isEmpty {
                 let conflictRequest = CDEpisode.fetchRequest()
                 conflictRequest.predicate = NSPredicate(format: "id IN %@", incomingIDs)
                 for row in try self.context.fetch(conflictRequest) {
+                    if let id = row.id {
+                        preservedEpisodeState[id] = (
+                            downloadStateRaw: row.downloadStateRaw,
+                            playbackPosition: row.playbackPosition,
+                            isPlayed: row.isPlayed
+                        )
+                    }
                     self.context.delete(row)
                 }
             } else if let existingEpisodes = podcast.episodes?.array as? [CDEpisode] {
@@ -176,10 +184,16 @@ nonisolated final class PodcastStore: @unchecked Sendable {
                 row.artworkURLString = episode.artworkURL?.absoluteString
                 row.showNotes = episode.showNotes
                 row.audioURLString = episode.audioURL?.absoluteString
-                row.playbackPosition = 0
-                row.isPlayed = false
+                if let preserved = preservedEpisodeState[episode.id] {
+                    row.downloadStateRaw = preserved.downloadStateRaw ?? "notDownloaded"
+                    row.playbackPosition = preserved.playbackPosition
+                    row.isPlayed = preserved.isPlayed
+                } else {
+                    row.playbackPosition = 0
+                    row.isPlayed = false
+                    row.downloadStateRaw = "notDownloaded"
+                }
                 row.episodeCleaningEnabled = false
-                row.downloadStateRaw = "notDownloaded"
                 row.podcast = podcast
                 ordered.add(row)
             }
