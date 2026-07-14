@@ -15,6 +15,45 @@ final class AnalysisProgressUITests: XCTestCase {
     }
 
     @MainActor
+    func testChannelCleaningToggleAccessibilityLabelIsCleanProfanity() throws {
+        let app = XCUIApplication()
+        app.launchArguments.append("-UITestFixtureLibrary")
+        app.launch()
+
+        navigateLibraryFixtureToEpisodeList(in: app)
+
+        let channelToggle = app.switches["channelCleaningToggle"]
+        XCTAssertTrue(
+            channelToggle.waitForExistence(timeout: 5),
+            "channelCleaningToggle must exist on podcast detail (Library → show)"
+        )
+        XCTAssertEqual(
+            channelToggle.label,
+            "Clean Profanity",
+            "channelCleaningToggle accessibilityLabel must equal Clean Profanity (exact)"
+        )
+        XCTAssertFalse(
+            app.switches["Channel cleaning"].exists,
+            "channelCleaningToggle must not retain legacy VoiceOver label Channel cleaning"
+        )
+        XCTAssertFalse(
+            app.switches["Clean channel"].exists,
+            "channelCleaningToggle must not retain legacy VoiceOver label Clean channel"
+        )
+
+        let episodeList = app.descendants(matching: .any)["episodeList"]
+        let visibleCaption = episodeList.staticTexts["Clean Profanity"]
+        XCTAssertTrue(
+            visibleCaption.waitForExistence(timeout: 2),
+            "Visible caption for the cleaning row must read Clean Profanity (exact)"
+        )
+        XCTAssertFalse(
+            episodeList.staticTexts["Clean channel"].exists,
+            "Clean channel copy must not remain on podcast detail"
+        )
+    }
+
+    @MainActor
     func testEpisodeCleaningTogglesAbsentChannelTogglePresent() throws {
         let app = XCUIApplication()
         app.launchArguments.append("-UITestFixtureFeed")
@@ -108,6 +147,19 @@ final class AnalysisProgressUITests: XCTestCase {
 
         XCTAssertFalse(app.descendants(matching: .any)["analysisProgress"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_episodeOn"].exists)
+    }
+
+    @MainActor
+    private func navigateLibraryFixtureToEpisodeList(in app: XCUIApplication) {
+        let libraryRoot = app.descendants(matching: .any)["libraryRoot"]
+        XCTAssertTrue(libraryRoot.waitForExistence(timeout: 5), "libraryRoot must appear within 5s")
+
+        let showCell = app.descendants(matching: .any)["libraryCell_0"]
+        XCTAssertTrue(showCell.waitForExistence(timeout: 5), "libraryCell_0 must appear within 5s")
+        showCell.tap()
+
+        let episodeList = app.descendants(matching: .any)["episodeList"]
+        XCTAssertTrue(episodeList.waitForExistence(timeout: 5), "episodeList must appear within 5s")
     }
 
     private static var analysisTimelineVisiblePredicate: NSPredicate {

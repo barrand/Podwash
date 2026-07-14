@@ -214,7 +214,7 @@ final class LibraryUITests: XCTestCase {
     @MainActor
     func testTapEpisodeShowsMiniPlayerAndPlays() throws {
         // Mini-player play/pause contract only (task-012). Fixture library mode plays
-        // bundled FixtureAudio; channel cleaning stays off so this test does not overlap
+        // bundled FixtureAudio; Clean Profanity stays off so this test does not overlap
         // testTapEpisodeDownloadsBeforePlayWhenChannelCleaningOn.
         let app = launchLibraryApp()
         navigateToEpisodeList(app)
@@ -240,7 +240,7 @@ final class LibraryUITests: XCTestCase {
         )
     }
 
-    // MARK: - Task 012: tap episode downloads before play when channel cleaning on
+    // MARK: - Task 012: tap episode downloads before play when Clean Profanity on
 
     @MainActor
     func testTapEpisodeDownloadsBeforePlayWhenChannelCleaningOn() throws {

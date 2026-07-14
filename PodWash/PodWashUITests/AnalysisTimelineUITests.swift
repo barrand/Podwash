@@ -118,6 +118,7 @@ final class AnalysisTimelineUITests: XCTestCase {
         return app
     }
 
+    /// Enables cleaning via `channelCleaningToggle` (identifier stable; label Clean Profanity).
     @MainActor
     private func enableChannelCleaning(in app: XCUIApplication) {
         let channelToggle = app.switches["channelCleaningToggle"]
