@@ -73,6 +73,33 @@ final class AnalysisTimelineModelTests: XCTestCase {
         )
     }
 
+    /// Yellow buckets use the full analyze union, not playback-projected intervals.
+    func testCompleteSnapshotYellowFromUnionWhenUnrelatedFilteredFromPlayback() {
+        let union = [
+            CensorInterval(start: 20.0, end: 35.0, action: .skip, source: .unrelatedContent),
+            CensorInterval(start: 50.0, end: 55.0, action: .mute, source: .profanity),
+        ]
+        let projected = [union[1]]
+
+        let snapshot = AnalysisTimelineModel.completeSnapshot(
+            duration: episodeDuration,
+            intervals: projected,
+            adRangeIntervals: union
+        )
+        let colors = AnalysisTimelineModel.segmentColors(snapshot: snapshot, segmentCount: segmentCount)
+        XCTAssertGreaterThan(count(colors, color: .yellow), 0)
+
+        let playbackOnly = AnalysisTimelineModel.completeSnapshot(
+            duration: episodeDuration,
+            intervals: projected
+        )
+        let playbackColors = AnalysisTimelineModel.segmentColors(
+            snapshot: playbackOnly,
+            segmentCount: segmentCount
+        )
+        XCTAssertEqual(count(playbackColors, color: .yellow), 0)
+    }
+
     // MARK: - Helpers
 
     private func count(_ colors: [TimelineSegmentColor], color: TimelineSegmentColor) -> Int {
