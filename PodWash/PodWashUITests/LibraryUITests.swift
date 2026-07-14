@@ -20,6 +20,18 @@ final class LibraryUITests: XCTestCase {
 
     private let fixtureTimeout: TimeInterval = 5
 
+    /// Play-time analysis in Library shell — stepped analyzer pinned to terminal
+    /// `ready:12,processing:0,pending:0` (parallel to `-UITestFixtureAnalysisTimeline`).
+    private let libraryPlayerAnalysisTimelineArgs = [
+        "-UITestFixtureDownload",
+        "-UITestFixtureLibraryAnalysisTimeline",
+    ]
+
+    private static let terminalTimelineValue = "ready:12,processing:0,pending:0"
+    private static let timelineValuePattern = try! NSRegularExpression(
+        pattern: #"^ready:(\d+),processing:(\d+),pending:(\d+)$"#
+    )
+
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
@@ -69,6 +81,88 @@ final class LibraryUITests: XCTestCase {
         let bar = element("miniPlayer", in: app)
         XCTAssertTrue(bar.waitForExistence(timeout: fixtureTimeout))
         bar.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).tap()
+    }
+
+    private func playFirstEpisodeWithChannelCleaningOn(_ app: XCUIApplication) {
+        navigateToEpisodeList(app)
+        ensureChannelCleaningOn(in: app)
+
+        let downloadButton = app.buttons["downloadButton_0"]
+        XCTAssertTrue(downloadButton.waitForExistence(timeout: fixtureTimeout))
+
+        let episodeCell = element("episodeCell_0", in: app)
+        XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
+        episodeCell.tap()
+
+        if downloadButton.value as? String != "downloaded" {
+            waitForAccessibilityValue(
+                "downloaded",
+                identifier: "downloadButton_0",
+                in: app,
+                timeout: fixtureTimeout,
+                message: "downloadButton_0 must report downloaded before play-time analysis starts"
+            )
+        }
+
+        let miniPlayer = element("miniPlayer", in: app)
+        XCTAssertTrue(
+            miniPlayer.waitForExistence(timeout: fixtureTimeout),
+            "miniPlayer must appear within \(fixtureTimeout)s after downloaded local play starts"
+        )
+    }
+
+    @discardableResult
+    private func waitForPlayerAnalysisTimeline(
+        identifier: String,
+        in app: XCUIApplication,
+        timeout: TimeInterval
+    ) -> String {
+        let control = element(identifier, in: app)
+        XCTAssertTrue(
+            control.waitForExistence(timeout: timeout),
+            "\(identifier) must appear within \(timeout)s"
+        )
+
+        let terminalSnapshot = expectation(description: "terminal \(identifier) snapshot")
+        terminalSnapshot.assertForOverFulfill = false
+
+        var resolved = ""
+        var sawTerminal = false
+        let timer = Timer(timeInterval: 0.05, repeats: true) { timer in
+            guard control.exists, let value = control.value as? String else { return }
+            guard Self.isValidTimelineAccessibilityValue(value) else { return }
+            guard value == Self.terminalTimelineValue else { return }
+            sawTerminal = true
+            resolved = value
+            timer.invalidate()
+            terminalSnapshot.fulfill()
+        }
+        RunLoop.current.add(timer, forMode: .common)
+
+        defer { timer.invalidate() }
+        wait(for: [terminalSnapshot], timeout: timeout)
+
+        XCTAssertTrue(
+            sawTerminal,
+            "\(identifier) must reach terminal analysis snapshot within \(timeout)s; last value: \(control.value as? String ?? "nil")"
+        )
+        return resolved
+    }
+
+    private static func isValidTimelineAccessibilityValue(_ value: String) -> Bool {
+        let range = NSRange(value.startIndex..., in: value)
+        guard let match = timelineValuePattern.firstMatch(in: value, range: range),
+              match.numberOfRanges == 4,
+              let readyRange = Range(match.range(at: 1), in: value),
+              let processingRange = Range(match.range(at: 2), in: value),
+              let pendingRange = Range(match.range(at: 3), in: value),
+              let ready = Int(value[readyRange]),
+              let processing = Int(value[processingRange]),
+              let pending = Int(value[pendingRange])
+        else {
+            return false
+        }
+        return ready + processing + pending == 12
     }
 
     private func waitForAccessibilityValue(
@@ -201,6 +295,56 @@ final class LibraryUITests: XCTestCase {
             in: app,
             timeout: fixtureTimeout,
             message: "miniPlayerPlayPause must report playing within \(fixtureTimeout)s after download"
+        )
+    }
+
+    // MARK: - Task 011: analysis timeline in mini and full player
+
+    @MainActor
+    func testMiniPlayerShowsAnalysisTimelineWhenAnalysisComplete() throws {
+        let app = launchLibraryApp(extraArguments: libraryPlayerAnalysisTimelineArgs)
+        playFirstEpisodeWithChannelCleaningOn(app)
+
+        let value = waitForPlayerAnalysisTimeline(
+            identifier: "miniPlayerAnalysisTimeline",
+            in: app,
+            timeout: fixtureTimeout
+        )
+        XCTAssertTrue(
+            Self.isValidTimelineAccessibilityValue(value),
+            "miniPlayerAnalysisTimeline accessibilityValue must match ready/processing/pending with segment sum 12; got: \(value)"
+        )
+        XCTAssertEqual(
+            value,
+            Self.terminalTimelineValue,
+            "Fixture must pin terminal complete analysis for player chrome"
+        )
+    }
+
+    @MainActor
+    func testFullPlayerShowsMatchingAnalysisTimeline() throws {
+        let app = launchLibraryApp(extraArguments: libraryPlayerAnalysisTimelineArgs)
+        playFirstEpisodeWithChannelCleaningOn(app)
+
+        let miniValue = waitForPlayerAnalysisTimeline(
+            identifier: "miniPlayerAnalysisTimeline",
+            in: app,
+            timeout: fixtureTimeout
+        )
+
+        tapMiniPlayerBar(app)
+
+        let fullTimeline = element("playbackAnalysisTimeline", in: app)
+        XCTAssertTrue(
+            fullTimeline.waitForExistence(timeout: fixtureTimeout),
+            "playbackAnalysisTimeline must appear within \(fixtureTimeout)s after expanding mini-player"
+        )
+        waitForAccessibilityValue(
+            miniValue,
+            identifier: "playbackAnalysisTimeline",
+            in: app,
+            timeout: fixtureTimeout,
+            message: "playbackAnalysisTimeline must match miniPlayerAnalysisTimeline accessibilityValue"
         )
     }
 
