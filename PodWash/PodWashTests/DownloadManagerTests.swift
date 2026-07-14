@@ -299,6 +299,33 @@ final class DownloadManagerTests: XCTestCase {
         XCTAssertEqual(url.lastPathComponent, "\(Self.fixtureEpisodeID).m4a")
     }
 
+    func testPreferredFileExtensionUsesRemoteEnclosureExtension() {
+        let mp3 = URL(string: "https://example.com/episodes/alpha.mp3?query=1")!
+        XCTAssertEqual(DownloadPaths.preferredFileExtension(for: mp3), "mp3")
+
+        let m4a = URL(string: "https://example.com/episodes/alpha.m4a")!
+        XCTAssertEqual(DownloadPaths.preferredFileExtension(for: m4a), "m4a")
+
+        let unknown = URL(string: "https://example.com/episodes/alpha")!
+        XCTAssertEqual(DownloadPaths.preferredFileExtension(for: unknown), "m4a")
+    }
+
+    func testExistingLocalFileURLFindsMP3Install() throws {
+        let episodeID = Self.fixtureEpisodeID
+        let mp3URL = DownloadPaths.localFileURL(
+            episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory,
+            fileExtension: "mp3"
+        )
+        try Data([0x00]).write(to: mp3URL)
+
+        let found = DownloadPaths.existingLocalFileURL(
+            episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory
+        )
+        XCTAssertEqual(found?.path, mp3URL.path)
+    }
+
     func testDownloadCompletesForEpisodeIDContainingURLCharacters() async throws {
         let unsafeID = "46176 at https://www.thisamericanlife.org"
 

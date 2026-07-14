@@ -147,6 +147,19 @@ final class PlaybackEngineTests: XCTestCase {
         XCTAssertEqual(recorder.lastArtist, "PodWash QA")
     }
 
+    func testPlayableURLRemapsID3PayloadStoredAsM4A() throws {
+        let source = FileManager.default.temporaryDirectory
+            .appendingPathComponent("podwash-mp3-in-m4a-\(UUID().uuidString).m4a")
+        var data = Data([0x49, 0x44, 0x33])
+        data.append(Data(repeating: 0, count: 128))
+        try data.write(to: source)
+        defer { try? FileManager.default.removeItem(at: source) }
+
+        let engine = PlaybackEngine(url: source, title: "MP3 remap", artist: "PodWash QA")
+        let assetURL = (engine.avPlayer.currentItem?.asset as? AVURLAsset)?.url
+        XCTAssertEqual(assetURL?.pathExtension.lowercased(), "mp3")
+    }
+
     func testUITestTargetParallelizationDisabledInScheme() throws {
         let repoRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
