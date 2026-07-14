@@ -191,4 +191,30 @@ final class AnalysisPipelineTests: XCTestCase {
         XCTAssertLessThan(firstProcessed, lastProcessed)
         XCTAssertEqual(snapshots.last?.processedEnd, snapshots.last?.episodeDuration)
     }
+
+    func testCacheStoresIntervalsForEpisodeIDContainingURLCharacters() async throws {
+        let unsafeID = "46177 at https://www.thisamericanlife.org"
+        spy.wordsToReturn = try loadTranscript()
+
+        let intervals = try await pipeline.analyze(
+            episode: EpisodeIdentity(id: unsafeID),
+            audioURL: dummyAudioURL(),
+            targetWords: fullTargetSet
+        )
+
+        XCTAssertFalse(intervals.isEmpty)
+        let cache = IntervalCache(baseDirectory: cacheDir)
+        let cached = cache.load(episodeID: unsafeID, targetWords: fullTargetSet)
+        XCTAssertEqual(cached, intervals)
+
+        let cacheDirContents = try FileManager.default.contentsOfDirectory(
+            at: cacheDir,
+            includingPropertiesForKeys: nil
+        )
+        XCTAssertEqual(cacheDirContents.count, 1)
+        let cacheFile = try XCTUnwrap(cacheDirContents.first)
+        XCTAssertFalse(cacheFile.path.contains("://"))
+        XCTAssertTrue(cacheFile.lastPathComponent.hasPrefix("ep-"))
+        XCTAssertTrue(cacheFile.lastPathComponent.hasSuffix(".json"))
+    }
 }
