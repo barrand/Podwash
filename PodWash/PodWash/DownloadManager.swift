@@ -35,6 +35,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     private var cancelWaiters: [String: CheckedContinuation<Data?, Never>] = [:]
     private let cancelLock = NSLock()
     nonisolated(unsafe) private var cancellingEpisodeIDs: Set<String> = []
+    nonisolated(unsafe) private var preferredFileExtensionByEpisodeID: [String: String] = [:]
 
     var onStateChanged: (() -> Void)?
 
@@ -173,14 +174,9 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     }
 
     func deleteDownload(episodeID: String) throws {
-        let finalURL = DownloadPaths.localFileURL(
-            episodeID: episodeID,
-            downloadsDirectory: downloadsDirectory
-        )
-        if fileManager.fileExists(atPath: finalURL.path) {
-            try fileManager.removeItem(at: finalURL)
-        }
+        removeInstalledFiles(for: episodeID)
         resumeDataByEpisodeID.removeValue(forKey: episodeID)
+        preferredFileExtensionByEpisodeID.removeValue(forKey: episodeID)
         stateStore.setState(.notDownloaded, for: episodeID)
         notifyStateChanged()
     }
@@ -393,6 +389,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         ensureDownloadsDirectoryExists()
         removePartialFiles(for: episodeID)
         lastFailureDiagnosticByEpisodeID.removeValue(forKey: episodeID)
+        preferredFileExtensionByEpisodeID[episodeID] = DownloadPaths.preferredFileExtension(for: remoteURL)
         stateStore.setState(.downloading(progress: 0), for: episodeID)
         notifyStateChanged()
 
@@ -460,13 +457,16 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         from tempLocation: URL,
         episodeID: String
     ) throws -> URL {
+        let ext = preferredFileExtensionByEpisodeID[episodeID] ?? "m4a"
         let finalURL = DownloadPaths.localFileURL(
             episodeID: episodeID,
-            downloadsDirectory: downloadsDirectory
+            downloadsDirectory: downloadsDirectory,
+            fileExtension: ext
         )
         let partialURL = DownloadPaths.partialFileURL(
             episodeID: episodeID,
-            downloadsDirectory: downloadsDirectory
+            downloadsDirectory: downloadsDirectory,
+            fileExtension: ext
         )
 
         try fileManager.createDirectory(at: downloadsDirectory, withIntermediateDirectories: true)
@@ -520,6 +520,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         stateStore.setState(.downloaded, for: episodeID)
         notifyStateChanged()
         PlaybackDiagnostics.logDownloadReady(episodeID: episodeID, url: finalURL)
+        preferredFileExtensionByEpisodeID.removeValue(forKey: episodeID)
         active.continuation.resume(returning: finalURL)
     }
 
@@ -542,24 +543,34 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         }
 
         removePartialFiles(for: episodeID)
+        preferredFileExtensionByEpisodeID.removeValue(forKey: episodeID)
         stateStore.setState(.failed, for: episodeID)
         notifyStateChanged()
     }
 
     private func removePartialFiles(for episodeID: String) {
-        let finalURL = DownloadPaths.localFileURL(
-            episodeID: episodeID,
-            downloadsDirectory: downloadsDirectory
-        )
-        let partialURL = DownloadPaths.partialFileURL(
-            episodeID: episodeID,
-            downloadsDirectory: downloadsDirectory
-        )
-        if fileManager.fileExists(atPath: partialURL.path) {
-            try? fileManager.removeItem(at: partialURL)
-        }
-        if fileManager.fileExists(atPath: finalURL.path) {
-            try? fileManager.removeItem(at: finalURL)
+        removeInstalledFiles(for: episodeID, includePartials: true)
+    }
+
+    private func removeInstalledFiles(for episodeID: String, includePartials: Bool = false) {
+        for ext in DownloadPaths.downloadedFileExtensions {
+            let finalURL = DownloadPaths.localFileURL(
+                episodeID: episodeID,
+                downloadsDirectory: downloadsDirectory,
+                fileExtension: ext
+            )
+            if fileManager.fileExists(atPath: finalURL.path) {
+                try? fileManager.removeItem(at: finalURL)
+            }
+            guard includePartials else { continue }
+            let partialURL = DownloadPaths.partialFileURL(
+                episodeID: episodeID,
+                downloadsDirectory: downloadsDirectory,
+                fileExtension: ext
+            )
+            if fileManager.fileExists(atPath: partialURL.path) {
+                try? fileManager.removeItem(at: partialURL)
+            }
         }
     }
 
@@ -589,7 +600,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             return
         }
 
-        for url in contents where url.pathExtension == "m4a" {
+        for url in contents where DownloadPaths.downloadedFileExtensions.contains(url.pathExtension.lowercased()) {
             let stem = url.deletingPathExtension().lastPathComponent
             // Hashed stems (`ep-<sha256>`) cannot be reversed to RSS GUIDs; rely on
             // persisted download state for those episodes.

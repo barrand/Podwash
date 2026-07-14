@@ -9,6 +9,9 @@ import CryptoKit
 import Foundation
 
 enum DownloadPaths: Sendable {
+    /// Extensions used for on-disk episode audio (lookup tries each in order).
+    nonisolated static let downloadedFileExtensions = ["m4a", "mp3", "mp4", "aac", "wav", "mpeg"]
+
     /// Stable on-disk filename stem for `Episode.id`. RSS GUIDs may contain `:` and `/`
     /// (e.g. This American Life); those must not be passed raw to `appendingPathComponent`.
     nonisolated static func fileNameStem(for episodeID: String) -> String {
@@ -18,8 +21,23 @@ enum DownloadPaths: Sendable {
         return episodeID
     }
 
-    nonisolated static func localFileURL(episodeID: String, downloadsDirectory: URL) -> URL {
-        downloadsDirectory.appendingPathComponent("\(fileNameStem(for: episodeID)).m4a", isDirectory: false)
+    nonisolated static func localFileURL(
+        episodeID: String,
+        downloadsDirectory: URL,
+        fileExtension: String = "m4a"
+    ) -> URL {
+        downloadsDirectory.appendingPathComponent(
+            "\(fileNameStem(for: episodeID)).\(fileExtension)",
+            isDirectory: false
+        )
+    }
+
+    nonisolated static func preferredFileExtension(for remoteURL: URL) -> String {
+        let ext = remoteURL.pathExtension.lowercased()
+        guard !ext.isEmpty, downloadedFileExtensions.contains(ext) else {
+            return "m4a"
+        }
+        return ext
     }
 
     /// Pre–hashing install path: raw `episodeID.m4a` (RSS GUIDs may include `:`).
@@ -33,9 +51,12 @@ enum DownloadPaths: Sendable {
         downloadsDirectory: URL,
         fileManager: FileManager = .default
     ) -> URL? {
-        let canonical = localFileURL(episodeID: episodeID, downloadsDirectory: downloadsDirectory)
-        if fileManager.fileExists(atPath: canonical.path) {
-            return canonical
+        let stem = fileNameStem(for: episodeID)
+        for ext in downloadedFileExtensions {
+            let candidate = downloadsDirectory.appendingPathComponent("\(stem).\(ext)", isDirectory: false)
+            if fileManager.fileExists(atPath: candidate.path) {
+                return candidate
+            }
         }
         return discoverLegacyLocalFileURL(
             episodeID: episodeID,
@@ -65,11 +86,11 @@ enum DownloadPaths: Sendable {
             options: [.skipsHiddenFiles]
         ) else { return nil }
 
-        let canonical = localFileURL(episodeID: episodeID, downloadsDirectory: downloadsDirectory)
+        let canonicalStem = fileNameStem(for: episodeID)
         var matches: [URL] = []
         for case let url as URL in enumerator {
-            guard url.pathExtension.lowercased() == "m4a" else { continue }
-            guard url.path != canonical.path else { continue }
+            guard downloadedFileExtensions.contains(url.pathExtension.lowercased()) else { continue }
+            guard url.deletingPathExtension().lastPathComponent != canonicalStem else { continue }
             if url.lastPathComponent == suffix {
                 matches.append(url)
             }
@@ -98,7 +119,13 @@ enum DownloadPaths: Sendable {
             fileManager: fileManager
         ) else { return nil }
 
-        let canonical = localFileURL(episodeID: episodeID, downloadsDirectory: downloadsDirectory)
+        let ext = existing.pathExtension.lowercased()
+        let resolvedExt = downloadedFileExtensions.contains(ext) ? ext : "m4a"
+        let canonical = localFileURL(
+            episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory,
+            fileExtension: resolvedExt
+        )
         if existing.path == canonical.path {
             return existing
         }
@@ -112,8 +139,15 @@ enum DownloadPaths: Sendable {
         return canonical
     }
 
-    nonisolated static func partialFileURL(episodeID: String, downloadsDirectory: URL) -> URL {
-        downloadsDirectory.appendingPathComponent("\(fileNameStem(for: episodeID)).m4a.part", isDirectory: false)
+    nonisolated static func partialFileURL(
+        episodeID: String,
+        downloadsDirectory: URL,
+        fileExtension: String = "m4a"
+    ) -> URL {
+        downloadsDirectory.appendingPathComponent(
+            "\(fileNameStem(for: episodeID)).\(fileExtension).part",
+            isDirectory: false
+        )
     }
 
     nonisolated static func isPathSafeFileNameStem(_ episodeID: String) -> Bool {

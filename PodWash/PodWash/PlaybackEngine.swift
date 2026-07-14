@@ -248,21 +248,22 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         return supportedRates.min(by: { abs($0 - rate) < abs($1 - rate) }) ?? 1.0
     }
 
-    /// ADR-008 download paths always use `.m4a`. Unit tests install a WAVE fixture at that
-    /// path; AVFoundation cannot open WAVE bytes under a `.m4a` URL. Real AAC downloads
-    /// are unchanged. Returns a temp `.wav` copy when RIFF/WAVE magic is detected.
+    /// ADR-008 downloads use a path extension from the remote enclosure URL, but older
+    /// installs always used `.m4a`. AVFoundation rejects some containers when the
+    /// extension mismatches payload (MP3-in-.m4a, WAVE-in-.m4a). Copy to a temp file
+    /// with a sniffed extension when needed.
     private static func avFoundationPlayableURL(for url: URL) -> URL {
-        guard url.isFileURL, url.pathExtension.lowercased() == "m4a" else { return url }
-        guard let handle = try? FileHandle(forReadingFrom: url) else { return url }
-        defer { try? handle.close() }
-        guard let header = try? handle.read(upToCount: 12), header.count >= 12 else { return url }
-        let isRIFF = header[0] == 0x52 && header[1] == 0x49 && header[2] == 0x46 && header[3] == 0x46
-        let isWAVE = header[8] == 0x57 && header[9] == 0x41 && header[10] == 0x56 && header[11] == 0x45
-        guard isRIFF, isWAVE else { return url }
+        guard url.isFileURL else { return url }
+        guard let sniffedExtension = sniffedContainerExtension(for: url) else { return url }
+
+        let currentExtension = url.pathExtension.lowercased()
+        if !currentExtension.isEmpty, currentExtension == sniffedExtension {
+            return url
+        }
 
         let temp = FileManager.default.temporaryDirectory
             .appendingPathComponent(
-                "podwash-playable-\(url.deletingPathExtension().lastPathComponent).wav",
+                "podwash-playable-\(url.deletingPathExtension().lastPathComponent).\(sniffedExtension)",
                 isDirectory: false
             )
         try? FileManager.default.removeItem(at: temp)
@@ -270,13 +271,43 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
             try FileManager.default.copyItem(at: url, to: temp)
             Task { @MainActor in
                 PlaybackDiagnostics.warning(
-                    "remapped WAVE payload from .m4a to temp wav path=\(temp.lastPathComponent)"
+                    "remapped \(sniffedExtension.uppercased()) payload from "
+                        + ".\(currentExtension.isEmpty ? "unknown" : currentExtension) to temp "
+                        + "path=\(temp.lastPathComponent)"
                 )
             }
             return temp
         } catch {
             return url
         }
+    }
+
+    private static func sniffedContainerExtension(for url: URL) -> String? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        guard let header = try? handle.read(upToCount: 12), !header.isEmpty else { return nil }
+
+        if header.count >= 12 {
+            let isRIFF = header[0] == 0x52 && header[1] == 0x49 && header[2] == 0x46 && header[3] == 0x46
+            let isWAVE = header[8] == 0x57 && header[9] == 0x41 && header[10] == 0x56 && header[11] == 0x45
+            if isRIFF, isWAVE { return "wav" }
+        }
+
+        if header.count >= 3,
+           header[0] == 0x49, header[1] == 0x44, header[2] == 0x33 {
+            return "mp3"
+        }
+
+        if header.count >= 8,
+           header[4] == 0x66, header[5] == 0x74, header[6] == 0x79, header[7] == 0x70 {
+            return "m4a"
+        }
+
+        if header[0] == 0xFF, (header[1] & 0xE0) == 0xE0 {
+            return "mp3"
+        }
+
+        return nil
     }
 
     func seek(to seconds: TimeInterval, completion: (() -> Void)? = nil) {
