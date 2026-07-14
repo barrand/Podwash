@@ -268,7 +268,7 @@ class ActivityCopyAndLivenessTests(unittest.TestCase):
             runner_alive=True,
         )
         self.assertEqual(activity["mode"], "needs_decision")
-        self.assertEqual(activity["headline"], "Can't ship")
+        self.assertEqual(activity["headline"], "Can't push")
         self.assertNotIn("Needs you", activity["headline"])
         self.assertNotIn("Needs you", activity["next"])
         self.assertIn("Your move", activity["next"])
@@ -279,6 +279,53 @@ class ActivityCopyAndLivenessTests(unittest.TestCase):
         plain = floor._batch_plain("still_red", "needs_decision")
         self.assertIn("Your move", plain)
         self.assertNotIn("Needs you", plain)
+
+    def test_batch_pending_plain_english_no_jargon(self):
+        import factory_floor.server as floor
+
+        plain = floor._batch_plain("HEAD moved", "pending")
+        self.assertIn("New commits", plain)
+        self.assertNotIn("idle drain", plain.lower())
+        self.assertNotIn("batch verify", plain.lower())
+
+        activity = floor._activity_snapshot(
+            ctrl={"running": True, "paused": False, "batch_running": False},
+            station={},
+            batch={
+                "state": "pending",
+                "reason": "HEAD moved",
+                "needed": True,
+                "verify_running": False,
+            },
+            tasks=[],
+            events=[],
+            factory_hot=True,
+            runner_alive=True,
+        )
+        self.assertEqual(activity["mode"], "batch_pending")
+        self.assertEqual(activity["headline"], "Waiting to run full test suite")
+        self.assertNotIn("Idle drain", activity["headline"])
+
+    def test_halted_blocks_full_suite_copy(self):
+        import factory_floor.server as floor
+
+        activity = floor._activity_snapshot(
+            ctrl={"running": True, "paused": False, "batch_running": False},
+            station={},
+            batch={
+                "state": "pending",
+                "reason": "HEAD moved",
+                "needed": True,
+                "verify_running": False,
+            },
+            tasks=[{"id": "011", "status": "Halted", "title": "Timeline"}],
+            events=[],
+            factory_hot=True,
+            runner_alive=True,
+        )
+        self.assertEqual(activity["mode"], "batch_pending")
+        self.assertIn("Halted", activity["headline"])
+        self.assertIn("Requeue", activity["next"])
 
     def test_starting_grace_then_orphan(self):
         import factory_floor.server as floor
@@ -365,7 +412,9 @@ class ActivityCopyAndLivenessTests(unittest.TestCase):
         )
         self.assertEqual(activity["mode"], "batch")
         self.assertTrue(activity.get("loop_stale"))
-        self.assertIn("gone", activity["detail"].lower())
+        self.assertTrue(
+            "exited" in activity["detail"].lower() or "gone" in activity["detail"].lower()
+        )
 
     def test_runner_alive_uses_ctrl_pid(self):
         import factory_floor.server as floor

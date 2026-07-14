@@ -388,34 +388,39 @@ def _ladder_plain(machine_tried: list[Any]) -> str:
 
 
 def _batch_plain(reason: str, state: str) -> str:
-    """Human-readable batch gate copy — not agent status."""
+    """Human-readable full-suite / push copy — no factory jargon."""
     r = (reason or "").strip()
     mapping = {
         "never verified": (
-            "No full-suite green stamp yet. After the punch-list queue empties, "
-            "the loop runs the full test suite (tier-3) and pushes if green."
+            "All tests have never been run green on this tree. "
+            "When the punch-list is clear, the factory runs every test, then pushes if green."
         ),
-        "HEAD moved": "Commits landed since the last green full suite — a batch verify is queued for idle drain.",
-        "dirty tree": "Uncommitted changes in the tree — full suite needed before ship.",
-        "ship_now": "Ship now requested — full suite will run next.",
-        "not needed": "Full suite already green at this commit — nothing to batch-verify.",
-        "skipped": "Batch gate skipped for this session.",
-        "unavailable": "Batch status unavailable (task_loop import failed).",
-        "still_red": "Full suite still failing after Mechanic — decide in Your move.",
-        "verified": "Last full suite was green.",
-        "mechanic_retry": "Re-running full suite after Mechanic.",
-        "held": "Held — not pushing. Ship now or Retry to run the full suite again.",
-        "verify aborted": "Full suite aborted (simulator/infra) — decide in Your move.",
+        "HEAD moved": (
+            "New commits landed since the last time all tests passed. "
+            "A full test-suite run is waiting, then push if green."
+        ),
+        "dirty tree": "There are uncommitted changes — a full test-suite run is needed before push.",
+        "ship_now": "You clicked Verify & push — full test suite runs next.",
+        "not needed": "All tests already passed at this commit — nothing left to verify before push.",
+        "skipped": "Full-suite check skipped for this session.",
+        "unavailable": "Full-suite status unavailable (internal import failed).",
+        "still_red": "Full test suite is still failing after an auto-fix pass — decide in Your move.",
+        "verified": "Last full test suite passed.",
+        "mechanic_retry": "Re-running the full test suite after an auto-fix pass.",
+        "held": (
+            "You chose not to push. Click Verify & push or Retry full suite when ready."
+        ),
+        "verify aborted": "Full test suite aborted (simulator/infra) — decide in Your move.",
     }
     if state == "verifying" or state == "running":
-        return f"Full suite is running now ({r or 'tier-3'})."
+        return f"Running the full test suite now ({r or 'all tests'})."
     if state == "needs_decision":
-        return mapping.get(r, f"Can't ship ({r or 'failed'}). Decide in Your move.")
+        return mapping.get(r, f"Can't push ({r or 'failed'}). Decide in Your move.")
     if state == "held":
         return mapping["held"]
     if state == "green" and not r:
         return mapping["verified"]
-    return mapping.get(r, f"Batch: {r or state or 'idle'}.")
+    return mapping.get(r, f"Full suite: {r or state or 'idle'}.")
 
 
 def _fmt_task_id(task_id: Any) -> str:
@@ -551,10 +556,10 @@ def _activity_snapshot(
         if batch_flag and verify_running:
             return pack(
                 mode="batch",
-                headline="FULL-VERIFY · children only",
+                headline="Full test suite still running",
                 detail=(
-                    "Loop process is gone, but verify/xcodebuild is still running. "
-                    "Wait for it to finish, or Stop then Restart factory."
+                    "The factory loop process exited, but xcodebuild is still finishing. "
+                    "Wait for it, or Stop then Restart factory."
                 ),
                 next_line="Wait for the full suite to finish, or Stop then Restart factory.",
                 agents_out=agents
@@ -563,7 +568,7 @@ def _activity_snapshot(
                         "role": "verify",
                         "task": "",
                         "phase": "FULL-VERIFY",
-                        "doing": "tier-3 children still running",
+                        "doing": "full suite still running",
                     }
                 ],
                 loop_stale=True,
@@ -575,20 +580,20 @@ def _activity_snapshot(
             )
             return pack(
                 mode="orphan",
-                headline="Loop not running",
+                headline="Factory loop not running",
                 detail=(
-                    f"Batch flag was left on, but no loop or verify process is alive. "
+                    f"A full-suite flag was left on, but nothing is alive. "
                     f"In Progress stuck: {stuck}."
                 ),
-                next_line="Click Restart factory. Or Pause then hand-edit if you meant to reclaim the tree.",
+                next_line="Click Restart factory. Or Pause if you meant to reclaim the tree for hand-edits.",
                 orphan=True,
             )
         if started_age_s is not None and started_age_s < STARTING_GRACE_S:
             return pack(
                 mode="starting",
                 headline="Starting factory…",
-                detail=f"Waiting for the task-loop process ({int(started_age_s)}s).",
-                next_line="Wait a few seconds — the loop should come up. If this hangs, click Restart factory.",
+                detail=f"Waiting for the worker process ({int(started_age_s)}s).",
+                next_line="Wait a few seconds. If this hangs, click Restart factory.",
             )
         stuck = (
             ", ".join(_fmt_task_id(t.get("id")) or str(t.get("id")) for t in in_prog)
@@ -596,12 +601,12 @@ def _activity_snapshot(
         )
         return pack(
             mode="orphan",
-            headline="Loop not running",
+            headline="Factory loop not running",
             detail=(
-                f"UI says hot, but no task-loop process is alive. "
+                f"Status says running, but no worker process is alive. "
                 f"In Progress stuck: {stuck}."
             ),
-            next_line="Click Restart factory to resume. Or Pause then hand-edit if you meant to reclaim the tree.",
+            next_line="Click Restart factory. Or Pause if you meant to reclaim the tree for hand-edits.",
             orphan=True,
         )
 
@@ -609,8 +614,8 @@ def _activity_snapshot(
         return pack(
             mode="paused",
             headline="Paused",
-            detail="Agents are idle until you Resume.",
-            next_line="Click Resume to continue, or Stop to end the shift.",
+            detail="Workers are idle until you Resume.",
+            next_line="Click Resume to continue, or Stop to shut the factory down.",
         )
 
     if not marked_running and not runner_alive:
@@ -636,15 +641,15 @@ def _activity_snapshot(
             return pack(
                 mode="stopped",
                 headline="Factory stopped",
-                detail=f"{len(queued)} queued, {len(in_prog)} in progress — no workers.",
+                detail=f"{len(queued)} punch-list ticket(s) queued, {len(in_prog)} in progress — no workers.",
                 next_line="Click Start factory.",
                 agents_out=[],
             )
         return pack(
             mode="idle",
-            headline="Shift quiet",
-            detail="No workers on the floor.",
-            next_line="Queue work with forge-intake in Cursor, then Start factory.",
+            headline="Factory idle",
+            detail="No workers running.",
+            next_line="Queue punch-list work with forge-intake in Cursor, then Start factory.",
             agents_out=[],
         )
 
@@ -655,16 +660,16 @@ def _activity_snapshot(
     ):
         return pack(
             mode="batch",
-            headline="FULL-VERIFY · loop",
-            detail=detail or f"Running full suite ({batch.get('reason') or 'tier-3'}).",
-            next_line="Wait — no action needed unless the full suite fails.",
+            headline="Running full test suite",
+            detail=detail or batch_plain or "Running every test, then push if green.",
+            next_line="Wait — no action needed unless the suite fails.",
             agents_out=agents
             or [
                 {
                     "role": "loop",
                     "task": "",
                     "phase": "FULL-VERIFY",
-                    "doing": "tier-3 full suite",
+                    "doing": "running full test suite",
                 }
             ],
         )
@@ -675,24 +680,24 @@ def _activity_snapshot(
             if isinstance(batch.get("failure"), dict)
             else None
         )
-        detail_line = "Can't ship — full suite still failing."
+        detail_line = "Can't push — full test suite still failing."
         if fail_n is not None:
-            detail_line = f"Can't ship — {fail_n} test(s) failed."
+            detail_line = f"Can't push — {fail_n} test(s) failed."
         elif (batch.get("reason") or "") == "verify aborted":
-            detail_line = "Can't ship — verify aborted."
+            detail_line = "Can't push — verify aborted."
         return pack(
             mode="needs_decision",
-            headline="Can't ship",
+            headline="Can't push",
             detail=detail_line,
-            next_line="Use Your move: Don't push, Retry full suite, or Copy for Cursor.",
+            next_line="Your move: Don't push, Retry full suite, or Copy for Cursor.",
         )
 
     if batch_state == "held":
         return pack(
             mode="held",
-            headline="Held — not pushing",
-            detail=f"Incident acknowledged at {(batch.get('head_sha') or '')[:12] or 'HEAD'}.",
-            next_line="Ship now or Retry full suite when ready; or queue more work.",
+            headline="Not pushing (held)",
+            detail=f"You acknowledged the failure at {(batch.get('head_sha') or '')[:12] or 'HEAD'}.",
+            next_line="Verify & push or Retry full suite when ready; or queue more punch-list work.",
         )
 
     if agents:
@@ -717,9 +722,9 @@ def _activity_snapshot(
             hint = f" Last event: {ev_phase} {ev_role} {ev_event}".strip()
         return pack(
             mode="working",
-            headline=f"In Progress · {_fmt_task_id(t0.get('id')) or t0.get('id')}",
+            headline=f"Working on {_fmt_task_id(t0.get('id')) or t0.get('id')}",
             detail=(t0.get("title") or "") + ("." if hint else "") + hint,
-            next_line="Wait — task is claimed. If this stalls for minutes, Stop then Start factory.",
+            next_line="Wait — a ticket is claimed. If this stalls for minutes, Stop then Start factory.",
             agents_out=[
                 {
                     "role": ev_role or "pipeline",
@@ -733,41 +738,68 @@ def _activity_snapshot(
     if queued and runner_alive:
         return pack(
             mode="picking",
-            headline="Queue · loop picking next task",
-            detail=f"{len(queued)} queued.",
-            next_line="Nothing needed from you — next card will move to In Progress shortly.",
+            headline="Picking next punch-list ticket",
+            detail=f"{len(queued)} punch-list ticket(s) ready.",
+            next_line="Nothing needed from you — the next card will move to In Progress shortly.",
             agents_out=[
                 {
                     "role": "loop",
                     "task": "",
                     "phase": "queue",
-                    "doing": "selecting next task",
+                    "doing": "selecting next punch-list ticket",
                 }
             ],
         )
 
-    # Idle drain / batch pending while queue empty
+    # No punch-list work — full suite pending (or blocked by Halted)
     if batch.get("needed") and runner_alive:
+        if halted:
+            ids = ", ".join(
+                _fmt_task_id(t.get("id")) or str(t.get("id")) for t in halted
+            )
+            return pack(
+                mode="batch_pending",
+                headline="Full suite waiting — Halted ticket first",
+                detail=(
+                    f"{ids} is Halted. Requeue it (or leave it parked) before the factory "
+                    f"will run all tests and push. {batch_plain}"
+                ),
+                next_line="Requeue Halted in Your move, or queue more punch-list work with forge-intake.",
+                agents_out=[
+                    {
+                        "role": "loop",
+                        "task": "",
+                        "phase": "batch",
+                        "doing": "blocked on Halted ticket",
+                    }
+                ],
+            )
         return pack(
             mode="batch_pending",
-            headline="Idle drain · batch pending",
+            headline="Waiting to run full test suite",
             detail=batch_plain,
-            next_line="Nothing needed from you — full suite runs when the queue is empty. Or click Ship now to force it.",
+            next_line=(
+                "Nothing needed from you — all tests run next, then push if green. "
+                "Or click Verify & push to start now."
+            ),
             agents_out=[
                 {
                     "role": "loop",
                     "task": "",
                     "phase": "batch",
-                    "doing": "waiting to run full suite",
+                    "doing": "waiting to run full test suite",
                 }
             ],
         )
 
     return pack(
         mode="quiet",
-        headline="Shift quiet — no workers on the floor yet.",
-        detail="",
-        next_line="Queue work with forge-intake, or click Ship now if you only need a full verify/push.",
+        headline="Nothing to do right now",
+        detail="No punch-list tickets ready, and no full-suite run needed.",
+        next_line=(
+            "Queue punch-list work with forge-intake, or click Verify & push "
+            "if you only want all tests + push."
+        ),
         agents_out=[],
     )
 
@@ -1319,7 +1351,7 @@ main {
     <button id="btnPause">Pause</button>
     <button id="btnPauseAfter">Pause after current</button>
     <button id="btnResume">Resume</button>
-    <button id="btnShip">Ship now</button>
+    <button id="btnShip" title="Run all tests, then git push if green">Verify &amp; push</button>
     <button id="btnStop">Stop</button>
   </div>
 </header>
@@ -1331,12 +1363,12 @@ main {
   <aside class="side">
     <div class="station" id="station">
       <h3>Now</h3>
-      <div class="label">Working on</div>
-      <div class="beat" id="stationBeat">Shift quiet — no workers on the floor yet.</div>
+      <div class="label">Status</div>
+      <div class="beat" id="stationBeat">Nothing to do right now</div>
       <div class="sub" id="stationSub"></div>
       <div class="fresh" id="stationFresh"></div>
       <div class="agents" id="agentList"></div>
-      <div class="label">Batch (full suite / ship)</div>
+      <div class="label">Full test suite (before push)</div>
       <div class="batch-line" id="batchLine">—</div>
     </div>
     <div class="your-move" id="yourMove">
@@ -1503,31 +1535,44 @@ function batchLabel(b, activity) {
   if (activity && activity.batch_plain) {
     const short = (s) => (s ? String(s).slice(0, 12) : "");
     const sha = short(b && b.last_green_sha);
-    const head = `Batch · ${b && b.state ? b.state : "—"}${sha ? " @ " + sha : ""}`;
+    const stateLabels = {
+      verifying: "running",
+      running: "running",
+      pending: "waiting",
+      needs_decision: "can't push",
+      held: "not pushing",
+      green: "passed",
+      idle: "idle",
+      blocked: "can't push",
+    };
+    const st = (b && b.state) || "—";
+    const stLabel = stateLabels[st] || st;
+    const head = `Full suite · ${stLabel}${sha ? " @ " + sha : ""}`;
     return `<strong>${esc(head)}</strong><br/>${esc(activity.batch_plain)}`;
   }
-  if (!b) return "Batch · —";
+  if (!b) return "Full suite · —";
   const short = (s) => (s ? String(s).slice(0, 12) : "?");
   if (b.state === "running" || b.state === "verifying" || b.batch_running) {
-    return `<strong>Batch · verifying</strong><br/>${esc(b.plain || b.reason || "tier-3")}`;
+    return `<strong>Full suite · running</strong><br/>${esc(b.plain || "all tests")}`;
   }
   if (b.state === "needs_decision") {
-    return `<strong>Batch · can't ship</strong><br/>${esc(b.plain || "decide in Your move")}`;
+    return `<strong>Full suite · can't push</strong><br/>${esc(b.plain || "decide in Your move")}`;
   }
   if (b.state === "held") {
-    return `<strong>Batch · held</strong><br/>${esc(b.plain || "not pushing")}`;
+    return `<strong>Full suite · not pushing</strong><br/>${esc(b.plain || "held")}`;
   }
   if (b.state === "blocked") {
-    return `<strong>Batch · can't ship</strong><br/>${esc(b.plain || "decide in Your move")}`;
+    return `<strong>Full suite · can't push</strong><br/>${esc(b.plain || "decide in Your move")}`;
   }
   if (b.state === "pending" || b.needed) {
-    return `<strong>Batch · pending</strong><br/>${esc(b.plain || b.reason || "full verify needed")}`;
+    return `<strong>Full suite · waiting</strong><br/>${esc(b.plain || "needed before push")}`;
   }
   if (b.state === "green" || b.last_green_sha) {
-    return `<strong>Batch · green @ ${esc(short(b.last_green_sha))}</strong><br/>${esc(b.plain || "ok")}`;
+    return `<strong>Full suite · passed @ ${esc(short(b.last_green_sha))}</strong><br/>${esc(b.plain || "ok")}`;
   }
-  return `<strong>Batch · idle</strong>`;
+  return `<strong>Full suite · idle</strong>`;
 }
+
 
 function formatEvent(ev) {
   const ts = (ev.ts || "").replace("T", " ").replace("Z", "").slice(11, 19) || "";
@@ -1623,7 +1668,7 @@ function render() {
     hot.textContent = "will pause after current";
     hot.className = "status-pill hot";
   } else if (["working","batch","picking","batch_pending","needs_decision","held"].includes(mode)) {
-    hot.textContent = "hot";
+    hot.textContent = "running";
     hot.className = "status-pill hot";
   } else {
     hot.textContent = "stopped";
@@ -1635,24 +1680,31 @@ function render() {
   const items = [...(snap.tasks||[]), ...(snap.slices||[])];
   const idle = document.getElementById("idle");
   const queuedAuto = items.filter(i => colFor(i)==="Queued" && i.type==="task" && !/needs-human/i.test(i.kind||""));
+  const queuedSlices = items.filter(i => colFor(i)==="Queued" && i.type==="slice");
   const inProg = items.filter(i => colFor(i)==="In Progress" && i.type==="task");
   const liveModes = ["working","batch","picking","batch_pending","starting","needs_decision","held","paused"];
   const looksLive = liveModes.includes(mode);
+  const sliceNote = queuedSlices.length
+    ? ` Feature slices in Queued (${queuedSlices.length}) are not auto-run by this punch-list factory.`
+    : "";
   let idleMsg = "Waiting for intake — queue a punch list with forge-intake";
   if (mode === "orphan") {
-    idleMsg = activity.detail || "Loop not running — click Restart factory";
+    idleMsg = activity.detail || "Factory loop not running — click Restart factory";
     idle.hidden = false;
     idle.textContent = idleMsg;
   } else if (looksLive && queuedAuto.length===0 && inProg.length===0 && batch.state !== "needs_decision") {
     if (mode === "batch" || batch.state === "running" || batch.state === "verifying" || batch.batch_running) {
-      idleMsg = `Queue empty · full verify running (${batch.reason||"tier-3"})`;
+      idleMsg = "No punch-list tickets left · running full test suite";
     } else if (batch.state === "held" || mode === "held") {
-      idleMsg = `Queue empty · held — not pushing`;
+      idleMsg = "No punch-list tickets left · not pushing (held)";
     } else if (batch.needed) {
-      idleMsg = `Queue empty · full verify pending — ${batch.reason||"needed"}`;
+      const why = (batch.plain || "").trim()
+        || "full test suite waiting before push";
+      idleMsg = `No punch-list tickets left · ${why}`;
     } else if (batch.state === "green") {
-      idleMsg = `Queue empty · full verify not needed (green @ ${(batch.last_green_sha||"").slice(0,12)})`;
+      idleMsg = `No punch-list tickets left · full suite already passed @ ${(batch.last_green_sha||"").slice(0,12)}`;
     }
+    idleMsg += sliceNote;
     idle.hidden = false;
     idle.textContent = idleMsg;
   } else {
@@ -1737,9 +1789,9 @@ function render() {
     const n = fail && fail.failed != null ? fail.failed : fails.length;
     let html = "";
     if (reason === "verify aborted" && !fails.length) {
-      html += `<div><strong>Can't ship — verify aborted</strong></div>`;
+      html += `<div><strong>Can't push — verify aborted</strong></div>`;
     } else {
-      html += `<div><strong>Can't ship — ${esc(String(n))} test(s) failed</strong></div>`;
+      html += `<div><strong>Can't push — ${esc(String(n))} test(s) failed</strong></div>`;
       if (fail && (fail.passed != null)) {
         html += `<div class="consequence">${esc(String(fail.passed))} passed · ${esc(String(n))} failed</div>`;
       }
@@ -1783,9 +1835,9 @@ function render() {
 
   const titles = {
     orphan: "Restart needed",
-    cant_ship: "Can't ship",
-    held: "Held — not pushing",
-    halted: "Halted",
+    cant_ship: "Can't push",
+    held: "Not pushing (held)",
+    halted: "Halted ticket",
     paused: "Paused",
     starting: "Starting…",
     start: "Start factory",
@@ -1795,14 +1847,14 @@ function render() {
   ymTitle.textContent = titles[lead] || "Your move";
 
   if (lead === "orphan") {
-    ymBody.textContent = activity.next || activity.detail || "Loop not running — Restart factory.";
+    ymBody.textContent = activity.next || activity.detail || "Factory loop not running — Restart factory.";
   } else if (lead === "cant_ship") {
     ymBody.innerHTML = cantShipHtml();
   } else if (lead === "held") {
     const sha = (batch.head_sha || "").slice(0, 12) || "HEAD";
-    ymBody.textContent = `Held at ${sha} — not pushing. Ship now or Retry to run the full suite again.`;
+    ymBody.textContent = `Held at ${sha} — not pushing. Verify & push or Retry to run the full suite again.`;
   } else if (lead === "halted") {
-    ymBody.textContent = `Halted: ${halted.map(h => h.id).join(", ")}. Amend in Cursor if needed, then Requeue.`;
+    ymBody.textContent = `Halted: ${halted.map(h => h.id).join(", ")}. Fix the ticket in Cursor if needed, then Requeue — the factory won't run the full suite while this is parked.`;
   } else if (lead === "paused" || lead === "starting" || lead === "start" || lead === "idle") {
     ymBody.textContent = activity.next || "Nothing needed from you.";
   } else {
@@ -1823,7 +1875,7 @@ function render() {
   ymActions.style.display = (showCantShipBtns || showRequeueLead) ? "flex" : "none";
   if (showCantShipBtns) {
     ymHint.hidden = false;
-    ymHint.textContent = "Don't push leaves commits local. Retry reruns the full suite + one auto-fix pass (~10–15 min).";
+    ymHint.textContent = "Don't push leaves commits local. Retry reruns all tests + one auto-fix pass (~10–15 min).";
   } else {
     ymHint.hidden = true;
   }
@@ -1832,15 +1884,15 @@ function render() {
   const alsoBits = [];
   if (lead !== "halted" && halted.length) {
     alsoBits.push({
-      text: `Also: Halted ${halted.map(h => h.id).join(", ")}`,
+      text: `Also: Halted ${halted.map(h => h.id).join(", ")} (blocks full suite until Requeue)`,
       btn: "requeue",
     });
   }
   if (lead !== "cant_ship" && needsDecision) {
-    alsoBits.push({ text: "Also: Can't ship — full suite still failing", btn: null });
+    alsoBits.push({ text: "Also: Can't push — full suite still failing", btn: null });
   }
   if (lead !== "held" && held) {
-    alsoBits.push({ text: "Also: Held — not pushing", btn: null });
+    alsoBits.push({ text: "Also: Not pushing (held)", btn: null });
   }
   if (alsoBits.length) {
     alsoStrip.hidden = false;
@@ -1876,7 +1928,7 @@ function render() {
     : batch.needed && !activity.agents?.length ? " pending" : ""
   );
   document.getElementById("stationBeat").textContent = activity.headline
-    || "Shift quiet — no workers on the floor yet.";
+    || "Nothing to do right now";
   let subText = activity.detail || "";
   const verifyStarted = batch.verify_started_at != null ? Number(batch.verify_started_at) : null;
   if ((mode === "batch" || batch.state === "verifying" || batch.batch_running) && verifyStarted) {
@@ -2047,7 +2099,7 @@ document.getElementById("btnPauseAfter").onclick = () => post("/api/control", {a
 document.getElementById("btnResume").onclick = () => post("/api/control", {action:"resume"});
 document.getElementById("btnShip").onclick = () => post("/api/control", {action:"ship_now"});
 document.getElementById("btnHold").onclick = () => {
-  if (confirm("Don't push — leave commits local and idle until new work or Ship now?")) {
+  if (confirm("Don't push — leave commits local and idle until new work or Verify & push?")) {
     post("/api/control", {action:"batch_hold"});
   }
 };
