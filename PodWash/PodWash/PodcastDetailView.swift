@@ -175,18 +175,23 @@ struct PodcastDetailView: View {
             VStack(alignment: .leading, spacing: 8) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Text("Clean channel")
+                        // Visible caption must stay in the a11y tree so UI tests can
+                        // assert the exact string (task-016 AC2). VoiceOver still uses
+                        // the toggle's label as the interactive control name.
+                        Text("Clean Profanity")
                             .font(.caption)
-                            .accessibilityHidden(true)
+                            .accessibilityIdentifier("channelCleaningCaption")
+                            .accessibilityLabel("Clean Profanity")
+                            .accessibilityAddTraits(.isStaticText)
 
                         Spacer(minLength: 8)
 
                         Toggle(isOn: channelCleaningBinding) {
-                            Text("Clean channel")
+                            Text("Clean Profanity")
                         }
                         .labelsHidden()
                         .accessibilityIdentifier("channelCleaningToggle")
-                        .accessibilityLabel("Channel cleaning")
+                        .accessibilityLabel("Clean Profanity")
                         .accessibilityValue(analysisViewModel.isChannelCleaningEnabled ? "on" : "off")
                     }
                     .padding(.vertical, 2)

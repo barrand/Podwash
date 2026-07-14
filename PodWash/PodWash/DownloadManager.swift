@@ -419,8 +419,10 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     ) async throws -> URL {
         stateStore.setState(.downloading(progress: 0), for: episodeID)
         notifyStateChanged()
+        // Yield + brief sleep so XCUITest can observe `downloading` / `downloadProgress_*`
+        // under verify load (ui_race on task-012 / task-016 filtered runs).
         await Task.yield()
-        try await Task.sleep(for: .milliseconds(200))
+        try await Task.sleep(for: .milliseconds(350))
         return try finishFixtureDownloadCopy(episodeID: episodeID, progress: progress)
     }
 

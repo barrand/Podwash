@@ -5,6 +5,7 @@
 | **ID** | 015 |
 | **Title** | Profanity mute when channel cleaning is on (ads skip but F-bomb audible) |
 | **Status** | Done |
+| **Done at** | 2026-07-14T18:48:58Z |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWash/AnalysisPipeline.swift`, `PodWash/PodWash/PlaybackCoordinator.swift`, `PodWash/PodWash/PlaybackEngine.swift`, `PodWash/PodWash/IntervalScheduler.swift`, `PodWash/PodWash/WhisperKitASRTranscriber.swift`, `PodWash/PodWash/WordMatcher.swift`, `PodWash/PodWash/IntervalBuilder.swift`, `PodWash/PodWash/AnalysisTimelineModel.swift`, `PodWash/PodWashTests/ProductionAnalysisWiringTests.swift`, `PodWash/PodWashTests/SegmentationIntegrationTests.swift` |
