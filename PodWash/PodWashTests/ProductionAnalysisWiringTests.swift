@@ -179,12 +179,23 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         let persistence = harness.makeController()
         let commands = RemoteCommandCoordinator(commands: MPRemoteCommandCenterAdapter())
         let analyzer: (any EpisodeAnalyzing)? = useInjectedSpy ? pipelineSpy : nil
+        let context = persistence.viewContext
+        let downloadConfig = URLSessionConfiguration.ephemeral
+        downloadConfig.protocolClasses = [StubDownloadURLProtocol.self]
+        let testDownloadManager = DownloadManager(
+            sessionConfiguration: downloadConfig,
+            downloadsDirectory: downloadsDirectory,
+            stateStore: InMemoryDownloadStateStore(
+                backing: DownloadStateStore(context: context)
+            )
+        )
         let model = AppShellModel(
             persistence: persistence,
             remoteCommands: commands,
             episodeAnalyzer: analyzer,
             settingsStore: settingsStore ?? makePinnedSettingsStore(),
-            fixtureLibraryModeForTesting: fixtureLibraryMode
+            fixtureLibraryModeForTesting: fixtureLibraryMode,
+            downloadManager: testDownloadManager
         )
         model.downloadsDirectoryForTesting = downloadsDirectory
         model.injectedTranscriptForTesting = injectedTranscript
@@ -474,8 +485,8 @@ final class ProductionAnalysisWiringTests: XCTestCase {
     func testPlayEpisodeDownloadsInsteadOfStreamingWhenChannelCleaningOn() async throws {
         try await withStubDownloadTransport { [self] in
             let model = makeShell(
-                injectedTranscript: try loadTranscript(),
-                fixtureLibraryMode: false
+                fixtureLibraryMode: false,
+                injectedTranscript: try loadTranscript()
             )
             let episode = fixtureEpisode()
             removeProductionDownload(for: episode.id)
@@ -485,10 +496,21 @@ final class ProductionAnalysisWiringTests: XCTestCase {
             model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
 
             assertEngineDoesNotStreamRemote(from: model)
+            XCTAssertNil(
+                model.engine,
+                "playEpisode must not create PlaybackEngine before download completes when channel cleaning is on"
+            )
 
-            await waitUntil(timeout: 1) {
+            await waitUntil(timeout: 2) {
                 self.isDownloading(model.downloadManager.state(for: episode.id))
                     || model.downloadManager.state(for: episode.id) == .downloaded
+            }
+            if isDownloading(model.downloadManager.state(for: episode.id)) {
+                assertEngineDoesNotStreamRemote(from: model)
+                XCTAssertNil(
+                    model.engine,
+                    "PlaybackEngine must stay absent while download-before-play is in flight"
+                )
             }
             XCTAssertTrue(
                 isDownloading(model.downloadManager.state(for: episode.id))
@@ -526,8 +548,8 @@ final class ProductionAnalysisWiringTests: XCTestCase {
     func testPlayEpisodeAnalyzesAfterDownloadCompletesWhenChannelCleaningOn() async throws {
         try await withStubDownloadTransport { [self] in
             let model = makeShell(
-                injectedTranscript: try loadTranscript(),
-                fixtureLibraryMode: false
+                fixtureLibraryMode: false,
+                injectedTranscript: try loadTranscript()
             )
             let episode = fixtureEpisode()
             removeProductionDownload(for: episode.id)
