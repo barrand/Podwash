@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 015 |
 | **Title** | Profanity mute when channel cleaning is on (ads skip but F-bomb audible) |
-| **Status** | Queued |
+| **Status** | Done |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWash/AnalysisPipeline.swift`, `PodWash/PodWash/PlaybackCoordinator.swift`, `PodWash/PodWash/PlaybackEngine.swift`, `PodWash/PodWash/IntervalScheduler.swift`, `PodWash/PodWash/WhisperKitASRTranscriber.swift`, `PodWash/PodWash/WordMatcher.swift`, `PodWash/PodWash/IntervalBuilder.swift`, `PodWash/PodWash/AnalysisTimelineModel.swift`, `PodWash/PodWashTests/ProductionAnalysisWiringTests.swift`, `PodWash/PodWashTests/SegmentationIntegrationTests.swift` |
@@ -136,10 +136,10 @@ Optional: delete episode download + clear interval cache for that episode and re
 
 ## Acceptance criteria
 
-- [ ] 1. Unit test (`AppShellModel` / `PlaybackCoordinator` + injected transcript containing a timed `"fuck"`, channel cleaning **on**, local file, default Settings target set): after prepare, `cachedIntervals` contains **≥ 1** interval with `source == .profanity`, `action == .mute`, and the word’s padded bounds match `IntervalBuilder` / matching-spec padding within **±0.0005 s**.
-- [ ] 2. Unit test (same setup + offline mix): `AudioMixRampInspector` mute onset/release boundaries match that profanity interval’s `start`/`end` each within **±0.001 s** (same pattern as `testPlayEpisodeAppliesMuteScheduleToEngine`).
-- [ ] 3. Unit test (`AnalysisPipeline` project / play prepare): injected transcript with **≥ 1** target profanity word **and** **≥ 1** segmentable unrelated span; unrelated enabled with `.skip`, profanity `.mute` → returned/applied intervals include **both** `source == .profanity` (mute) **and** `source == .unrelatedContent` (skip) — neither source drops the other. Documents H5 regression lock.
-- [ ] 4. Unit test (`SettingsStore` defaults): `WordMatcher.matches("fuck", in: store.activeNormalizedTargetSet()) == true` on a fresh store (pin dogfood default; extend existing coverage only if missing).
+- [x] 1. Unit test (`AppShellModel` / `PlaybackCoordinator` + injected transcript containing a timed `"fuck"`, channel cleaning **on**, local file, default Settings target set): after prepare, `cachedIntervals` contains **≥ 1** interval with `source == .profanity`, `action == .mute`, and the word’s padded bounds match `IntervalBuilder` / matching-spec padding within **±0.0005 s**.
+- [x] 2. Unit test (same setup + offline mix): `AudioMixRampInspector` mute onset/release boundaries match that profanity interval’s `start`/`end` each within **±0.001 s** (same pattern as `testPlayEpisodeAppliesMuteScheduleToEngine`).
+- [x] 3. Unit test (`AnalysisPipeline` project / play prepare): injected transcript with **≥ 1** target profanity word **and** **≥ 1** segmentable unrelated span; unrelated enabled with `.skip`, profanity `.mute` → returned/applied intervals include **both** `source == .profanity` (mute) **and** `source == .unrelatedContent` (skip) — neither source drops the other. Documents H5 regression lock.
+- [x] 4. Unit test (`SettingsStore` defaults): `WordMatcher.matches("fuck", in: store.activeNormalizedTargetSet()) == true` on a fresh store (pin dogfood default; extend existing coverage only if missing).
 
 **Done for this ticket** = AC1–4 green. If human Console still shows `profanity=0` on TAL after that, **do not** weaken mute tests — open ASR/model follow-up (slice) and leave checklist unchecked / Halt with note.
 
@@ -179,5 +179,5 @@ Optional: delete episode download + clear interval cache for that episode and re
 > Loop writes `VERIFY RESULT:` here. For tasks, `tier=2` and `filtered=1` are valid for Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=4 passed=4 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260714-124831.xcresult tier=2 class=tests
 ```

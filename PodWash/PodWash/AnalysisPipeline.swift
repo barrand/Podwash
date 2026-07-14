@@ -107,7 +107,7 @@ final class AnalysisPipeline: @unchecked Sendable {
             union = cached
         } else {
             let transcript: [TimedWord]
-            if let injected = injectedTranscript {
+            if let injected = injectedTranscript, !injected.isEmpty {
                 transcript = injected
             } else {
                 transcript = try await transcribeWithLiveProgress(

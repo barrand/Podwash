@@ -277,7 +277,7 @@ final class AnalysisUIViewModel {
             episode: identity,
             audioURL: audioURL,
             targetWords: settingsStore.activeNormalizedTargetSet(),
-            injectedTranscript: [],
+            injectedTranscript: nil,
             profanityAction: settingsStore.censorAction(),
             unrelatedContent: effectiveUnrelated
         )
