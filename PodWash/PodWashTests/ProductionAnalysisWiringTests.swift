@@ -305,6 +305,14 @@ final class ProductionAnalysisWiringTests: XCTestCase {
             XCTAssertEqual(pair.0.start, pair.1.start, accuracy: pipelineTolerance, "start \(index)")
             XCTAssertEqual(pair.0.end, pair.1.end, accuracy: pipelineTolerance, "end \(index)")
         }
+
+        await waitUntil { model.playbackAnalysisSnapshot != nil }
+        let snapshot = model.playbackAnalysisSnapshot
+        XCTAssertNotNil(snapshot)
+        XCTAssertGreaterThan(snapshot?.episodeDuration ?? 0, 0)
+        let colors = AnalysisTimelineModel.segmentColors(snapshot: snapshot!)
+        XCTAssertEqual(colors.count, AnalysisTimelineModel.defaultSegmentCount)
+        XCTAssertFalse(colors.allSatisfy { $0 == .grey }, "Terminal snapshot should color segments after analysis")
     }
 
     // MARK: - AC5: mute ramp boundaries after prepare

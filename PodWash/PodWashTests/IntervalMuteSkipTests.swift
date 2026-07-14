@@ -156,6 +156,29 @@ final class IntervalMuteSkipTests: XCTestCase {
         )
     }
 
+    func testCatchUpSkipWhenScheduleAppliedInsideInterval() async {
+        let engine = PlaybackEngine(
+            url: fixtureURL(),
+            title: "Catch-up Skip",
+            artist: "PodWash QA"
+        )
+        await waitForEngineReady(engine)
+
+        let skip = CensorInterval(start: 0.0, end: 1.0, action: .skip, source: .unrelatedContent)
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            engine.seek(to: 0.2) { continuation.resume() }
+        }
+
+        await engine.applySchedule(IntervalSchedule(intervals: [skip]))
+
+        engine.refreshCurrentTime()
+        XCTAssertGreaterThanOrEqual(
+            engine.currentTime,
+            skip.end - 0.1,
+            "Schedule applied while inside a skip interval should seek past the interval end"
+        )
+    }
+
     // MARK: - AC5: seek into an active mute window retains the schedule (two-part)
 
     func testSeekReappliesScheduleRMS() async throws {
