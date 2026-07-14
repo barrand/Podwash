@@ -385,6 +385,8 @@ def _ladder_plain(machine_tried: list[Any]) -> str:
             labels.append("full-suite retries")
         elif tag == "mechanic":
             labels.append("Mechanic fix")
+        elif tag == "scope_miss":
+            labels.append("skipped Mechanic (failure outside punch-list test filters)")
         elif tag.startswith("medic:"):
             outcome = tag.split(":", 1)[1]
             if outcome == "lane_test":
@@ -418,6 +420,11 @@ def _batch_plain(reason: str, state: str) -> str:
         "skipped": "Full-suite check skipped for this session.",
         "unavailable": "Full-suite status unavailable (internal import failed).",
         "still_red": "Full test suite is still failing after an auto-fix pass — decide in Your move.",
+        "scope_miss": (
+            "Full suite failed on a test no recent punch-list ticket ran — "
+            "likely an old test conflicting with new behavior. Decide in Your move "
+            "(auto-fix skipped)."
+        ),
         "verified": "Last full test suite passed.",
         "mechanic_retry": "Re-running the full test suite after an auto-fix pass.",
         "held": (

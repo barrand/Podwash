@@ -280,6 +280,53 @@ class ActivityCopyAndLivenessTests(unittest.TestCase):
         self.assertIn("Your move", plain)
         self.assertNotIn("Needs you", plain)
 
+    def test_batch_plain_scope_miss(self):
+        import factory_floor.server as floor
+
+        plain = floor._batch_plain("scope_miss", "needs_decision")
+        self.assertIn("Your move", plain)
+        self.assertIn("punch-list", plain.lower())
+        self.assertNotIn("Needs you", plain)
+        self.assertNotIn("Mechanic", plain)
+        ladder = floor._ladder_plain(["tier3_retries"])
+        self.assertIn("full-suite retries", ladder)
+        self.assertNotIn("Mechanic", ladder)
+
+    def test_batch_scope_miss_skips_mechanic_in_incident(self):
+        """scope_miss incidents must not claim Mechanic was tried."""
+        from task_loop import build_batch_incident, write_batch_failure, clear_batch_failure
+        from task_ticket import batch_failures_are_scope_miss
+
+        fail_id = (
+            "PodWashTests/ProductionAnalysisWiringTests/"
+            "testStreamingURLSkipsAnalysisEvenWhenCleaningOn()"
+        )
+        surgical = [
+            "PodWashTests/ProductionAnalysisWiringTests/"
+            "testPlayEpisodeDownloadsInsteadOfStreamingWhenChannelCleaningOn()"
+        ]
+        self.assertTrue(batch_failures_are_scope_miss([fail_id], surgical))
+
+        clear_batch_failure()
+        with mock.patch("task_loop.head_sha", return_value="abc123"):
+            with mock.patch(
+                "task_loop.collect_verify_failures",
+                return_value=(
+                    [{"id": fail_id, "assertion": "analyzeCallCount"}],
+                    {"exit": 65, "passed": 166, "failed": 1, "bundle": "b.xcresult"},
+                ),
+            ):
+                # machine_tried stops at tier3_retries — no mechanic append on scope_miss
+                inc = build_batch_incident(
+                    reason="scope_miss",
+                    machine_tried=["tier3_retries"],
+                )
+                self.assertEqual(inc["reason"], "scope_miss")
+                self.assertEqual(inc["machine_tried"], ["tier3_retries"])
+                self.assertNotIn("mechanic", inc["machine_tried"])
+                write_batch_failure(inc)
+        clear_batch_failure()
+
     def test_batch_pending_plain_english_no_jargon(self):
         import factory_floor.server as floor
 

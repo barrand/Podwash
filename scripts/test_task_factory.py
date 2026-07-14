@@ -144,6 +144,78 @@ class TestTaskTicket(unittest.TestCase):
             "mixed",
         )
 
+    def test_expand_surgical_to_class(self):
+        from task_ticket import expand_surgical_to_class
+
+        expanded, expansions = expand_surgical_to_class(
+            [
+                "PodWashTests/ProductionAnalysisWiringTests/testPlayEpisodeDownloadsInsteadOfStreamingWhenChannelCleaningOn()",
+                "PodWashTests/ProductionAnalysisWiringTests/testPlayEpisodeStreamsWhenChannelCleaningOffAndNoLocalFile()",
+                "PodWashUITests/LibraryUITests/testTapEpisodeDownloadsBeforePlayWhenChannelCleaningOn()",
+                "PodWashTests/AlreadyClass",
+                "scripts.test_foo.Bar.test_a",
+            ]
+        )
+        self.assertEqual(
+            expanded,
+            [
+                "PodWashTests/ProductionAnalysisWiringTests",
+                "PodWashUITests/LibraryUITests",
+                "PodWashTests/AlreadyClass",
+                "scripts.test_foo.Bar.test_a",
+            ],
+        )
+        self.assertEqual(len(expansions), 3)
+        self.assertTrue(
+            all(dst == "PodWashTests/ProductionAnalysisWiringTests" or dst == "PodWashUITests/LibraryUITests" for _, dst in expansions)
+        )
+
+    def test_scope_miss_sibling_not_covered_by_method_surgical(self):
+        from task_ticket import (
+            batch_failures_are_scope_miss,
+            collect_done_surgical_tests,
+            test_id_in_surgical_scope,
+        )
+
+        surgical = [
+            "PodWashTests/ProductionAnalysisWiringTests/testPlayEpisodeDownloadsInsteadOfStreamingWhenChannelCleaningOn()",
+            "PodWashTests/ProductionAnalysisWiringTests/testPlayEpisodeAnalyzesAfterDownloadCompletesWhenChannelCleaningOn()",
+        ]
+        sibling = (
+            "PodWashTests/ProductionAnalysisWiringTests/"
+            "testStreamingURLSkipsAnalysisEvenWhenCleaningOn()"
+        )
+        self.assertFalse(test_id_in_surgical_scope(sibling, surgical))
+        self.assertTrue(
+            test_id_in_surgical_scope(
+                surgical[0],
+                surgical,
+            )
+        )
+        # Explicit class-scoped entry covers siblings
+        self.assertTrue(
+            test_id_in_surgical_scope(
+                sibling,
+                ["PodWashTests/ProductionAnalysisWiringTests"],
+            )
+        )
+        self.assertTrue(batch_failures_are_scope_miss([sibling], surgical))
+        self.assertFalse(batch_failures_are_scope_miss([surgical[0]], surgical))
+
+        with tempfile.TemporaryDirectory() as td:
+            path = _write_task(td, 12, status="Done")
+            # Replace surgical table with task-012-like methods
+            with open(path, encoding="utf-8") as fh:
+                body = fh.read()
+            body = body.replace(
+                "`PodWashTests/FooTests/testBar()`",
+                "`PodWashTests/ProductionAnalysisWiringTests/testPlayEpisodeDownloadsInsteadOfStreamingWhenChannelCleaningOn()`",
+            )
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(body)
+            done = collect_done_surgical_tests(td)
+            self.assertTrue(batch_failures_are_scope_miss([sibling], done))
+
     def test_write_verify_result(self):
         with tempfile.TemporaryDirectory() as td:
             path = _write_task(td, 2)

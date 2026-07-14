@@ -71,6 +71,137 @@ def surgical_backend(tests: list[str]) -> str:
     return "mixed"
 
 
+def xcode_class_id(tid: str) -> str | None:
+    """Return ``Target/Class`` for a method- or class-scoped Xcode test id."""
+    t = (tid or "").strip().rstrip("()")
+    if not is_xcode_test_id(t) and not is_xcode_test_id(t + "()"):
+        # Accept already-stripped Target/Class/method
+        if not t.startswith(("PodWashTests/", "PodWashUITests/", "PodWashSlowTests/")):
+            return None
+    parts = t.split("/")
+    if len(parts) >= 2:
+        return f"{parts[0]}/{parts[1]}"
+    return None
+
+
+def expand_surgical_to_class(
+    tests: list[str],
+) -> tuple[list[str], list[tuple[str, str]]]:
+    """Expand method-scoped Xcode ids to ``Target/Class`` for sibling coverage.
+
+    Returns ``(expanded_ids, expansions)`` where each expansion is
+    ``(original_method_id, class_id)`` for logging. Scripts ids and already
+    class-scoped Xcode ids pass through unchanged.
+    """
+    expanded: list[str] = []
+    expansions: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for tid in tests or []:
+        raw = (tid or "").strip()
+        if not raw:
+            continue
+        if is_scripts_test_id(raw):
+            norm = normalize_scripts_test_id(raw)
+            if norm not in seen:
+                seen.add(norm)
+                expanded.append(norm)
+            continue
+        class_id = xcode_class_id(raw)
+        parts = raw.rstrip("()").split("/")
+        # Method-scoped: Target/Class/method → expand to Target/Class
+        if class_id and len(parts) >= 3:
+            if class_id not in seen:
+                seen.add(class_id)
+                expanded.append(class_id)
+            expansions.append((raw, class_id))
+            continue
+        # Class-scoped or unknown — keep as-is
+        keep = class_id or raw
+        if keep not in seen:
+            seen.add(keep)
+            expanded.append(keep)
+    return expanded, expansions
+
+
+def test_id_in_surgical_scope(failure_id: str, surgical: list[str]) -> bool:
+    """True when ``failure_id`` was listed in surgical scope (exact or class filter).
+
+    Method-scoped surgical entries only cover that method. Class-scoped entries
+    (``Target/Class`` with no method) cover every method in the class. Sibling
+    methods in the same class as a listed method are **not** considered in-scope
+    — that is intentional so batch can detect Done filters that never ran them.
+    """
+    fid = (failure_id or "").strip()
+    if not fid:
+        return False
+    fid_norm = (
+        normalize_scripts_test_id(fid) if is_scripts_test_id(fid) else fid.rstrip("()")
+    )
+    fid_class = xcode_class_id(fid)
+    for s in surgical or []:
+        sid = (s or "").strip()
+        if not sid:
+            continue
+        if is_scripts_test_id(sid):
+            if normalize_scripts_test_id(sid) == fid_norm:
+                return True
+            continue
+        s_norm = sid.rstrip("()")
+        if fid_norm == s_norm or fid == sid:
+            return True
+        s_parts = s_norm.split("/")
+        # Explicit class-scoped surgical (Target/Class) covers methods in that class
+        if len(s_parts) == 2 and fid_class and f"{s_parts[0]}/{s_parts[1]}" == fid_class:
+            return True
+    return False
+
+
+def collect_done_surgical_tests(tasks_dir: str) -> list[str]:
+    """Union of Surgical test scope ids from Status=Done tickets under tasks_dir."""
+    if not os.path.isdir(tasks_dir):
+        return []
+    found: list[str] = []
+    seen: set[str] = set()
+    for name in sorted(os.listdir(tasks_dir)):
+        if not re.match(r"task-\d{3}-.+\.md$", name):
+            continue
+        path = os.path.join(tasks_dir, name)
+        try:
+            ticket = parse_task_ticket(path)
+        except OSError:
+            continue
+        if (ticket.status or "").strip().lower() != "done":
+            continue
+        for tid in ticket.surgical_tests:
+            if tid not in seen:
+                seen.add(tid)
+                found.append(tid)
+    return found
+
+
+def failures_outside_surgical_scope(
+    failure_ids: list[str],
+    surgical: list[str],
+) -> list[str]:
+    """Return failure ids that do not match any surgical method/class."""
+    return [
+        fid
+        for fid in failure_ids
+        if (fid or "").strip() and not test_id_in_surgical_scope(fid, surgical)
+    ]
+
+
+def batch_failures_are_scope_miss(
+    failure_ids: list[str],
+    surgical: list[str],
+) -> bool:
+    """True when every failure is outside Done-task surgical scopes (contract drift)."""
+    cleaned = [(f or "").strip() for f in failure_ids if (f or "").strip()]
+    if not cleaned:
+        return False
+    return all(not test_id_in_surgical_scope(fid, surgical) for fid in cleaned)
+
+
 def _extract_test_ids(text: str) -> list[str]:
     found: list[str] = []
     for m in _TEST_ID_RE.finditer(text):

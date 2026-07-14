@@ -169,6 +169,13 @@ class PacketBuilderTests(unittest.TestCase):
             cap_line="Cap: hard_cap (1/8 spawns, 5m agent / 60m verify)",
         )
         self.assertIn("Cap: hard_cap (1/8 spawns, 5m agent / 60m verify)", capped)
+        batch_card = format_stuck_card(
+            packet,
+            slice_file="docs/tasks/README.md",
+        )
+        self.assertIn("STUCK — batch", batch_card)
+        empty_card = format_stuck_card(packet, slice_file="")
+        self.assertIn("STUCK — batch", empty_card)
 
     def test_wait_timeout_infers_query_without_hierarchy(self):
         summary = {

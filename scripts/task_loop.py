@@ -21,7 +21,14 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, "scripts"))
 
 from rapid_task_pipeline import run_task_pipeline
-from task_ticket import parse_task_ticket, set_task_priority, set_task_status
+from task_ticket import (
+    batch_failures_are_scope_miss,
+    collect_done_surgical_tests,
+    failures_outside_surgical_scope,
+    parse_task_ticket,
+    set_task_priority,
+    set_task_status,
+)
 
 NEXT_TASK = os.path.join(REPO_ROOT, "scripts", "next-task.sh")
 CONTROLS_PATH = os.path.join(REPO_ROOT, "build", "factory", "controls.json")
@@ -295,6 +302,7 @@ def notify_cant_ship(incident: dict[str, Any]) -> None:
 
 def write_batch_halt_bundle(incident: dict[str, Any], *, reason: str) -> str:
     """Write session-task-batch halt.json so Medic can diagnose thrash/abort."""
+    from failure_packet import persist_stuck_card
     from session_bundle import write_session_bundle
 
     fail_ids = [
@@ -302,16 +310,34 @@ def write_batch_halt_bundle(incident: dict[str, Any], *, reason: str) -> str:
         for f in (incident.get("failures") or [])
         if isinstance(f, dict) and f.get("id")
     ]
+    assert_bits = [
+        str(f.get("assertion") or "")
+        for f in (incident.get("failures") or [])
+        if isinstance(f, dict) and f.get("assertion")
+    ]
+    stuck = (
+        "STUCK — batch\n"
+        f"Reason: {reason}\n"
+        f"HEAD {incident.get('head_sha') or '?'}\n"
+        f"failed={incident.get('failed')} passed={incident.get('passed')}\n"
+        + (
+            f"Test: {', '.join(fail_ids[:5])}\n"
+            if fail_ids
+            else ""
+        )
+        + (
+            f"Assert: {assert_bits[0][:160]}\n"
+            if assert_bits
+            else ""
+        )
+        + f"Tried: {', '.join(str(x) for x in (incident.get('machine_tried') or []))}"
+    )
+    persist_stuck_card(stuck, repo_root=REPO_ROOT, slice_file="")
     return write_session_bundle(
         repo_root=REPO_ROOT,
         slice_id=None,
         reason=reason,
-        stuck_card=(
-            f"Batch gate {reason}\n"
-            f"HEAD {incident.get('head_sha') or '?'}\n"
-            f"failed={incident.get('failed')} passed={incident.get('passed')}\n"
-            + "\n".join(fail_ids[:10])
-        ),
+        stuck_card=stuck,
         verify_result={
             "exit": incident.get("exit"),
             "passed": incident.get("passed"),
@@ -328,6 +354,26 @@ def write_batch_halt_bundle(incident: dict[str, Any], *, reason: str) -> str:
         },
         bundle_name="session-task-batch",
     )
+
+
+def batch_scope_miss_from_artifacts(
+    *,
+    repo_root: str | None = None,
+) -> tuple[bool, list[str], list[str]]:
+    """Detect full-suite failures outside Done-task surgical filters.
+
+    Returns ``(is_miss, failure_ids, outside_ids)``.
+    """
+    root = repo_root or REPO_ROOT
+    failures, _result = collect_verify_failures(repo_root=root)
+    fail_ids = [
+        str(f.get("id") or "").strip()
+        for f in failures
+        if isinstance(f, dict) and f.get("id")
+    ]
+    surgical = collect_done_surgical_tests(os.path.join(root, "docs", "tasks"))
+    outside = failures_outside_surgical_scope(fail_ids, surgical)
+    return batch_failures_are_scope_miss(fail_ids, surgical), fail_ids, outside
 
 
 def set_station(
@@ -759,6 +805,40 @@ def run_batch_gate(
             notify("Forge", "Batch pushed")
         return EXIT_OK
 
+    log("batch gate RED — checking surgical scope")
+    is_scope_miss, fail_ids, outside_ids = batch_scope_miss_from_artifacts()
+    if is_scope_miss:
+        first = outside_ids[0] if outside_ids else (fail_ids[0] if fail_ids else "(unknown)")
+        log(
+            f"BATCH SCOPE MISS: failure {first} was outside surgical Done filters "
+            "— likely contract drift; escalating to Needs-you (skip Mechanic)"
+        )
+        events.record(
+            "FULL-VERIFY",
+            "loop",
+            "scope_miss",
+            timeline=True,
+            mission="tier-3 batch",
+            detail={
+                "failures": fail_ids[:10],
+                "outside": outside_ids[:10],
+            },
+        )
+        incident = build_batch_incident(
+            reason="scope_miss",
+            machine_tried=list(machine_tried),
+        )
+        write_batch_failure(incident)
+        write_batch_halt_bundle(incident, reason="scope_miss")
+        set_station(
+            phase="batch",
+            role="loop",
+            detail="Can't ship — scope miss (Your move)",
+            batch={"state": "needs_decision", "needed": True, "reason": "scope_miss"},
+        )
+        notify_cant_ship(incident)
+        return EXIT_THRASH
+
     log("batch gate RED — one Mechanic retry")
     machine_tried.append("mechanic")
     # Snapshot failures before Mechanic so prior_failures is populated on still-red
@@ -770,6 +850,14 @@ def run_batch_gate(
         role="Mechanic",
         detail="tier-3 red — Mechanic retry",
         batch={"state": "running", "needed": True, "reason": reason},
+    )
+    events.record(
+        "FULL-VERIFY",
+        "Mechanic",
+        "mechanic_spawn",
+        timeline=True,
+        mission="tier-3 Mechanic retry",
+        detail={"failures": fail_ids[:10]},
     )
 
     # One Mechanic tier-3 pass

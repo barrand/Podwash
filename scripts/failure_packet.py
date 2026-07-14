@@ -796,7 +796,15 @@ def format_stuck_card(
     cap_line: str = "",
 ) -> str:
     sid = slice_id_from_path(slice_file)
-    title = f"Slice {sid:02d}" if sid is not None else (slice_file or "slice")
+    if sid is not None:
+        title = f"Slice {sid:02d}"
+    else:
+        path_norm = (slice_file or "").replace("\\", "/")
+        base = os.path.basename(path_norm)
+        if "docs/tasks" in path_norm or base.startswith("task-") or not slice_file:
+            title = "batch"
+        else:
+            title = slice_file or "batch"
     test_line = ", ".join(packet.test_ids) if packet.test_ids else "(no test id)"
     assert_line = "; ".join(packet.assertions[:2]) if packet.assertions else "(none)"
     got = ""

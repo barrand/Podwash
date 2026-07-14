@@ -23,6 +23,7 @@ from task_ticket import (
     parse_task_ticket,
     set_task_status,
     surgical_backend,
+    expand_surgical_to_class,
     write_task_verify_result,
 )
 
@@ -385,14 +386,30 @@ def run_task_pipeline(
 
             verify_fn = _scripts_verify
         else:
-            verify_fn = lambda **kw: run_verify(
-                root,
-                log=_log,
-                slice_file=path,
-                tier=2,
-                slice_tests=ticket.surgical_tests,
-                **{k: v for k, v in kw.items() if k not in ("tier", "slice_file", "slice_tests")},
+            surgical_expanded, expansions = expand_surgical_to_class(
+                list(ticket.surgical_tests)
             )
+            for src, dst in expansions:
+                _log(
+                    f"SURGICAL EXPAND: {src} → {dst} (sibling methods in class)"
+                )
+            _expanded = list(surgical_expanded)
+
+            def _xcode_verify(**kw: Any) -> Any:
+                return run_verify(
+                    root,
+                    log=_log,
+                    slice_file=path,
+                    tier=2,
+                    slice_tests=_expanded,
+                    **{
+                        k: v
+                        for k, v in kw.items()
+                        if k not in ("tier", "slice_file", "slice_tests")
+                    },
+                )
+
+            verify_fn = _xcode_verify
         try:
             outcome = run_fix_cycle(
                 client,
