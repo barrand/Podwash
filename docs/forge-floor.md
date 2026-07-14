@@ -12,6 +12,7 @@ Mission control for PodWash Factory v3. **MVP** = `forge-intake` + task board + 
 6. Can't ship (full suite still red) → **Your move** → Don't push, Retry full suite, or Copy for Cursor
 7. When the punch-list is empty, runs full `scripts/verify.sh` **only when needed** (HEAD/dirty vs last green stamp; skips when incident is acknowledged) — then auto-pushes — or click **Verify & push** to force. Halted tickets park for Requeue first (they block that full suite until Requeue). The loop **stays alive** while waiting (Halted / empty queue) — it should not silently exit and force a manual Restart.
 8. **Pause** before hand-editing app code (factory-hot owns the tree)
+9. If Floor is killed/relaunched while the factory was running, it **auto-restarts** the worker (boot reconcile + orphan auto-heal). A dead worker is detected by live PID / process scan — not a stale heartbeat timestamp.
 
 ## Commands
 

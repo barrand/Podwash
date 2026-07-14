@@ -32,11 +32,13 @@ HEARTBEAT = REPO_ROOT / "build" / "factory" / "heartbeat.json"
 EVENTS_DIR = REPO_ROOT / "build" / "test-results"
 
 STARTING_GRACE_S = 30.0
-HEARTBEAT_FRESH_S = 300.0  # 5 min — treat loop as alive without pid check
+ORPHAN_RESTART_COOLDOWN_S = 45.0
 STALE_ACTIVITY_S = 180.0  # 3 min — UI warns while claiming work
 
 _runner_proc: subprocess.Popen | None = None
 _runner_lock = threading.Lock()
+_runner_log_f: Any = None
+_last_orphan_restart_ts = 0.0
 
 
 def _default_controls() -> dict[str, Any]:
@@ -309,10 +311,11 @@ def _last_event_age_s(events: list[dict[str, Any]]) -> float | None:
 
 
 def _runner_alive(*, ctrl: dict[str, Any] | None = None) -> bool:
-    """True when the Floor-spawned or any task-loop process is live for this repo.
+    """True when a task-loop / task-loop.sh process is actually live.
 
-    Order: in-process Popen → controls runner_pid → heartbeat pid → fresh
-    heartbeat timestamp → ps scan (last resort).
+    Order: in-process Popen → controls runner_pid → heartbeat pid → ps scan.
+    A fresh heartbeat *timestamp* alone is not enough — that left Floor looking
+    "running" for minutes after the worker died (orphan delay).
     """
     global _runner_proc
     with _runner_lock:
@@ -332,18 +335,28 @@ def _runner_alive(*, ctrl: dict[str, Any] | None = None) -> bool:
         hb_pid = 0
     if hb_pid and _pid_alive(hb_pid):
         return True
-    try:
-        hb_ts = float(hb.get("ts") or 0)
-    except (TypeError, ValueError):
-        hb_ts = 0.0
-    if hb_ts and (time.time() - hb_ts) < HEARTBEAT_FRESH_S:
-        return True
     root = str(REPO_ROOT)
     for line in _ps_commands():
         if "task_loop.py" in line or "task-loop.sh" in line:
             if root in line or "PodWash" in line or "task_loop" in line:
                 return True
     return False
+
+
+def maybe_restart_orphan_runner(*, ctrl: dict[str, Any], activity_mode: str) -> str | None:
+    """If Floor claims running but the worker is dead, start it again (cooldown)."""
+    global _last_orphan_restart_ts
+    if activity_mode != "orphan":
+        return None
+    if not (ctrl.get("running") or HOT.is_file()):
+        return None
+    now = time.time()
+    if now - _last_orphan_restart_ts < ORPHAN_RESTART_COOLDOWN_S:
+        return None
+    _last_orphan_restart_ts = now
+    msg = start_runner()
+    sys.stderr.write(f"[forge-floor] auto-restart orphan runner: {msg}\n")
+    return msg
 
 
 def _read_batch_failure() -> dict[str, Any]:
@@ -996,6 +1009,27 @@ def board_snapshot() -> dict[str, Any]:
         factory_hot=factory_hot,
         runner_alive=runner_alive,
     )
+    restarted = maybe_restart_orphan_runner(
+        ctrl=ctrl, activity_mode=str(activity.get("mode") or "")
+    )
+    if restarted:
+        ctrl = read_controls()
+        runner_alive = _runner_alive(ctrl=ctrl)
+        factory_hot = HOT.is_file()
+        activity = _activity_snapshot(
+            ctrl=ctrl,
+            station=station,
+            batch=batch,
+            tasks=tasks,
+            events=events[-40:],
+            factory_hot=factory_hot,
+            runner_alive=runner_alive,
+        )
+        activity = dict(activity)
+        activity["detail"] = (
+            f"Auto-restarted dead worker ({restarted}). "
+            + (activity.get("detail") or "")
+        ).strip()
     return {
         "tasks": tasks,
         "slices": slices,
@@ -1115,18 +1149,32 @@ def apply_control(action: str, data: dict[str, Any] | None = None) -> dict[str, 
 
 
 def start_runner() -> str:
-    global _runner_proc
+    global _runner_proc, _runner_log_f
     with _runner_lock:
         if _runner_proc is not None and _runner_proc.poll() is None:
             return "already running"
         env = os.environ.copy()
         env["PODWASH_FORGE_LOOP"] = "task_loop"
+        log_path = REPO_ROOT / "build" / "factory" / "task-loop.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        if _runner_log_f is not None:
+            try:
+                _runner_log_f.close()
+            except OSError:
+                pass
+            _runner_log_f = None
+        _runner_log_f = open(log_path, "a", encoding="utf-8")  # noqa: SIM115
+        _runner_log_f.write(
+            f"\n--- start_runner {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} ---\n"
+        )
+        _runner_log_f.flush()
         _runner_proc = subprocess.Popen(
             [str(SCRIPTS / "task-loop.sh"), "--medic-no-push"],
             cwd=str(REPO_ROOT),
             env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=_runner_log_f,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
         )
         ctrl = read_controls()
         ctrl["running"] = True
@@ -1151,13 +1199,57 @@ def stop_runner() -> str:
     write_controls(ctrl)
     with _runner_lock:
         if _runner_proc is not None and _runner_proc.poll() is None:
-            _runner_proc.terminate()
+            try:
+                os.killpg(os.getpgid(_runner_proc.pid), 15)  # SIGTERM group
+            except (ProcessLookupError, PermissionError, OSError):
+                _runner_proc.terminate()
             try:
                 _runner_proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                _runner_proc.kill()
+                try:
+                    os.killpg(os.getpgid(_runner_proc.pid), 9)  # SIGKILL group
+                except (ProcessLookupError, PermissionError, OSError):
+                    _runner_proc.kill()
         _runner_proc = None
     return "stopped"
+
+
+def reconcile_runner_on_boot() -> None:
+    """After Floor relaunch: if controls say running but worker is dead, start it."""
+    ctrl = read_controls()
+    if not ctrl.get("running"):
+        return
+    if _runner_alive(ctrl=ctrl):
+        return
+    msg = start_runner()
+    sys.stderr.write(f"[forge-floor] boot reconcile: {msg}\n")
+
+
+def _shutdown_owned_runner() -> None:
+    """Kill Floor-owned children on exit; leave running=True so boot can resume."""
+    global _runner_proc
+    with _runner_lock:
+        proc = _runner_proc
+        _runner_proc = None
+    if proc is None or proc.poll() is not None:
+        return
+    try:
+        os.killpg(os.getpgid(proc.pid), 15)
+    except (ProcessLookupError, PermissionError, OSError):
+        try:
+            proc.terminate()
+        except OSError:
+            pass
+    try:
+        proc.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(os.getpgid(proc.pid), 9)
+        except (ProcessLookupError, PermissionError, OSError):
+            try:
+                proc.kill()
+            except OSError:
+                pass
 
 
 INDEX_HTML = r"""<!DOCTYPE html>
@@ -2275,6 +2367,10 @@ class QuietThreadingHTTPServer(ThreadingHTTPServer):
 
 
 def main() -> int:
+    import atexit
+
+    atexit.register(_shutdown_owned_runner)
+    reconcile_runner_on_boot()
     try:
         server = QuietThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     except OSError as exc:

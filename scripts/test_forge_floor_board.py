@@ -428,6 +428,7 @@ class ActivityCopyAndLivenessTests(unittest.TestCase):
         pid_alive.assert_called_with(4242)
 
     def test_runner_alive_fresh_heartbeat_without_pid(self):
+        """Fresh heartbeat timestamp alone must not fake liveness (orphan delay bug)."""
         import factory_floor.server as floor
 
         with mock.patch.object(floor, "_runner_proc", None):
@@ -439,7 +440,21 @@ class ActivityCopyAndLivenessTests(unittest.TestCase):
                 ):
                     with mock.patch.object(floor, "_ps_commands", return_value=[]):
                         alive = floor._runner_alive(ctrl={"runner_pid": None})
-        self.assertTrue(alive)
+        self.assertFalse(alive)
+
+    def test_runner_alive_dead_pid_ignores_fresh_heartbeat_ts(self):
+        import factory_floor.server as floor
+
+        with mock.patch.object(floor, "_runner_proc", None):
+            with mock.patch.object(floor, "_pid_alive", return_value=False):
+                with mock.patch.object(
+                    floor,
+                    "_read_json_file",
+                    return_value={"pid": 99, "ts": time.time()},
+                ):
+                    with mock.patch.object(floor, "_ps_commands", return_value=[]):
+                        alive = floor._runner_alive(ctrl={"runner_pid": 99})
+        self.assertFalse(alive)
 
     def test_runner_not_alive_stale_heartbeat(self):
         import factory_floor.server as floor
@@ -470,10 +485,28 @@ class ActivityCopyAndLivenessTests(unittest.TestCase):
                     floor, "read_controls", return_value=floor._default_controls()
                 ):
                     with mock.patch.object(floor, "write_controls", side_effect=capture):
-                        floor.start_runner()
+                        with mock.patch("builtins.open", mock.mock_open()):
+                            floor.start_runner()
         self.assertEqual(written.get("runner_pid"), 55555)
         self.assertIsNotNone(written.get("started_at"))
         floor._runner_proc = None
+
+    def test_maybe_restart_orphan_runner_cooldown(self):
+        import factory_floor.server as floor
+
+        floor._last_orphan_restart_ts = 0.0
+        with mock.patch.object(floor, "start_runner", return_value="started pid=1") as start:
+            with mock.patch.object(floor, "HOT") as hot:
+                hot.is_file.return_value = False
+                msg = floor.maybe_restart_orphan_runner(
+                    ctrl={"running": True}, activity_mode="orphan"
+                )
+                self.assertEqual(msg, "started pid=1")
+                msg2 = floor.maybe_restart_orphan_runner(
+                    ctrl={"running": True}, activity_mode="orphan"
+                )
+                self.assertIsNone(msg2)
+                self.assertEqual(start.call_count, 1)
 
 
 class ControlHandlerTests(unittest.TestCase):
