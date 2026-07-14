@@ -26,9 +26,13 @@ final class LibraryUITests: XCTestCase {
 
     // MARK: - Launch helpers
 
-    private func launchLibraryApp(empty: Bool = false) -> XCUIApplication {
+    private func launchLibraryApp(
+        empty: Bool = false,
+        extraArguments: [String] = []
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append(empty ? "-UITestFixtureLibraryEmpty" : "-UITestFixtureLibrary")
+        app.launchArguments.append(contentsOf: extraArguments)
         app.launch()
         return app
     }
@@ -115,8 +119,19 @@ final class LibraryUITests: XCTestCase {
 
     @MainActor
     func testTapEpisodeShowsMiniPlayerAndPlays() throws {
+        // Mini-player play/pause contract only (task-012). Fixture library mode plays
+        // bundled FixtureAudio; channel cleaning stays off so this test does not overlap
+        // testTapEpisodeDownloadsBeforePlayWhenChannelCleaningOn.
         let app = launchLibraryApp()
-        playFirstEpisodeAndWaitForMiniPlayer(app)
+        navigateToEpisodeList(app)
+        ensureChannelCleaningOff(in: app)
+
+        let episodeCell = element("episodeCell_0", in: app)
+        XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
+        episodeCell.tap()
+
+        let miniPlayer = element("miniPlayer", in: app)
+        XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout), "miniPlayer must appear within \(fixtureTimeout)s")
 
         let playPause = element("miniPlayerPlayPause", in: app)
         XCTAssertTrue(playPause.waitForExistence(timeout: fixtureTimeout))
@@ -128,6 +143,64 @@ final class LibraryUITests: XCTestCase {
             in: app,
             timeout: fixtureTimeout,
             message: "miniPlayerPlayPause must report playing within \(fixtureTimeout)s"
+        )
+    }
+
+    // MARK: - Task 012: tap episode downloads before play when channel cleaning on
+
+    @MainActor
+    func testTapEpisodeDownloadsBeforePlayWhenChannelCleaningOn() throws {
+        let app = launchLibraryApp(extraArguments: ["-UITestFixtureDownload"])
+        navigateToEpisodeList(app)
+        ensureChannelCleaningOn(in: app)
+
+        let downloadButton = app.buttons["downloadButton_0"]
+        XCTAssertTrue(downloadButton.waitForExistence(timeout: fixtureTimeout))
+        XCTAssertEqual(downloadButton.value as? String, "notDownloaded")
+
+        let episodeCell = element("episodeCell_0", in: app)
+        XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
+
+        let playPause = element("miniPlayerPlayPause", in: app)
+        XCTAssertFalse(playPause.exists, "mini-player must not appear before download completes")
+
+        episodeCell.tap()
+
+        assertDownloadingStarted(
+            downloadButton: downloadButton,
+            progressIdentifier: "downloadProgress_0",
+            in: app,
+            timeout: 2
+        )
+        XCTAssertNotEqual(
+            playPause.value as? String,
+            "playing",
+            "Engine must not report playing from a stream before the episode is downloaded"
+        )
+
+        waitForAccessibilityValue(
+            "downloaded",
+            identifier: "downloadButton_0",
+            in: app,
+            timeout: fixtureTimeout,
+            message: "downloadButton_0 must report downloaded after tap-to-play download completes"
+        )
+
+        let miniPlayer = element("miniPlayer", in: app)
+        XCTAssertTrue(
+            miniPlayer.waitForExistence(timeout: fixtureTimeout),
+            "miniPlayer must appear after downloaded local play session starts"
+        )
+
+        XCTAssertTrue(playPause.waitForExistence(timeout: fixtureTimeout))
+        playPause.tap()
+
+        waitForAccessibilityValue(
+            "playing",
+            identifier: "miniPlayerPlayPause",
+            in: app,
+            timeout: fixtureTimeout,
+            message: "miniPlayerPlayPause must report playing within \(fixtureTimeout)s after download"
         )
     }
 
@@ -270,5 +343,56 @@ final class LibraryUITests: XCTestCase {
         let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
         XCTAssertEqual(result, .completed, message)
         XCTAssertTrue(control.isHittable, message)
+    }
+
+    private func ensureChannelCleaningOff(in app: XCUIApplication) {
+        let channelToggle = app.switches["channelCleaningToggle"]
+        guard channelToggle.waitForExistence(timeout: fixtureTimeout) else { return }
+        guard (channelToggle.value as? String) == "on" else { return }
+        channelToggle.tap()
+        waitForSwitchValue("off", switch: channelToggle, timeout: fixtureTimeout)
+    }
+
+    private func ensureChannelCleaningOn(in app: XCUIApplication) {
+        let channelToggle = app.switches["channelCleaningToggle"]
+        XCTAssertTrue(channelToggle.waitForExistence(timeout: fixtureTimeout))
+        waitForHittable(
+            channelToggle,
+            timeout: fixtureTimeout,
+            message: "channelCleaningToggle must be hittable on episode list"
+        )
+        guard (channelToggle.value as? String) != "on" else { return }
+        channelToggle.tap()
+        waitForSwitchValue("on", switch: channelToggle, timeout: 2)
+    }
+
+    private func waitForSwitchValue(_ expected: String, switch control: XCUIElement, timeout: TimeInterval) {
+        let predicate = NSPredicate(format: "value == %@", expected)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: control)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(result, .completed, "channelCleaningToggle must report \(expected) within \(timeout)s")
+        XCTAssertEqual(control.value as? String, expected)
+    }
+
+    private func assertDownloadingStarted(
+        downloadButton: XCUIElement,
+        progressIdentifier: String,
+        in app: XCUIApplication,
+        timeout: TimeInterval
+    ) {
+        let progress = element(progressIdentifier, in: app)
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if progress.exists {
+                return
+            }
+            if downloadButton.value as? String == "downloading" {
+                return
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        XCTFail(
+            "Expected \(progressIdentifier) or downloadButton_0 accessibilityValue == downloading within \(timeout)s"
+        )
     }
 }

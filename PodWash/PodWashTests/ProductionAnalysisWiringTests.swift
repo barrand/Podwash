@@ -206,6 +206,56 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         XCTFail("Condition not met within \(timeout)s", file: file, line: line)
     }
 
+    private func isDownloading(_ state: DownloadState) -> Bool {
+        if case .downloading = state { return true }
+        return false
+    }
+
+    private func enginePlaybackURL(from model: AppShellModel) -> URL? {
+        guard let engine = model.engine,
+              let asset = engine.avPlayer.currentItem?.asset as? AVURLAsset else {
+            return nil
+        }
+        return asset.url
+    }
+
+    private func assertEngineDoesNotStreamRemote(
+        from model: AppShellModel,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        guard let url = enginePlaybackURL(from: model) else { return }
+        let scheme = url.scheme?.lowercased()
+        XCTAssertFalse(
+            scheme == "http" || scheme == "https",
+            "Engine must not assign a remote stream URL before download completes; got \(url.absoluteString)",
+            file: file,
+            line: line
+        )
+    }
+
+    private func withStubDownloadTransport(
+        chunkDelay: TimeInterval = 0.2,
+        _ body: () async throws -> Void
+    ) async rethrows {
+        StubDownloadURLProtocol.reset()
+        StubDownloadURLProtocol.chunkDelay = chunkDelay
+        URLProtocol.registerClass(StubDownloadURLProtocol.self)
+        defer {
+            StubDownloadURLProtocol.reset()
+            URLProtocol.unregisterClass(StubDownloadURLProtocol.self)
+        }
+        try await body()
+    }
+
+    private func removeProductionDownload(for episodeID: String) {
+        let localURL = DownloadPaths.localFileURL(
+            episodeID: episodeID,
+            downloadsDirectory: DownloadPaths.productionDownloadsDirectory
+        )
+        try? FileManager.default.removeItem(at: localURL)
+    }
+
     private func assertBoundary(
         _ value: TimeInterval,
         near expected: TimeInterval,
@@ -417,6 +467,91 @@ final class ProductionAnalysisWiringTests: XCTestCase {
             "Channel off must skip analyze even when a stale episode cleaning flag remains on"
         )
         XCTAssertEqual(model.playbackCoordinator?.cachedIntervals.count ?? 0, 0)
+    }
+
+    // MARK: - Task 012: download-before-play when channel cleaning on
+
+    func testPlayEpisodeDownloadsInsteadOfStreamingWhenChannelCleaningOn() async throws {
+        try await withStubDownloadTransport { [self] in
+            let model = makeShell(
+                injectedTranscript: try loadTranscript(),
+                fixtureLibraryMode: false
+            )
+            let episode = fixtureEpisode()
+            removeProductionDownload(for: episode.id)
+
+            try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
+
+            model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+
+            assertEngineDoesNotStreamRemote(from: model)
+
+            await waitUntil(timeout: 1) {
+                self.isDownloading(model.downloadManager.state(for: episode.id))
+                    || model.downloadManager.state(for: episode.id) == .downloaded
+            }
+            XCTAssertTrue(
+                isDownloading(model.downloadManager.state(for: episode.id))
+                    || model.downloadManager.state(for: episode.id) == .downloaded,
+                "playEpisode must start a download when channel cleaning is on and no local file exists"
+            )
+        }
+    }
+
+    func testPlayEpisodeStreamsWhenChannelCleaningOffAndNoLocalFile() async throws {
+        let model = makeShell(fixtureLibraryMode: false)
+        let episode = fixtureEpisode()
+        removeProductionDownload(for: episode.id)
+
+        try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: false)
+
+        model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+
+        await waitUntil { model.engine != nil }
+
+        let playbackURL = enginePlaybackURL(from: model)
+        XCTAssertEqual(playbackURL?.scheme?.lowercased(), "https")
+        XCTAssertEqual(
+            episode.audioURL?.absoluteString,
+            playbackURL?.absoluteString,
+            "Cleaning off must stream the remote enclosure URL when no sandbox file exists"
+        )
+        XCTAssertEqual(
+            model.downloadManager.state(for: episode.id),
+            .notDownloaded,
+            "Cleaning off must not invoke download on tap-to-play"
+        )
+    }
+
+    func testPlayEpisodeAnalyzesAfterDownloadCompletesWhenChannelCleaningOn() async throws {
+        try await withStubDownloadTransport { [self] in
+            let model = makeShell(
+                injectedTranscript: try loadTranscript(),
+                fixtureLibraryMode: false
+            )
+            let episode = fixtureEpisode()
+            removeProductionDownload(for: episode.id)
+
+            try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
+
+            model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+
+            await waitUntil(timeout: 10) {
+                let playbackURL = self.enginePlaybackURL(from: model)
+                return playbackURL?.isFileURL == true
+                    && FileManager.default.fileExists(atPath: playbackURL?.path ?? "")
+                    && self.pipelineSpy.analyzeCallCount >= 1
+            }
+
+            let playbackURL = try XCTUnwrap(enginePlaybackURL(from: model))
+            XCTAssertTrue(playbackURL.isFileURL)
+            XCTAssertTrue(FileManager.default.fileExists(atPath: playbackURL.path))
+            XCTAssertEqual(
+                pipelineSpy.analyzeCallCount,
+                1,
+                "Local-file gate must invoke analyze exactly once after download completes"
+            )
+        }
     }
 
     // MARK: - AC7: streaming-only URL skips analysis even when cleaning is on
