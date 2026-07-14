@@ -2007,19 +2007,13 @@ def write_verify_result(slice_file: str, repo_root: str, result: dict[str, str])
 
 
 def set_slice_status(slice_file: str, repo_root: str, status: str) -> None:
+    from task_ticket import _rewrite_status_lines
+
     path = slice_file if os.path.isabs(slice_file) else os.path.join(repo_root, slice_file)
     with open(path, encoding="utf-8") as fh:
         lines = fh.readlines()
-    out: list[str] = []
-    for line in lines:
-        if "| **Status** |" in line or "| **Status**|" in line:
-            parts = [p.strip() for p in line.strip().strip("|").split("|")]
-            if len(parts) >= 2:
-                parts[1] = status
-                line = "| " + " | ".join(parts) + " |\n"
-        out.append(line)
     with open(path, "w", encoding="utf-8") as fh:
-        fh.writelines(out)
+        fh.writelines(_rewrite_status_lines(lines, status))
 
 
 def append_plan_review_outcome(

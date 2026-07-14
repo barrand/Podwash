@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 011 |
 | **Title** | Analysis timeline in mini and full player |
-| **Status** | Halted |
+| **Status** | Queued |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/MiniPlayerBar.swift`, `PodWash/PodWash/PlaybackControlsView.swift`, `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWash/AnalysisTimelineView.swift`, `PodWash/PodWashUITests/LibraryUITests.swift`, `PodWash/PodWashUITests/PlaybackControlsUITests.swift` (or new player-timeline tests) |

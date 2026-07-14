@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -136,19 +137,40 @@ def _section(text: str, heading: str) -> str | None:
     return text[start:end]
 
 
-def set_task_status(path: str, status: str) -> None:
-    with open(path, encoding="utf-8") as fh:
-        lines = fh.readlines()
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _rewrite_status_lines(lines: list[str], status: str) -> list[str]:
     out: list[str] = []
+    done_at_updated = False
+    status_out_idx: int | None = None
     for line in lines:
+        if "| **Done at** |" in line or "| **Done at**|" in line:
+            if status == "Done":
+                line = f"| **Done at** | {_utc_now_iso()} |\n"
+                done_at_updated = True
         if "| **Status** |" in line or "| **Status**|" in line:
             parts = [p.strip() for p in line.strip().strip("|").split("|")]
             if len(parts) >= 2:
                 parts[1] = status
                 line = "| " + " | ".join(parts) + " |\n"
+            status_out_idx = len(out)
         out.append(line)
+    if status == "Done" and not done_at_updated:
+        row = f"| **Done at** | {_utc_now_iso()} |\n"
+        if status_out_idx is not None:
+            out.insert(status_out_idx + 1, row)
+        else:
+            out.append(row)
+    return out
+
+
+def set_task_status(path: str, status: str) -> None:
+    with open(path, encoding="utf-8") as fh:
+        lines = fh.readlines()
     with open(path, "w", encoding="utf-8") as fh:
-        fh.writelines(out)
+        fh.writelines(_rewrite_status_lines(lines, status))
 
 
 def set_task_priority(path: str, priority: str) -> None:

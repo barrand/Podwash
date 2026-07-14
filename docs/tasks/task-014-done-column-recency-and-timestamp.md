@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 014 |
 | **Title** | Done column recency and closed-at timestamp |
-| **Status** | Queued |
+| **Status** | In Progress |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `scripts/factory_floor/server.py`, `scripts/task_ticket.py`, `scripts/slice_pipeline.py`, `scripts/test_forge_floor_board.py` |
@@ -57,5 +57,5 @@
 > Loop writes `VERIFY RESULT:` here. For tasks, `tier=2` and `filtered=1` are valid for Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=4 passed=4 failed=0 skipped=0 filtered=1 bundle=scripts-unittest tier=2 class=unittest
 ```

@@ -86,6 +86,39 @@ def parse_meta(path: Path) -> dict[str, str]:
     return meta
 
 
+def _meta_done_at(meta: dict[str, str]) -> str | None:
+    raw = (meta.get("Done at") or "").strip()
+    return raw or None
+
+
+def _sort_done_column(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    dated = [i for i in items if i.get("done_at")]
+    undated = [i for i in items if not i.get("done_at")]
+    undated.sort(key=lambda i: int(str(i.get("id", "0"))))
+    dated.sort(key=lambda i: int(str(i.get("id", "0"))))
+    dated.sort(key=lambda i: str(i["done_at"]), reverse=True)
+    return dated + undated
+
+
+def _format_done_closed_meta(done_at: str | None) -> str:
+    if not done_at:
+        return ""
+    from datetime import datetime, timezone
+
+    try:
+        s = done_at.strip()
+        if s.endswith("Z"):
+            dt = datetime.fromisoformat(s[:-1]).replace(tzinfo=timezone.utc)
+        else:
+            dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        stamp = dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M")
+        return f"Closed {stamp} UTC"
+    except ValueError:
+        return ""
+
+
 def _md_section(text: str, *headings: str) -> str:
     """Return body under the first matching ## heading (case-insensitive)."""
     for heading in headings:
@@ -165,6 +198,8 @@ def ticket_detail(rel_path: str) -> dict[str, Any] | None:
     if vm:
         verify_line = vm.group(0).strip()
 
+    done_at = _meta_done_at(meta)
+
     return {
         "type": item_type,
         "path": str(path.relative_to(REPO_ROOT)),
@@ -174,6 +209,7 @@ def ticket_detail(rel_path: str) -> dict[str, Any] | None:
         "kind": meta.get("Kind", item_type),
         "priority": meta.get("Priority", ""),
         "area": meta.get("Area", ""),
+        "done_at": done_at,
         "crux": crux,
         "outcome": outcome,
         "acceptance": _checklist_items(ac_sec) or _plain_bullets(ac_sec),
@@ -834,6 +870,7 @@ def board_snapshot() -> dict[str, Any]:
                     "area": meta.get("Area", ""),
                     "path": str(path.relative_to(REPO_ROOT)),
                     "type": "task",
+                    "done_at": _meta_done_at(meta),
                 }
             )
     slices = []
@@ -856,6 +893,7 @@ def board_snapshot() -> dict[str, Any]:
                     "area": "",
                     "path": str(path.relative_to(REPO_ROOT)),
                     "type": "slice",
+                    "done_at": _meta_done_at(meta),
                 }
             )
     events: list[dict[str, Any]] = []
@@ -1353,6 +1391,30 @@ function esc(s) {
   return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
+function formatDoneClosedMeta(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  const hr = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `Closed ${y}-${mo}-${da} ${hr}:${mi}`;
+}
+
+function sortDoneColumn(items) {
+  const dated = items.filter(i => i.done_at).slice();
+  const undated = items.filter(i => !i.done_at).slice();
+  undated.sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10));
+  dated.sort((a, b) => {
+    const byDate = String(b.done_at).localeCompare(String(a.done_at));
+    if (byDate !== 0) return byDate;
+    return parseInt(a.id, 10) - parseInt(b.id, 10);
+  });
+  return dated.concat(undated);
+}
+
 /** Light markdown → HTML after escaping: **bold**, `code` */
 function md(s) {
   return esc(s)
@@ -1386,6 +1448,7 @@ function renderTicket(t) {
       ${t.priority ? `<span class="chip prio">${esc(t.priority)}</span>` : ""}
       ${t.kind ? `<span class="chip">${esc(t.kind)}</span>` : ""}
       <span class="chip">${esc(t.type || "task")}</span>
+      ${t.done_at ? `<span class="chip">${esc(formatDoneClosedMeta(t.done_at))}</span>` : ""}
     </div>`;
 
   const crux = t.crux
@@ -1511,9 +1574,12 @@ function makeCard(item, st, activeTid, activity) {
   if (halted) {
     actionsHtml = `<div class="card-actions"><button type="button" data-requeue="${esc(item.id)}">Requeue</button></div>`;
   }
+  const closedMeta = (/^Done/i.test(item.status || "") && item.done_at)
+    ? `<div class="meta">${esc(formatDoneClosedMeta(item.done_at))}</div>`
+    : "";
   card.innerHTML = `<div><span class="prio">${esc(item.priority||"")}</span> ${esc(item.type)} ${esc(item.id)}</div>
     <div>${esc(item.title||"")}</div>
-    <div class="meta">${esc(item.kind||"")} · ${esc((item.area||"").slice(0,40))}</div>${phaseHtml}${actionsHtml}`;
+    <div class="meta">${esc(item.kind||"")} · ${esc((item.area||"").slice(0,40))}</div>${closedMeta}${phaseHtml}${actionsHtml}`;
   card.onclick = (e) => {
     const btn = e.target && e.target.closest && e.target.closest("[data-requeue]");
     if (btn) {
@@ -1600,8 +1666,8 @@ function render() {
     let colItems = items.filter(i => colFor(i)===name);
     const doneSlices = name === "Done" ? colItems.filter(i => i.type === "slice") : [];
     const doneTasks = name === "Done" ? colItems.filter(i => i.type === "task") : [];
-    if (name === "Done" && !showDoneSlices) {
-      colItems = doneTasks;
+    if (name === "Done") {
+      colItems = sortDoneColumn(doneTasks);
     }
     const h2 = document.createElement("h2");
     const left = document.createElement("span");
@@ -1640,7 +1706,7 @@ function render() {
       cards.appendChild(makeCard(item, st, activeTid, activity));
     }
     if (name === "Done" && doneSlices.length && showDoneSlices) {
-      for (const item of doneSlices) {
+      for (const item of sortDoneColumn(doneSlices)) {
         cards.appendChild(makeCard(item, st, activeTid, activity));
       }
     }
