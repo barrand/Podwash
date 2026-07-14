@@ -129,7 +129,10 @@ struct AppShellView: View {
         .sheet(isPresented: $model.isFullPlayerPresented) {
             if let engine = model.engine {
                 NavigationStack {
-                    PlaybackControlsView(engine: engine)
+                    PlaybackControlsView(
+                        engine: engine,
+                        timelineColors: model.fullPlayerTimelineColors
+                    )
                         .toolbar {
                             ToolbarItem(placement: .topBarTrailing) {
                                 Button("Done") {
@@ -222,7 +225,10 @@ private struct LibraryPodcastDetailView: View {
         _feedViewModel = State(initialValue: feedVM)
         _analysisViewModel = State(
             initialValue: AnalysisUIViewModel(
-                store: CleaningToggleStoreAdapter(model.cleaningStore),
+                store: FeedScopedCleaningToggleStore(
+                    store: model.cleaningStore,
+                    feedURL: summary.feedURL
+                ),
                 analyzer: model.episodeAnalyzer,
                 autoAnalyzeOnEpisodeEnable: false,
                 progressRelay: model.analysisProgressRelay

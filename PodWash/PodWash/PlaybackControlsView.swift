@@ -10,8 +10,14 @@ import SwiftUI
 
 struct PlaybackControlsView: View {
     @Bindable var engine: PlaybackEngine
+    let timelineColors: [TimelineSegmentColor]?
 
     @State private var sleepClock = SystemMonotonicClock()
+
+    init(engine: PlaybackEngine, timelineColors: [TimelineSegmentColor]? = nil) {
+        self.engine = engine
+        self.timelineColors = timelineColors
+    }
     @State private var sleepTimer: SleepTimer?
     /// Drives sleep-button accessibility; mirrors timer arm/cancel/fire.
     @State private var sleepAccessibilityValue = "off"
@@ -23,6 +29,15 @@ struct PlaybackControlsView: View {
             let elapsedSeconds = engine.avPlayer.currentTime().seconds
 
             VStack(spacing: 24) {
+                if let timelineColors, !timelineColors.isEmpty {
+                    AnalysisTimelineView(
+                        colors: timelineColors,
+                        height: AnalysisTimelineModel.fullPlayerTimelineHeight,
+                        accessibilityIdentifier: "playbackAnalysisTimeline"
+                    )
+                    .frame(maxWidth: .infinity)
+                }
+
                 Text(formattedElapsed(elapsedSeconds))
                     .font(.system(.title2, design: .monospaced))
                     .accessibilityIdentifier("playback.elapsed")

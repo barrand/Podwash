@@ -54,6 +54,49 @@ final class CleaningToggleStoreAdapter: CleaningToggleStoring {
     }
 }
 
+/// Feed-scoped adapter so podcast detail toggles match `playEpisode(..., feedURL:)`.
+@MainActor
+final class FeedScopedCleaningToggleStore: CleaningToggleStoring {
+    nonisolated(unsafe) private let store: CleaningToggleStore
+    private let feedURL: URL
+
+    init(store: CleaningToggleStore, feedURL: URL) {
+        self.store = store
+        self.feedURL = feedURL
+    }
+
+    nonisolated deinit {}
+
+    var isChannelCleaningEnabled: Bool {
+        store.isChannelCleaningEnabled(forFeedURL: feedURL)
+    }
+
+    var isChannelUnrelatedContentEnabled: Bool {
+        store.isChannelUnrelatedContentEnabled(forFeedURL: feedURL)
+    }
+
+    var enabledEpisodeIDs: Set<String> { store.enabledEpisodeIDs }
+
+    func isEpisodeCleaningEnabled(_ episodeID: String) -> Bool {
+        store.isEpisodeCleaningEnabled(episodeID)
+    }
+
+    func setChannelCleaning(_ enabled: Bool) {
+        try? store.setChannelCleaning(forFeedURL: feedURL, enabled: enabled)
+        if enabled, !store.isChannelUnrelatedContentEnabled(forFeedURL: feedURL) {
+            try? store.setChannelUnrelatedContent(forFeedURL: feedURL, enabled: true)
+        }
+    }
+
+    func setChannelUnrelatedContent(_ enabled: Bool) {
+        try? store.setChannelUnrelatedContent(forFeedURL: feedURL, enabled: enabled)
+    }
+
+    func setEpisodeCleaning(_ episodeID: String, enabled: Bool) {
+        try? store.setEpisodeCleaning(episodeID, enabled: enabled)
+    }
+}
+
 @MainActor @Observable
 final class AnalysisUIViewModel {
     private(set) var state: AnalysisUIState = .off

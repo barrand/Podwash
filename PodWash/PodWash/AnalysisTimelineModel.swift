@@ -17,6 +17,28 @@ enum TimelineSegmentColor: String, Equatable, Sendable {
 enum AnalysisTimelineModel {
     static let defaultSegmentCount = 12
 
+    /// Mini-player strip height (task-011).
+    static let miniPlayerTimelineHeight = 12.0
+    /// Full-player strip height (task-011).
+    static let fullPlayerTimelineHeight = 20.0
+
+    /// Terminal snapshot for player chrome from cached analysis intervals.
+    static func completeSnapshot(
+        duration: Double,
+        intervals: [CensorInterval]
+    ) -> AnalysisProgressSnapshot {
+        let adRanges = intervals
+            .filter { $0.source == .unrelatedContent }
+            .map { AdTimeRange(start: $0.start, end: $0.end) }
+        return AnalysisProgressSnapshot(
+            episodeDuration: duration,
+            processedEnd: duration,
+            processingStart: duration,
+            processingEnd: duration,
+            adRanges: adRanges
+        )
+    }
+
     /// Returns exactly `segmentCount` colors. Bucket width = duration / segmentCount.
     static func segmentColors(
         snapshot: AnalysisProgressSnapshot,

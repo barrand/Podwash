@@ -370,6 +370,30 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         }
 
         activeSchedule = schedule
+        await catchUpSkipIfInsideInterval(skips: skips)
+    }
+
+    /// When a schedule lands after playback already started, skip past any interval
+    /// the playhead is currently inside (e.g. intro ads before analysis finished).
+    private func catchUpSkipIfInsideInterval(skips: [CensorInterval]) async {
+        guard !skips.isEmpty else { return }
+        refreshCurrentTime()
+        let now = currentTime
+        guard let skip = skips.first(where: { now >= $0.start - 0.05 && now < $0.end }) else {
+            return
+        }
+        let key = SkipOverrideKey(skip)
+        guard !overriddenSkipKeys.contains(key) else { return }
+        overriddenSkipKeys.insert(key)
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            skipSeek(to: skip.end) { [weak self] in
+                if skip.source == .unrelatedContent {
+                    let skippedSeconds = skip.end - skip.start
+                    self?.onUnrelatedContentSkip?(skip, skippedSeconds)
+                }
+                continuation.resume()
+            }
+        }
     }
 
     /// Seek to interval.start (tolerance → [start ± 0.05]) and suppress that

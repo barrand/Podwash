@@ -66,6 +66,7 @@ struct MiniPlayerBar: View {
                 if let timelineColors, !timelineColors.isEmpty {
                     AnalysisTimelineView(
                         colors: timelineColors,
+                        height: AnalysisTimelineModel.miniPlayerTimelineHeight,
                         accessibilityIdentifier: "miniPlayerAnalysisTimeline"
                     )
                     .padding(.horizontal, 16)

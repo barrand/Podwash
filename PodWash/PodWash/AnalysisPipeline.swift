@@ -183,16 +183,7 @@ final class AnalysisPipeline: @unchecked Sendable {
         duration: Double,
         intervals: [CensorInterval]
     ) -> AnalysisProgressSnapshot {
-        let adRanges = intervals
-            .filter { $0.source == .unrelatedContent }
-            .map { AdTimeRange(start: $0.start, end: $0.end) }
-        return AnalysisProgressSnapshot(
-            episodeDuration: duration,
-            processedEnd: duration,
-            processingStart: duration,
-            processingEnd: duration,
-            adRanges: adRanges
-        )
+        AnalysisTimelineModel.completeSnapshot(duration: duration, intervals: intervals)
     }
 
     private static func resolveDuration(audioURL: URL) async -> Double {

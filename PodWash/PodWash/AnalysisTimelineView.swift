@@ -12,6 +12,7 @@ import UIKit
 /// SwiftUI wrapper around the same segment model (previews / non-list hosts).
 struct AnalysisTimelineView: View {
     let colors: [TimelineSegmentColor]
+    var height: CGFloat = 8
     var accessibilityIdentifier: String = "analysisTimeline"
 
     var body: some View {
@@ -21,7 +22,7 @@ struct AnalysisTimelineView: View {
                     .fill(Self.swiftUIColor(color))
             }
         }
-        .frame(height: 8)
+        .frame(height: height)
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier(accessibilityIdentifier)
         .accessibilityLabel("Analysis timeline")

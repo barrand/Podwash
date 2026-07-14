@@ -6,6 +6,7 @@
 //  Slice 24 — Production analysis wiring (ADR-020 §5–§8).
 //
 
+import AVFoundation
 import Foundation
 
 @MainActor @Observable
@@ -33,6 +34,12 @@ final class AppShellModel {
 
     /// When true, relay progress updates `playbackAnalysisSnapshot`.
     private var acceptingPlaybackProgress = false
+
+    /// True while `preparePlayback` is running for the current episode.
+    private(set) var isPreparingPlayback = false
+
+    /// User tapped play while analysis was still preparing; start once ready.
+    private var pendingPlayAfterPrepare = false
 
     private var playbackProgressHandlerID: UUID?
 
@@ -126,6 +133,11 @@ final class AppShellModel {
         return colors.isEmpty ? nil : colors
     }
 
+    /// Segment colors for the full-player timeline, matching the mini-player contract.
+    var fullPlayerTimelineColors: [TimelineSegmentColor]? {
+        miniPlayerTimelineColors
+    }
+
     /// Library / detail entry: resolve audio, prepare engine + coordinators, show mini-player paused.
     /// Playback starts when the user taps `miniPlayerPlayPause` (AC4).
     /// Synchronous so episode-row taps publish `miniPlayer` before XCTest post-tap idle.
@@ -209,18 +221,29 @@ final class AppShellModel {
         let action = settingsStore.censorAction()
         let channelUnrelated = channelUnrelatedContentEnabled(forFeedURL: feedURL)
         let unrelated = UnrelatedContentOptions(
-            enabled: settingsStore.unrelatedContentEnabled && channelUnrelated,
+            enabled: channelUnrelated
+                && (settingsStore.unrelatedContentEnabled || cleaningApplies),
             action: settingsStore.unrelatedCensorAction()
         )
         let injected = injectedTranscriptForTesting
 
         acceptingPlaybackProgress = true
+        isPreparingPlayback = true
         PlaybackDiagnostics.logPreparePlaybackStart(
             episodeID: episode.id,
             cleaning: cleaningApplies,
             localFile: isLocalFile
         )
         Task { @MainActor in
+            defer {
+                acceptingPlaybackProgress = false
+                isPreparingPlayback = false
+                let shouldPlay = pendingPlayAfterPrepare
+                pendingPlayAfterPrepare = false
+                if shouldPlay {
+                    engine?.play()
+                }
+            }
             do {
                 try await coordinator.preparePlayback(
                     episode: EpisodeIdentity(id: episode.id),
@@ -235,6 +258,10 @@ final class AppShellModel {
                     intervalCount: coordinator.cachedIntervals.count,
                     error: nil
                 )
+                await publishTerminalPlaybackAnalysisSnapshot(
+                    intervals: coordinator.cachedIntervals,
+                    audioURL: audioURL
+                )
             } catch {
                 PlaybackDiagnostics.logPreparePlaybackEnd(
                     episodeID: episode.id,
@@ -242,8 +269,6 @@ final class AppShellModel {
                     error: error
                 )
             }
-            // Keep terminal snapshot for mini-player; stop accepting further relay noise.
-            acceptingPlaybackProgress = false
         }
     }
 
@@ -259,6 +284,9 @@ final class AppShellModel {
         }
         if engine.isPlaying {
             engine.pause()
+        } else if isPreparingPlayback {
+            pendingPlayAfterPrepare = true
+            PlaybackDiagnostics.info("miniPlayer play deferred — preparePlayback in flight")
         } else {
             engine.play()
         }
@@ -285,7 +313,37 @@ final class AppShellModel {
 
     private func clearPlaybackAnalysisProgress() {
         acceptingPlaybackProgress = false
+        isPreparingPlayback = false
+        pendingPlayAfterPrepare = false
         playbackAnalysisSnapshot = nil
+    }
+
+    /// Pins the terminal colored timeline for player chrome after analysis completes.
+    private func publishTerminalPlaybackAnalysisSnapshot(
+        intervals: [CensorInterval],
+        audioURL: URL
+    ) async {
+        let duration = await resolvedEpisodeDuration(audioURL: audioURL)
+        guard duration > 0 else { return }
+        playbackAnalysisSnapshot = AnalysisTimelineModel.completeSnapshot(
+            duration: duration,
+            intervals: intervals
+        )
+    }
+
+    private func resolvedEpisodeDuration(audioURL: URL) async -> Double {
+        if let engine, engine.duration > 0 {
+            return engine.duration
+        }
+        let asset = AVURLAsset(url: audioURL)
+        do {
+            let loaded = try await asset.load(.duration)
+            let seconds = loaded.seconds
+            guard seconds.isFinite, seconds > 0 else { return 0 }
+            return seconds
+        } catch {
+            return 0
+        }
     }
 
     private func resolveAudioURL(for episode: Episode) -> URL? {
