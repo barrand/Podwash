@@ -41,6 +41,9 @@ final class AppShellModel {
     /// User tapped play while analysis was still preparing; start once ready.
     private var pendingPlayAfterPrepare = false
 
+    /// Episode awaiting download-before-play (channel cleaning on, no local file).
+    private var pendingDownloadForPlayEpisodeID: String?
+
     private var playbackProgressHandlerID: UUID?
 
     /// Test-only: forwarded to `preparePlayback` so AC4/AC5 avoid live ASR.
@@ -79,7 +82,8 @@ final class AppShellModel {
         remoteCommands: RemoteCommandCoordinator,
         episodeAnalyzer: (any EpisodeAnalyzing)? = nil,
         settingsStore: SettingsStore? = nil,
-        fixtureLibraryModeForTesting: Bool? = nil
+        fixtureLibraryModeForTesting: Bool? = nil,
+        downloadManager: DownloadManager? = nil
     ) {
         self.persistence = persistence
         self.remoteCommands = remoteCommands
@@ -95,11 +99,15 @@ final class AppShellModel {
         queueStore = QueueStore(context: context)
         resumeStore = ResumePositionStore(context: context)
         cleaningStore = CleaningToggleStore(context: context)
-        let downloadStateStore = DownloadStateStore(context: context)
-        downloadManager = DownloadManager(
-            downloadsDirectory: DownloadPaths.productionDownloadsDirectory,
-            stateStore: InMemoryDownloadStateStore(backing: downloadStateStore)
-        )
+        if let downloadManager {
+            self.downloadManager = downloadManager
+        } else {
+            let downloadStateStore = DownloadStateStore(context: context)
+            self.downloadManager = DownloadManager(
+                downloadsDirectory: DownloadPaths.productionDownloadsDirectory,
+                stateStore: InMemoryDownloadStateStore(backing: downloadStateStore)
+            )
+        }
         CarPlayDependencies.register(self)
 
         playbackProgressHandlerID = analysisProgressRelay.addHandler { [weak self] snapshot in
@@ -140,13 +148,37 @@ final class AppShellModel {
 
     /// Library / detail entry: resolve audio, prepare engine + coordinators, show mini-player paused.
     /// Playback starts when the user taps `miniPlayerPlayPause` (AC4).
-    /// Synchronous so episode-row taps publish `miniPlayer` before XCTest post-tap idle.
+    /// Synchronous when a playable URL is already available; download-before-play defers
+    /// the session until a local file exists when channel cleaning is on (task-012).
     func playEpisode(_ episode: Episode, podcastTitle: String, feedURL: URL? = nil) {
         PlaybackDiagnostics.logEpisodeTap(episodeID: episode.id, title: episode.title)
 
         if nowPlayingEpisodeID == episode.id, isPreparingPlayback {
             PlaybackDiagnostics.info(
                 "playEpisode ignored — already preparing episodeID=\(episode.id)"
+            )
+            return
+        }
+        if pendingDownloadForPlayEpisodeID == episode.id {
+            PlaybackDiagnostics.info(
+                "playEpisode ignored — download-before-play in flight episodeID=\(episode.id)"
+            )
+            return
+        }
+
+        if shouldDownloadBeforePlay(for: episode, feedURL: feedURL) {
+            guard let remoteURL = episode.audioURL else {
+                PlaybackDiagnostics.error(
+                    "playEpisode aborted — no audio URL for download episodeID=\(episode.id)"
+                )
+                downloadManager.markFailed(episodeID: episode.id)
+                return
+            }
+            startDownloadBeforePlay(
+                episode: episode,
+                podcastTitle: podcastTitle,
+                feedURL: feedURL,
+                remoteURL: remoteURL
             )
             return
         }
@@ -167,6 +199,60 @@ final class AppShellModel {
             return
         }
 
+        beginPlaybackSession(
+            episode: episode,
+            podcastTitle: podcastTitle,
+            feedURL: feedURL,
+            audioURL: audioURL,
+            localCandidate: localCandidate,
+            remoteCandidate: remoteCandidate
+        )
+    }
+
+    private func startDownloadBeforePlay(
+        episode: Episode,
+        podcastTitle: String,
+        feedURL: URL?,
+        remoteURL: URL
+    ) {
+        pendingDownloadForPlayEpisodeID = episode.id
+        PlaybackDiagnostics.info(
+            "playEpisode download-before-play episodeID=\(episode.id) remote=\(remoteURL.absoluteString)"
+        )
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.pendingDownloadForPlayEpisodeID = nil }
+            do {
+                let localURL = try await self.downloadManager.download(
+                    episodeID: episode.id,
+                    from: remoteURL
+                ) { _ in }
+                self.beginPlaybackSession(
+                    episode: episode,
+                    podcastTitle: podcastTitle,
+                    feedURL: feedURL,
+                    audioURL: localURL,
+                    localCandidate: localURL,
+                    remoteCandidate: remoteURL
+                )
+            } catch {
+                PlaybackDiagnostics.error(
+                    "playEpisode download-before-play failed episodeID=\(episode.id) "
+                        + "downloadState=\(self.downloadStateLabel(for: episode.id))"
+                )
+            }
+        }
+    }
+
+    private func beginPlaybackSession(
+        episode: Episode,
+        podcastTitle: String,
+        feedURL: URL?,
+        audioURL: URL,
+        localCandidate: URL?,
+        remoteCandidate: URL?
+    ) {
         PlaybackDiagnostics.logAudioURLResolution(
             episodeID: episode.id,
             localURL: localCandidate,
@@ -377,13 +463,22 @@ final class AppShellModel {
     }
 
     private func resolveAudioURL(for episode: Episode) -> URL? {
-        if isFixtureLibraryMode {
+        if isFixtureLibraryMode, !FixtureDownload.isEnabled {
             return FixtureAudio.bundledURL()
         }
         if let localURL = resolvedLocalFileURL(for: episode.id) {
             return localURL
         }
         return episode.audioURL
+    }
+
+    /// Channel cleaning on + no local file → download before play (task-012).
+    /// Fixture Library keeps bundled-audio play unless `-UITestFixtureDownload` is set.
+    private func shouldDownloadBeforePlay(for episode: Episode, feedURL: URL?) -> Bool {
+        guard cleaningApplies(for: episode, feedURL: feedURL) else { return false }
+        guard resolvedLocalFileURL(for: episode.id) == nil else { return false }
+        if isFixtureLibraryMode, !FixtureDownload.isEnabled { return false }
+        return true
     }
 
     private func resolvedLocalFileURL(for episodeID: String) -> URL? {

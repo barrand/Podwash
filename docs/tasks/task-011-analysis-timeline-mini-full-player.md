@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 011 |
 | **Title** | Analysis timeline in mini and full player |
-| **Status** | Queued |
+| **Status** | Halted |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/MiniPlayerBar.swift`, `PodWash/PodWash/PlaybackControlsView.swift`, `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWash/AnalysisTimelineView.swift`, `PodWash/PodWashUITests/LibraryUITests.swift`, `PodWash/PodWashUITests/PlaybackControlsUITests.swift` (or new player-timeline tests) |
@@ -46,6 +46,10 @@
 - Do not weaken existing Slice 03 transport asserts (`playback.playPause`, seek buttons).
 
 ## Depends on
+
+- None (superseded — do not requeue)
+
+## References (not task deps)
 
 - Slice 20 (Done) — `AnalysisTimelineModel` color contract
 - Slice 24 (Done) — production play + analysis wiring

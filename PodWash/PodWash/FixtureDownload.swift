@@ -32,6 +32,15 @@ enum FixtureDownload {
         return nil
     }
 
+    /// Playable AAC clip for `-UITestFixtureDownload` flows that continue into playback (task-012).
+    static func bundledPlayableURL(in bundle: Bundle = .main) -> URL? {
+        bundle.url(
+            forResource: "test-clip",
+            withExtension: "m4a",
+            subdirectory: "Fixtures/audio"
+        ) ?? bundle.url(forResource: "test-clip", withExtension: "m4a")
+    }
+
     static func clearDownloadsDirectoryIfNeeded(
         fileManager: FileManager = .default
     ) {

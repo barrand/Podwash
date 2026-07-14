@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 014 |
 | **Title** | Done column recency and closed-at timestamp |
-| **Status** | In Progress |
+| **Status** | Done |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `scripts/factory_floor/server.py`, `scripts/task_ticket.py`, `scripts/slice_pipeline.py`, `scripts/test_forge_floor_board.py` |

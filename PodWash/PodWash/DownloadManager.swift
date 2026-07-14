@@ -76,7 +76,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         }
 
         if FixtureDownload.isEnabled {
-            return try performFixtureDownload(episodeID: episodeID, progress: progress)
+            return try await performFixtureDownloadAsync(episodeID: episodeID, progress: progress)
         }
 
         let stored = resumeDataByEpisodeID.removeValue(forKey: episodeID)
@@ -160,7 +160,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         }
 
         if FixtureDownload.isEnabled {
-            return try performFixtureDownload(episodeID: episodeID, progress: progress)
+            return try await performFixtureDownloadAsync(episodeID: episodeID, progress: progress)
         }
 
         let storedResume = resumeDataByEpisodeID.removeValue(forKey: episodeID)
@@ -411,11 +411,34 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         }
     }
 
+    /// Async fixture path yields so episode-row download chrome is visible to XCTest
+    /// before the stub file lands (task-012 tap-to-play AC).
+    private func performFixtureDownloadAsync(
+        episodeID: String,
+        progress: @escaping (Double) -> Void
+    ) async throws -> URL {
+        stateStore.setState(.downloading(progress: 0), for: episodeID)
+        notifyStateChanged()
+        await Task.yield()
+        try await Task.sleep(for: .milliseconds(200))
+        return try finishFixtureDownloadCopy(episodeID: episodeID, progress: progress)
+    }
+
     private func performFixtureDownload(
         episodeID: String,
         progress: @escaping (Double) -> Void
     ) throws -> URL {
-        guard let stubURL = FixtureDownload.bundledStubURL() else {
+        stateStore.setState(.downloading(progress: 0), for: episodeID)
+        notifyStateChanged()
+        return try finishFixtureDownloadCopy(episodeID: episodeID, progress: progress)
+    }
+
+    private func finishFixtureDownloadCopy(
+        episodeID: String,
+        progress: @escaping (Double) -> Void
+    ) throws -> URL {
+        guard let stubURL = FixtureDownload.bundledPlayableURL()
+            ?? FixtureDownload.bundledStubURL() else {
             stateStore.setState(.failed, for: episodeID)
             notifyStateChanged()
             throw DownloadError.transportFailure
@@ -430,9 +453,6 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             episodeID: episodeID,
             downloadsDirectory: downloadsDirectory
         )
-
-        stateStore.setState(.downloading(progress: 0), for: episodeID)
-        notifyStateChanged()
 
         if fileManager.fileExists(atPath: partial.path) {
             try fileManager.removeItem(at: partial)

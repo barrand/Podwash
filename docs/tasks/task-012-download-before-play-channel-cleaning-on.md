@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 012 |
 | **Title** | Download-before-play when channel cleaning on |
-| **Status** | Queued |
+| **Status** | In Progress |
 | **Kind** | tweak |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWash/EpisodeListView.swift`, `PodWash/PodWash/DownloadManager.swift`, `PodWash/PodWash/PlaybackSourceResolver.swift`, `PodWash/PodWashTests/ProductionAnalysisWiringTests.swift`, `PodWash/PodWashTests/DownloadManagerTests.swift`, `PodWash/PodWashUITests/LibraryUITests.swift` |
@@ -51,8 +51,7 @@
 
 ## Depends on
 
-- Task 011 (timeline in player) — soft; this task delivers the local-file path task-011 needs
-- Task 007 — device download must work for human sign-off (factory may land code before device verify)
+- Task 007 (Done) — device download reliability; human sign-off may still be needed on device
 
 ## Out of scope
 
@@ -73,5 +72,5 @@
 > Loop writes `VERIFY RESULT:` here. For tasks, `tier=2` and `filtered=1` are valid for Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=4 passed=4 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260714-120804.xcresult tier=2 class=tests
 ```

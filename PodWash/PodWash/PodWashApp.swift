@@ -24,6 +24,9 @@ struct PodWashApp: App {
     private let remoteCommands: RemoteCommandCoordinator
 
     init() {
+        if FixtureDownload.isEnabled {
+            FixtureDownload.clearDownloadsDirectoryIfNeeded()
+        }
         // Fresh temp-SQLite per launch (ADR-015 §6). Fixed identifiers reuse durable
         // files across UITest launches and can leave seeded rows in the empty fixture.
         if FixtureLibrary.isEmptyEnabled {
