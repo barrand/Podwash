@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 011 |
 | **Title** | Analysis timeline in mini and full player |
-| **Status** | Queued |
+| **Status** | Halted |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/MiniPlayerBar.swift`, `PodWash/PodWash/PlaybackControlsView.swift`, `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWash/AnalysisTimelineView.swift`, `PodWash/PodWashUITests/LibraryUITests.swift`, `PodWash/PodWashUITests/PlaybackControlsUITests.swift` (or new player-timeline tests) |
@@ -49,6 +49,10 @@
 
 - Slice 20 (Done) — `AnalysisTimelineModel` color contract
 - Slice 24 (Done) — production play + analysis wiring
+
+## Halt reason
+
+**Superseded by [Slice 25](../slices/slice-25-progressive-playback-super-seek-bar.md)** (2026-07-13 intake). Player-chrome timeline visibility, full-player bar, and interactive seek/playhead are in scope there. Do not reopen this task unless Slice 25 explicitly defers mini-player timeline to a follow-up.
 
 ## Out of scope
 

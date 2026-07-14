@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 013 |
 | **Title** | Pause after current soft control |
-| **Status** | In Progress |
+| **Status** | Done |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `scripts/task_loop.py`, `scripts/factory_floor/server.py`, `scripts/test_task_factory.py` (and/or `scripts/test_forge_floor_controls.py`) |
