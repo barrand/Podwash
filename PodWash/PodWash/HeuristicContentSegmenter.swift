@@ -11,7 +11,7 @@ import Foundation
 /// Deterministic cue + light topic-drift segmenter (ADR-012 §3.1).
 struct HeuristicContentSegmenter: ContentSegmenting {
 
-    var approachIdentifier: String { "heuristic-cue-v1" }
+    var approachIdentifier: String { "heuristic-cue-v2" }
 
     func segments(in transcript: [TimedWord]) -> [ContentSegment] {
         let tokens = Self.normalizedTokens(from: transcript)
@@ -61,9 +61,16 @@ struct HeuristicContentSegmenter: ContentSegmenting {
     /// Longer phrases first so multi-word cues claim tokens before substrings.
     private static let sponsorPhrases: [String] = [
         "link in the description",
+        "support comes from",
+        "delivered to public radio",
+        "public radio stations",
+        "thanks to our sponsors",
         "our friends at",
         "brought to you",
         "sponsored by",
+        "underwriting from",
+        "funding for",
+        "support for",
         "use code",
         "ad break",
         "advertisement",

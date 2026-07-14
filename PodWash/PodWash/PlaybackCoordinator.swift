@@ -19,6 +19,8 @@ final class PlaybackCoordinator {
     private let overlayEngine: OverlayEngine
 
     private(set) var cachedIntervals: [CensorInterval] = []
+    /// Full analyze union (for timeline ad buckets independent of unrelated enablement).
+    private(set) var lastAnalysisUnion: [CensorInterval] = []
     private(set) var currentAction: CensorAction = .mute
     private(set) var unrelatedContentEnabled: Bool = false
     private(set) var unrelatedContentAction: CensorAction = .skip
@@ -77,6 +79,11 @@ final class PlaybackCoordinator {
         currentAction = action
         unrelatedContentEnabled = unrelatedContent.enabled
         unrelatedContentAction = unrelatedContent.action
+        if let pipeline = pipeline as? AnalysisPipeline {
+            lastAnalysisUnion = pipeline.lastAnalysisUnion
+        } else {
+            lastAnalysisUnion = intervals
+        }
         await applySchedule(intervals: intervals)
         cachedIntervals = intervals
     }

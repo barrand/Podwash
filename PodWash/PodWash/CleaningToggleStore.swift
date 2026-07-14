@@ -59,12 +59,18 @@ final class CleaningToggleStore {
     func setChannelCleaning(_ enabled: Bool) throws {
         let podcast = requirePodcast()
         podcast.channelCleaningEnabled = enabled
+        if enabled, !podcast.channelUnrelatedContentEnabled {
+            podcast.channelUnrelatedContentEnabled = true
+        }
         try context.save()
     }
 
     func setChannelCleaning(forFeedURL feedURL: URL, enabled: Bool) throws {
         let podcast = requirePodcast(forFeedURL: feedURL)
         podcast.channelCleaningEnabled = enabled
+        if enabled, !podcast.channelUnrelatedContentEnabled {
+            podcast.channelUnrelatedContentEnabled = true
+        }
         try context.save()
     }
 

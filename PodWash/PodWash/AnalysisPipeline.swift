@@ -39,6 +39,9 @@ final class AnalysisPipeline: @unchecked Sendable {
     var onProgress: AnalysisProgressHandler?
     var onMainActorProgress: MainActorAnalysisProgressHandler?
 
+    /// Full cache union from the most recent `analyze` call (includes filtered unrelated spans).
+    private(set) var lastAnalysisUnion: [CensorInterval] = []
+
     init(
         transcriber: any ASRTranscribing,
         cache: IntervalCache,
@@ -140,6 +143,8 @@ final class AnalysisPipeline: @unchecked Sendable {
             try cache.store(union, episodeID: episode.id, targetWords: targetWords)
         }
 
+        lastAnalysisUnion = union
+
         let projected = Self.project(
             union: union,
             profanityAction: profanityAction,
@@ -147,7 +152,13 @@ final class AnalysisPipeline: @unchecked Sendable {
         )
 
         if duration > 0 {
-            await emitProgress(Self.completeSnapshot(duration: duration, intervals: projected))
+            await emitProgress(
+                Self.completeSnapshot(
+                    duration: duration,
+                    intervals: projected,
+                    adRangeIntervals: union
+                )
+            )
         }
 
         return projected
@@ -226,9 +237,14 @@ final class AnalysisPipeline: @unchecked Sendable {
 
     private static func completeSnapshot(
         duration: Double,
-        intervals: [CensorInterval]
+        intervals: [CensorInterval],
+        adRangeIntervals: [CensorInterval]
     ) -> AnalysisProgressSnapshot {
-        AnalysisTimelineModel.completeSnapshot(duration: duration, intervals: intervals)
+        AnalysisTimelineModel.completeSnapshot(
+            duration: duration,
+            intervals: intervals,
+            adRangeIntervals: adRangeIntervals
+        )
     }
 
     private static func resolveDuration(audioURL: URL) async -> Double {

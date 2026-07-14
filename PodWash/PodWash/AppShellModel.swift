@@ -267,17 +267,20 @@ final class AppShellModel {
                 )
                 PlaybackDiagnostics.logPreparePlaybackEnd(
                     episodeID: episode.id,
-                    intervalCount: coordinator.cachedIntervals.count,
+                    intervals: coordinator.cachedIntervals,
+                    union: coordinator.lastAnalysisUnion,
                     error: nil
                 )
                 await publishTerminalPlaybackAnalysisSnapshot(
                     intervals: coordinator.cachedIntervals,
+                    union: coordinator.lastAnalysisUnion,
                     audioURL: audioURL
                 )
             } catch {
                 PlaybackDiagnostics.logPreparePlaybackEnd(
                     episodeID: episode.id,
-                    intervalCount: coordinator.cachedIntervals.count,
+                    intervals: coordinator.cachedIntervals,
+                    union: coordinator.lastAnalysisUnion,
                     error: error
                 )
                 PlaybackDiagnostics.error(
@@ -346,13 +349,15 @@ final class AppShellModel {
     /// Pins the terminal colored timeline for player chrome after analysis completes.
     private func publishTerminalPlaybackAnalysisSnapshot(
         intervals: [CensorInterval],
+        union: [CensorInterval],
         audioURL: URL
     ) async {
         let duration = await resolvedEpisodeDuration(audioURL: audioURL)
         guard duration > 0 else { return }
         playbackAnalysisSnapshot = AnalysisTimelineModel.completeSnapshot(
             duration: duration,
-            intervals: intervals
+            intervals: intervals,
+            adRangeIntervals: union
         )
     }
 

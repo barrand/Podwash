@@ -23,11 +23,19 @@ enum AnalysisTimelineModel {
     static let fullPlayerTimelineHeight = 20.0
 
     /// Terminal snapshot for player chrome from cached analysis intervals.
+    ///
+    /// - Parameters:
+    ///   - intervals: Playback-projected intervals (profanity + enabled unrelated).
+    ///   - adRangeIntervals: Full analyzed union for yellow buckets; defaults to `intervals`.
+    ///     Pass the cache union so ad spans appear on the timeline even when unrelated
+    ///     skip/mute is disabled (ADR-013 playback filter vs ADR-018 display).
     static func completeSnapshot(
         duration: Double,
-        intervals: [CensorInterval]
+        intervals: [CensorInterval],
+        adRangeIntervals: [CensorInterval]? = nil
     ) -> AnalysisProgressSnapshot {
-        let adRanges = intervals
+        let adSource = adRangeIntervals ?? intervals
+        let adRanges = adSource
             .filter { $0.source == .unrelatedContent }
             .map { AdTimeRange(start: $0.start, end: $0.end) }
         return AnalysisProgressSnapshot(

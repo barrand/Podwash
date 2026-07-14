@@ -111,13 +111,25 @@ enum PlaybackDiagnostics {
         info("preparePlayback start episodeID=\(episodeID) cleaning=\(cleaning) localFile=\(localFile)")
     }
 
-    static func logPreparePlaybackEnd(episodeID: String, intervalCount: Int, error: Error?) {
+    static func logPreparePlaybackEnd(
+        episodeID: String,
+        intervals: [CensorInterval],
+        union: [CensorInterval],
+        error: Error?
+    ) {
         if let error {
             self.error(
                 "preparePlayback failed episodeID=\(episodeID) error=\(error.localizedDescription)"
             )
         } else {
-            info("preparePlayback done episodeID=\(episodeID) intervals=\(intervalCount)")
+            let profanity = intervals.filter { $0.source == .profanity }.count
+            let unrelatedPlayback = intervals.filter { $0.source == .unrelatedContent }.count
+            let unrelatedDetected = union.filter { $0.source == .unrelatedContent }.count
+            info(
+                "preparePlayback done episodeID=\(episodeID) intervals=\(intervals.count) "
+                    + "profanity=\(profanity) unrelatedPlayback=\(unrelatedPlayback) "
+                    + "unrelatedDetected=\(unrelatedDetected)"
+            )
         }
     }
 
