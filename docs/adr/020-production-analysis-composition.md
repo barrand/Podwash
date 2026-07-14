@@ -322,7 +322,7 @@ subscriptions).
 | Episode cleaning **off** and channel cleaning **off** | Skip (AC3) |
 | Episode cleaning **on**, local file | Run (AC4) |
 | Channel cleaning **on**, episode cleaning **off**, local file | Run (AC6) |
-| Cleaning on, audio is streaming-only remote URL (no download on disk) | Skip (AC7) — ADR-000 §3 / ADR-008 |
+| Cleaning on, no local file on disk (download pending/failed, or playback URL still remote) | Skip (AC7) — ADR-000 §3 / ADR-008. Task-012 download-before-play may fetch first; analyze runs only after a local file exists. |
 
 Local-file test stand-in: copy `sine-300hz-5s.wav` (or any bundled `.wav`) into an
 injectable downloads directory at

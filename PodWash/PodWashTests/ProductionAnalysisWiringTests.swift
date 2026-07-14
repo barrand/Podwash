@@ -681,26 +681,45 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         }
     }
 
-    // MARK: - AC7: streaming-only URL skips analysis even when cleaning is on
+    // MARK: - AC7: no local file → skip analysis even when cleaning is on
 
     func testStreamingURLSkipsAnalysisEvenWhenCleaningOn() async throws {
-        let model = makeShell(injectedTranscript: try loadTranscript())
-        let episode = fixtureEpisode()
-        // No local download — resolver must return remote enclosure URL only.
+        // After task-012, channel cleaning on + no sandbox file starts download-before-play
+        // (not silent stream). Force a hard transport failure so no local file lands;
+        // ADR-008 / ADR-020 AC7 still requires analyze == 0 without a local file.
+        try await withStubDownloadTransport { [self] in
+            let model = makeShell(
+                fixtureLibraryMode: false,
+                injectedTranscript: try loadTranscript()
+            )
+            let episode = Episode(
+                id: episodeID,
+                title: "Alpha Signal — Pilot Launch",
+                pubDate: ISO8601DateFormatter().date(from: "2026-01-15T08:00:00Z")!,
+                artworkURL: URL(string: "file:///fixtures/feeds/episode-0-art.png"),
+                showNotes: "<p>Welcome to the pilot.</p>",
+                audioURL: URL(string: "https://fixture.podwash.tests/audio/transport-error.m4a")
+            )
+            removeProductionDownload(for: episode.id)
 
-        try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: false)
-        try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
+            try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: false)
+            try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
 
-        model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+            model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
 
-        await waitUntil { model.playbackCoordinator != nil }
-        try await Task.sleep(for: .milliseconds(300))
+            await waitUntil { model.downloadManager.state(for: episode.id) == .failed }
+            try await Task.sleep(for: .milliseconds(300))
 
-        XCTAssertEqual(
-            pipelineSpy.analyzeCallCount,
-            0,
-            "Streaming-only audio must not invoke analyze (ADR-008 local-file gate)"
-        )
+            XCTAssertNil(
+                model.playbackCoordinator,
+                "Failed download-before-play must not start a playback session"
+            )
+            XCTAssertEqual(
+                pipelineSpy.analyzeCallCount,
+                0,
+                "Without a local file, analyze must not run (ADR-008 local-file gate; download failed)"
+            )
+        }
     }
 
     // MARK: - AC8: fixture library mode skips prepare even when cleaning is on

@@ -4,7 +4,8 @@
 |-------|-------|
 | **ID** | 016 |
 | **Title** | Rename Clean channel toggle to Clean Profanity |
-| **Status** | In Progress |
+| **Status** | Done |
+| **Done at** | 2026-07-14T19:13:15Z |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/PodcastDetailView.swift`, `PodWash/PodWashUITests/AnalysisProgressUITests.swift`, `PodWash/PodWashUITests/LibraryUITests.swift`, `PodWash/PodWashUITests/AnalysisTimelineUITests.swift` |
