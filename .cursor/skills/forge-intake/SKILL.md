@@ -72,3 +72,4 @@ Clear human checklist (device steps). No fake `VERIFY_SLICE_TESTS`. Kind = needs
 - Do not edit `PodWash/PodWash/**` or test targets
 - Do not invent weak tests for Needs-human work
 - Do not skip the grill to “just file it”
+- **Depends on** bullets: only `- None` or `- Task NNN` (optional trailing note after the id). Never mention other task numbers in that section (`orthogonal to task-016` created a fake cycle and froze the queue). Put related tickets under **Out of scope**.

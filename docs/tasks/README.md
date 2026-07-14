@@ -31,6 +31,17 @@ Punch-list work for Factory v3: bugs, tweaks, and Needs-human items. Features la
 
 Dispatcher order: **In Progress (reclaim)** first, then highest Priority among Queued/Ready, then lowest id. Soft controls can bump. Halted is never auto-started (Requeue on Floor).
 
+## Depends on (contract)
+
+Parsed by `scripts/next-task.sh` from the `## Depends on` section only:
+
+| Bullet | Meaning |
+|--------|---------|
+| `- None` | No deps (parentheticals after None are ignored) |
+| `- Task 007 …` / `- task-007` / `- 007` | Depends on that id (must be Done + green verify) |
+
+Related-but-not-blocking tickets go in **Out of scope**, never as dep prose. Cycles among open tickets are **ignored** (stderr warning) so the factory cannot deadlock.
+
 ## Done signal
 
 Unlike slices, task Done accepts **tier-2 filtered** green:

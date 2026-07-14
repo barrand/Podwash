@@ -44,6 +44,15 @@ Tweaks only — named existing assertions the human approved changing at intake.
 
 ## Depends on
 
+**Machine-parsed.** Only these bullet shapes are legal:
+
+- `- None` — no dependencies (preferred default)
+- `- Task NNN` or `- task-NNN` — hard dependency (NNN must be Done + green verify before this starts)
+
+Do **not** put other task ids in prose here (`orthogonal to task-016`, `see task-012`, etc.) — that used to create fake edges and deadlock the queue. Mention related tickets under **Out of scope** instead.
+
+The queue brain **ignores cyclic deps** (A→B→A) so a mistaken loop cannot freeze In Progress empty forever.
+
 - None (or task NNN)
 
 ## Out of scope

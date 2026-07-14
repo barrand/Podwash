@@ -314,6 +314,21 @@ class TestNextTask(unittest.TestCase):
             self.assertEqual(data["action"], "start")
             self.assertEqual(data["id"], 7)
 
+    def test_cyclic_deps_are_ignored_not_deadlocked(self):
+        """A↔B must not leave In Progress empty forever."""
+        with tempfile.TemporaryDirectory() as td:
+            _write_task(td, 15, prio="P1", deps="Task 016")
+            _write_task(td, 16, prio="P2", deps="Task 015")
+            env = {**os.environ, "PODWASH_TASKS_DIR": td}
+            proc = subprocess.run(
+                [NEXT_TASK, "--json"], capture_output=True, text=True, env=env
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            data = json.loads(proc.stdout)
+            self.assertEqual(data["action"], "start")
+            self.assertEqual(data["id"], 15)  # higher priority wins once cycle is broken
+            self.assertIn("cyclic", proc.stderr.lower())
+
 
 class PauseInterruptsInflightTests(unittest.TestCase):
     """Task 005 — Pause must interrupt in-flight verify, not only the next loop tick."""

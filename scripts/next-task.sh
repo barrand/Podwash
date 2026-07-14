@@ -131,6 +131,44 @@ function prio_rank(p) {
     if (p == "P3") return 3
     return 2
 }
+function open_node(x) {
+    return (x in ids) && !done_[x] && !needs_human[x]
+}
+# Walk incomplete deps from `from`; true if we hit `target` (cycle / reachability).
+function can_reach(from, target,   q, h, t, seen, cur, m, d, dd, i) {
+    if (from+0 == target+0) return 1
+    if (!open_node(from)) return 0
+    delete seen
+    h=1; t=0
+    q[++t] = from+0
+    seen[from+0] = 1
+    while (h <= t) {
+        cur = q[h++]
+        m = split(deps[cur], d, " ")
+        for (i=1; i<=m; i++) {
+            dd = d[i]+0
+            if (dd <= 0) continue
+            if (dd == target+0) return 1
+            if (!open_node(dd)) continue
+            if (seen[dd]) continue
+            seen[dd] = 1
+            q[++t] = dd
+        }
+    }
+    return 0
+}
+# Real blocker? Ignore missing/self/Done and edges that close a cycle (unblocks deadlocks).
+function dep_blocks(id, dd) {
+    if (dd <= 0) return 0
+    if (dd == id) return 0
+    if (done_[dd]) return 0
+    if (!(dd in ids)) return 1
+    if (can_reach(dd, id)) {
+        printf "next-task.sh: ignoring cyclic dep task-%03d → task-%03d\n", id, dd > "/dev/stderr"
+        return 0
+    }
+    return 1
+}
 {
     id=$1+0
     ids[id]=1
@@ -185,7 +223,7 @@ END {
             m=split(deps[id], d, " ")
             for (k=1; k<=m; k++) {
                 dd=d[k]+0
-                if (dd > 0 && !done_[dd]) { ok=0; miss = miss " " dd }
+                if (dep_blocks(id, dd)) { ok=0; miss = miss " " dd }
             }
             if (ok) { candidate=id; break }
             if (lowest_blocked < 0) { lowest_blocked=id; gsub(/^ +/, "", miss); blocked_miss=miss }
