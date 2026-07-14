@@ -144,6 +144,13 @@ final class AppShellModel {
     func playEpisode(_ episode: Episode, podcastTitle: String, feedURL: URL? = nil) {
         PlaybackDiagnostics.logEpisodeTap(episodeID: episode.id, title: episode.title)
 
+        if nowPlayingEpisodeID == episode.id, isPreparingPlayback {
+            PlaybackDiagnostics.info(
+                "playEpisode ignored — already preparing episodeID=\(episode.id)"
+            )
+            return
+        }
+
         let localCandidate = resolvedLocalFileURL(for: episode.id)
         let remoteCandidate = episode.audioURL
         guard let audioURL = resolveAudioURL(for: episode) else {
@@ -272,6 +279,9 @@ final class AppShellModel {
                     episodeID: episode.id,
                     intervalCount: coordinator.cachedIntervals.count,
                     error: error
+                )
+                PlaybackDiagnostics.error(
+                    "Analysis did not finish — playback will be uncleaned until you replay this episode."
                 )
             }
         }
