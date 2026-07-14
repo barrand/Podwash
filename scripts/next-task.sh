@@ -76,10 +76,20 @@ BEGIN { status=""; title=""; kind=""; prio="P2"; area=""; vg=0; indeps=0; deps="
 }
 {
     if (indeps == 1 && $0 ~ /^[ \t]*[-*] /) {
-        tmp=$0
-        gsub(/[^0-9]/, " ", tmp)
-        m=split(tmp, b, " ")
-        for (i=1; i<=m; i++) if (b[i]+0 > 0) deps = deps " " (b[i]+0)
+        line=$0
+        # "None" / "None (…)" is not a dependency — do not scrape numbers from prose.
+        if (line ~ /^[ \t]*[-*][ \t]+[Nn]one([ \t]|[(]|$)/) next
+        sub(/^[ \t]*[-*][ \t]+/, "", line)
+        # Only explicit task refs at the start of the bullet:
+        #   Task 007 … / task-007 … / 007 …
+        dep=""
+        if (match(line, /^[Tt]ask[ \t-]+[0-9]+/)) {
+            dep = substr(line, RSTART, RLENGTH)
+            gsub(/[^0-9]/, "", dep)
+        } else if (match(line, /^[0-9]+/)) {
+            dep = substr(line, RSTART, RLENGTH)
+        }
+        if (dep+0 > 0) deps = deps " " (dep+0)
     }
 }
 END {

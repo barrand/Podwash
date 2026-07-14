@@ -277,6 +277,43 @@ class TestNextTask(unittest.TestCase):
             self.assertIn("Requeue", data["message"])
             self.assertNotEqual(data["action"], "done")
 
+    def test_none_orthogonal_prose_is_not_a_dependency(self):
+        """'None (orthogonal to task-016)' must not invent a dep and deadlock the queue."""
+        with tempfile.TemporaryDirectory() as td:
+            _write_task(
+                td,
+                15,
+                prio="P1",
+                deps="None (orthogonal to task-012; may land in parallel)",
+            )
+            _write_task(
+                td,
+                16,
+                prio="P2",
+                deps="None (orthogonal to task-015)",
+            )
+            env = {**os.environ, "PODWASH_TASKS_DIR": td}
+            proc = subprocess.run(
+                [NEXT_TASK, "--json"], capture_output=True, text=True, env=env
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            data = json.loads(proc.stdout)
+            self.assertEqual(data["action"], "start")
+            self.assertEqual(data["id"], 15)
+
+    def test_explicit_task_dep_blocks_until_done(self):
+        with tempfile.TemporaryDirectory() as td:
+            _write_task(td, 7, status="Queued", prio="P2")
+            _write_task(td, 12, prio="P1", deps="Task 007 (Done) — device download")
+            env = {**os.environ, "PODWASH_TASKS_DIR": td}
+            proc = subprocess.run(
+                [NEXT_TASK, "--json"], capture_output=True, text=True, env=env
+            )
+            data = json.loads(proc.stdout)
+            # P1 is blocked; P2 007 is ready and must start (not wait forever on 12).
+            self.assertEqual(data["action"], "start")
+            self.assertEqual(data["id"], 7)
+
 
 class PauseInterruptsInflightTests(unittest.TestCase):
     """Task 005 — Pause must interrupt in-flight verify, not only the next loop tick."""

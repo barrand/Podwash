@@ -721,8 +721,20 @@ def _activity_snapshot(
         nxt = "Nothing needed from you — agents are working. Watch the active card and event feed."
         if phase.lower() in ("halted",):
             nxt = "Amend ticket in Cursor if needed, then Requeue Halted."
-        if phase.lower() in ("waiting", "idle"):
-            # Station already explains Halted / empty queue — prefer that over opaque phase·role.
+        if phase.lower() in ("waiting",):
+            # Dependency / Halted park — do not pretend this is a full-suite wait.
+            return pack(
+                mode="picking",
+                headline="Waiting on another ticket",
+                detail=who.get("doing") or mission or detail or "A Queued ticket is blocked.",
+                next_line=(
+                    "Nothing needed from you if the blocker is Queued — it should start next. "
+                    "If this stalls, check Depends on in the ticket (prose like “orthogonal to "
+                    "task-NNN” is not a real dependency)."
+                ),
+                agents_out=agents,
+            )
+        if phase.lower() in ("idle",):
             return pack(
                 mode="batch_pending" if batch.get("needed") or halted else "quiet",
                 headline=(

@@ -41,7 +41,7 @@
 
 ## Depends on
 
-- None (orthogonal to task-015)
+- None
 
 ## Out of scope
 

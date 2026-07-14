@@ -158,12 +158,11 @@ Optional: delete episode download + clear interval cache for that episode and re
 
 ## Depends on
 
-- None (orthogonal to task-012 download-before-play; may land in parallel)
-- Label rename is **task-016** (separate crux)
+- None
 
 ## Out of scope
 
-- Renaming “Clean channel” → “Clean Profanity” (task-016)
+- Renaming “Clean channel” → “Clean Profanity” (task-016; separate ticket)
 - Upgrading Whisper model size / ANE tuning / non-`cpuOnly` on device (escalate to slice if ACs pass and device still `profanity=0`)
 - Changing default word categories or matching-spec algorithm (unless H2 proves a missing seed with a concrete ASR token)
 - Painting mute intervals on the analysis timeline (UX follow-up; would have made this failure obvious)
