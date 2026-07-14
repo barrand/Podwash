@@ -4,7 +4,8 @@
 |-------|-------|
 | **ID** | 012 |
 | **Title** | Download-before-play when channel cleaning on |
-| **Status** | In Progress |
+| **Status** | Done |
+| **Done at** | 2026-07-14T18:09:11Z |
 | **Kind** | tweak |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWash/EpisodeListView.swift`, `PodWash/PodWash/DownloadManager.swift`, `PodWash/PodWash/PlaybackSourceResolver.swift`, `PodWash/PodWashTests/ProductionAnalysisWiringTests.swift`, `PodWash/PodWashTests/DownloadManagerTests.swift`, `PodWash/PodWashUITests/LibraryUITests.swift` |

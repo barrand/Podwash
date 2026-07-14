@@ -21,6 +21,9 @@ enum ProductionAnalyzerFactory {
             ?? (FixtureLibrary.isEnabled || FixtureLibrary.isEmptyEnabled)
 
         if effectiveFixtureLibrary {
+            if FixtureLibraryAnalysisTimeline.isEnabled {
+                return FixtureLibraryAnalysisTimeline.makeSteppedAnalyzer()
+            }
             return InstantEpisodeAnalyzer()
         }
 

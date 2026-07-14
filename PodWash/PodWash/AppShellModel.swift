@@ -295,8 +295,9 @@ final class AppShellModel {
         )
         // Leave paused so AC4's play-button tap yields "playing".
 
-        // Fixture Library play skips analysis even when cleaning is on (AC8).
-        if isFixtureLibraryMode {
+        // Fixture Library play skips analysis even when cleaning is on (AC8),
+        // except when the Library player-timeline UITest fixture is active.
+        if isFixtureLibraryMode, !FixtureLibraryAnalysisTimeline.isEnabled {
             PlaybackDiagnostics.info("playEpisode skip prepare — fixture library mode")
             return
         }

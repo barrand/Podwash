@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 011 |
 | **Title** | Analysis timeline in mini and full player |
-| **Status** | Halted |
+| **Status** | In Progress |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/MiniPlayerBar.swift`, `PodWash/PodWash/PlaybackControlsView.swift`, `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWash/AnalysisTimelineView.swift`, `PodWash/PodWashUITests/LibraryUITests.swift`, `PodWash/PodWashUITests/PlaybackControlsUITests.swift` (or new player-timeline tests) |
@@ -76,5 +76,5 @@
 > Loop writes `VERIFY RESULT:` here. For tasks, `tier=2` and `filtered=1` are valid for Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=3 passed=3 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260714-122902.xcresult tier=2 class=tests
 ```
