@@ -41,14 +41,19 @@ final class AnalysisProgressUITests: XCTestCase {
             "channelCleaningToggle must not retain legacy VoiceOver label Clean channel"
         )
 
-        let episodeList = app.descendants(matching: .any)["episodeList"]
-        let visibleCaption = episodeList.staticTexts["Clean Profanity"]
+        // Caption lives in the podcast header (sibling of episodeList), not inside it.
+        let visibleCaption = app.staticTexts["channelCleaningCaption"]
         XCTAssertTrue(
             visibleCaption.waitForExistence(timeout: 2),
             "Visible caption for the cleaning row must read Clean Profanity (exact)"
         )
+        XCTAssertEqual(
+            visibleCaption.label,
+            "Clean Profanity",
+            "Visible caption for the cleaning row must read Clean Profanity (exact)"
+        )
         XCTAssertFalse(
-            episodeList.staticTexts["Clean channel"].exists,
+            app.staticTexts["Clean channel"].exists,
             "Clean channel copy must not remain on podcast detail"
         )
     }

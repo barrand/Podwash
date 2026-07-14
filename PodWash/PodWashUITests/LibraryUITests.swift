@@ -530,6 +530,12 @@ final class LibraryUITests: XCTestCase {
             if progress.exists {
                 return
             }
+            // Re-resolve by id each poll — cached XCUIElement values can miss a short
+            // `downloading` window under verify load (task-012 / ui_race).
+            let liveButton = app.buttons["downloadButton_0"]
+            if liveButton.exists, liveButton.value as? String == "downloading" {
+                return
+            }
             if downloadButton.value as? String == "downloading" {
                 return
             }
