@@ -919,6 +919,65 @@ def wait_while_paused() -> None:
         time.sleep(2)
 
 
+def wait_while_next_is_wait(decision: dict[str, Any]) -> None:
+    """Halted / dependency wait — keep the Floor runner alive and poll.
+
+    Exiting here used to look like 'stuck then stopped' on Forge Floor: the UI
+    still showed batch-pending until the heartbeat went stale.
+    """
+    msg = (decision.get("message") or "waiting")[:200]
+    tid = int(decision["id"]) if decision.get("id") is not None else None
+    log(msg)
+    notified = False
+    while True:
+        write_heartbeat()
+        if read_controls().get("paused"):
+            wait_while_paused()
+            return
+        ctrl = apply_control_side_effects(read_controls())
+        if ctrl.get("ship_now"):
+            return
+        set_station(phase="waiting", role="loop", detail=msg, task_id=tid)
+        if not notified:
+            notify("Forge", msg[:120])
+            notified = True
+        again = query_next()
+        if again.get("action") != "wait":
+            return
+        msg = (again.get("message") or msg)[:200]
+        if again.get("id") is not None:
+            try:
+                tid = int(again["id"])
+            except (TypeError, ValueError):
+                pass
+        time.sleep(3)
+
+
+def wait_while_queue_idle() -> None:
+    """Punch-list clear and no full-suite needed — stay alive for intake / Verify & push."""
+    detail = (
+        "No punch-list work — waiting for intake, Requeue, or Verify & push"
+    )
+    while True:
+        write_heartbeat()
+        if read_controls().get("paused"):
+            wait_while_paused()
+            return
+        ctrl = apply_control_side_effects(read_controls())
+        if ctrl.get("ship_now"):
+            return
+        set_station(phase="idle", role="loop", detail=detail)
+        again = query_next()
+        action = again.get("action")
+        if action in ("start", "wait"):
+            return
+        if action == "done":
+            needed, _reason = batch_needed(force=False)
+            if needed:
+                return
+        time.sleep(3)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Forge serial task loop")
     parser.add_argument("--dry-run", action="store_true")
@@ -969,7 +1028,11 @@ def main(argv: list[str] | None = None) -> int:
                     force=True,
                 )
                 if code != EXIT_OK:
-                    return code
+                    # Stay alive for Floor Your move (Retry / Don't push).
+                    if args.once:
+                        return code
+                    wait_while_queue_idle()
+                    continue
                 if park_pause_after_current():
                     continue
 
@@ -993,31 +1056,42 @@ def main(argv: list[str] | None = None) -> int:
                         "Forge",
                         f"In Progress stuck ({ids}) — not running full verify",
                     )
-                    return EXIT_WAIT
+                    if args.once:
+                        return EXIT_WAIT
+                    wait_while_queue_idle()
+                    continue
                 needed, reason = batch_needed(force=False)
                 log(f"queue empty — idle drain ({reason})")
                 if args.once:
                     return EXIT_OK
-                code = run_batch_gate(
-                    api_key=api_key,
-                    dry_run=args.dry_run,
-                    no_commit=args.no_commit,
-                    no_push=args.no_push,
-                    skip=args.skip_batch_gate or ctrl.get("skip_batch_gate", False),
-                    force=False,
-                )
-                if park_pause_after_current():
-                    continue
-                return code
+                if needed:
+                    code = run_batch_gate(
+                        api_key=api_key,
+                        dry_run=args.dry_run,
+                        no_commit=args.no_commit,
+                        no_push=args.no_push,
+                        skip=args.skip_batch_gate or ctrl.get("skip_batch_gate", False),
+                        force=False,
+                    )
+                    if park_pause_after_current():
+                        continue
+                    if code != EXIT_OK and args.once:
+                        return code
+                # Stay alive: empty punch-list must not shut the Floor down.
+                wait_while_queue_idle()
+                continue
             if action == "wait":
                 log(decision.get("message", "wait"))
                 set_station(
-                    phase="paused",
+                    phase="waiting",
                     role="loop",
                     detail=(decision.get("message") or "waiting")[:200],
                     task_id=int(decision["id"]) if decision.get("id") is not None else None,
                 )
-                return EXIT_WAIT
+                if args.once:
+                    return EXIT_WAIT
+                wait_while_next_is_wait(decision)
+                continue
             if action != "start":
                 log(f"unexpected action: {action}")
                 return EXIT_RUN_FAILED

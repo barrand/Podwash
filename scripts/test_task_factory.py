@@ -605,6 +605,100 @@ class TestIdleDrainSafety(unittest.TestCase):
             self.assertEqual(ids, [1])
 
 
+class TestWaitKeepsRunnerAlive(unittest.TestCase):
+    """Halted/empty-queue wait must poll, not EXIT_WAIT (Floor 'stuck then stopped')."""
+
+    def setUp(self) -> None:
+        import task_loop as tl
+
+        self.tl = tl
+        self._td = tempfile.TemporaryDirectory()
+        self._td.__enter__()
+        self.controls_path = os.path.join(self._td.name, "controls.json")
+        self.station_path = os.path.join(self._td.name, "station.json")
+        self.heartbeat_path = os.path.join(self._td.name, "heartbeat.json")
+        self._orig = (
+            tl.CONTROLS_PATH,
+            tl.STATION_PATH,
+            tl.HEARTBEAT_PATH,
+        )
+        tl.CONTROLS_PATH = self.controls_path
+        tl.STATION_PATH = self.station_path
+        tl.HEARTBEAT_PATH = self.heartbeat_path
+        tl.write_controls(tl.default_controls())
+
+    def tearDown(self) -> None:
+        tl = self.tl
+        tl.CONTROLS_PATH, tl.STATION_PATH, tl.HEARTBEAT_PATH = self._orig
+        self._td.__exit__(None, None, None)
+
+    def test_wait_while_next_is_wait_exits_when_start(self) -> None:
+        from unittest import mock
+
+        calls = {"n": 0}
+
+        def fake_next():
+            calls["n"] += 1
+            if calls["n"] < 2:
+                return {
+                    "action": "wait",
+                    "id": 11,
+                    "message": "Halted task(s) 11 need Requeue",
+                }
+            return {"action": "start", "id": 15, "file": "x.md"}
+
+        with mock.patch.object(self.tl, "query_next", side_effect=fake_next):
+            with mock.patch.object(self.tl, "notify"):
+                with mock.patch.object(self.tl.time, "sleep"):
+                    self.tl.wait_while_next_is_wait(
+                        {
+                            "action": "wait",
+                            "id": 11,
+                            "message": "Halted task(s) 11 need Requeue",
+                        }
+                    )
+        self.assertGreaterEqual(calls["n"], 2)
+        station = self.tl.read_station()
+        self.assertEqual(station.get("phase"), "waiting")
+
+    def test_wait_while_next_is_wait_exits_on_ship_now(self) -> None:
+        from unittest import mock
+
+        ctrl = self.tl.default_controls()
+        ctrl["ship_now"] = True
+        self.tl.write_controls(ctrl)
+
+        with mock.patch.object(
+            self.tl,
+            "query_next",
+            return_value={"action": "wait", "id": 11, "message": "Halted"},
+        ) as qn:
+            with mock.patch.object(self.tl, "notify"):
+                with mock.patch.object(self.tl.time, "sleep"):
+                    self.tl.wait_while_next_is_wait(
+                        {"action": "wait", "id": 11, "message": "Halted"}
+                    )
+        qn.assert_not_called()
+
+    def test_main_once_still_exits_on_wait(self) -> None:
+        from unittest import mock
+
+        with mock.patch.object(
+            self.tl,
+            "query_next",
+            return_value={
+                "action": "wait",
+                "id": 11,
+                "message": "Halted task(s) 11 need Requeue",
+            },
+        ):
+            with mock.patch.object(self.tl, "set_factory_hot"):
+                with mock.patch.object(self.tl, "notify"):
+                    with mock.patch.dict(os.environ, {"CURSOR_API_KEY": "k"}):
+                        code = self.tl.main(["--once", "--no-commit", "--no-push"])
+        self.assertEqual(code, self.tl.EXIT_WAIT)
+
+
 class TestTaskDispatch(unittest.TestCase):
     def test_disjoint_scheduler(self):
         from task_dispatch import can_schedule, pick_parallel_batch

@@ -708,6 +708,31 @@ def _activity_snapshot(
         nxt = "Nothing needed from you — agents are working. Watch the active card and event feed."
         if phase.lower() in ("halted",):
             nxt = "Amend ticket in Cursor if needed, then Requeue Halted."
+        if phase.lower() in ("waiting", "idle"):
+            # Station already explains Halted / empty queue — prefer that over opaque phase·role.
+            return pack(
+                mode="batch_pending" if batch.get("needed") or halted else "quiet",
+                headline=(
+                    "Full suite waiting — Halted ticket first"
+                    if halted
+                    else (
+                        "Waiting to run full test suite"
+                        if batch.get("needed")
+                        else "Waiting for punch-list work"
+                    )
+                ),
+                detail=who.get("doing") or mission or detail or batch_plain,
+                next_line=(
+                    "Requeue Halted in Your move, or queue more punch-list work with forge-intake."
+                    if halted
+                    else (
+                        "Nothing needed from you — or click Verify & push to start the full suite now."
+                        if batch.get("needed")
+                        else "Queue punch-list work with forge-intake, or click Verify & push."
+                    )
+                ),
+                agents_out=agents,
+            )
         return pack(
             mode="working",
             headline=label,
@@ -1033,13 +1058,25 @@ def apply_control(action: str, data: dict[str, Any] | None = None) -> dict[str, 
         ctrl["paused"] = False
         ctrl["pause_after_current"] = False
         write_controls(ctrl)
+        if not _runner_alive(ctrl=ctrl):
+            msg = start_runner()
+        else:
+            msg = "resumed"
     elif action == "ship_now":
         ctrl["ship_now"] = True
+        ctrl["paused"] = False
         write_controls(ctrl)
+        if not _runner_alive(ctrl=ctrl):
+            msg = start_runner()
+        else:
+            msg = "verify & push queued"
     elif action == "requeue":
         msg = requeue_task(data.get("task_id"))
         ctrl["requeue_task_id"] = None
         write_controls(ctrl)
+        # Wake a dead runner so Requeue actually gets picked up.
+        if not _runner_alive(ctrl=read_controls()):
+            start_runner()
     elif action == "cancel":
         ctrl["cancel_task_id"] = data.get("task_id")
         write_controls(ctrl)
