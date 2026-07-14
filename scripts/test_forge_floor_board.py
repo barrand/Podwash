@@ -5,10 +5,14 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import tempfile
+import textwrap
 import time
 import unittest
+from datetime import datetime, timezone
+from pathlib import Path
 from unittest import mock
 
 SCRIPTS = os.path.dirname(os.path.abspath(__file__))
@@ -459,6 +463,114 @@ class ControlHandlerTests(unittest.TestCase):
                 msg = floor.requeue_task(5)
                 self.assertIn("requeued", msg)
                 self.assertEqual(parse_task_ticket(dest).status, "Queued")
+
+
+def _task_ticket_body(
+    n: int,
+    *,
+    status: str = "Queued",
+    done_at: str | None = None,
+) -> str:
+    done_row = f"| **Done at** | {done_at} |\n" if done_at is not None else ""
+    return textwrap.dedent(
+        f"""\
+        # Task {n:03d} — T
+
+        | Field | Value |
+        |-------|-------|
+        | **ID** | {n:03d} |
+        | **Title** | T{n} |
+        | **Status** | {status} |
+        | **Kind** | tweak |
+        | **Priority** | P2 |
+        | **Area** | scripts/ |
+        {done_row}
+        ## Verification record
+
+        ```
+        VERIFY RESULT: (pending)
+        ```
+        """
+    )
+
+
+class DoneColumnTests(unittest.TestCase):
+    def test_set_task_status_done_writes_done_at(self):
+        from task_ticket import set_task_status
+
+        first = datetime(2026, 7, 13, 23, 23, 0, tzinfo=timezone.utc)
+        second = datetime(2026, 7, 14, 1, 0, 0, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as td:
+            path = os.path.join(td, "task-014-t.md")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(_task_ticket_body(14, status="In Progress"))
+            with mock.patch("task_ticket.datetime") as dt_mod:
+                dt_mod.now.return_value = first
+                dt_mod.UTC = timezone.utc
+                set_task_status(path, "Done")
+            text = Path(path).read_text(encoding="utf-8")
+            self.assertIn("| **Status** | Done |", text)
+            self.assertRegex(
+                text,
+                r"\|\s*\*\*Done at\*\*\s*\|\s*2026-07-13T23:23:00Z\s*\|",
+            )
+            self.assertEqual(text.count("| **Done at** |"), 1)
+
+            set_task_status(path, "In Progress")
+            with mock.patch("task_ticket.datetime") as dt_mod:
+                dt_mod.now.return_value = second
+                dt_mod.UTC = timezone.utc
+                set_task_status(path, "Done")
+            text2 = Path(path).read_text(encoding="utf-8")
+            self.assertRegex(
+                text2,
+                r"\|\s*\*\*Done at\*\*\s*\|\s*2026-07-14T01:00:00Z\s*\|",
+            )
+            self.assertEqual(text2.count("| **Done at** |"), 1)
+
+    def test_board_snapshot_includes_done_at(self):
+        import factory_floor.server as floor
+
+        with tempfile.TemporaryDirectory() as td:
+            tasks = Path(td) / "docs" / "tasks"
+            tasks.mkdir(parents=True)
+            (tasks / "task-010-dated.md").write_text(
+                _task_ticket_body(10, status="Done", done_at="2026-07-10T12:00:00Z"),
+                encoding="utf-8",
+            )
+            (tasks / "task-011-legacy.md").write_text(
+                _task_ticket_body(11, status="Done"),
+                encoding="utf-8",
+            )
+            with mock.patch.object(floor, "REPO_ROOT", Path(td)):
+                snap = floor.board_snapshot()
+        by_id = {t["id"]: t for t in snap["tasks"]}
+        self.assertEqual(by_id["010"]["done_at"], "2026-07-10T12:00:00Z")
+        self.assertIsNone(by_id["011"]["done_at"])
+
+    def test_done_sort_newest_first(self):
+        import factory_floor.server as floor
+
+        items = [
+            {"id": "003", "done_at": "2026-07-10T12:00:00Z"},
+            {"id": "001", "done_at": "2026-07-13T23:23:00Z"},
+            {"id": "002", "done_at": None},
+            {"id": "004", "done_at": "2026-07-12T00:00:00Z"},
+            {"id": "005", "done_at": None},
+        ]
+        ordered = floor._sort_done_column(items)
+        self.assertEqual(
+            [i["id"] for i in ordered],
+            ["001", "004", "003", "002", "005"],
+        )
+
+    def test_done_card_html_includes_closed_at(self):
+        import factory_floor.server as floor
+
+        line = floor._format_done_closed_meta("2026-07-13T23:23:00Z")
+        self.assertIn("closed", line.lower())
+        self.assertRegex(line, r"\d{4}-\d{2}-\d{2}|\bJan\b|\bFeb\b|\bMar\b|\bApr\b|\bMay\b|\bJun\b|\bJul\b|\bAug\b|\bSep\b|\bOct\b|\bNov\b|\bDec\b")
+        self.assertEqual(floor._format_done_closed_meta(None), "")
 
 
 class SessionBundleNameTests(unittest.TestCase):
