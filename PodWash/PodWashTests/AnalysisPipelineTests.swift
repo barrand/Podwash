@@ -13,9 +13,13 @@ import XCTest
 final class ASRSpyTranscriber: ASRTranscribing, @unchecked Sendable {
     private(set) var transcribeCallCount = 0
     var wordsToReturn: [TimedWord] = []
+    var transcribeDelayMilliseconds: UInt64 = 0
 
     func transcribe(fileURL: URL) async throws -> [TimedWord] {
         transcribeCallCount += 1
+        if transcribeDelayMilliseconds > 0 {
+            try await Task.sleep(nanoseconds: transcribeDelayMilliseconds * 1_000_000)
+        }
         return wordsToReturn
     }
 }
@@ -164,5 +168,27 @@ final class AnalysisPipelineTests: XCTestCase {
 
         XCTAssertNotEqual(fullRun, subsetRun)
         XCTAssertEqual(spy.transcribeCallCount, 2, "word-list change must trigger re-transcription")
+    }
+
+    func testLiveProgressEmitsSteppedSnapshotsDuringTranscription() async throws {
+        spy.wordsToReturn = try loadTranscript()
+        spy.transcribeDelayMilliseconds = 1_200
+        var snapshots: [AnalysisProgressSnapshot] = []
+        await MainActor.run {
+            pipeline.onMainActorProgress = { snapshots.append($0) }
+        }
+
+        _ = try await pipeline.analyze(
+            episode: EpisodeIdentity(id: episodeID),
+            audioURL: dummyAudioURL(),
+            targetWords: fullTargetSet
+        )
+
+        XCTAssertGreaterThanOrEqual(snapshots.count, 3, "ASR path should emit start, stepped, and complete snapshots")
+        XCTAssertTrue(snapshots.allSatisfy { $0.adRanges.isEmpty }, "Yellow ad buckets appear only on complete snapshots")
+        let firstProcessed = snapshots.first?.processedEnd ?? 0
+        let lastProcessed = snapshots.last?.processedEnd ?? 0
+        XCTAssertLessThan(firstProcessed, lastProcessed)
+        XCTAssertEqual(snapshots.last?.processedEnd, snapshots.last?.episodeDuration)
     }
 }

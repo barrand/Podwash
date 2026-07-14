@@ -315,6 +315,25 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         XCTAssertFalse(colors.allSatisfy { $0 == .grey }, "Terminal snapshot should color segments after analysis")
     }
 
+    func testPlayQueuesUntilAnalysisCompletes() async throws {
+        let model = makeShell(injectedTranscript: try loadTranscript())
+        let episode = fixtureEpisode()
+        try installLocalDownload(for: episode.id)
+        try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
+
+        model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+
+        XCTAssertTrue(model.isPreparingPlayback, "Cleaning play path should enter preparing state")
+        XCTAssertFalse(model.engine?.isPlaying ?? true, "Playback must not start before analysis")
+
+        model.toggleMiniPlayerPlayPause()
+        XCTAssertFalse(model.engine?.isPlaying ?? true, "Play tap during analysis must queue, not start")
+
+        await waitUntil { !model.isPreparingPlayback }
+        XCTAssertTrue(model.engine?.isPlaying ?? false, "Queued play should start after analysis completes")
+        XCTAssertNotNil(model.playbackAnalysisSnapshot)
+    }
+
     // MARK: - AC5: mute ramp boundaries after prepare
 
     func testPlayEpisodeAppliesMuteScheduleToEngine() async throws {
