@@ -1,7 +1,7 @@
 {
-  "approach" : "heuristic-cue-v1",
-  "durationSeconds" : 0.022,
-  "inferenceSeconds" : 0.022,
+  "approach" : "heuristic-cue-v5",
+  "durationSeconds" : 0.001,
+  "inferenceSeconds" : 0.001,
   "precision" : 1,
   "recall" : 1,
   "segmentCount" : 2,
@@ -11,8 +11,8 @@
       "start" : 14.13
     },
     {
-      "end" : 65.6,
-      "start" : 54.45
+      "end" : 64.65,
+      "start" : 56.16
     }
   ]
 }

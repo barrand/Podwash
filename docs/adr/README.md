@@ -28,7 +28,7 @@ from the relevant slice file's Role artifacts table.
 | [009](009-queue-resume.md) | Queue + resume: stores, coordinator, reload | Accepted |
 | [010](010-settings-word-lists.md) | Settings + word-list management: categories, UserDefaults store, matcher seam | Accepted |
 | [011](011-remote-commands-background-audio.md) | Remote commands + background audio: MPRemoteCommandCenter doubles, spokenAudio session, UIBackgroundModes | Accepted |
-| [012](012-content-segmentation-approach.md) | Content segmentation approach: heuristic cue scoring (`heuristic-cue-v1`) | Accepted |
+| [012](012-content-segmentation-approach.md) | Content segmentation approach: span-grow (`heuristic-cue-v5`) | Accepted |
 | [013](013-segmentation-integration.md) | Segmentation integration: pipeline merge, cache, independent actions, skip override | Accepted |
 | [014](014-discovery-itunes-multi-sub.md) | Discovery: iTunes Search client + multi-subscription store | Accepted |
 | [015](015-app-shell-navigation.md) | App shell navigation: Library + Discover tabs + mini-player | Accepted |

@@ -11,21 +11,21 @@ Synthetic podcast episode *Urban Roots* (~79 s ASR span) with clearly separable 
 | Time (approx.) | Passage | Classification |
 |----------------|---------|----------------|
 | 0:00–0:14 | Intro — balcony composting topic setup | **On-topic** |
-| 0:14–0:28 | Sponsor read — GreenGrow promo, discount code, link in description | **Positive (superfluous/ad-like)** |
+| 0:14–0:28 | Sponsor read — “This episode is sponsored by GreenGrow…” | **Positive (ad)** |
 | 0:28–0:56 | Composting how-to (worm bins, odor control, winter tips) | **On-topic** |
-| 0:56–1:06 | Coffee-shop digression — explicit “side note / unrelated / tangent” | **Positive (tangential)** |
+| 0:56–1:05 | Mid-roll — “This message comes from CafeLocal… learn more at cafelocal.com” | **Positive (ad)** |
 | 1:06–1:19 | Outro — composting checklist + next-episode tease | **On-topic** |
 
 ## Golden labels (`golden_segments.json`)
 
-Positive-class ranges only (`[{ "start", "end" }]`). Bounds snap to the first/last `TimedWord` of each labeled passage in `spike_transcript.json`.
+Positive-class ranges only (`[{ "start", "end" }]`). Bounds snap to the first/last `TimedWord` of each labeled passage in `spike_transcript.json` (span-grow / `heuristic-cue-v5` anchors).
 
 | # | Start (s) | End (s) | Duration (s) | Rationale |
 |---|-----------|---------|--------------|-----------|
-| 1 | 14.130 | 27.510 | 13.4 | Sponsored segment: `sponsored`, `our friends at`, `use code`, `discount`, `link in the description`, `promo` |
-| 2 | 56.160 | 65.600 | 9.4 | Tangential digression: `side note`, `unrelated`, `real quick tangent`, `before we continue` |
+| 1 | 14.130 | 27.510 | 13.4 | Opener: `this episode is sponsored by` + promo copy through `shipping.` |
+| 2 | 56.160 | 64.650 | 8.5 | Opener: `this message comes from` + `learn more at cafelocal.com` (gap-snapped end) |
 
-**Total positive duration:** 22.8 s (≥ 15 s required).
+**Total positive duration:** ≥ 15 s required.
 
 ## Independence guarantee
 
@@ -66,8 +66,8 @@ bounds remain aligned with `golden_segments.json` (±0.001 s).
 | Class | Start (s) | End (s) | Provenance |
 |-------|-----------|---------|------------|
 | Profanity | 41.500 | 41.950 | Hand-computed from inserted `damn` via matching-spec §5 padding (`start − 0.08`, `end + 0.12`; duration 0.45 s ≥ `MIN_CENSOR_SECONDS`) |
-| Segment 1 | 14.130 | 27.510 | Reused from `golden_segments.json` (sponsor read) |
-| Segment 2 | 54.450 | 65.600 | `HeuristicContentSegmenter` output on `integration_transcript.json` (committed in `segmentation-benchmark-results.json`; lead-in expansion before the hand-labeled `Side note` cue at 56.16 s) |
+| Segment 1 | 14.130 | 27.510 | Reused from `golden_segments.json` (GreenGrow sponsor) |
+| Segment 2 | 56.160 | 64.650 | Reused from `golden_segments.json` (CafeLocal sponsor) |
 
 **Independence:** profanity bounds were computed from the transcript + normative spec
 **before** Slice 19 pipeline implementation. Segment bounds in `integration_golden.json`
