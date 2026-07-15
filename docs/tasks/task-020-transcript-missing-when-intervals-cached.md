@@ -4,7 +4,8 @@
 |-------|-------|
 | **ID** | 020 |
 | **Title** | Transcript affordance missing when intervals already cached |
-| **Status** | In Progress |
+| **Status** | Done |
+| **Done at** | 2026-07-15T18:01:21Z |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/AnalysisPipeline.swift`, `PodWash/PodWash/TranscriptCache.swift`, `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWash/EpisodeListView.swift`, `PodWash/PodWash/AppShellView.swift`, `PodWash/PodWashTests/AnalysisPipelineTests.swift`, `PodWash/PodWashUITests/TranscriptUITests.swift` |

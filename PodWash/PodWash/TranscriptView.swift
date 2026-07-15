@@ -20,7 +20,12 @@ struct TranscriptView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         aggregateHosts
 
-                        FlowTranscriptWords(words: viewModel.words)
+                        TranscriptParagraphsView(
+                            words: viewModel.words,
+                            paragraphs: TranscriptViewModel.paragraphs(
+                                from: viewModel.words.map(\.word)
+                            )
+                        )
                     }
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -91,24 +96,43 @@ struct TranscriptView: View {
     }
 }
 
-/// Simple wrapping flow of transcript words.
-private struct FlowTranscriptWords: View {
+/// Sentence paragraphs with inline-wrapping words and start timestamps.
+private struct TranscriptParagraphsView: View {
     let words: [TranscriptWordDisplay]
+    let paragraphs: [TranscriptParagraph]
 
     var body: some View {
-        // LazyVStack of rows keeps ScrollViewReader ids stable without a custom layout.
-        LazyVStack(alignment: .leading, spacing: 8) {
-            ForEach(words, id: \.index) { display in
-                Text(display.word.word)
-                    .font(.body)
-                    .foregroundStyle(foreground(for: display))
-                    .id(display.index)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityIdentifier("transcript.word_\(display.index)")
-                    .accessibilityLabel(display.word.word)
-                    .accessibilityValue(accessibilityValue(for: display))
+        LazyVStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(paragraphs.enumerated()), id: \.offset) { paragraphIndex, paragraph in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(paragraph.formattedStartTimestamp)
+                        .font(.caption)
+                        .foregroundStyle(BrandTheme.onSurface.opacity(0.6))
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityIdentifier("transcript.paragraph_\(paragraphIndex).timestamp")
+                        .accessibilityLabel("Paragraph start time")
+                        .accessibilityValue(paragraph.formattedStartTimestamp)
+
+                    WrappingTranscriptWordsLayout(horizontalSpacing: 4, verticalSpacing: 4) {
+                        ForEach(wordsIn(paragraph), id: \.index) { display in
+                            Text(display.word.word)
+                                .font(.body)
+                                .foregroundStyle(foreground(for: display))
+                                .id(display.index)
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityIdentifier("transcript.word_\(display.index)")
+                                .accessibilityLabel(display.word.word)
+                                .accessibilityValue(accessibilityValue(for: display))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         }
+    }
+
+    private func wordsIn(_ paragraph: TranscriptParagraph) -> [TranscriptWordDisplay] {
+        Array(words[paragraph.firstWordIndex ... paragraph.lastWordIndex])
     }
 
     private func foreground(for display: TranscriptWordDisplay) -> Color {
@@ -125,5 +149,62 @@ private struct FlowTranscriptWords: View {
         if display.skippedAd { return "skippedAd" }
         if display.listened { return "listened" }
         return ""
+    }
+}
+
+/// Flow layout that wraps transcript word views onto multiple lines.
+private struct WrappingTranscriptWordsLayout: Layout {
+    var horizontalSpacing: CGFloat
+    var verticalSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard !subviews.isEmpty else { return .zero }
+
+        let maxWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var totalWidth: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > maxWidth {
+                totalWidth = max(totalWidth, x - horizontalSpacing)
+                x = 0
+                y += rowHeight + verticalSpacing
+                rowHeight = 0
+            }
+            if x > 0 { x += horizontalSpacing }
+            x += size.width
+            rowHeight = max(rowHeight, size.height)
+        }
+
+        totalWidth = max(totalWidth, x)
+        return CGSize(width: totalWidth, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard !subviews.isEmpty else { return }
+
+        let maxWidth = bounds.width
+        var x = bounds.minX
+        var y = bounds.minY
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > bounds.minX, x + size.width > bounds.maxX {
+                x = bounds.minX
+                y += rowHeight + verticalSpacing
+                rowHeight = 0
+            }
+            if x > bounds.minX { x += horizontalSpacing }
+            subview.place(
+                at: CGPoint(x: x, y: y),
+                proposal: ProposedViewSize(width: size.width, height: size.height)
+            )
+            x += size.width
+            rowHeight = max(rowHeight, size.height)
+        }
     }
 }
