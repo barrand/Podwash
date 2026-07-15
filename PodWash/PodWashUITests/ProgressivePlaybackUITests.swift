@@ -21,7 +21,8 @@ final class ProgressivePlaybackUITests: XCTestCase {
 
     private static let firstChunkTimelineValue = "ready:3,processing:1,pending:8"
     private static let midRunTimelineValue = "ready:6,processing:1,pending:5"
-    private static let terminalTimelineValue = "ready:12,processing:0,pending:0"
+    /// Terminal complete super seek bar — slice-27 adds muteMarkers:2 (partial mutes in fixture).
+    private static let terminalTimelineValue = "ready:12,processing:0,pending:0,muteMarkers:2"
 
     override func setUpWithError() throws {
         continueAfterFailure = false

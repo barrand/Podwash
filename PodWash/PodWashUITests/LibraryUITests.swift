@@ -27,7 +27,10 @@ final class LibraryUITests: XCTestCase {
         "-UITestFixtureLibraryAnalysisTimeline",
     ]
 
+    /// Mini-player timeline — unchanged by slice-27 (mute markers are full-player only).
     private static let terminalTimelineValue = "ready:12,processing:0,pending:0"
+    /// Full-player super seek bar terminal for library analysis fixture (0 profanity mutes).
+    private static let terminalSuperSeekBarValue = "ready:12,processing:0,pending:0,muteMarkers:0"
     private static let timelineValuePattern = try! NSRegularExpression(
         pattern: #"^ready:(\d+),processing:(\d+),pending:(\d+)$"#
     )
@@ -163,6 +166,20 @@ final class LibraryUITests: XCTestCase {
             return false
         }
         return ready + processing + pending == 12
+    }
+
+    private static func segmentTriple(from value: String) -> (Int, Int, Int)? {
+        let segmentPart = value.split(separator: ",").filter { !$0.hasPrefix("muteMarkers:") }
+        guard segmentPart.count == 3 else { return nil }
+        func parse(_ s: Substring, prefix: String) -> Int? {
+            guard s.hasPrefix(prefix), let v = Int(s.dropFirst(prefix.count)) else { return nil }
+            return v
+        }
+        guard let r = parse(segmentPart[0], prefix: "ready:"),
+              let p = parse(segmentPart[1], prefix: "processing:"),
+              let n = parse(segmentPart[2], prefix: "pending:")
+        else { return nil }
+        return (r, p, n)
     }
 
     private func waitForAccessibilityValue(
@@ -340,12 +357,19 @@ final class LibraryUITests: XCTestCase {
             "playback.superSeekBar must appear within \(fixtureTimeout)s after expanding mini-player"
         )
         waitForAccessibilityValue(
-            miniValue,
+            Self.terminalSuperSeekBarValue,
             identifier: "playback.superSeekBar",
             in: app,
             timeout: fixtureTimeout,
-            message: "playback.superSeekBar must match miniPlayerAnalysisTimeline accessibilityValue"
+            message: "playback.superSeekBar must expose terminal segment triple plus muteMarkers:0"
         )
+        if let superValue = element("playback.superSeekBar", in: app).value as? String {
+            XCTAssertEqual(
+                Self.segmentTriple(from: superValue),
+                Self.segmentTriple(from: miniValue),
+                "Super seek bar segment triple must match mini-player timeline"
+            )
+        }
         XCTAssertFalse(
             element("playbackAnalysisTimeline", in: app).exists,
             "Retired playbackAnalysisTimeline must not appear after slice-25 migration"
