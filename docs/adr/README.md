@@ -38,3 +38,4 @@ from the relevant slice file's Role artifacts table.
 | [019](019-brand-theme.md) | Brand theme: tokens, display name, App Icon linkage | Accepted |
 | [020](020-production-analysis-composition.md) | Production analysis composition: model bundle + shell wiring | Accepted |
 | [021](021-progressive-playback-super-seek-bar.md) | Progressive playback + super seek bar: chunked analyze, frontier seek, seek-bar chrome | Accepted |
+| [022](022-transcript-cache.md) | Transcript cache + episode transcript viewer: terminal `[TimedWord]` persist, listened/skipped-ad sheet | Accepted |

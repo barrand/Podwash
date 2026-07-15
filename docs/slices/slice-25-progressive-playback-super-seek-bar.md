@@ -4,7 +4,8 @@
 |-------|-------|
 | **ID** | 25 |
 | **Title** | Progressive playback + super seek bar |
-| **Status** | Ready |
+| **Status** | Done |
+| **Done at** | 2026-07-15T15:51:29Z |
 | **Crux** | On a stepped analyzer fixture (**120.0 s**, first chunk at **30.0 s**), playback starts after chunk-1 intervals are applied — not after full-episode ASR — while the full-player **super seek bar** exposes live 12-segment counts, elapsed + remaining time, and seek targets clamped to `processedEnd`, all assertable in XCTest without device listening or Skipper comparison. |
 
 ## PRD / spec references
