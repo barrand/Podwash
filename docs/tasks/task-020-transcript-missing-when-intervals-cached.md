@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 020 |
 | **Title** | Transcript affordance missing when intervals already cached |
-| **Status** | Queued |
+| **Status** | In Progress |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/AnalysisPipeline.swift`, `PodWash/PodWash/TranscriptCache.swift`, `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWash/EpisodeListView.swift`, `PodWash/PodWash/AppShellView.swift`, `PodWash/PodWashTests/AnalysisPipelineTests.swift`, `PodWash/PodWashUITests/TranscriptUITests.swift` |
@@ -58,5 +58,5 @@
 > Loop writes `VERIFY RESULT:` here. For tasks, `tier=2` and `filtered=1` are valid for Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=15 passed=15 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260715-115732.xcresult tier=2 class=tests
 ```

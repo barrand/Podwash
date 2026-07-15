@@ -77,6 +77,9 @@ final class AppShellModel {
     /// Full controls presentation (sheet).
     var isFullPlayerPresented: Bool = false
 
+    /// Bumped after playback prepare when a transcript file exists — refreshes episode-row affordance.
+    private(set) var transcriptAffordanceGeneration = 0
+
     /// Transcript sheet presentation (Slice 26). Non-nil when the sheet should show.
     var transcriptSheetEpisodeID: String? = nil
     /// View model for the open transcript sheet (built on present).
@@ -347,7 +350,8 @@ final class AppShellModel {
         // except when a player-timeline / progressive UITest fixture is active.
         if isFixtureLibraryMode,
            !FixtureLibraryAnalysisTimeline.isEnabled,
-           !FixtureProgressivePlayback.isEnabled {
+           !FixtureProgressivePlayback.isEnabled,
+           !FixtureTranscript.isNoCacheEnabled {
             PlaybackDiagnostics.info("playEpisode skip prepare — fixture library mode")
             return
         }
@@ -370,6 +374,7 @@ final class AppShellModel {
             action: settingsStore.unrelatedCensorAction()
         )
         let injected = injectedTranscriptForTesting
+            ?? (FixtureTranscript.isNoCacheEnabled ? FixtureTranscript.makeTranscript() : nil)
 
         acceptingPlaybackProgress = true
         isPreparingPlayback = true
@@ -387,6 +392,9 @@ final class AppShellModel {
             defer {
                 acceptingPlaybackProgress = false
                 isPreparingPlayback = false
+                if transcriptExists(for: episode.id) {
+                    transcriptAffordanceGeneration += 1
+                }
                 let shouldPlay = pendingPlayAfterPrepare
                 pendingPlayAfterPrepare = false
                 if shouldPlay, engine?.isPlaying != true {
@@ -493,6 +501,9 @@ final class AppShellModel {
 
     /// Whether the now-playing episode has a cached transcript (full-player affordance).
     var nowPlayingTranscriptExists: Bool {
+        // Observe generation so the full-player overlay refreshes after backfill
+        // (disk `exists` alone is not an @Observable dependency).
+        _ = transcriptAffordanceGeneration
         guard let episodeID = nowPlayingEpisodeID else { return false }
         return transcriptExists(for: episodeID)
     }

@@ -4,7 +4,8 @@
 |-------|-------|
 | **ID** | 019 |
 | **Title** | Super seek bar yellow regions do not match skippable ad content |
-| **Status** | In Progress |
+| **Status** | Done |
+| **Done at** | 2026-07-15T17:35:25Z |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/AnalysisTimelineModel.swift`, `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWash/AnalysisPipeline.swift`, `PodWash/PodWash/PlaybackCoordinator.swift`, `PodWash/PodWash/HeuristicContentSegmenter.swift`, `PodWash/PodWashTests/AnalysisTimelineModelTests.swift`, `PodWash/PodWashTests/ProductionAnalysisWiringTests.swift` |

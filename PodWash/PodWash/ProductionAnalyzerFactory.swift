@@ -30,6 +30,9 @@ enum ProductionAnalyzerFactory {
             if FixtureLibraryAnalysisTimeline.isEnabled {
                 return FixtureLibraryAnalysisTimeline.makeSteppedAnalyzer()
             }
+            if FixtureTranscript.isNoCacheEnabled {
+                return FixtureTranscript.makeAnalyzer()
+            }
             return InstantEpisodeAnalyzer()
         }
 

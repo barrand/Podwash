@@ -17,6 +17,7 @@ struct PodcastDetailView: View {
     /// Slice 26 — transcript affordance gate + present action.
     var transcriptExists: ((String) -> Bool)? = nil
     var onViewTranscript: ((String) -> Void)? = nil
+    var transcriptAffordanceGeneration: Int = 0
     @State private var queueRevision = 0
     /// Landscape / short windows (~402pt) — keep episodeList tall enough to hit cells.
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -56,6 +57,7 @@ struct PodcastDetailView: View {
 
     private func loadedView(_ feed: PodcastFeed) -> some View {
         let _ = queueRevision
+        let _ = transcriptAffordanceGeneration
         return VStack(alignment: .leading, spacing: 0) {
             podcastHeader(feed)
             upNextSection(feed: feed)
@@ -67,7 +69,8 @@ struct PodcastDetailView: View {
                 onQueueChanged: { queueRevision += 1 },
                 onPlayEpisode: onPlayEpisode,
                 transcriptExists: transcriptExists,
-                onViewTranscript: onViewTranscript
+                onViewTranscript: onViewTranscript,
+                transcriptAffordanceGeneration: transcriptAffordanceGeneration
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             // Prefer list height over header intrinsic size when the window is short

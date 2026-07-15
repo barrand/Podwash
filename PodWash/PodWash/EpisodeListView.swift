@@ -17,10 +17,12 @@ struct EpisodeListView: View {
     var onPlayEpisode: ((Episode) -> Void)? = nil
     var transcriptExists: ((String) -> Bool)? = nil
     var onViewTranscript: ((String) -> Void)? = nil
+    var transcriptAffordanceGeneration: Int = 0
 
     var body: some View {
         // Observe generation so representable refreshes when analysis UI changes.
         let _ = analysisViewModel.contentGeneration
+        let _ = transcriptAffordanceGeneration
         return EpisodeTableViewRepresentable(
             feed: feed,
             analysisViewModel: analysisViewModel,
@@ -29,7 +31,8 @@ struct EpisodeListView: View {
             onQueueChanged: onQueueChanged,
             onPlayEpisode: onPlayEpisode,
             transcriptExists: transcriptExists,
-            onViewTranscript: onViewTranscript
+            onViewTranscript: onViewTranscript,
+            transcriptAffordanceGeneration: transcriptAffordanceGeneration
         )
         .background(BrandTheme.surface)
     }
@@ -44,6 +47,8 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
     var onPlayEpisode: ((Episode) -> Void)?
     var transcriptExists: ((String) -> Bool)?
     var onViewTranscript: ((String) -> Void)?
+    /// Explicit input so SwiftUI always calls `updateUIViewController` after backfill.
+    var transcriptAffordanceGeneration: Int
 
     func makeUIViewController(context: Context) -> EpisodeTableViewController {
         EpisodeTableViewController(
@@ -67,7 +72,8 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
             onQueueChanged: onQueueChanged,
             onPlayEpisode: onPlayEpisode,
             transcriptExists: transcriptExists,
-            onViewTranscript: onViewTranscript
+            onViewTranscript: onViewTranscript,
+            transcriptAffordanceGeneration: transcriptAffordanceGeneration
         )
     }
 }
@@ -81,6 +87,7 @@ private final class EpisodeTableViewController: UITableViewController {
     private var onPlayEpisode: ((Episode) -> Void)?
     private var transcriptExists: ((String) -> Bool)?
     private var onViewTranscript: ((String) -> Void)?
+    private var transcriptAffordanceGeneration = 0
 
     init(
         feed: PodcastFeed,
@@ -141,7 +148,8 @@ private final class EpisodeTableViewController: UITableViewController {
         onQueueChanged: @escaping () -> Void,
         onPlayEpisode: ((Episode) -> Void)?,
         transcriptExists: ((String) -> Bool)?,
-        onViewTranscript: ((String) -> Void)?
+        onViewTranscript: ((String) -> Void)?,
+        transcriptAffordanceGeneration: Int = 0
     ) {
         let feedChanged = self.feed != feed
         self.feed = feed
@@ -152,6 +160,7 @@ private final class EpisodeTableViewController: UITableViewController {
         self.onPlayEpisode = onPlayEpisode
         self.transcriptExists = transcriptExists
         self.onViewTranscript = onViewTranscript
+        self.transcriptAffordanceGeneration = transcriptAffordanceGeneration
         analysisViewModel.onAnalyzingEpisodeIDChanged = { [weak self] in
             guard let self else { return }
             self.refreshAnalysisDisplayOnVisibleRows()
@@ -173,6 +182,9 @@ private final class EpisodeTableViewController: UITableViewController {
             // surface before XCTest goes idle.
             refreshAnalysisDisplayOnVisibleRows()
             refreshQueueDisplayOnVisibleRows()
+            // `transcriptAffordanceGeneration` is an explicit representable input so
+            // SwiftUI invokes this update after task-020 backfill completes.
+            refreshTranscriptDisplayOnVisibleRows()
         }
         layoutEpisodeTableIfReady()
     }
@@ -211,6 +223,20 @@ private final class EpisodeTableViewController: UITableViewController {
             let episode = feed.episodes[indexPath.row]
             cell.applyQueueDisplay(isQueued: queued.contains(episode.id), index: indexPath.row)
         }
+    }
+
+    private func refreshTranscriptDisplayOnVisibleRows() {
+        for indexPath in tableView.indexPathsForVisibleRows ?? [] {
+            guard let cell = tableView.cellForRow(at: indexPath) as? EpisodeTableViewCell else { continue }
+            let episode = feed.episodes[indexPath.row]
+            let showsTranscript = transcriptExists?(episode.id) ?? false
+            cell.applyTranscriptAffordance(
+                showsTranscript: showsTranscript,
+                onViewTranscript: showsTranscript ? viewTranscriptHandler(for: indexPath) : nil
+            )
+        }
+        layoutEpisodeTableIfReady()
+        UIAccessibility.post(notification: .layoutChanged, argument: nil)
     }
 
     private func refreshAnalysisDisplayOnVisibleRows() {
@@ -675,6 +701,11 @@ final class EpisodeTableViewCell: UITableViewCell {
         transcriptButton.accessibilityIdentifier = showsTranscript ? "episode.viewTranscript" : nil
         transcriptButton.accessibilityLabel = showsTranscript ? "View transcript" : nil
         transcriptButton.accessibilityHint = showsTranscript ? "Shows the episode transcript." : nil
+    }
+
+    func applyTranscriptAffordance(showsTranscript: Bool, onViewTranscript: (() -> Void)?) {
+        self.onViewTranscript = onViewTranscript
+        applyTranscriptDisplay(showsTranscript: showsTranscript)
     }
 
     func applyQueueDisplay(isQueued: Bool, index: Int) {

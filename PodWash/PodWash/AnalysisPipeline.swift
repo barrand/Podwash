@@ -121,8 +121,16 @@ final class AnalysisPipeline: @unchecked Sendable {
 
         let union: [CensorInterval]
         if let cached = cache.load(episodeID: episode.id, targetWords: targetWords) {
-            // Interval cache hit — do not overwrite transcript (ADR-022 §4).
+            // Interval cache hit — do not overwrite an existing transcript (ADR-022 §4).
             union = cached
+            if transcriptCache.load(episodeID: episode.id) == nil {
+                try await backfillMissingTranscript(
+                    episode: episode,
+                    audioURL: audioURL,
+                    duration: duration,
+                    injectedTranscript: injectedTranscript
+                )
+            }
         } else if onPartialIntervals != nil {
             union = try await analyzeChunkedColdMiss(
                 episode: episode,
@@ -283,6 +291,25 @@ final class AnalysisPipeline: @unchecked Sendable {
         // Terminal-only transcript write (ADR-022 §4 / ADR-021) — never mid-chunk.
         try transcriptCache.store(fullTranscript, episodeID: episode.id)
         return lastUnion
+    }
+
+    /// Interval cache hit with no transcript file — persist ASR (or injected) without re-analyzing intervals.
+    private func backfillMissingTranscript(
+        episode: EpisodeIdentity,
+        audioURL: URL,
+        duration: Double,
+        injectedTranscript: [TimedWord]?
+    ) async throws {
+        let transcript: [TimedWord]
+        if let injected = injectedTranscript, !injected.isEmpty {
+            transcript = injected
+        } else {
+            transcript = try await transcribeWithLiveProgress(
+                fileURL: audioURL,
+                duration: duration
+            )
+        }
+        try transcriptCache.store(transcript, episodeID: episode.id)
     }
 
     /// Runs ASR while emitting time-based timeline progress (ADR-018 §6 — not Whisper chunk truth).

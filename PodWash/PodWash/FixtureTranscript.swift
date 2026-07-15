@@ -92,6 +92,15 @@ enum FixtureTranscript {
         }
     }
 
+    /// No-cache UITest / backfill path — real cache pipeline with deterministic ASR.
+    static func makeAnalyzer() -> AnalysisPipeline {
+        AnalysisPipeline(
+            transcriber: FixtureTranscriptASR(),
+            cache: .applicationSupport,
+            transcriptCache: .applicationSupport
+        )
+    }
+
     /// Clears leftover transcript files for seeded library episodes (AC9 progressive negative).
     @MainActor
     static func clearSeededTranscripts(
@@ -109,4 +118,11 @@ enum FixtureTranscript {
 
 private enum FixtureTranscriptError: Error {
     case missingSeededEpisode
+}
+
+private struct FixtureTranscriptASR: ASRTranscribing, Sendable {
+    func transcribe(fileURL: URL) async throws -> [TimedWord] {
+        _ = fileURL
+        return FixtureTranscript.makeTranscript()
+    }
 }

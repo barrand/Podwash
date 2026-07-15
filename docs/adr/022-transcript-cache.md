@@ -53,7 +53,7 @@ proof.
 | `PodWash/PodWash/TranscriptCache.swift` | app | **new** | On-disk JSON `[TimedWord]` keyed by `episodeID`; injectable `baseDirectory`; `store` / `load` / `exists` / `remove` / `clear` |
 | `PodWash/PodWash/TranscriptViewModel.swift` | app | **new** | Pure flags: per-word `listened` / `skippedAd`, aggregate counts, scroll-anchor time; **no SwiftUI** |
 | `PodWash/PodWash/TranscriptView.swift` | app | **new** | Scrollable transcript sheet; auto-scroll on open; accessibility contract (UX owns pixels — `slice-26-ux.md`) |
-| `PodWash/PodWash/AnalysisPipeline.swift` | app | **changed** | Inject `TranscriptCache`; **terminal-only** `store` of full `[TimedWord]` on cold-miss complete (blocking + chunked); **skip** transcript write on interval cache hit |
+| `PodWash/PodWash/AnalysisPipeline.swift` | app | **changed** | Inject `TranscriptCache`; **terminal-only** `store` of full `[TimedWord]` on cold-miss complete (blocking + chunked); on interval cache hit **skip** overwrite when transcript exists, **backfill** `store` when missing (task-020) |
 | `PodWash/PodWash/ProductionAnalyzerFactory.swift` | app | **changed** | Wire production `TranscriptCache.applicationSupport` (or injected test dirs) into pipeline |
 | `PodWash/PodWash/AppShellModel.swift` | app | **changed** | Affordance gate (`exists`); present transcript sheet; load transcript + intervals + resume position into ViewModel |
 | `PodWash/PodWash/AppShellView.swift` | app | **changed** | Full-player `playback.viewTranscript` content-tree overlay when transcript exists (not ToolbarItem; avoids duplicate AX id); transcript sheets |
@@ -150,7 +150,8 @@ DownloadPaths.fileNameStem(for: episodeID)` — **no** word-list fingerprint has
 | Event | Behavior |
 |-------|----------|
 | Terminal cold-miss analyze completes | `store(fullTranscript, episodeID:)` **once** (overwrite) |
-| Interval cache hit | **Do not** call `store` (leave existing file; legacy = no file → affordance hidden) |
+| Interval cache hit + transcript file present | **Do not** call `store` (leave existing file stable — Slice 26 AC2) |
+| Interval cache hit + transcript file **missing** | **Backfill** — ASR or injected transcript → `store` once (task-020); do **not** re-derive / rewrite intervals |
 | Progressive chunk mid-flight | **No** transcript write (ADR-021); affordance stays hidden |
 | Word-list change → interval miss → re-ASR | Terminal complete **overwrites** transcript |
 | `deleteDownload` / episode cache purge | `remove(episodeID:)` |
@@ -173,9 +174,11 @@ production factory; temp dirs in tests — same pattern as `IntervalCache`).
 chunks; **only after the final chunk**, alongside `IntervalCache.store`, call
 `transcriptCache.store(fullTranscript, episodeID:)`. Partial chunks must not write.
 
-**Interval cache hit:** return cached intervals; **omit** transcript `store`. AC2:
-second `analyze` → ASR spy **0** additional calls; loaded transcript `Equatable` to
-first persist.
+**Interval cache hit:** return cached intervals. If a transcript file already
+exists, **omit** transcript `store` (Slice 26 AC2 — second `analyze` → ASR spy
+**0** additional calls; loaded transcript `Equatable` to first persist). If the
+transcript file is **missing** (legacy / pre–Slice 26 intervals), run ASR or use
+an injected transcript and `store` once without rewriting intervals (task-020).
 
 Public `analyze(...) → [CensorInterval]` return type **unchanged**.
 
@@ -204,7 +207,7 @@ On present:
 | Transcript | **24** words, **2.5** s each, span **0…60** s |
 | Intervals | ≥ 1 unrelated **skip** spanning **35.0–42.5** s (→ **3** skippedAd words) |
 | Resume | `playbackPosition = 30.0` → **12** listened |
-| No-transcript control | Same family **without** writing the transcript file (AC7) |
+| No-transcript control | `-UITestFixtureTranscriptNoCache` — intervals + resume, omit transcript file (AC7). With cleaning on + play/prepare, task-020 backfills transcript so `episode.viewTranscript` appears. |
 | Progressive negative | Separate launch: `-UITestFixtureProgressivePlayback` (AC9) |
 
 Fast unit fixtures stay as pinned in the slice file (`spec-section8.input.json`;
