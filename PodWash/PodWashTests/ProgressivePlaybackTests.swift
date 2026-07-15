@@ -104,6 +104,10 @@ final class ProgressivePlaybackTests: XCTestCase {
     private let chunkSize = AnalysisChunking.chunkSize
     private let chunkReadyTolerance: TimeInterval = 0.5
     private let pipelineTolerance = 0.0005
+    /// Task-022 intro unrelated skip fixture (ADR-002 skip-seek contract).
+    private let introSkipStart = 0.0
+    private let introSkipEnd = 8.0
+    private let skipSeekTolerance = 0.1
     private let sineFixtureName = "sine-300hz-5s"
     private let sineFixtureExt = "wav"
     private let fullTargetSet: Set<String> = ["shit", "damn"]
@@ -205,6 +209,101 @@ final class ProgressivePlaybackTests: XCTestCase {
         try loadFirstChunkGolden().map {
             CensorInterval(start: $0.start, end: $0.end, action: .mute, source: .profanity)
         }
+    }
+
+    private func makeIntroRaceProgressiveAnalyzer(
+        betweenSnapshotDelay: Duration = .milliseconds(100),
+        terminalHold: Duration = .seconds(2)
+    ) -> ProgressiveSteppedTestAnalyzer {
+        let introSkip = CensorInterval(
+            start: introSkipStart,
+            end: introSkipEnd,
+            action: .skip,
+            source: .unrelatedContent
+        )
+        return ProgressiveSteppedTestAnalyzer(
+            snapshots: pinnedSnapshots(),
+            partialIntervalsBySnapshot: [
+                [],
+                [introSkip],
+                [introSkip],
+            ],
+            betweenSnapshotDelay: betweenSnapshotDelay,
+            terminalHold: terminalHold
+        )
+    }
+
+    private func writeSilentWAV(to url: URL, duration: TimeInterval, sampleRate: UInt32 = 1000) throws {
+        let numSamples = UInt32((duration * Double(sampleRate)).rounded(.down))
+        let byteRate = sampleRate * 2
+        let dataSize = numSamples * 2
+        let riffSize = 36 + dataSize
+
+        var header = Data()
+        header.append(contentsOf: "RIFF".utf8)
+        header.append(contentsOf: withUnsafeBytes(of: riffSize.littleEndian) { Data($0) })
+        header.append(contentsOf: "WAVE".utf8)
+        header.append(contentsOf: "fmt ".utf8)
+        header.append(contentsOf: withUnsafeBytes(of: UInt32(16).littleEndian) { Data($0) })
+        header.append(contentsOf: withUnsafeBytes(of: UInt16(1).littleEndian) { Data($0) })
+        header.append(contentsOf: withUnsafeBytes(of: UInt16(1).littleEndian) { Data($0) })
+        header.append(contentsOf: withUnsafeBytes(of: sampleRate.littleEndian) { Data($0) })
+        header.append(contentsOf: withUnsafeBytes(of: byteRate.littleEndian) { Data($0) })
+        header.append(contentsOf: withUnsafeBytes(of: UInt16(2).littleEndian) { Data($0) })
+        header.append(contentsOf: withUnsafeBytes(of: UInt16(16).littleEndian) { Data($0) })
+        header.append(contentsOf: "data".utf8)
+        header.append(contentsOf: withUnsafeBytes(of: dataSize.littleEndian) { Data($0) })
+
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        FileManager.default.createFile(atPath: url.path, contents: nil)
+        let handle = try FileHandle(forWritingTo: url)
+        defer { try? handle.close() }
+        try handle.write(contentsOf: header)
+
+        let chunk = Data(repeating: 0, count: Int(byteRate))
+        var remaining = Int(dataSize)
+        while remaining > 0 {
+            let writeSize = min(remaining, chunk.count)
+            try handle.write(contentsOf: chunk.prefix(writeSize))
+            remaining -= writeSize
+        }
+    }
+
+    private func longFixtureURL(
+        duration: TimeInterval = 120.0,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> URL {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("podwash-progressive-intro-\(UUID().uuidString).wav")
+        do {
+            try writeSilentWAV(to: tempURL, duration: duration)
+        } catch {
+            XCTFail("Could not write silent fixture: \(error)", file: file, line: line)
+            return URL(fileURLWithPath: "/dev/null")
+        }
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: tempURL)
+        }
+        return tempURL
+    }
+
+    private func waitForEngineReady(_ engine: PlaybackEngine, timeout: TimeInterval = 5) async {
+        let ready = expectation(description: "engine duration loaded")
+        let deadline = Date().addingTimeInterval(timeout)
+        func poll() {
+            engine.refreshCurrentTime()
+            if engine.duration > 0 {
+                ready.fulfill()
+            } else if Date() < deadline {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: poll)
+            }
+        }
+        poll()
+        await fulfillment(of: [ready], timeout: timeout)
     }
 
     private func makeProgressiveAnalyzer(
@@ -400,6 +499,84 @@ final class ProgressivePlaybackTests: XCTestCase {
             analyzer.analyzeReturned,
             "Playback must start before analyze() returns (full ASR not required)"
         )
+    }
+
+    // MARK: - Task 022: intro unrelated skip catch-up during progressive prepare (AC1)
+
+    func testIntroUnrelatedSkipFiresWhenScheduleLandsDuringIntro() async throws {
+        let analyzer = makeIntroRaceProgressiveAnalyzer()
+        let audioURL = longFixtureURL(duration: episodeDuration)
+        let engine = PlaybackEngine(url: audioURL, title: "Intro skip race", artist: "PodWash QA")
+        await waitForEngineReady(engine)
+
+        let skipCallback = expectation(description: "intro unrelated skip callback")
+        var capturedSkip: CensorInterval?
+        engine.onUnrelatedContentSkip = { interval, skippedSeconds in
+            capturedSkip = interval
+            XCTAssertEqual(
+                skippedSeconds,
+                self.introSkipEnd - self.introSkipStart,
+                accuracy: self.pipelineTolerance,
+                "Callback must report full intro skip span"
+            )
+            skipCallback.fulfill()
+        }
+
+        let coordinator = PlaybackCoordinator(pipeline: analyzer, engine: engine)
+        let unrelated = UnrelatedContentOptions(enabled: true, action: .skip)
+        let chunkReady = expectation(description: "first chunk ready without intro skip")
+
+        let prepareTask = Task {
+            try await coordinator.preparePlaybackProgressive(
+                episode: EpisodeIdentity(id: episodeID),
+                audioURL: audioURL,
+                targetWords: [],
+                action: .mute,
+                unrelatedContent: unrelated,
+                onChunkReady: {
+                    chunkReady.fulfill()
+                }
+            )
+        }
+
+        await fulfillment(of: [chunkReady], timeout: chunkReadyTolerance)
+        XCTAssertTrue(coordinator.canStartPlayback, "Progressive play may start before terminal analyze")
+        XCTAssertFalse(
+            analyzer.analyzeReturned,
+            "Intro skip must land while full analyze is still in flight"
+        )
+        XCTAssertTrue(
+            coordinator.cachedIntervals.isEmpty,
+            "First chunk must not yet include the intro unrelated skip"
+        )
+
+        engine.play()
+
+        await fulfillment(of: [skipCallback], timeout: 5)
+
+        engine.refreshCurrentTime()
+        XCTAssertGreaterThanOrEqual(
+            engine.currentTime,
+            introSkipEnd - skipSeekTolerance,
+            "Catch-up skip must land at ≥ end − 0.1 s"
+        )
+        XCTAssertLessThanOrEqual(
+            engine.currentTime,
+            introSkipEnd,
+            "Catch-up skip must not overshoot intro interval end"
+        )
+
+        guard let capturedSkip else {
+            XCTFail("Expected unrelated-content skip callback payload")
+            _ = try? await prepareTask.value
+            return
+        }
+        XCTAssertEqual(capturedSkip.start, introSkipStart, accuracy: pipelineTolerance)
+        XCTAssertEqual(capturedSkip.end, introSkipEnd, accuracy: pipelineTolerance)
+        XCTAssertEqual(capturedSkip.source, .unrelatedContent)
+        XCTAssertEqual(capturedSkip.action, .skip)
+
+        _ = try await prepareTask.value
     }
 
     // MARK: - AC8: partial schedule mutes within first chunk (offline RMS)

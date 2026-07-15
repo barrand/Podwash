@@ -33,6 +33,10 @@ final class ProductionAnalysisWiringTests: XCTestCase {
     private let tal891Duration = 4325.0
     private let midEpisodeAdStart = 600.0
     private let midEpisodeAdEnd = 660.0
+    /// Task-022 intro unrelated skip fixture (duration ≥ 60 s).
+    private let introAdStart = 0.0
+    private let introAdEnd = 8.0
+    private let introFixtureDuration = 120.0
     private let modelSetupMessage =
         "Run scripts/setup-asr-models.sh and ensure the app target copies openai_whisper-tiny.en per ADR-020."
 
@@ -273,6 +277,20 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         let interval = CensorInterval(
             start: midEpisodeAdStart,
             end: midEpisodeAdEnd,
+            action: .skip,
+            source: .unrelatedContent
+        )
+        try IntervalCache(baseDirectory: cacheDir).store(
+            [interval],
+            episodeID: episodeID,
+            targetWords: targetWords
+        )
+    }
+
+    private func seedIntroAdCache(episodeID: String, targetWords: Set<String>) throws {
+        let interval = CensorInterval(
+            start: introAdStart,
+            end: introAdEnd,
             action: .skip,
             source: .unrelatedContent
         )
@@ -881,6 +899,75 @@ final class ProductionAnalysisWiringTests: XCTestCase {
                     colors[index],
                     .yellow,
                     "Bucket \(index) does not overlap mid-episode ad and must not be yellow"
+                )
+            }
+        }
+    }
+
+    // MARK: - Task 022: intro yellow buckets match applied unrelated skip only (AC2)
+
+    func testSeekBarYellowMatchesIntroAppliedSkipOnly() async throws {
+        let settings = makeSkipAdsSettingsStore()
+        let targetWords = settings.activeNormalizedTargetSet()
+        let episode = fixtureEpisode()
+
+        try installLongLocalDownload(for: episode.id, duration: introFixtureDuration)
+        try seedIntroAdCache(episodeID: episode.id, targetWords: targetWords)
+
+        let model = makeShell(settingsStore: settings)
+        try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: false)
+        try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
+        try model.cleaningStore.setChannelUnrelatedContent(forFeedURL: feedURL, enabled: true)
+
+        model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+
+        await waitUntil { model.playbackAnalysisSnapshot != nil }
+        await waitUntil { model.engine?.activeSchedule != nil }
+
+        guard let schedule = model.engine?.activeSchedule else {
+            XCTFail("Expected PlaybackEngine schedule after prepare with skip ads on")
+            return
+        }
+        let appliedSkips = IntervalScheduler.skipIntervals(from: schedule.intervals)
+            .filter { $0.source == .unrelatedContent }
+        XCTAssertEqual(
+            appliedSkips.count,
+            1,
+            "Applied schedule must include exactly one intro unrelated-content skip"
+        )
+        XCTAssertEqual(appliedSkips[0].start, introAdStart, accuracy: pipelineTolerance)
+        XCTAssertEqual(appliedSkips[0].end, introAdEnd, accuracy: pipelineTolerance)
+
+        guard let snapshot = model.playbackAnalysisSnapshot else {
+            XCTFail("Expected terminal playback analysis snapshot")
+            return
+        }
+        XCTAssertEqual(snapshot.episodeDuration, introFixtureDuration, accuracy: boundaryTolerance)
+
+        let colors = AnalysisTimelineModel.segmentColors(snapshot: snapshot)
+        XCTAssertEqual(colors.count, AnalysisTimelineModel.defaultSegmentCount)
+
+        let bucketWidth = introFixtureDuration / Double(AnalysisTimelineModel.defaultSegmentCount)
+        for index in 0..<colors.count {
+            let bucketStart = Double(index) * bucketWidth
+            let bucketEnd = index == colors.count - 1
+                ? introFixtureDuration
+                : Double(index + 1) * bucketWidth
+            let overlapsIntroAd = max(
+                0,
+                min(introAdEnd, bucketEnd) - max(introAdStart, bucketStart)
+            ) > 0
+            if overlapsIntroAd {
+                XCTAssertEqual(
+                    colors[index],
+                    .yellow,
+                    "Bucket \(index) overlaps intro ad [\(introAdStart), \(introAdEnd)) and should be yellow"
+                )
+            } else {
+                XCTAssertNotEqual(
+                    colors[index],
+                    .yellow,
+                    "Bucket \(index) does not overlap intro ad and must not be yellow"
                 )
             }
         }

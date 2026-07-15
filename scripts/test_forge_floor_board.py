@@ -782,6 +782,53 @@ class ControlHandlerTests(unittest.TestCase):
                 self.assertIn("requeued", msg)
                 self.assertEqual(parse_task_ticket(dest).status, "Queued")
 
+    def test_mark_done_applies_immediately(self):
+        import factory_floor.server as floor
+        from task_ticket import parse_task_ticket
+
+        with tempfile.TemporaryDirectory() as td:
+            tasks = Path(td) / "docs" / "tasks"
+            tasks.mkdir(parents=True)
+            dest = tasks / "task-019-human.md"
+            dest.write_text(
+                "# Task\n\n| Field | Value |\n|-------|-------|\n"
+                "| **ID** | 019 |\n| **Status** | Needs-human |\n"
+                "| **Kind** | needs-human |\n| **Title** | T |\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(floor, "REPO_ROOT", Path(td)):
+                msg = floor.mark_done_task(19)
+                self.assertIn("marked done", msg)
+                self.assertEqual(parse_task_ticket(str(dest)).status, "Done")
+
+    def test_done_needs_human_kind_not_open(self):
+        """Status Done + Kind needs-human must leave Needs-human column / open list."""
+        import factory_floor.server as floor
+
+        with tempfile.TemporaryDirectory() as td:
+            tasks = Path(td) / "docs" / "tasks"
+            tasks.mkdir(parents=True)
+            (tasks / "task-019-fbomb.md").write_text(
+                "# Task\n\n| Field | Value |\n|-------|-------|\n"
+                "| **ID** | 019 |\n| **Status** | Done |\n"
+                "| **Kind** | needs-human |\n| **Title** | Fbomb |\n"
+                "| **Done at** | 2026-07-15T18:25:00Z |\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(floor, "REPO_ROOT", Path(td)):
+                snap = floor.board_snapshot()
+        t = snap["tasks"][0]
+        self.assertEqual(t["status"], "Done")
+        self.assertEqual(t["kind"], "needs-human")
+        self.assertFalse(t["runnable"])
+        # Board JS: Done before kind — assert the HTML/JS contract is present.
+        self.assertIn('if (/^Done/i.test(s)) return "Done";', floor.INDEX_HTML)
+        self.assertIn("data-mark-done", floor.INDEX_HTML)
+        self.assertRegex(
+            floor.INDEX_HTML,
+            r"Needs-human.*kind",
+            msg="colFor must still route open Needs-human by status/kind",
+        )
 
 def _task_ticket_body(
     n: int,

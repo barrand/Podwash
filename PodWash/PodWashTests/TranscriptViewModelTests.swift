@@ -57,6 +57,52 @@ final class TranscriptViewModelTests: XCTestCase {
         XCTAssertEqual(listenedIndices, [0, 1, 2, 3, 4, 5])
     }
 
+    // MARK: - Task 022
+
+    func testSkippedAdMatchesAppliedIntroUnrelatedSkip() {
+        let introSkipStart = 0.0
+        let introSkipEnd = 8.0
+        let intervals = [
+            CensorInterval(
+                start: introSkipStart,
+                end: introSkipEnd,
+                action: .skip,
+                source: .unrelatedContent
+            ),
+        ]
+        let transcript: [TimedWord] = [
+            TimedWord(word: "ad1", start: 0.0, end: 2.0),
+            TimedWord(word: "ad2", start: 2.0, end: 4.0),
+            TimedWord(word: "ad3", start: 4.0, end: 6.0),
+            TimedWord(word: "ad4", start: 6.0, end: 8.0),
+            TimedWord(word: "bridge", start: 7.0, end: 8.5),
+            TimedWord(word: "host1", start: 8.0, end: 10.0),
+            TimedWord(word: "host2", start: 10.0, end: 12.0),
+        ]
+
+        let viewModel = TranscriptViewModel.make(
+            transcript: transcript,
+            intervals: intervals,
+            playbackPosition: 12.0
+        )
+
+        let skippedIndices = Set(viewModel.words.filter(\.skippedAd).map(\.index))
+        XCTAssertEqual(
+            skippedIndices,
+            [0, 1, 2, 3, 4],
+            "Every word overlapping [0.0, 8.0) must be skippedAd"
+        )
+
+        for display in viewModel.words where display.index >= 5 {
+            XCTAssertFalse(
+                display.skippedAd,
+                "word \(display.index) is outside applied intro skip and must not be skippedAd"
+            )
+        }
+
+        XCTAssertEqual(viewModel.skippedAdCount, 5)
+    }
+
     // MARK: - Task 021
 
     func testParagraphsSplitAfterSentenceEndingPunctuation() {
