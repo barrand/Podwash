@@ -5,13 +5,13 @@ Mission control for PodWash Factory v3. **MVP** = `forge-intake` + task board + 
 ## Day in the life
 
 1. `scripts/forge-floor.sh` → open [http://127.0.0.1:7420](http://127.0.0.1:7420)
-2. **Start factory**
-3. In Cursor: invoke **forge-intake** for each punch-list item
+2. **Start factory** for punch-list tasks, or **Start slices** for feature `slice-loop`
+3. In Cursor: invoke **forge-intake** for each punch-list item (features still land as slices under `docs/slices/`)
 4. Watch **Now** (what's happening) and **Your move** (what you should do). OS notify on Halted, can't-ship, or Pushed
 5. Halted → **Your move** → Requeue (amend the ticket in Cursor if the spec was wrong)
 6. Can't ship (full suite still red) → **Your move** → Don't push, Retry full suite, or Copy for Cursor
 7. When the punch-list is empty, runs full `scripts/verify.sh` **only when needed** (HEAD moved, or meaningful dirt changed vs last green stamp; skips `__pycache__` noise, same-dirt after green, acknowledged Don't push, and open Your-move incidents) — then auto-pushes — or click **Verify & push** to force. Halted tickets park for Requeue first (they block that full suite until Requeue). The loop **stays alive** while waiting (Halted / empty queue) — it should not silently exit and force a manual Restart.
-8. **Pause** before hand-editing app code (factory-hot owns the tree)
+8. **Pause** before hand-editing app code (factory-hot owns the tree). On the slice lane, Pause is a **hard stop** (slice-loop does not soft-park mid-gate).
 9. If Floor is killed/relaunched while the factory was running, it **auto-restarts** the worker (boot reconcile + orphan auto-heal). A dead worker is detected by live PID / process scan — not a stale heartbeat timestamp.
 
 ## Commands
@@ -19,10 +19,10 @@ Mission control for PodWash Factory v3. **MVP** = `forge-intake` + task board + 
 | Command | Role |
 |---------|------|
 | `scripts/forge-floor.sh` | Mission control UI (primary) |
-| `scripts/task-loop.sh` | Headless serial task runner (Phase 1) |
+| `scripts/task-loop.sh` | Headless serial task runner (Phase 1) — Floor **Start factory** |
+| `scripts/slice-loop.sh` | Feature slice pipeline — Floor **Start slices** |
 | `scripts/forge.sh` | Alias → task-loop; set `PODWASH_FORGE_UNIFIED=1` for sequel unified loop |
 | `scripts/next-task.sh` | Queue brain (`--json` / `--status`) |
-| `scripts/slice-loop.sh` | Legacy / slice pipeline (features until unified) |
 
 Auth: `export CURSOR_API_KEY=cursor_...`
 
@@ -30,10 +30,12 @@ Auth: `export CURSOR_API_KEY=cursor_...`
 
 See [`docs/tasks/README.md`](tasks/README.md). Intake skill: [`.cursor/skills/forge-intake/SKILL.md`](../.cursor/skills/forge-intake/SKILL.md).
 
+**Slices vs tasks on Floor:** Feature slices appear on the same board with a dashed **Slice pipeline** card style. They are **not** drained by **Start factory** (punch-list). Use **Start slices** to run `slice-loop.sh --medic-no-push`. Hot pill shows `factory` vs `slices`. The two runners are mutually exclusive (starting one stops the other).
+
 ## Controls
 
-Floor writes `build/factory/controls.json` (pause, ship_now, requeue, cancel, batch_action).  
-`build/factory/factory-hot` is present while the loop owns the tree — **local-dev defers**.
+Floor writes `build/factory/controls.json` (pause, ship_now, requeue, cancel, batch_action, `runner_lane`).  
+`build/factory/factory-hot` is present while the loop owns the tree — **local-dev defers**. Floor also touches hot when the slice lane is running.
 
 Live status for the Stations panel:
 

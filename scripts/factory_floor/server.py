@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Forge Floor — localhost mission control (port 7420).
 
-Lens + soft controls. Starts/attaches task-loop via controls.json.
+Lens + soft controls. Starts/attaches task-loop or slice-loop via controls.json.
 """
 
 from __future__ import annotations
@@ -54,9 +54,19 @@ def _default_controls() -> dict[str, Any]:
         "batch_running": False,
         "mark_done_task_id": None,
         "runner_pid": None,
+        "runner_lane": None,  # "task" | "slice" | None
         "started_at": None,
         "updated_at": None,
     }
+
+
+def _set_factory_hot(hot: bool) -> None:
+    """Touch/clear factory-hot (slice lane has no task_loop to own it)."""
+    HOT.parent.mkdir(parents=True, exist_ok=True)
+    if hot:
+        HOT.write_text("1\n", encoding="utf-8")
+    elif HOT.is_file():
+        HOT.unlink()
 
 
 def read_controls() -> dict[str, Any]:
@@ -311,7 +321,7 @@ def _last_event_age_s(events: list[dict[str, Any]]) -> float | None:
 
 
 def _runner_alive(*, ctrl: dict[str, Any] | None = None) -> bool:
-    """True when a task-loop / task-loop.sh process is actually live.
+    """True when a Floor-owned task-loop or slice-loop process is actually live.
 
     Order: in-process Popen → controls runner_pid → heartbeat pid → ps scan.
     A fresh heartbeat *timestamp* alone is not enough — that left Floor looking
@@ -337,9 +347,12 @@ def _runner_alive(*, ctrl: dict[str, Any] | None = None) -> bool:
         return True
     root = str(REPO_ROOT)
     for line in _ps_commands():
-        if "task_loop.py" in line or "task-loop.sh" in line:
-            if root in line or "PodWash" in line or "task_loop" in line:
-                return True
+        is_task = "task_loop.py" in line or "task-loop.sh" in line
+        is_slice = "slice_loop.py" in line or "slice-loop.sh" in line
+        if not (is_task or is_slice):
+            continue
+        if root in line or "PodWash" in line or "task_loop" in line or "slice_loop" in line:
+            return True
     return False
 
 
@@ -354,8 +367,12 @@ def maybe_restart_orphan_runner(*, ctrl: dict[str, Any], activity_mode: str) -> 
     if now - _last_orphan_restart_ts < ORPHAN_RESTART_COOLDOWN_S:
         return None
     _last_orphan_restart_ts = now
-    msg = start_runner()
-    sys.stderr.write(f"[forge-floor] auto-restart orphan runner: {msg}\n")
+    lane = ctrl.get("runner_lane") or "task"
+    if lane == "slice":
+        msg = start_slice_runner()
+    else:
+        msg = start_runner()
+    sys.stderr.write(f"[forge-floor] auto-restart orphan runner ({lane}): {msg}\n")
     return msg
 
 
@@ -953,16 +970,24 @@ def board_snapshot() -> dict[str, Any]:
             if path.name.startswith("_"):
                 continue
             meta = parse_meta(path)
+            kind = meta.get("Kind", "")
+            status = meta.get("Status", "?")
+            needs_human = bool(
+                re.search(r"needs-human", kind, re.I)
+                or re.search(r"Needs-human", status, re.I)
+            )
             tasks.append(
                 {
                     "id": meta.get("ID", path.name),
                     "title": meta.get("Title", path.stem),
-                    "status": meta.get("Status", "?"),
-                    "kind": meta.get("Kind", ""),
+                    "status": status,
+                    "kind": kind,
                     "priority": meta.get("Priority", ""),
                     "area": meta.get("Area", ""),
                     "path": str(path.relative_to(REPO_ROOT)),
                     "type": "task",
+                    "lane": "task",
+                    "runnable": not needs_human,
                     "done_at": _meta_done_at(meta),
                 }
             )
@@ -986,6 +1011,9 @@ def board_snapshot() -> dict[str, Any]:
                     "area": "",
                     "path": str(path.relative_to(REPO_ROOT)),
                     "type": "slice",
+                    "lane": "slice",
+                    # Not auto-drained by punch-list task-loop; use Start slices.
+                    "runnable": False,
                     "done_at": _meta_done_at(meta),
                 }
             )
@@ -1099,15 +1127,33 @@ def apply_control(action: str, data: dict[str, Any] | None = None) -> dict[str, 
     msg = "ok"
     if action == "start":
         msg = start_runner()
+    elif action == "start_slices":
+        msg = start_slice_runner()
     elif action == "stop":
         msg = stop_runner()
     elif action == "pause":
+        lane = ctrl.get("runner_lane") or "task"
         ctrl["paused"] = True
         ctrl["pause_after_current"] = False
         write_controls(ctrl)
-        from task_loop import interrupt_inflight_on_pause
+        if lane == "slice":
+            # slice-loop ignores controls.json — Pause = hard stop, keep lane for Resume.
+            msg = _kill_owned_runner()
+            ctrl = read_controls()
+            ctrl["paused"] = True
+            ctrl["running"] = False
+            ctrl["runner_pid"] = None
+            ctrl["runner_lane"] = "slice"
+            ctrl["started_at"] = None
+            ctrl["batch_running"] = False
+            write_controls(ctrl)
+            _set_factory_hot(False)
+            msg = "paused (slice hard-stop)"
+        else:
+            from task_loop import interrupt_inflight_on_pause
 
-        interrupt_inflight_on_pause()
+            interrupt_inflight_on_pause()
+            msg = "paused"
     elif action == "pause_after_current":
         ctrl["pause_after_current"] = True
         write_controls(ctrl)
@@ -1116,7 +1162,8 @@ def apply_control(action: str, data: dict[str, Any] | None = None) -> dict[str, 
         ctrl["pause_after_current"] = False
         write_controls(ctrl)
         if not _runner_alive(ctrl=ctrl):
-            msg = start_runner()
+            lane = ctrl.get("runner_lane") or "task"
+            msg = start_slice_runner() if lane == "slice" else start_runner()
         else:
             msg = "resumed"
     elif action == "ship_now":
@@ -1171,14 +1218,21 @@ def apply_control(action: str, data: dict[str, Any] | None = None) -> dict[str, 
     return {"ok": True, "message": msg, "controls": read_controls()}
 
 
-def start_runner() -> str:
+def _spawn_runner(
+    *,
+    lane: str,
+    argv: list[str],
+    env_loop: str,
+    log_name: str,
+) -> str:
+    """Shared Popen path for task-loop and slice-loop."""
     global _runner_proc, _runner_log_f
     with _runner_lock:
         if _runner_proc is not None and _runner_proc.poll() is None:
             return "already running"
         env = os.environ.copy()
-        env["PODWASH_FORGE_LOOP"] = "task_loop"
-        log_path = REPO_ROOT / "build" / "factory" / "task-loop.log"
+        env["PODWASH_FORGE_LOOP"] = env_loop
+        log_path = REPO_ROOT / "build" / "factory" / log_name
         log_path.parent.mkdir(parents=True, exist_ok=True)
         if _runner_log_f is not None:
             try:
@@ -1188,11 +1242,12 @@ def start_runner() -> str:
             _runner_log_f = None
         _runner_log_f = open(log_path, "a", encoding="utf-8")  # noqa: SIM115
         _runner_log_f.write(
-            f"\n--- start_runner {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} ---\n"
+            f"\n--- start_runner lane={lane} "
+            f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} ---\n"
         )
         _runner_log_f.flush()
         _runner_proc = subprocess.Popen(
-            [str(SCRIPTS / "task-loop.sh"), "--medic-no-push"],
+            argv,
             cwd=str(REPO_ROOT),
             env=env,
             stdout=_runner_log_f,
@@ -1203,13 +1258,46 @@ def start_runner() -> str:
         ctrl["running"] = True
         ctrl["paused"] = False
         ctrl["runner_pid"] = _runner_proc.pid
+        ctrl["runner_lane"] = lane
         ctrl["started_at"] = time.time()
         write_controls(ctrl)
-        return f"started pid={_runner_proc.pid}"
+        return f"started pid={_runner_proc.pid} lane={lane}"
+
+
+def start_runner() -> str:
+    """Start punch-list task-loop (mutually exclusive with slice-loop)."""
+    ctrl = read_controls()
+    if _runner_alive(ctrl=ctrl) and (ctrl.get("runner_lane") or "task") == "slice":
+        stop_runner()
+    elif _runner_alive(ctrl=ctrl) and (ctrl.get("runner_lane") or "task") == "task":
+        return "already running"
+    return _spawn_runner(
+        lane="task",
+        argv=[str(SCRIPTS / "task-loop.sh"), "--medic-no-push"],
+        env_loop="task_loop",
+        log_name="task-loop.log",
+    )
+
+
+def start_slice_runner() -> str:
+    """Start feature slice-loop (mutually exclusive with task-loop)."""
+    ctrl = read_controls()
+    if _runner_alive(ctrl=ctrl) and (ctrl.get("runner_lane") or "task") == "task":
+        stop_runner()
+    elif _runner_alive(ctrl=ctrl) and ctrl.get("runner_lane") == "slice":
+        return "already running"
+    msg = _spawn_runner(
+        lane="slice",
+        argv=[str(SCRIPTS / "slice-loop.sh"), "--medic-no-push"],
+        env_loop="slice_loop",
+        log_name="slice-loop.log",
+    )
+    if msg.startswith("started"):
+        _set_factory_hot(True)
+    return msg
 
 
 def stop_runner() -> str:
-    global _runner_proc
     from task_loop import interrupt_inflight_on_pause
 
     interrupt_inflight_on_pause()
@@ -1217,9 +1305,18 @@ def stop_runner() -> str:
     ctrl["running"] = False
     ctrl["paused"] = True
     ctrl["runner_pid"] = None
+    ctrl["runner_lane"] = None
     ctrl["started_at"] = None
     ctrl["batch_running"] = False
     write_controls(ctrl)
+    _set_factory_hot(False)
+    _kill_owned_runner()
+    return "stopped"
+
+
+def _kill_owned_runner() -> str:
+    """SIGTERM/SIGKILL the Floor-owned process group; clear in-process handle."""
+    global _runner_proc
     with _runner_lock:
         if _runner_proc is not None and _runner_proc.poll() is None:
             try:
@@ -1234,7 +1331,7 @@ def stop_runner() -> str:
                 except (ProcessLookupError, PermissionError, OSError):
                     _runner_proc.kill()
         _runner_proc = None
-    return "stopped"
+    return "killed"
 
 
 def reconcile_runner_on_boot() -> None:
@@ -1244,8 +1341,9 @@ def reconcile_runner_on_boot() -> None:
         return
     if _runner_alive(ctrl=ctrl):
         return
-    msg = start_runner()
-    sys.stderr.write(f"[forge-floor] boot reconcile: {msg}\n")
+    lane = ctrl.get("runner_lane") or "task"
+    msg = start_slice_runner() if lane == "slice" else start_runner()
+    sys.stderr.write(f"[forge-floor] boot reconcile ({lane}): {msg}\n")
 
 
 def _shutdown_owned_runner() -> None:
@@ -1357,6 +1455,18 @@ main {
   margin: 0.5rem; padding: 0.65rem; border-radius: 8px; background: #2c3136;
   border: 1px solid var(--line); cursor: pointer;
 }
+.card.lane-slice {
+  border-style: dashed;
+  border-color: #5a6570;
+  opacity: 0.92;
+  background: #262b30;
+}
+.card.lane-slice .lane-chip {
+  display: inline-block; margin-top: 0.35rem; padding: 0.1rem 0.45rem;
+  border-radius: 999px; font-size: 0.68rem; font-weight: 600;
+  letter-spacing: 0.02em; color: #b8c0c8; background: #333940;
+  border: 1px solid #4a5560;
+}
 .card.summary {
   border-style: dashed; color: var(--muted); font-size: 0.82rem; cursor: pointer;
 }
@@ -1453,6 +1563,9 @@ main {
 .drawer .chip.status-progress { background: #2a4038; color: var(--ok); border-color: #3d5c4c; }
 .drawer .chip.status-halted, .drawer .chip.status-needs { background: #40302c; color: var(--warn); border-color: #6a4538; }
 .drawer .chip.status-done { background: #2a4038; color: var(--ok); }
+.drawer .chip.lane-slice {
+  background: #2a3038; color: #b8c0c8; border-color: #5a6570;
+}
 .drawer .chip.prio { color: var(--accent); border-color: #6a5530; }
 .drawer .ticket-section { margin: 1rem 0; }
 .drawer .ticket-section h3 {
@@ -1500,6 +1613,7 @@ main {
   <span id="hot" class="status-pill">stopped</span>
   <div class="toolbar">
     <button class="primary" id="btnStart">Start factory</button>
+    <button id="btnStartSlices" title="Run feature slice-loop (not punch-list)">Start slices</button>
     <button id="btnPause">Pause</button>
     <button id="btnPauseAfter">Pause after current</button>
     <button id="btnResume">Resume</button>
@@ -1626,12 +1740,14 @@ function renderBullets(items) {
 }
 
 function renderTicket(t) {
+  const isSlice = t.type === "slice" || t.lane === "slice";
   const meta = `
     <div class="ticket-meta">
       <span class="chip ${statusChipClass(t.status)}">${esc(t.status || "?")}</span>
       ${t.priority ? `<span class="chip prio">${esc(t.priority)}</span>` : ""}
       ${t.kind ? `<span class="chip">${esc(t.kind)}</span>` : ""}
       <span class="chip">${esc(t.type || "task")}</span>
+      ${isSlice ? `<span class="chip lane-slice">Slice pipeline</span>` : ""}
       ${t.done_at ? `<span class="chip">${esc(formatDoneClosedMeta(t.done_at))}</span>` : ""}
     </div>`;
 
@@ -1746,10 +1862,14 @@ function formatAge(sec) {
 
 function makeCard(item, st, activeTid, activity) {
   const card = document.createElement("div");
+  const isSlice = item.type === "slice" || item.lane === "slice";
   const isActive = item.type==="task" && activeTid && String(item.id).padStart(3,"0")===activeTid;
   const mode = (activity && activity.mode) || "";
   const stalled = isActive && (mode === "orphan" || mode === "starting");
-  card.className = "card" + (isActive ? " active" : "") + (stalled ? " stalled" : "");
+  card.className = "card"
+    + (isSlice ? " lane-slice" : "")
+    + (isActive ? " active" : "")
+    + (stalled ? " stalled" : "");
   let phaseHtml = "";
   if (isActive) {
     if (stalled) {
@@ -1774,9 +1894,12 @@ function makeCard(item, st, activeTid, activity) {
   const closedMeta = (/^Done/i.test(item.status || "") && item.done_at)
     ? `<div class="meta">${esc(formatDoneClosedMeta(item.done_at))}</div>`
     : "";
+  const laneChip = isSlice
+    ? `<div><span class="lane-chip">Slice pipeline</span></div>`
+    : "";
   card.innerHTML = `<div><span class="prio">${esc(item.priority||"")}</span> ${esc(item.type)} ${esc(item.id)}</div>
     <div>${esc(item.title||"")}</div>
-    <div class="meta">${esc(item.kind||"")} · ${esc((item.area||"").slice(0,40))}</div>${closedMeta}${phaseHtml}${actionsHtml}`;
+    <div class="meta">${esc(item.kind||"")} · ${esc((item.area||"").slice(0,40))}</div>${laneChip}${closedMeta}${phaseHtml}${actionsHtml}`;
   card.onclick = (e) => {
     const btn = e.target && e.target.closest && e.target.closest("[data-requeue]");
     if (btn) {
@@ -1802,6 +1925,7 @@ function render() {
   // Hot pill maps 1:1 from server mode — never re-derive.
   hot.style.background = "";
   hot.style.color = "";
+  const runnerLane = (snap.controls && snap.controls.runner_lane) || "";
   if (mode === "orphan") {
     hot.textContent = "orphan";
     hot.className = "status-pill";
@@ -1820,7 +1944,7 @@ function render() {
     hot.textContent = "will pause after current";
     hot.className = "status-pill hot";
   } else if (["working","batch","picking","batch_pending","needs_decision","held"].includes(mode)) {
-    hot.textContent = "running";
+    hot.textContent = runnerLane === "slice" ? "slices" : "factory";
     hot.className = "status-pill hot";
   } else {
     hot.textContent = "stopped";
@@ -1837,7 +1961,7 @@ function render() {
   const liveModes = ["working","batch","picking","batch_pending","starting","needs_decision","held","paused"];
   const looksLive = liveModes.includes(mode);
   const sliceNote = queuedSlices.length
-    ? ` Feature slices in Queued (${queuedSlices.length}) are not auto-run by this punch-list factory.`
+    ? ` Feature slices in Queued (${queuedSlices.length}) are not auto-run by Start factory — use Start slices.`
     : "";
   let idleMsg = "Waiting for intake — queue a punch list with forge-intake";
   if (mode === "orphan") {
@@ -1845,7 +1969,9 @@ function render() {
     idle.hidden = false;
     idle.textContent = idleMsg;
   } else if (looksLive && queuedAuto.length===0 && inProg.length===0 && batch.state !== "needs_decision") {
-    if (mode === "batch" || batch.state === "running" || batch.state === "verifying" || batch.batch_running) {
+    if (runnerLane === "slice") {
+      idleMsg = "Slice pipeline running — feature work via slice-loop";
+    } else if (mode === "batch" || batch.state === "running" || batch.state === "verifying" || batch.batch_running) {
       idleMsg = "No punch-list tickets left · running full test suite";
     } else if (batch.state === "held" || mode === "held") {
       idleMsg = "No punch-list tickets left · not pushing (held)";
@@ -1857,6 +1983,10 @@ function render() {
       idleMsg = `No punch-list tickets left · full suite already passed @ ${(batch.last_green_sha||"").slice(0,12)}`;
     }
     idleMsg += sliceNote;
+    idle.hidden = false;
+    idle.textContent = idleMsg;
+  } else if (!looksLive && queuedSlices.length && queuedAuto.length===0) {
+    idleMsg = `${queuedSlices.length} feature slice(s) waiting — use Start slices (not Start factory).`;
     idle.hidden = false;
     idle.textContent = idleMsg;
   } else {
@@ -2136,14 +2266,16 @@ function render() {
 function syncToolbar(snap, activity) {
   const mode = (activity && activity.mode) || "";
   const btnStart = document.getElementById("btnStart");
+  const btnStartSlices = document.getElementById("btnStartSlices");
   const btnPause = document.getElementById("btnPause");
   const btnPauseAfter = document.getElementById("btnPauseAfter");
   const btnResume = document.getElementById("btnResume");
   const btnStop = document.getElementById("btnStop");
   const btnShip = document.getElementById("btnShip");
   const pauseAfterArmed = !!(snap.controls && snap.controls.pause_after_current && !snap.controls.paused);
+  const lane = (snap.controls && snap.controls.runner_lane) || "";
 
-  [btnStart, btnPause, btnPauseAfter, btnResume, btnStop, btnShip].forEach((b) => {
+  [btnStart, btnStartSlices, btnPause, btnPauseAfter, btnResume, btnStop, btnShip].forEach((b) => {
     if (b) b.classList.remove("primary");
   });
 
@@ -2151,6 +2283,10 @@ function syncToolbar(snap, activity) {
     btnStart.textContent = "Restart factory";
     btnStart.disabled = false;
     btnStart.classList.add("primary");
+    if (btnStartSlices) {
+      btnStartSlices.textContent = "Start slices";
+      btnStartSlices.disabled = false;
+    }
     btnPause.disabled = true;
     btnPauseAfter.disabled = true;
     btnResume.disabled = true;
@@ -2161,8 +2297,22 @@ function syncToolbar(snap, activity) {
 
   if (mode === "starting") {
     const age = activity.started_age_s != null ? Math.floor(activity.started_age_s) : null;
-    btnStart.textContent = age != null ? `Starting… (${age}s)` : "Starting…";
-    btnStart.disabled = true;
+    if (lane === "slice") {
+      btnStart.textContent = "Start factory";
+      btnStart.disabled = true;
+      if (btnStartSlices) {
+        btnStartSlices.textContent = age != null ? `Starting slices… (${age}s)` : "Starting slices…";
+        btnStartSlices.disabled = true;
+        btnStartSlices.classList.add("primary");
+      }
+    } else {
+      btnStart.textContent = age != null ? `Starting… (${age}s)` : "Starting…";
+      btnStart.disabled = true;
+      if (btnStartSlices) {
+        btnStartSlices.textContent = "Start slices";
+        btnStartSlices.disabled = true;
+      }
+    }
     btnPause.disabled = true;
     btnPauseAfter.disabled = true;
     btnResume.disabled = true;
@@ -2174,6 +2324,10 @@ function syncToolbar(snap, activity) {
   if (mode === "paused") {
     btnStart.textContent = "Paused";
     btnStart.disabled = true;
+    if (btnStartSlices) {
+      btnStartSlices.textContent = "Start slices";
+      btnStartSlices.disabled = true;
+    }
     btnPause.disabled = true;
     btnPauseAfter.disabled = true;
     btnResume.disabled = false;
@@ -2184,15 +2338,31 @@ function syncToolbar(snap, activity) {
   }
 
   if (["working","batch","picking","batch_pending","needs_decision","held"].includes(mode)) {
-    btnStart.textContent = "Running";
-    btnStart.disabled = true;
+    if (lane === "slice") {
+      btnStart.textContent = "Start factory";
+      btnStart.disabled = true;
+      if (btnStartSlices) {
+        btnStartSlices.textContent = "Slices running";
+        btnStartSlices.disabled = true;
+        btnStartSlices.classList.add("primary");
+      }
+      btnPauseAfter.disabled = true;
+      btnShip.disabled = true;
+    } else {
+      btnStart.textContent = "Running";
+      btnStart.disabled = true;
+      if (btnStartSlices) {
+        btnStartSlices.textContent = "Start slices";
+        btnStartSlices.disabled = true;
+      }
+      btnPauseAfter.disabled = pauseAfterArmed;
+      btnShip.disabled = false;
+    }
     btnPause.disabled = false;
     btnPause.classList.add("primary");
-    btnPauseAfter.disabled = pauseAfterArmed;
-    btnResume.disabled = !pauseAfterArmed;
-    if (pauseAfterArmed) btnResume.classList.add("primary");
+    btnResume.disabled = !pauseAfterArmed || lane === "slice";
+    if (pauseAfterArmed && lane !== "slice") btnResume.classList.add("primary");
     btnStop.disabled = false;
-    btnShip.disabled = false;
     return;
   }
 
@@ -2200,6 +2370,10 @@ function syncToolbar(snap, activity) {
   btnStart.textContent = "Start factory";
   btnStart.disabled = false;
   btnStart.classList.add("primary");
+  if (btnStartSlices) {
+    btnStartSlices.textContent = "Start slices";
+    btnStartSlices.disabled = false;
+  }
   btnPause.disabled = true;
   btnPauseAfter.disabled = true;
   btnResume.disabled = true;
@@ -2244,7 +2418,18 @@ async function refresh() {
 }
 
 document.getElementById("btnClose").onclick = () => document.getElementById("drawer").classList.remove("open");
-document.getElementById("btnStart").onclick = () => post("/api/control", {action:"start"});
+document.getElementById("btnStart").onclick = () => {
+  if (snap && snap.controls && snap.runner_alive && snap.controls.runner_lane === "slice") {
+    if (!confirm("Stop slice-loop and start punch-list factory instead?")) return;
+  }
+  post("/api/control", {action:"start"});
+};
+document.getElementById("btnStartSlices").onclick = () => {
+  if (snap && snap.controls && snap.runner_alive && snap.controls.runner_lane === "task") {
+    if (!confirm("Stop punch-list factory and start slice-loop instead?")) return;
+  }
+  post("/api/control", {action:"start_slices"});
+};
 document.getElementById("btnStop").onclick = () => post("/api/control", {action:"stop"});
 document.getElementById("btnPause").onclick = () => post("/api/control", {action:"pause"});
 document.getElementById("btnPauseAfter").onclick = () => post("/api/control", {action:"pause_after_current"});
