@@ -66,6 +66,20 @@ final class SegmentationSpikeTests: XCTestCase {
         return try JSONDecoder().decode([GoldenSegment].self, from: try Data(contentsOf: url))
     }
 
+    private func loadTranscript(named name: String) throws -> [TimedWord] {
+        let url = try segmentationFixtureURL(name, "json")
+        return try JSONDecoder().decode([TimedWord].self, from: Data(contentsOf: url))
+    }
+
+    private func loadThreeSponsorGolden() throws -> [GoldenSegment] {
+        let url = try segmentationFixtureURL("three_sponsor_golden", "json")
+        return try JSONDecoder().decode([GoldenSegment].self, from: Data(contentsOf: url))
+    }
+
+    private func overlapsOpening(_ segment: ContentSegment, openingEnd: Double = 180.0) -> Bool {
+        max(0, min(segment.end, openingEnd) - max(segment.start, 0)) > 0
+    }
+
     // MARK: - AC2: execution evidence (fails, never skips)
 
     func testBenchmarkArtifactExistsAndNonEmpty() throws {
@@ -168,6 +182,58 @@ final class SegmentationSpikeTests: XCTestCase {
             adrContainsNumber(adr, score.recall, label: "recall"),
             "ADR-012 must cite committed recall \(score.recall) within ±\(adrNumericTolerance)"
         )
+    }
+
+    // MARK: - Task 025: opening density false positive (AC1)
+
+    func testOpeningWithoutSponsorAnchorProducesNoEarlySegment() throws {
+        let transcript = try loadTranscript(named: "opening_no_sponsor_anchor_transcript")
+        let segments = HeuristicContentSegmenter().segments(in: transcript)
+
+        let earlySegments = segments.filter { overlapsOpening($0) }
+        XCTAssertTrue(
+            earlySegments.isEmpty,
+            "Expected 0 segments overlapping [0, 180)s; got \(earlySegments.map { "[\($0.start), \($0.end)]" }.joined(separator: ", "))"
+        )
+    }
+
+    // MARK: - Task 025: three sponsor clusters (AC2)
+
+    func testThreeSponsorClustersMatchGoldenIoU() throws {
+        let transcript = try loadTranscript(named: "three_sponsor_transcript")
+        let golden = try loadThreeSponsorGolden()
+
+        XCTAssertEqual(golden.count, 3, "Fixture must define exactly 3 hand-labeled sponsor clusters")
+
+        let segments = HeuristicContentSegmenter().segments(in: transcript)
+        XCTAssertEqual(
+            segments.count,
+            3,
+            "Expected exactly 3 segments; got \(segments.count): \(segments.map { "[\($0.start), \($0.end)]" }.joined(separator: ", "))"
+        )
+
+        let predictions = segments.map { ($0.start, $0.end) }
+        let goldens = golden.map { ($0.start, $0.end) }
+        let score = SegmentationMetrics.score(
+            predictions: predictions,
+            goldens: goldens,
+            iouThreshold: iouThreshold
+        )
+
+        XCTAssertEqual(score.falsePositives, 0, "Unmatched predicted segments at IoU ≥ \(iouThreshold)")
+        XCTAssertEqual(score.falseNegatives, 0, "Unmatched golden clusters at IoU ≥ \(iouThreshold)")
+        XCTAssertEqual(score.truePositives, 3)
+
+        for (index, expected) in golden.enumerated() {
+            let bestIoU = predictions.map {
+                SegmentationMetrics.iou($0, (expected.start, expected.end))
+            }.max() ?? 0
+            XCTAssertGreaterThanOrEqual(
+                bestIoU,
+                iouThreshold,
+                "Golden[\(index)] [\(expected.start), \(expected.end)] best IoU \(bestIoU) < \(iouThreshold)"
+            )
+        }
     }
 
     // MARK: - AC5: PodWashSlowTests scheme membership when present

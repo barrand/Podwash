@@ -17,7 +17,15 @@ final class AnalysisTimelineModelTests: XCTestCase {
     private let episodeDuration = 120.0
     /// TAL 891 “The Test Case” duration (~72:05) — task-019 AC1–AC2.
     private let tal891Duration = 4325.0
+    /// TAL 891 duration (~71:59) — task-025 AC3 yellow-bucket contract.
+    private let tal891Task025Duration = 4319.0
     private let segmentCount = 12
+
+    private var innerProjectDir: URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+    }
 
     // MARK: - AC1: mid-analysis color counts
 
@@ -167,9 +175,113 @@ final class AnalysisTimelineModelTests: XCTestCase {
         XCTAssertEqual(count(playbackColors, color: .yellow), 0)
     }
 
+    // MARK: - Task 025: yellow only on three golden ad clusters (AC3)
+
+    func testYellowOnlyOnThreeGoldenAdClusters() throws {
+        let golden = try loadThreeSponsorGolden()
+        XCTAssertEqual(golden.count, 3, "Fixture must define exactly 3 hand-labeled sponsor clusters")
+
+        let adRanges = golden.map { AdTimeRange(start: $0.start, end: $0.end) }
+        let snapshot = AnalysisProgressSnapshot(
+            episodeDuration: tal891Task025Duration,
+            processedEnd: tal891Task025Duration,
+            processingStart: tal891Task025Duration,
+            processingEnd: tal891Task025Duration,
+            adRanges: adRanges
+        )
+
+        let colors = AnalysisTimelineModel.segmentColors(
+            snapshot: snapshot,
+            segmentCount: segmentCount
+        )
+        let bucketWidth = tal891Task025Duration / Double(segmentCount)
+
+        XCTAssertEqual(colors.count, segmentCount)
+
+        let bucket0End = bucketWidth
+        let bucket0OverlapsAd = adRanges.contains {
+            bucketOverlaps($0.start, $0.end, bucketStart: 0, bucketEnd: bucket0End)
+        }
+        XCTAssertEqual(
+            colors[0],
+            bucket0OverlapsAd ? .yellow : .green,
+            "Bucket 0 must be green unless a golden cluster overlaps it"
+        )
+
+        for index in 0..<segmentCount {
+            let bucketStart = Double(index) * bucketWidth
+            let bucketEnd = index == segmentCount - 1
+                ? tal891Task025Duration
+                : Double(index + 1) * bucketWidth
+            let overlapsAd = adRanges.contains {
+                bucketOverlaps($0.start, $0.end, bucketStart: bucketStart, bucketEnd: bucketEnd)
+            }
+            XCTAssertEqual(
+                colors[index],
+                overlapsAd ? .yellow : .green,
+                "Bucket \(index) [\(bucketStart), \(bucketEnd)) overlap mismatch"
+            )
+        }
+
+        XCTAssertLessThanOrEqual(
+            contiguousYellowRuns(in: colors),
+            3,
+            "Adjacent yellow buckets from one cluster count as one run; expected ≤ 3 contiguous yellow runs"
+        )
+    }
+
     // MARK: - Helpers
+
+    private func segmentationFixtureURL(
+        _ name: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws -> URL {
+        let bundle = Bundle(for: type(of: self))
+        if let url = bundle.url(forResource: name, withExtension: "json", subdirectory: "Fixtures/segmentation")
+            ?? bundle.url(forResource: name, withExtension: "json") {
+            return url
+        }
+        let sourceURL = innerProjectDir
+            .appendingPathComponent("PodWashTests/Fixtures/segmentation/\(name).json")
+        if FileManager.default.fileExists(atPath: sourceURL.path) {
+            return sourceURL
+        }
+        XCTFail("Missing segmentation fixture '\(name).json'", file: file, line: line)
+        throw CocoaError(.fileNoSuchFile)
+    }
+
+    private func loadThreeSponsorGolden() throws -> [GoldenSegment] {
+        let url = try segmentationFixtureURL("three_sponsor_golden")
+        return try JSONDecoder().decode([GoldenSegment].self, from: Data(contentsOf: url))
+    }
 
     private func count(_ colors: [TimelineSegmentColor], color: TimelineSegmentColor) -> Int {
         colors.filter { $0 == color }.count
+    }
+
+    private func bucketOverlaps(
+        _ rangeStart: Double,
+        _ rangeEnd: Double,
+        bucketStart: Double,
+        bucketEnd: Double
+    ) -> Bool {
+        max(0, min(rangeEnd, bucketEnd) - max(rangeStart, bucketStart)) > 0
+    }
+
+    private func contiguousYellowRuns(in colors: [TimelineSegmentColor]) -> Int {
+        var runs = 0
+        var inRun = false
+        for color in colors {
+            if color == .yellow {
+                if !inRun {
+                    runs += 1
+                    inRun = true
+                }
+            } else {
+                inRun = false
+            }
+        }
+        return runs
     }
 }
