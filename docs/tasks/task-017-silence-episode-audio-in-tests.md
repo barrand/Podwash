@@ -4,7 +4,8 @@
 |-------|-------|
 | **ID** | 017 |
 | **Title** | Silence episode audio during unit tests |
-| **Status** | In Progress |
+| **Status** | Done |
+| **Done at** | 2026-07-15T14:31:41Z |
 | **Kind** | tweak |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/PlaybackEngine.swift`, `PodWash/PodWashTests/PlaybackEngineTests.swift`, `PodWash/PodWashTests/_OverlaySyncSpike.swift` |

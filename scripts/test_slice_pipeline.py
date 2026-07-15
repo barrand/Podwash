@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -192,6 +193,54 @@ class VerifyTierHelpersTests(unittest.TestCase):
             self.assertTrue(
                 any((f or "").startswith("factory_config:") for f in outcome.failures or [])
             )
+
+    def test_run_verify_emits_progress_heartbeats(self):
+        """Long verify must log elapsed ticks so the console does not look hung."""
+        import tempfile
+        from unittest import mock
+
+        from slice_pipeline import run_verify
+
+        logs: list[str] = []
+
+        def fake_popen(*_a, **_k):
+            proc = mock.MagicMock()
+            proc.returncode = 0
+
+            def _communicate():
+                time.sleep(0.25)
+                return (
+                    "VERIFY RESULT: exit=0 total=1 passed=1 failed=0 skipped=0 "
+                    "filtered=0 bundle=b.xcresult tier=3 class=tests\n",
+                    "",
+                )
+
+            proc.communicate.side_effect = _communicate
+            return proc
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, {"VERIFY_PROGRESS_SECS": "0.05"}):
+                with mock.patch("slice_pipeline.subprocess.Popen", side_effect=fake_popen):
+                    with mock.patch("slice_pipeline._controls_paused", return_value=False):
+                        outcome = run_verify(
+                            tmp,
+                            tier=3,
+                            log=logs.append,
+                        )
+        self.assertTrue(outcome.green)
+        self.assertTrue(
+            any("full suite — often 8–15+ min" in m for m in logs),
+            msg=f"missing expect hint in: {logs}",
+        )
+        progress = [m for m in logs if "still running" in m]
+        self.assertGreaterEqual(len(progress), 1, msg=f"no progress ticks in: {logs}")
+        self.assertTrue(any("not stuck" in m for m in progress))
+
+    def test_fmt_verify_elapsed(self):
+        from slice_pipeline import _fmt_verify_elapsed
+
+        self.assertEqual(_fmt_verify_elapsed(12), "12s")
+        self.assertEqual(_fmt_verify_elapsed(75), "1m 15s")
 
 
 class FixRouterTests(unittest.TestCase):

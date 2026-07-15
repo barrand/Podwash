@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, Optional
@@ -976,6 +977,49 @@ def _controls_paused() -> bool:
         return False
 
 
+def _fmt_verify_elapsed(seconds: float) -> str:
+    s = max(0, int(seconds))
+    if s < 60:
+        return f"{s}s"
+    return f"{s // 60}m {s % 60:02d}s"
+
+
+def _verify_expect_hint(tier: int) -> str:
+    """One-line expectation so a quiet console does not look hung."""
+    if tier >= 3:
+        return "full suite — often 8–15+ min; progress every ~45s"
+    if tier == 2:
+        return "slice-filtered — usually a few minutes; progress every ~45s"
+    if tier == 1:
+        return "failed-tests only"
+    if tier == 0:
+        return "build-for-testing"
+    return ""
+
+
+def _verify_progress_interval_secs() -> float:
+    raw = (os.environ.get("VERIFY_PROGRESS_SECS") or "45").strip()
+    try:
+        return max(0.05, float(raw))
+    except ValueError:
+        return 45.0
+
+
+def _verify_progress_ticker(
+    *,
+    log: LogFn,
+    tier: int,
+    started: float,
+    stop: threading.Event,
+    interval_secs: float,
+) -> None:
+    """Console heartbeats while verify.sh blocks (mirrors task-loop batch ticker)."""
+    while not stop.wait(interval_secs):
+        label = _fmt_verify_elapsed(time.time() - started)
+        extra = " — not stuck" if tier >= 3 else ""
+        log(f"loop-owned verify still running: tier={tier} ({label}){extra}")
+
+
 def run_verify(
     repo_root: str,
     *,
@@ -1044,7 +1088,11 @@ def run_verify(
     run_env.update(tier_env)
     if env:
         run_env.update(env)
-    _log(f"loop-owned verify: tier={tier} {' '.join(cmd)}")
+    expect = _verify_expect_hint(tier)
+    start_msg = f"loop-owned verify: tier={tier} {' '.join(cmd)}"
+    if expect:
+        start_msg = f"{start_msg} — {expect}"
+    _log(start_msg)
     t0 = time.time()
     proc = subprocess.Popen(
         cmd,
@@ -1057,9 +1105,25 @@ def run_verify(
     )
     global _ACTIVE_VERIFY_PROC
     _ACTIVE_VERIFY_PROC = proc
+    stop_ticker = threading.Event()
+    ticker = threading.Thread(
+        target=_verify_progress_ticker,
+        kwargs={
+            "log": _log,
+            "tier": tier,
+            "started": t0,
+            "stop": stop_ticker,
+            "interval_secs": _verify_progress_interval_secs(),
+        },
+        daemon=True,
+        name="verify-progress-ticker",
+    )
+    ticker.start()
     try:
         stdout, stderr = proc.communicate()
     finally:
+        stop_ticker.set()
+        ticker.join(timeout=2.0)
         if _ACTIVE_VERIFY_PROC is proc:
             _ACTIVE_VERIFY_PROC = None
     elapsed = time.time() - t0
