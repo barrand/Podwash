@@ -1135,6 +1135,29 @@ def board_snapshot() -> dict[str, Any]:
                 pass
     ctrl = read_controls()
     station = _read_json_file(STATION)
+    # Mark the station-owned slice/task so Ready cards render in In Progress.
+    try:
+        active_id = int(station.get("task_id")) if station.get("task_id") is not None else None
+    except (TypeError, ValueError):
+        active_id = None
+    if active_id is not None:
+        phase = str(station.get("phase") or "")
+        for item in slices:
+            try:
+                sid = int(re.sub(r"\D", "", str(item.get("id") or "")) or 0)
+            except ValueError:
+                sid = 0
+            if sid == active_id and re.search(
+                r"SLICE|IMPLEMENT|VERIFY|ADR|UX|TEST|STORY|REVIEW", phase, re.I
+            ):
+                item["active"] = True
+        for item in tasks:
+            try:
+                tid = int(re.sub(r"\D", "", str(item.get("id") or "")) or 0)
+            except ValueError:
+                tid = 0
+            if tid == active_id and not re.search(r"SLICE", phase, re.I):
+                item["active"] = True
     runner_alive = _runner_alive(ctrl=ctrl)
     batch = _batch_snapshot(ctrl)
     derived_state = batch.get("state")
@@ -1862,9 +1885,11 @@ function colFor(item) {
   if (/^Done/i.test(s)) return "Done";
   if (/^Implemented/i.test(s)) return "Implemented";
   if (/Halted/i.test(s)) return "Halted";
-  if (/In Progress/i.test(s)) return "In Progress";
+  if (/In Progress/i.test(s) || /^Verify/i.test(s)) return "In Progress";
   if (/Needs-human/i.test(s) || /needs-human/i.test(item.kind||"")) return "Needs-human";
-  if (/Queued|Ready|Draft|Verify/i.test(s)) return "Queued";
+  // Active station ownership moves Ready/Draft cards out of Queued visually.
+  if (item.active) return "In Progress";
+  if (/Queued|Ready|Draft/i.test(s)) return "Queued";
   return "Queued";
 }
 

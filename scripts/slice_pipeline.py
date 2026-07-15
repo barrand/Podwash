@@ -2555,6 +2555,30 @@ def run_pipeline_slice(
     title, _ = read_slice_meta(slice_file, repo_root)
     mission = extract_slice_mission(slice_file, repo_root)
 
+    # Floor board columns key off Status — flip Ready/Draft → In Progress as soon
+    # as the pipeline owns the slice (otherwise the card sits in Queued all run).
+    path = slice_file if os.path.isabs(slice_file) else os.path.join(repo_root, slice_file)
+    cur = ""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                if "| **Status** |" in line or "| **Status**|" in line:
+                    parts = [p.strip() for p in line.strip().strip("|").split("|")]
+                    if len(parts) >= 2:
+                        cur = parts[1]
+                    break
+    except OSError:
+        pass
+    if not re.search(r"^(In Progress|Implemented|Done|Halted|Verify)", cur or "", re.I):
+        set_slice_status(slice_file, repo_root, "In Progress")
+        _log("Status → In Progress")
+    _set_slice_station(
+        slice_id=slice_id,
+        gate="pipeline",
+        role="pipeline",
+        detail="starting",
+    )
+
     budget = ProgressTracker(max_spawns=max_fix_attempts)
     stream_to = _resolve_stream_timeout(stream_timeout)
     t0 = time.time()

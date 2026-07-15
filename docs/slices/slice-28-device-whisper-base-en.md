@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 28 |
 | **Title** | Device Whisper base.en (lean dual-SDK pin) |
-| **Status** | Ready |
+| **Status** | In Progress |
 | **Crux** | Device (`iphoneos`) builds analyze with bundled `openai_whisper-base.en`; simulator builds keep `openai_whisper-tiny.en`; cache cannot reuse pre-upgrade `tiny` intervals/transcripts after pin change — all assertable on simulator via pin injection, fingerprint miss, and wipe tests without live TAL or device listening. |
 
 ## PRD / spec references
@@ -47,7 +47,7 @@ Improve on-device swear recall by shipping WhisperKit **`base.en` on device** wh
 
 ## Deliverables
 
-- **ADR-023** — dual-SDK model pin, stable bundle folder + pin file, compute split, cache fingerprint + wipe; extends (does not rewrite) ADR-003/020
+- **ADR-024** — dual-SDK model pin, stable bundle folder + pin file, compute split, cache fingerprint + wipe; extends (does not rewrite) ADR-003/020 (intake said ADR-023; that number is mute markers)
 - [`scripts/setup-asr-models.sh`](../../scripts/setup-asr-models.sh) — fetch both `tiny.en` and `base.en`
 - [`scripts/copy-bundled-whisper-model.sh`](../../scripts/copy-bundled-whisper-model.sh) — `PLATFORM_NAME` selects source; installs into `openai_whisper-bundled/` + writes `asr-model-pin.txt`
 - [`WhisperModelLocator.swift`](../../PodWash/PodWash/WhisperModelLocator.swift) — resolve `openai_whisper-bundled`; expose logical pin
@@ -93,20 +93,35 @@ Automatable only. **XCTSkip is not allowed on core ACs.**
 
 | AC# | Test file | Test method | Notes |
 |-----|-----------|-------------|-------|
-| 1 | Script / doc assert or `PodWashTests` build-contract helper | TBD until QA | Setup + copy failure modes |
-| 2 | `PodWash/PodWashTests/WhisperModelLocatorTests.swift` (or equiv.) | `testLogicalPinDeviceVsSimulator` | Injected pin; no live ASR |
-| 3 | `PodWash/PodWashTests/IntervalCacheTests.swift` | `testAsrModelFingerprintMiss` | TBD until QA |
-| 4 | `PodWash/PodWashTests/ASRModelPinWipeTests.swift` (or equiv.) | `testPinMismatchWipesCaches` | Temp dirs |
-| 5 | `PodWash/PodWashTests/ProductionAnalysisWiringTests.swift` | Existing factory asserts + any pin wiring | Extend if needed |
-| 6 | — | — | Unfiltered `scripts/verify.sh` |
+| 1 | `PodWash/PodWashTests/ASRModelSetupCopyContractTests.swift` | `testSetupScriptEnsuresBothModelsAtPinnedRevision` | HF revision + both model ids |
+| 1 | `PodWash/PodWashTests/ASRModelSetupCopyContractTests.swift` | `testCopyScriptDocumentsDualSDKSelectionAndStableBundleLayout` | PLATFORM_NAME, bundled folder, pin file |
+| 1 | `PodWash/PodWashTests/ASRModelSetupCopyContractTests.swift` | `testCopyScriptFailsWhenSelectedModelIncomplete` | Subprocess; incomplete tiny tree → non-zero exit |
+| 1 | `PodWash/PodWashTests/ASRModelSetupCopyContractTests.swift` | `testCopyScriptSucceedsWhenSelectedModelComplete` | Subprocess; complete tree → bundled + pin |
+| 2 | `PodWash/PodWashTests/WhisperModelLocatorTests.swift` | `testLogicalPinDeviceVsSimulator` | Injected base.en vs tiny.en; no live ASR |
+| 2 | `PodWash/PodWashTests/WhisperModelLocatorTests.swift` | `testLogicalPinTrimsWhitespaceAndIgnoresExtraLines` | Pin file parsing |
+| 2 | `PodWash/PodWashTests/WhisperModelLocatorTests.swift` | `testResolvedModelFolderUsesStableBundledResourceName` | Stable folder name + mlmodelc completeness |
+| 2 | `PodWash/PodWashTests/WhisperModelLocatorTests.swift` | `testMainBundleExposesSimulatorLogicalPin` | Main bundle integration (simulator only) |
+| 3 | `PodWash/PodWashTests/IntervalCacheTests.swift` | `testAsrModelFingerprintMiss` | Store pin A; load pin B → nil |
+| 3 | `PodWash/PodWashTests/IntervalCacheTests.swift` | `testLegacyFingerprintWithoutAsrModelTokenMisses` | Pre-slice hash file → nil |
+| 3 | `PodWash/PodWashTests/IntervalCacheTests.swift` | `testSamePinStillHitsAfterStore` | Same pin still hits |
+| 4 | `PodWash/PodWashTests/ASRModelPinWipeTests.swift` | `testPinMismatchWipesCaches` | Mismatch clears interval + transcript dirs |
+| 4 | `PodWash/PodWashTests/ASRModelPinWipeTests.swift` | `testMatchingPinDoesNotWipeCaches` | Equal pin leaves seeded files |
+| 4 | `PodWash/PodWashTests/ASRModelPinWipeTests.swift` | `testMissingStoredPinWipesCaches` | Missing stored pin → wipe + write bundled |
+| 5 | `PodWash/PodWashTests/ProductionAnalysisWiringTests.swift` | `testProductionAnalyzerIsNotInstantStub` | Not Instant; pipeline path |
+| 5 | `PodWash/PodWashTests/ProductionAnalysisWiringTests.swift` | `testProductionFactoryStillComposesLocatorBackedPipeline` | Locator pin + AnalysisPipeline + sim cpuOnly |
+| 5 | `PodWash/PodWashTests/ProductionAnalysisWiringTests.swift` | `testBundledWhisperModelFolderIsComplete` | ADR-024 bundled folder + simulator pin |
+| 6 | — | — | Unfiltered `scripts/verify.sh` exit 0, failed 0, skipped 0 |
 
 ## Verification commands
 
 ```bash
 # Fast inner loop (NOT sufficient for Done):
+scripts/verify.sh -only-testing:PodWashTests/ASRModelSetupCopyContractTests
 scripts/verify.sh -only-testing:PodWashTests/WhisperModelLocatorTests
 scripts/verify.sh -only-testing:PodWashTests/IntervalCacheTests
 scripts/verify.sh -only-testing:PodWashTests/ASRModelPinWipeTests
+scripts/verify.sh -only-testing:PodWashTests/ProductionAnalysisWiringTests/testProductionFactoryStillComposesLocatorBackedPipeline
+scripts/verify.sh -only-testing:PodWashTests/ProductionAnalysisWiringTests/testBundledWhisperModelFolderIsComplete
 
 # Done gate — FULL suite, zero failures, zero skips:
 scripts/verify.sh
@@ -121,8 +136,8 @@ VERIFY RESULT: (pending)
 ## Plan review record (coordinator fills before downstream roles)
 
 ```
-ADR review: (pending)
-Test spec review: (pending)
+ADR review (2026-07-15): (pending) QA cleared — pipeline worker finished PM cleared — pipeline worker finished
+Test spec review (2026-07-15): Architect cleared — pipeline worker finished
 ```
 
 ## Role artifacts
@@ -130,9 +145,9 @@ Test spec review: (pending)
 | Role | Required? | Artifact |
 |------|-----------|----------|
 | PM | **Required** | This story |
-| Architect | **Required** | `docs/adr/023-device-whisper-base-en.md` |
+| Architect | **Required** | [`docs/adr/024-device-whisper-base-en.md`](../adr/024-device-whisper-base-en.md) |
 | UX | **Waived** | No new screens — bundle/compute/cache only |
-| QA | **Required** | Mapped tests above |
+| QA | **Required** | `ASRModelSetupCopyContractTests`, `WhisperModelLocatorTests`, `IntervalCacheTests`, `ASRModelPinWipeTests`, `ProductionAnalysisWiringTests` (AC5 extension) |
 | Engineer | **Required** | Scripts + app wiring |
 
 ## Human checklist (post-Done dogfood — not a Done gate)
