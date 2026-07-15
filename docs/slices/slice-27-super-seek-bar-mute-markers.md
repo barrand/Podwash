@@ -4,7 +4,8 @@
 |-------|-------|
 | **ID** | 27 |
 | **Title** | Super seek bar mute markers |
-| **Status** | Ready |
+| **Status** | Done |
+| **Done at** | 2026-07-15T20:23:05Z |
 | **Crux** | On a complete analysis snapshot with ≥ **1** `.profanity` + `.mute` interval, the full-player super seek bar exposes assertable mute-marker accessibility state (count + normalized positions) distinct from yellow ad buckets — so users can see where language will be cleaned without listening. |
 
 ## PRD / spec references

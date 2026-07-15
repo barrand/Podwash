@@ -40,3 +40,4 @@ from the relevant slice file's Role artifacts table.
 | [021](021-progressive-playback-super-seek-bar.md) | Progressive playback + super seek bar: chunked analyze, frontier seek, seek-bar chrome | Accepted |
 | [022](022-transcript-cache.md) | Transcript cache + episode transcript viewer: terminal `[TimedWord]` persist, listened/skipped-ad sheet | Accepted |
 | [023](023-super-seek-bar-mute-markers.md) | Super seek bar mute markers: profanity-mute overlays + AX suffix; yellow stays ads-only | Accepted |
+| [024](024-device-whisper-base-en.md) | Device Whisper base.en: lean dual-SDK pin, stable bundle folder + pin file, compute split, cache fingerprint + wipe | Accepted |

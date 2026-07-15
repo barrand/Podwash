@@ -130,7 +130,7 @@ scripts/verify.sh
 ## Verification record (QA fills at Verify)
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=17 passed=17 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260715-154813.xcresult tier=2 class=tests
 ```
 
 ## Plan review record (coordinator fills before downstream roles)

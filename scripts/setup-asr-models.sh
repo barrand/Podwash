@@ -1,25 +1,19 @@
 #!/bin/sh
-# PodWash ASR model setup — one-time, pinned download of the WhisperKit Core ML model
-# used by the Slice 05 ASR benchmark. Models land in the gitignored Models/ directory
-# (never committed; see .gitignore). Re-running is idempotent.
+# PodWash ASR model setup — pinned download of WhisperKit Core ML models used by
+# simulator (`tiny.en`) and device (`base.en`) builds (ADR-024). Models land in the
+# gitignored Models/ directory (never committed; see .gitignore). Re-running is
+# idempotent; early-exit requires BOTH model trees to be complete.
 #
 # Usage:
 #   scripts/setup-asr-models.sh
 #
-# What/why:
-#   - ASR stack (ADR-003): WhisperKit (Core ML). Apple's SpeechAnalyzer/SpeechTranscriber
-#     models are NOT provisioned on the iOS Simulator (supportedLocales is empty), so it
-#     cannot run in the simulator-only dark-factory pipeline. WhisperKit runs on the
-#     simulator and is therefore the verifiable stack. iOS floor stays at 26.1.
-#   - The model is pinned by an EXACT HuggingFace repo revision (AC3), so every machine
-#     and CI run downloads byte-identical Core ML weights.
-#
-# Pinned model (edit here to bump; keep in sync with the fixture README + ADR-003):
+# Pinned model (edit here to bump; keep in sync with ADR-003 / ADR-024):
 ASR_ENGINE="WhisperKit"
 ASR_ENGINE_VERSION="1.0.0"                                   # SPM exactVersion pin
 HF_REPO_ID="argmaxinc/whisperkit-coreml"
 HF_REVISION="97a5bf9bbc74c7d9c12c755d04dea59e672e3808"       # EXACT model revision pin
-MODEL_NAME="openai_whisper-tiny.en"
+# Dual-SDK models (both fetched; copy script selects one per PLATFORM_NAME).
+MODELS="openai_whisper-tiny.en openai_whisper-base.en"
 HF_HUB_VERSION="0.25.2"                                      # downloader pin
 
 set -eu
@@ -28,16 +22,29 @@ REPO_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$REPO_ROOT"
 
 MODELS_DIR="$REPO_ROOT/Models/whisperkit-coreml"
-MODEL_DIR="$MODELS_DIR/$MODEL_NAME"
 VENV="$REPO_ROOT/build/asr-venv"
 
 echo "setup-asr-models.sh: engine=$ASR_ENGINE $ASR_ENGINE_VERSION"
-echo "setup-asr-models.sh: model=$HF_REPO_ID/$MODEL_NAME @ $HF_REVISION"
+echo "setup-asr-models.sh: repo=$HF_REPO_ID @ $HF_REVISION"
+echo "setup-asr-models.sh: models=$MODELS"
 
-# Fast path: already present and complete.
-if [ -d "$MODEL_DIR/AudioEncoder.mlmodelc" ] && [ -d "$MODEL_DIR/TextDecoder.mlmodelc" ] \
-   && [ -d "$MODEL_DIR/MelSpectrogram.mlmodelc" ]; then
-    echo "setup-asr-models.sh: model already installed at $MODEL_DIR"
+model_complete() {
+    model="$1"
+    [ -d "$MODELS_DIR/$model/AudioEncoder.mlmodelc" ] \
+        && [ -d "$MODELS_DIR/$model/TextDecoder.mlmodelc" ] \
+        && [ -d "$MODELS_DIR/$model/MelSpectrogram.mlmodelc" ]
+}
+
+# Fast path: both models already present and complete.
+all_complete=1
+for MODEL_NAME in $MODELS; do
+    if ! model_complete "$MODEL_NAME"; then
+        all_complete=0
+        break
+    fi
+done
+if [ "$all_complete" -eq 1 ]; then
+    echo "setup-asr-models.sh: both models already installed under $MODELS_DIR"
     exit 0
 fi
 
@@ -48,9 +55,15 @@ if [ ! -x "$VENV/bin/python" ]; then
 fi
 "$VENV/bin/pip" install --quiet --disable-pip-version-check "huggingface_hub==$HF_HUB_VERSION"
 
-echo "setup-asr-models.sh: downloading (pinned revision)..."
-HF_REPO_ID="$HF_REPO_ID" HF_REVISION="$HF_REVISION" MODEL_NAME="$MODEL_NAME" MODELS_DIR="$MODELS_DIR" \
-"$VENV/bin/python" - <<'PY'
+for MODEL_NAME in $MODELS; do
+    if model_complete "$MODEL_NAME"; then
+        echo "setup-asr-models.sh: $MODEL_NAME already complete — skip download"
+        continue
+    fi
+
+    echo "setup-asr-models.sh: downloading $MODEL_NAME (pinned revision)..."
+    HF_REPO_ID="$HF_REPO_ID" HF_REVISION="$HF_REVISION" MODEL_NAME="$MODEL_NAME" MODELS_DIR="$MODELS_DIR" \
+    "$VENV/bin/python" - <<'PY'
 import os
 from huggingface_hub import snapshot_download
 snapshot_download(
@@ -62,12 +75,13 @@ snapshot_download(
 print("download complete")
 PY
 
-# Integrity check — the three compiled Core ML models must be present.
-for m in AudioEncoder.mlmodelc TextDecoder.mlmodelc MelSpectrogram.mlmodelc; do
-    if [ ! -d "$MODEL_DIR/$m" ]; then
-        echo "setup-asr-models.sh: FAIL: missing $MODEL_NAME/$m after download" >&2
-        exit 1
-    fi
+    for m in AudioEncoder.mlmodelc TextDecoder.mlmodelc MelSpectrogram.mlmodelc; do
+        if [ ! -d "$MODELS_DIR/$MODEL_NAME/$m" ]; then
+            echo "setup-asr-models.sh: FAIL: missing $MODEL_NAME/$m after download" >&2
+            exit 1
+        fi
+    done
+    echo "setup-asr-models.sh: model installed at $MODELS_DIR/$MODEL_NAME"
 done
 
-echo "setup-asr-models.sh: model installed at $MODEL_DIR"
+echo "setup-asr-models.sh: both models ready under $MODELS_DIR"
