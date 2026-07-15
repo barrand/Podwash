@@ -252,23 +252,7 @@ final class ProgressivePlaybackUITests: XCTestCase {
 
     @MainActor
     private func ensureChannelCleaningOn(in app: XCUIApplication) {
-        // PodcastDetailView pins accessibilityValue to "on"/"off" (not UIKit "1"/"0").
-        // Checking != "1" incorrectly toggles an already-on fixture switch OFF and skips
-        // progressive prepare — every AC3–AC6 expectation then times out.
-        let channelToggle = app.switches["channelCleaningToggle"]
-        guard channelToggle.waitForExistence(timeout: fixtureTimeout) else { return }
-        let hittable = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "isHittable == true"),
-            object: channelToggle
-        )
-        _ = XCTWaiter().wait(for: [hittable], timeout: 3)
-        guard (channelToggle.value as? String) != "on" else { return }
-        channelToggle.tap()
-        let onExpectation = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "value == %@", "on"),
-            object: channelToggle
-        )
-        _ = XCTWaiter().wait(for: [onExpectation], timeout: 2)
+        // Task-023: channel cleaning defaults on; podcast detail no longer exposes the toggle.
     }
 
     @MainActor

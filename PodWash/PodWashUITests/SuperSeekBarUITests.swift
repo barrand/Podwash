@@ -213,15 +213,7 @@ final class SuperSeekBarUITests: XCTestCase {
 
     @MainActor
     private func ensureChannelCleaningOn(in app: XCUIApplication) {
-        let channelToggle = app.switches["channelCleaningToggle"]
-        guard channelToggle.waitForExistence(timeout: fixtureTimeout) else { return }
-        guard (channelToggle.value as? String) != "on" else { return }
-        channelToggle.tap()
-        let onExpectation = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "value == %@", "on"),
-            object: channelToggle
-        )
-        _ = XCTWaiter().wait(for: [onExpectation], timeout: 2)
+        // Task-023: channel cleaning defaults on; podcast detail no longer exposes the toggle.
     }
 
     @MainActor

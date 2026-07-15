@@ -15,47 +15,32 @@ final class AnalysisProgressUITests: XCTestCase {
     }
 
     @MainActor
-    func testChannelCleaningToggleAccessibilityLabelIsCleanProfanity() throws {
+    func testChannelDetailCleaningTogglesAbsent() throws {
         let app = XCUIApplication()
         app.launchArguments.append("-UITestFixtureLibrary")
         app.launch()
 
         navigateLibraryFixtureToEpisodeList(in: app)
 
-        let channelToggle = app.switches["channelCleaningToggle"]
-        XCTAssertTrue(
-            channelToggle.waitForExistence(timeout: 5),
-            "channelCleaningToggle must exist on podcast detail (Library → show)"
-        )
-        XCTAssertEqual(
-            channelToggle.label,
-            "Clean Profanity",
-            "channelCleaningToggle accessibilityLabel must equal Clean Profanity (exact)"
-        )
-        XCTAssertFalse(
-            app.switches["Channel cleaning"].exists,
-            "channelCleaningToggle must not retain legacy VoiceOver label Channel cleaning"
-        )
-        XCTAssertFalse(
-            app.switches["Clean channel"].exists,
-            "channelCleaningToggle must not retain legacy VoiceOver label Clean channel"
-        )
+        let channelCleaningToggle = app.switches["channelCleaningToggle"]
+        let channelUnrelatedToggle = app.switches["channelUnrelatedContentToggle"]
+        let cleaningCaption = app.staticTexts["channelCleaningCaption"]
 
-        // Caption lives in the podcast header (sibling of episodeList), not inside it.
-        let visibleCaption = app.staticTexts["channelCleaningCaption"]
-        XCTAssertTrue(
-            visibleCaption.waitForExistence(timeout: 2),
-            "Visible caption for the cleaning row must read Clean Profanity (exact)"
-        )
-        XCTAssertEqual(
-            visibleCaption.label,
-            "Clean Profanity",
-            "Visible caption for the cleaning row must read Clean Profanity (exact)"
+        XCTAssertFalse(
+            channelCleaningToggle.waitForExistence(timeout: 5),
+            "channelCleaningToggle must not appear on podcast detail within 5s"
         )
         XCTAssertFalse(
-            app.staticTexts["Clean channel"].exists,
-            "Clean channel copy must not remain on podcast detail"
+            channelUnrelatedToggle.waitForExistence(timeout: 5),
+            "channelUnrelatedContentToggle must not appear on podcast detail within 5s"
         )
+        XCTAssertFalse(
+            cleaningCaption.waitForExistence(timeout: 5),
+            "channelCleaningCaption must not appear on podcast detail within 5s"
+        )
+        XCTAssertFalse(channelCleaningToggle.exists)
+        XCTAssertFalse(channelUnrelatedToggle.exists)
+        XCTAssertFalse(cleaningCaption.exists)
     }
 
     @MainActor
@@ -69,9 +54,8 @@ final class AnalysisProgressUITests: XCTestCase {
 
         XCTAssertFalse(app.switches["episodeCleaningToggle_0"].exists)
         XCTAssertFalse(app.switches["episodeCleaningToggle_1"].exists)
-
-        let channelToggle = app.switches["channelCleaningToggle"]
-        XCTAssertTrue(channelToggle.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.switches["channelCleaningToggle"].exists)
+        XCTAssertFalse(app.switches["channelUnrelatedContentToggle"].exists)
     }
 
     @MainActor
@@ -86,26 +70,9 @@ final class AnalysisProgressUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_channelOn"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_episodeOn"].exists)
         XCTAssertFalse(app.switches["episodeCleaningToggle_0"].exists)
+        XCTAssertFalse(app.switches["channelCleaningToggle"].exists)
 
-        let channelToggle = app.switches["channelCleaningToggle"]
-        XCTAssertTrue(channelToggle.waitForExistence(timeout: 5))
-        channelToggle.tap()
-
-        let channelOnExpectation = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "value == %@", "on"),
-            object: channelToggle
-        )
-        XCTAssertEqual(XCTWaiter().wait(for: [channelOnExpectation], timeout: 2), .completed)
-        XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_channelOn"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_episodeOn"].exists)
-
-        channelToggle.tap()
-
-        let channelOffExpectation = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "value == %@", "off"),
-            object: channelToggle
-        )
-        XCTAssertEqual(XCTWaiter().wait(for: [channelOffExpectation], timeout: 2), .completed)
+        // Channel cleaning defaults on (task-023); badges stay hidden with no per-episode toggles.
         XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_channelOn"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_episodeOn"].exists)
     }
@@ -119,31 +86,17 @@ final class AnalysisProgressUITests: XCTestCase {
         let episodeList = app.descendants(matching: .any)["episodeList"]
         XCTAssertTrue(episodeList.waitForExistence(timeout: 10))
 
-        let channelToggle = app.switches["channelCleaningToggle"]
-        XCTAssertTrue(channelToggle.waitForExistence(timeout: 5))
-
         let episodeCell = app.cells["episodeCell_0"]
         XCTAssertTrue(episodeCell.waitForExistence(timeout: 5))
 
-        // CarPlay multi-scene can leave a non-key empty window; wait until the
-        // UIKit switch is hittable so the tap lands on the content WindowGroup.
-        let toggleHittable = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "isHittable == true"),
-            object: channelToggle
-        )
-        XCTAssertEqual(XCTWaiter().wait(for: [toggleHittable], timeout: 3), .completed)
-
-        // Register before tap so XCTest observes accessibility updates during the
-        // toggle action (timeline can appear and vanish before post-tap idle ends).
+        // Channel cleaning defaults on; -UITestFixtureAnalysis auto-starts analysis (no toggle).
         let timelineAppeared = expectation(
             for: Self.analysisTimelineVisiblePredicate,
             evaluatedWith: app,
             handler: nil
         )
 
-        channelToggle.tap()
-
-        wait(for: [timelineAppeared], timeout: 2)
+        wait(for: [timelineAppeared], timeout: 5)
 
         let timeline = Self.analysisTimelineElement(in: app, cell: episodeCell)
         let timelineGone = NSPredicate(format: "exists == false")

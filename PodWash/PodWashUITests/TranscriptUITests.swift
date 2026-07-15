@@ -346,34 +346,7 @@ final class TranscriptUITests: XCTestCase {
 
     @MainActor
     private func ensureChannelCleaningOn(in app: XCUIApplication) {
-        let channelToggle = app.switches["channelCleaningToggle"]
-        XCTAssertTrue(
-            channelToggle.waitForExistence(timeout: fixtureTimeout),
-            "channelCleaningToggle must exist on podcast detail for backfill prepare"
-        )
-        let deadline = Date().addingTimeInterval(fixtureTimeout)
-        while Date() < deadline, !channelToggle.isHittable {
-            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
-        }
-        XCTAssertTrue(
-            channelToggle.isHittable,
-            "channelCleaningToggle must be hittable on episode list"
-        )
-        guard (channelToggle.value as? String) != "1",
-              (channelToggle.value as? String) != "on"
-        else { return }
-        channelToggle.tap()
-        let onDeadline = Date().addingTimeInterval(2)
-        while Date() < onDeadline {
-            let value = channelToggle.value as? String
-            if value == "1" || value == "on" { return }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
-        }
-        let value = channelToggle.value as? String
-        XCTAssertTrue(
-            value == "1" || value == "on",
-            "channelCleaningToggle must report on within 2s after tap (got \(value ?? "nil"))"
-        )
+        // Task-023: channel cleaning defaults on; podcast detail no longer exposes the toggle.
     }
 
     @MainActor

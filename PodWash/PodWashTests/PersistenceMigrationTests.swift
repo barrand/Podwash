@@ -58,6 +58,69 @@ final class PersistenceMigrationTests: XCTestCase {
         XCTAssertEqual(reloadedDownload.state(for: "fixture-ep-001"), .downloaded)
     }
 
+    // MARK: - Task 023: channel cleaning + unrelated default on
+
+    func testNewSubscriptionDefaultsChannelCleaningAndUnrelatedOn() throws {
+        let persistence = harness.makeController()
+        let podcastStore = PodcastStore(context: persistence.viewContext, retaining: persistence)
+        let cleaningStore = CleaningToggleStore(context: persistence.viewContext, retaining: persistence)
+
+        let feed = try FixtureFeedLoader.loadSampleFeed()
+        let feedURL = URL(string: "https://fixture.podwash.tests/new-subscription")!
+        try podcastStore.save(feed, feedURL: feedURL)
+
+        XCTAssertTrue(
+            cleaningStore.isChannelCleaningEnabled(forFeedURL: feedURL),
+            "New subscription must default channelCleaningEnabled to true"
+        )
+        XCTAssertTrue(
+            cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: feedURL),
+            "New subscription must default channelUnrelatedContentEnabled to true"
+        )
+    }
+
+    func testMigrateAllChannelsCleaningAndUnrelatedOn() throws {
+        let persistence = harness.makeController()
+        let podcastStore = PodcastStore(context: persistence.viewContext, retaining: persistence)
+        let cleaningStore = CleaningToggleStore(context: persistence.viewContext, retaining: persistence)
+
+        let feed = try FixtureFeedLoader.loadSampleFeed()
+        let feedURLA = URL(string: "https://fixture.podwash.tests/migrate-a")!
+        let feedURLB = URL(string: "https://fixture.podwash.tests/migrate-b")!
+        try podcastStore.save(feed, feedURL: feedURLA)
+        try podcastStore.save(feed, feedURL: feedURLB)
+
+        try cleaningStore.setChannelCleaning(forFeedURL: feedURLA, enabled: false)
+        try cleaningStore.setChannelUnrelatedContent(forFeedURL: feedURLA, enabled: false)
+        try cleaningStore.setChannelCleaning(forFeedURL: feedURLB, enabled: false)
+        try cleaningStore.setChannelUnrelatedContent(forFeedURL: feedURLB, enabled: false)
+
+        XCTAssertFalse(cleaningStore.isChannelCleaningEnabled(forFeedURL: feedURLA))
+        XCTAssertFalse(cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: feedURLA))
+        XCTAssertFalse(cleaningStore.isChannelCleaningEnabled(forFeedURL: feedURLB))
+        XCTAssertFalse(cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: feedURLB))
+
+        try cleaningStore.migrateAllChannelsCleaningAndUnrelatedOnIfNeeded()
+
+        for feedURL in [feedURLA, feedURLB] {
+            XCTAssertTrue(
+                cleaningStore.isChannelCleaningEnabled(forFeedURL: feedURL),
+                "Migrate must set channelCleaningEnabled true for \(feedURL.absoluteString)"
+            )
+            XCTAssertTrue(
+                cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: feedURL),
+                "Migrate must set channelUnrelatedContentEnabled true for \(feedURL.absoluteString)"
+            )
+        }
+
+        try cleaningStore.migrateAllChannelsCleaningAndUnrelatedOnIfNeeded()
+
+        for feedURL in [feedURLA, feedURLB] {
+            XCTAssertTrue(cleaningStore.isChannelCleaningEnabled(forFeedURL: feedURL))
+            XCTAssertTrue(cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: feedURL))
+        }
+    }
+
     func testFeedRefreshPreservesDownloadStateOnEpisodeRows() throws {
         let persistence = harness.makeController()
         let podcastStore = PodcastStore(context: persistence.viewContext)

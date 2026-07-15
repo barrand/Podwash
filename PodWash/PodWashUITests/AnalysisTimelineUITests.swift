@@ -118,21 +118,9 @@ final class AnalysisTimelineUITests: XCTestCase {
         return app
     }
 
-    /// Enables cleaning via `channelCleaningToggle` (identifier stable; label Clean Profanity).
+    /// Task-023: channel cleaning defaults on; podcast detail no longer exposes the toggle.
     @MainActor
-    private func enableChannelCleaning(in app: XCUIApplication) {
-        let channelToggle = app.switches["channelCleaningToggle"]
-        XCTAssertTrue(channelToggle.waitForExistence(timeout: 5))
-
-        let toggleHittable = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "isHittable == true"),
-            object: channelToggle
-        )
-        // Hittable is usually false until after launch settle — safe for XCTWaiter.
-        XCTAssertEqual(XCTWaiter().wait(for: [toggleHittable], timeout: 3), .completed)
-
-        channelToggle.tap()
-    }
+    private func enableChannelCleaning(in app: XCUIApplication) {}
 
     /// Current `analysisTimeline` accessibilityValue, or nil if missing.
     private static func timelineAccessibilityValue(in app: XCUIApplication) -> String? {

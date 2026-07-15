@@ -84,7 +84,7 @@ final class SkipOverrideUITests: XCTestCase {
         XCTAssertEqual(globalToggle.value as? String, "0", "Fresh store: unrelatedContentToggle must be off")
     }
 
-    // MARK: - AC5: per-channel unrelated-content toggle default off
+    // MARK: - AC5: per-channel unrelated-content toggle hidden (task-023)
 
     @MainActor
     func testChannelToggleDefaultOff() throws {
@@ -94,7 +94,10 @@ final class SkipOverrideUITests: XCTestCase {
         XCTAssertTrue(episodeList.waitForExistence(timeout: 10))
 
         let channelToggle = app.descendants(matching: .any)["channelUnrelatedContentToggle"]
-        XCTAssertTrue(channelToggle.waitForExistence(timeout: 5))
-        XCTAssertEqual(channelToggle.value as? String, "0", "Fresh install: channelUnrelatedContentToggle must be off")
+        XCTAssertFalse(
+            channelToggle.waitForExistence(timeout: 5),
+            "channelUnrelatedContentToggle must not appear on podcast detail"
+        )
+        XCTAssertFalse(channelToggle.exists)
     }
 }

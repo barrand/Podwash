@@ -527,16 +527,7 @@ final class LibraryUITests: XCTestCase {
     }
 
     private func ensureChannelCleaningOn(in app: XCUIApplication) {
-        let channelToggle = app.switches["channelCleaningToggle"]
-        XCTAssertTrue(channelToggle.waitForExistence(timeout: fixtureTimeout))
-        waitForHittable(
-            channelToggle,
-            timeout: fixtureTimeout,
-            message: "channelCleaningToggle must be hittable on episode list"
-        )
-        guard (channelToggle.value as? String) != "on" else { return }
-        channelToggle.tap()
-        waitForSwitchValue("on", switch: channelToggle, timeout: 2)
+        // Task-023: channel cleaning defaults on; podcast detail no longer exposes the toggle.
     }
 
     private func waitForSwitchValue(_ expected: String, switch control: XCUIElement, timeout: TimeInterval) {
