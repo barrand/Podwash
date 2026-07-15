@@ -1690,6 +1690,24 @@ main {
   letter-spacing: 0.02em; color: #b8c0c8; background: #333940;
   border: 1px solid #4a5560;
 }
+.card .lane-chip {
+  display: inline-block; margin-top: 0.35rem; padding: 0.1rem 0.45rem;
+  border-radius: 999px; font-size: 0.68rem; font-weight: 600;
+  letter-spacing: 0.02em; color: #b8c0c8; background: #333940;
+  border: 1px solid #4a5560;
+}
+.card .lane-chip.status-implemented {
+  color: var(--accent); background: #40382c; border-color: #6a5530;
+}
+.card .lane-chip.status-done {
+  color: var(--ok); background: #2a4038; border-color: #3d5c4c;
+}
+.card .lane-chip.status-progress {
+  color: var(--ok); background: #2a4038; border-color: #3d5c4c;
+}
+.card .lane-chip.status-halted, .card .lane-chip.status-needs {
+  color: var(--warn); background: #40302c; border-color: #6a4538;
+}
 .card.summary {
   border-style: dashed; color: var(--muted); font-size: 0.82rem; cursor: pointer;
 }
@@ -1784,6 +1802,7 @@ main {
 }
 .drawer .chip.status-queued { background: #2f3540; }
 .drawer .chip.status-progress { background: #2a4038; color: var(--ok); border-color: #3d5c4c; }
+.drawer .chip.status-implemented { background: #40382c; color: var(--accent); border-color: #6a5530; }
 .drawer .chip.status-halted, .drawer .chip.status-needs { background: #40302c; color: var(--warn); border-color: #6a4538; }
 .drawer .chip.status-done { background: #2a4038; color: var(--ok); }
 .drawer .chip.lane-slice {
@@ -1896,7 +1915,7 @@ main {
   <div id="drawerBody"></div>
 </div>
 <script>
-const cols = ["Queued","In Progress","Implemented","Needs-human","Halted","Done"];
+const cols = ["Queued","In Progress","Needs-human","Halted","Done"];
 let snap = null;
 let selected = null;
 let showDoneSlices = false;
@@ -1905,8 +1924,8 @@ let pendingHaltPath = null;
 function colFor(item) {
   const s = (item.status||"");
   // Status wins over kind — Kind "needs-human" stays after Status → Done.
-  if (/^Done/i.test(s)) return "Done";
-  if (/^Implemented/i.test(s)) return "Implemented";
+  // Implemented and Done share the Done column (ship-gate is a chip, not a lane).
+  if (/^Done/i.test(s) || /^Implemented/i.test(s)) return "Done";
   if (/Halted/i.test(s)) return "Halted";
   if (/In Progress/i.test(s) || /^Verify/i.test(s)) return "In Progress";
   if (/Needs-human/i.test(s) || /needs-human/i.test(item.kind||"")) return "Needs-human";
@@ -1921,7 +1940,7 @@ function statusChipClass(status) {
   if (/Needs-human/i.test(s)) return "status-needs";
   if (/Halted/i.test(s)) return "status-halted";
   if (/In Progress/i.test(s)) return "status-progress";
-  if (/^Implemented/i.test(s)) return "status-progress";
+  if (/^Implemented/i.test(s)) return "status-implemented";
   if (/^Done/i.test(s)) return "status-done";
   return "status-queued";
 }
@@ -1953,15 +1972,19 @@ function formatDoneClosedMeta(iso) {
 }
 
 function sortDoneColumn(items) {
-  const dated = items.filter(i => i.done_at).slice();
-  const undated = items.filter(i => !i.done_at).slice();
+  // Implemented (awaiting ship) first, then Done newest-first.
+  const implemented = items.filter(i => /^Implemented/i.test(i.status || "")).slice();
+  const done = items.filter(i => !/^Implemented/i.test(i.status || "")).slice();
+  implemented.sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10));
+  const dated = done.filter(i => i.done_at).slice();
+  const undated = done.filter(i => !i.done_at).slice();
   undated.sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10));
   dated.sort((a, b) => {
     const byDate = String(b.done_at).localeCompare(String(a.done_at));
     if (byDate !== 0) return byDate;
     return parseInt(a.id, 10) - parseInt(b.id, 10);
   });
-  return dated.concat(undated);
+  return implemented.concat(dated, undated);
 }
 
 /** Light markdown → HTML after escaping: **bold**, `code` */
@@ -2147,13 +2170,18 @@ function makeCard(item, st, activeTid, activity) {
   }
   const closedMeta = (/^Done/i.test(item.status || "") && item.done_at)
     ? `<div class="meta">${esc(formatDoneClosedMeta(item.done_at))}</div>`
+    : (/^Implemented/i.test(item.status || "")
+      ? `<div class="meta">Awaiting Full verify &amp; ship</div>`
+      : "");
+  const statusChip = (colFor(item) === "Done" || /In Progress|Halted|Needs-human/i.test(item.status || ""))
+    ? `<div><span class="lane-chip ${statusChipClass(item.status)}">${esc(item.status || "")}</span></div>`
     : "";
   const laneChip = isSlice
     ? `<div><span class="lane-chip">Feature</span></div>`
     : `<div><span class="lane-chip">Bug/tweak</span></div>`;
   card.innerHTML = `<div><span class="prio">${esc(item.priority||"")}</span> ${esc(item.type)} ${esc(item.id)}</div>
     <div>${esc(item.title||"")}</div>
-    <div class="meta">${esc(item.kind||"")} · ${esc((item.area||"").slice(0,40))}</div>${laneChip}${gateChipsHtml(item)}${closedMeta}${phaseHtml}${actionsHtml}`;
+    <div class="meta">${esc(item.kind||"")} · ${esc((item.area||"").slice(0,40))}</div>${laneChip}${statusChip}${gateChipsHtml(item)}${closedMeta}${phaseHtml}${actionsHtml}`;
   card.onclick = (e) => {
     const requeueBtn = e.target && e.target.closest && e.target.closest("[data-requeue]");
     if (requeueBtn) {

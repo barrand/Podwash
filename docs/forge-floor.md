@@ -30,7 +30,7 @@ Auth: `export CURSOR_API_KEY=cursor_...`
 
 See [`docs/tasks/README.md`](tasks/README.md). Intake skill: [`.cursor/skills/forge-intake/SKILL.md`](../.cursor/skills/forge-intake/SKILL.md).
 
-**One board, two kinds:** Bugs/tweaks (tasks) and features (slices) share Queued → In Progress → **Implemented** → Done. Cards show gate chips (short for tasks, full strip for slices). Both are drained by **Start Forge**.
+**One board, two kinds:** Bugs/tweaks (tasks) and features (slices) share Queued → In Progress → Done. **Implemented** (tier-2, awaiting ship) and ship-gate **Done** both land in the Done column — the status chip tells them apart. Cards show gate chips (short for tasks, full strip for slices). Both kinds are drained by **Start Forge**.
 
 ## Controls
 
