@@ -70,6 +70,11 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     private nonisolated(unsafe) var timeControlObservation: NSKeyValueObservation?
     private let sourceURL: URL
 
+    /// Under XCTest, episode `AVPlayer` is muted so verify emits no host-audible sine (task-017).
+    private static let silenceEpisodeForTests: Bool = {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }()
+
     /// Exposed for unit tests that observe `timeControlStatus` via KVO.
     var avPlayer: AVPlayer { player }
 
@@ -110,6 +115,9 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         // Prefer in-place rate changes without bouncing through
         // `.waitingToPlayAtSpecifiedRate` (avoids spurious timeControlStatus KVO).
         player.automaticallyWaitsToMinimizeStalling = false
+        if Self.silenceEpisodeForTests {
+            player.isMuted = true
+        }
         self.title = title
         self.artist = artist
         self.nowPlayingUpdater = nowPlayingUpdater ?? MPNowPlayingInfoCenterUpdater()
@@ -145,6 +153,9 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
             itemStatus: player.currentItem?.status ?? .unknown,
             timeControl: PlaybackDiagnostics.timeControlLabel(player.timeControlStatus)
         )
+        if Self.silenceEpisodeForTests {
+            player.isMuted = true
+        }
         audioSessionConfigurator.activatePlaybackSession()
         startOrPendPlayback()
         refreshCurrentTime()
