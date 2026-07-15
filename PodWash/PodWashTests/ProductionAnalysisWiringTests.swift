@@ -38,7 +38,7 @@ final class ProductionAnalysisWiringTests: XCTestCase {
     private let introAdEnd = 8.0
     private let introFixtureDuration = 120.0
     private let modelSetupMessage =
-        "Run scripts/setup-asr-models.sh and ensure the app target copies openai_whisper-tiny.en per ADR-020."
+        "Run scripts/setup-asr-models.sh and ensure the app target copies the PLATFORM-selected model into openai_whisper-bundled per ADR-024."
 
     private var harness: PersistenceReloadHarness!
     private var downloadsDirectory: URL!
@@ -408,18 +408,26 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         XCTAssertEqual(value, expected, accuracy: boundaryTolerance, "\(label)", file: file, line: line)
     }
 
-    // MARK: - AC1: bundled Whisper model folder completeness
+    // MARK: - AC1: bundled Whisper model folder + pin completeness (ADR-024 layout)
 
     func testBundledWhisperModelFolderIsComplete() throws {
         let folder: URL
+        let pin: String
         do {
             folder = try WhisperModelLocator.resolvedModelFolder(in: .main)
+            pin = try WhisperModelLocator.logicalPin(in: .main)
         } catch {
             XCTFail(
-                "Bundled Whisper model folder missing or incomplete: \(error). \(modelSetupMessage)"
+                "Bundled Whisper model folder or pin missing: \(error). \(modelSetupMessage)"
             )
             return
         }
+
+        XCTAssertEqual(
+            folder.lastPathComponent,
+            WhisperModelLocator.modelFolderResourceName,
+            "Bundled model must live in stable openai_whisper-bundled/"
+        )
 
         let status = WhisperModelLocator.requiredSubdirectories(in: folder)
         for name in WhisperModelLocator.requiredMLModelcNames {
@@ -430,9 +438,17 @@ final class ProductionAnalysisWiringTests: XCTestCase {
                 continue
             }
         }
+
+        #if targetEnvironment(simulator)
+        XCTAssertEqual(
+            pin,
+            "openai_whisper-tiny.en",
+            "Simulator .app pin file must name tiny.en per ADR-024"
+        )
+        #endif
     }
 
-    // MARK: - AC2: production factory is not InstantEpisodeAnalyzer
+    // MARK: - AC2 / Slice 28 AC5: production factory is not InstantEpisodeAnalyzer
 
     func testProductionAnalyzerIsNotInstantStub() throws {
         let pipeline = try ProductionAnalyzerFactory.makeProductionPipeline()
@@ -446,6 +462,35 @@ final class ProductionAnalysisWiringTests: XCTestCase {
             defaultAnalyzer is InstantEpisodeAnalyzer,
             "makeDefaultAnalyzer(fixtureLibraryMode: false) must not return InstantEpisodeAnalyzer"
         )
+    }
+
+    func testProductionFactoryStillComposesLocatorBackedPipeline() throws {
+        let pin = try WhisperModelLocator.logicalPin(in: .main)
+        XCTAssertFalse(pin.isEmpty, "Production factory requires bundled logical ASR pin")
+
+        let folder = try WhisperModelLocator.resolvedModelFolder(in: .main)
+        XCTAssertEqual(folder.lastPathComponent, WhisperModelLocator.modelFolderResourceName)
+
+        let pipeline = try ProductionAnalyzerFactory.makeProductionPipeline()
+        XCTAssertTrue(
+            pipeline is AnalysisPipeline,
+            "Production path must compose AnalysisPipeline with locator-backed transcriber"
+        )
+
+        let defaultAnalyzer = AppShellModel.makeDefaultAnalyzer(fixtureLibraryMode: false)
+        XCTAssertFalse(
+            defaultAnalyzer is InstantEpisodeAnalyzer,
+            "makeDefaultAnalyzer(fixtureLibraryMode: false) must stay on production pipeline after dual-SDK pin"
+        )
+
+        #if targetEnvironment(simulator)
+        XCTAssertEqual(pin, "openai_whisper-tiny.en")
+        XCTAssertEqual(
+            ProductionAnalyzerFactory.defaultComputePreference(),
+            ASRComputePreference.cpuOnly,
+            "Simulator production path must force cpuOnly per ADR-003 / ADR-024"
+        )
+        #endif
     }
 
     // MARK: - AC3: cleaning disabled skips analysis
