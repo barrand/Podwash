@@ -50,3 +50,16 @@ Hand computation (matching-spec §3–§6):
 | `dog` | `dog` | yes | [3.903, 4.582] |
 
 No overlaps → no merge. Golden count = **3**.
+
+## `progressive-first-chunk-intervals.json` — slice-25 first-chunk partial golden
+
+**Source transcript:** `../transcripts/spec-section8.input.json` (matching-spec §8).
+
+**Chunk frontier:** `processedEnd = 30.0 s` (ADR-021 / slice-25 fixture strategy).
+
+**Subset rule:** intervals from `e2e_intervals.json` with `end ≤ 30.0` (all tokens in
+the §8 clip lie before 30 s, so the first-chunk partial schedule equals the full
+§8 golden).
+
+**Values:** byte-identical to `e2e_intervals.json` — `[{0.92, 1.87}, {2.92, 3.32}]`.
+Independent provenance: hand-computed via matching-spec §8, not pipeline output.

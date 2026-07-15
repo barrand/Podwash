@@ -205,6 +205,12 @@ final class PlaybackEngineTests: XCTestCase {
             engine.avPlayer.isMuted,
             "AVPlayer.isMuted must be true at construction under XCTest"
         )
+        XCTAssertEqual(
+            engine.avPlayer.volume,
+            0,
+            accuracy: 0.0001,
+            "AVPlayer.volume must be 0 at construction under silence"
+        )
 
         let playingExpectation = expectation(description: "timeControlStatus reaches playing")
         let observation = engine.avPlayer.observe(\.timeControlStatus, options: [.new]) { player, _ in
@@ -224,6 +230,12 @@ final class PlaybackEngineTests: XCTestCase {
         XCTAssertTrue(
             engine.avPlayer.isMuted,
             "AVPlayer.isMuted must remain true after play() under XCTest"
+        )
+        XCTAssertEqual(
+            engine.avPlayer.volume,
+            0,
+            accuracy: 0.0001,
+            "AVPlayer.volume must remain 0 after play() under silence"
         )
     }
 

@@ -334,17 +334,21 @@ final class LibraryUITests: XCTestCase {
 
         tapMiniPlayerBar(app)
 
-        let fullTimeline = element("playbackAnalysisTimeline", in: app)
+        let superSeekBar = element("playback.superSeekBar", in: app)
         XCTAssertTrue(
-            fullTimeline.waitForExistence(timeout: fixtureTimeout),
-            "playbackAnalysisTimeline must appear within \(fixtureTimeout)s after expanding mini-player"
+            superSeekBar.waitForExistence(timeout: fixtureTimeout),
+            "playback.superSeekBar must appear within \(fixtureTimeout)s after expanding mini-player"
         )
         waitForAccessibilityValue(
             miniValue,
-            identifier: "playbackAnalysisTimeline",
+            identifier: "playback.superSeekBar",
             in: app,
             timeout: fixtureTimeout,
-            message: "playbackAnalysisTimeline must match miniPlayerAnalysisTimeline accessibilityValue"
+            message: "playback.superSeekBar must match miniPlayerAnalysisTimeline accessibilityValue"
+        )
+        XCTAssertFalse(
+            element("playbackAnalysisTimeline", in: app).exists,
+            "Retired playbackAnalysisTimeline must not appear after slice-25 migration"
         )
     }
 
