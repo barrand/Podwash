@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 29 |
 | **Title** | Episode cleaning summary on channel screen |
-| **Status** | Ready |
+| **Status** | In Progress |
 | **Priority** | P3 |
 | **Crux** | On the podcast detail (channel) episode list, when an episode has a **complete** interval-cache result, the row exposes an assertable **cleaning summary** — profanity section count, ad section count, and total ad duration as **`X.X min`** — derived from cached `[CensorInterval]` without requiring the episode to be playing. |
 
@@ -81,12 +81,12 @@ Expected: **profanitySections = 2**, **adSections = 2**, ad duration **90.0 s** 
 
 | AC# | Test file | Test method | Notes |
 |-----|-----------|-------------|-------|
-| 1 | `PodWash/PodWashTests/CleaningSummaryModelTests.swift` | `testPinnedFixtureCountsAndFormattedMinutes` | TBD until QA test spec |
-| 2 | `PodWash/PodWashTests/CleaningSummaryModelTests.swift` | `testEmptyAndSourceFilters` | |
-| 3 | `PodWash/PodWashTests/CleaningSummaryModelTests.swift` | `testAdMinutesRoundsHalfUpToOneDecimal` | |
-| 4 | `PodWash/PodWashUITests/CleaningSummaryUITests.swift` | `testSummaryAbsentWithoutCache` | |
-| 5 | `PodWash/PodWashUITests/CleaningSummaryUITests.swift` | `testSummaryShowsPinnedCountsWhenCached` | |
-| 6 | `PodWash/PodWashUITests/CleaningSummaryUITests.swift` | `testSummaryHiddenWhileTimelineInFlight` | May reuse timeline fixture |
+| 1 | `PodWash/PodWashTests/CleaningSummaryModelTests.swift` | `testPinnedFixtureCountsAndFormattedMinutes` | Fixture: `Fixtures/cleaning/cleaning-summary-pinned.intervals.json` |
+| 2 | `PodWash/PodWashTests/CleaningSummaryModelTests.swift` | `testEmptyAndSourceFilters` | Empty `[]`, skip-only profanity, ads-only source filter |
+| 3 | `PodWash/PodWashTests/CleaningSummaryModelTests.swift` | `testAdMinutesRoundsHalfUpToOneDecimal` | 45.0 s → `0.8 min` half-up pin |
+| 4 | `PodWash/PodWashUITests/CleaningSummaryUITests.swift` | `testSummaryAbsentWithoutCache` | `-UITestFixtureFeed`; absent within 2 s |
+| 5 | `PodWash/PodWashUITests/CleaningSummaryUITests.swift` | `testSummaryShowsPinnedCountsWhenCached` | `-UITestFixtureCleaningSummary`; AX value exact |
+| 6 | `PodWash/PodWashUITests/CleaningSummaryUITests.swift` | `testSummaryHiddenWhileTimelineInFlight` | `-UITestFixtureAnalysisTimeline`; mutual exclusion |
 
 ## Verification commands
 
@@ -105,14 +105,14 @@ scripts/verify.sh
 > A slice without a recorded full-suite green artifact is not Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=6 passed=6 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260715-170409.xcresult tier=2 class=tests
 ```
 
 ## Plan review record (coordinator fills before downstream roles)
 
 ```
-ADR review: (pending)
-Test spec review: (pending)
+ADR review (2026-07-15): (pending) QA cleared — pipeline worker finished PM cleared — pipeline worker finished
+Test spec review (2026-07-15): Architect cleared — pipeline worker finished
 ```
 
 ## Done gate
@@ -132,7 +132,7 @@ Test spec review: (pending)
 
 | Role | Gate | Artifact path |
 |------|------|---------------|
-| Architect | Required | `docs/adr/` (summary aggregation + row cache binding) |
+| Architect | Required | `docs/adr/025-episode-cleaning-summary.md` |
 | UX | Required | `docs/slices/slice-29-ux.md` |
 | PM | Story (this file) | `docs/slices/slice-29-episode-cleaning-summary.md` |
 | QA | Test spec after ADR plan review | `PodWashTests` / `PodWashUITests` as mapped |

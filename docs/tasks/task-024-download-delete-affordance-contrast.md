@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 024 |
 | **Title** | Distinguish download vs delete affordances |
-| **Status** | In Progress |
+| **Status** | Implemented |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/EpisodeListView.swift`, `PodWash/PodWashTests/` (download affordance layout/unit tests), `docs/slices/slice-10-downloads-ux.md` (icon/tint note only) |

@@ -59,6 +59,7 @@ The dependency graph and parallel groups live in [`multitask-workflow.md`](../mu
 | 27 | `slice-27-super-seek-bar-mute-markers.md` | **UX** — mute-interval markers on full-player super seek bar (distinct from yellow ads; needs 25) |
 | 28 | `slice-28-device-whisper-base-en.md` | **ASR** — device `base.en` / simulator `tiny.en` dual-SDK pin; cache wipe on pin change (needs 24, 26; escalates task-019) |
 | 29 | `slice-29-episode-cleaning-summary.md` | **UX** — channel-screen episode row cleaning summary (profanity + ad section counts, `X.X min` ads; needs 19/20/24) |
+| 30 | `slice-30-mini-player-super-seek-parity.md` | **UX** — mini player hosts shared `SuperSeekBarView` (mute markers + playhead + seek; needs 25, 27) |
 
 **MVP app shell (Slices 22–23):** Inserted after lock-screen polish (14) and **before CarPlay (15)**.
 The factory built cleaning/playback engines but production `ContentView` was still a placeholder;
