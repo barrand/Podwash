@@ -4,7 +4,8 @@
 |-------|-------|
 | **ID** | 022 |
 | **Title** | Intro ad still plays; seek-bar yellow does not match transcript ad spans |
-| **Status** | In Progress |
+| **Status** | Done |
+| **Done at** | 2026-07-15T18:45:59Z |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/PlaybackEngine.swift`, `PodWash/PodWash/PlaybackCoordinator.swift`, `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWash/AnalysisPipeline.swift`, `PodWash/PodWash/TranscriptViewModel.swift`, `PodWash/PodWashTests/ProgressivePlaybackTests.swift`, `PodWash/PodWashTests/ProductionAnalysisWiringTests.swift` |

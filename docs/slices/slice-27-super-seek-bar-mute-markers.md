@@ -68,11 +68,13 @@ Automatable only. **XCTSkip is not allowed on core ACs.**
 
 | AC# | Test file | Test method | Notes |
 |-----|-----------|-------------|-------|
-| 1 | `PodWash/PodWashTests/SuperSeekBarMuteMarkerTests.swift` | `testSingleMuteMarkerNormalized` | TBD until QA |
-| 2 | `PodWash/PodWashTests/SuperSeekBarMuteMarkerTests.swift` | `testMuteMarkerCountIgnoresAds` | TBD until QA |
-| 3 | `PodWash/PodWashUITests/SuperSeekBarUITests.swift` | `testMuteMarkersExposedWhenProfanityMutePresent` | TBD until QA |
-| 4 | `PodWash/PodWashUITests/SuperSeekBarUITests.swift` | `testMuteMarkersAbsentForAdsOnly` | TBD until QA |
+| 1 | `PodWash/PodWashTests/SuperSeekBarMuteMarkerTests.swift` | `testSingleMuteMarkerNormalized` | Hand-computed 10/120, 11/120 ±0.001 |
+| 2 | `PodWash/PodWashTests/SuperSeekBarMuteMarkerTests.swift` | `testMuteMarkerCountIgnoresAds` | Two mutes → 2; empty → 0; ads-only → 0 |
+| 3 | `PodWash/PodWashUITests/SuperSeekBarUITests.swift` | `testMuteMarkersExposedWhenProfanityMutePresent` | `-UITestFixtureMuteMarkers`, muteMarkers ≥ 1 within 5 s |
+| 4 | `PodWash/PodWashUITests/SuperSeekBarUITests.swift` | `testMuteMarkersAbsentForAdsOnly` | `-UITestFixtureMuteMarkersAdsOnly`, muteMarkers:0 |
 | 5 | — | — | Unfiltered `scripts/verify.sh` |
+
+**UX regression (same commit, not slice ACs):** `SuperSeekBarUITests.testProgressiveMidRunOmitsMuteMarkersKey`, `testProgressiveTerminalIncludesMuteMarkers`, `testCleaningOffOmitsTimelineAndMarkers`. **Cross-suite terminal migration:** `ProgressivePlaybackUITests` + `LibraryUITests.testFullPlayerShowsMatchingAnalysisTimeline` super seek bar strings gain `,muteMarkers:N`.
 
 ## Verification commands
 
@@ -88,14 +90,14 @@ scripts/verify.sh
 ## Verification record (QA fills at Verify)
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=210 passed=210 failed=0 skipped=0 filtered=0 bundle=build/test-results/verify-20260715-140857.xcresult tier=3 class=tests
 ```
 
 ## Plan review record (coordinator fills before downstream roles)
 
 ```
 ADR review (2026-07-15): (pending) QA cleared — pipeline worker finished PM cleared — pipeline worker finished
-Test spec review: (pending)
+Test spec review (2026-07-15): Architect cleared — pipeline worker finished
 ```
 
 ## Design note (Architect)
