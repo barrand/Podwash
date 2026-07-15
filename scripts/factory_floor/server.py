@@ -245,12 +245,85 @@ def _read_json_file(path: Path) -> dict[str, Any]:
         return {}
 
 
-def _ps_commands() -> list[str]:
+def _ps_rows() -> list[tuple[int, str]]:
+    """Return (pid, command) rows from ``ps``."""
     try:
-        out = subprocess.check_output(["ps", "-ax", "-o", "command="], text=True)
-    except (OSError, subprocess.CalledProcessError):
+        out = subprocess.check_output(["ps", "-ax", "-o", "pid=,command="], text=True)
+    except (OSError, subprocess.CalledProcessError, TypeError, AttributeError):
+        # AttributeError: unit tests that mock subprocess.Popen only.
         return []
-    return out.splitlines()
+    rows: list[tuple[int, str]] = []
+    for line in out.splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        parts = s.split(None, 1)
+        if len(parts) < 2:
+            continue
+        try:
+            pid = int(parts[0])
+        except ValueError:
+            continue
+        rows.append((pid, parts[1]))
+    return rows
+
+
+def _ps_commands() -> list[str]:
+    return [cmd for _pid, cmd in _ps_rows()]
+
+
+def _cmd_is_forge_runner(cmd: str) -> bool:
+    """Unified forge loop (tasks + slices)."""
+    return (
+        "forge_loop.py" in cmd
+        or "/forge.sh" in cmd
+        or cmd.endswith("forge.sh")
+        or " scripts/forge.sh" in cmd
+    )
+
+
+def _cmd_is_legacy_task_loop(cmd: str) -> bool:
+    """Old punch-list-only loop — must not idle-drain over a queued slice."""
+    if _cmd_is_forge_runner(cmd):
+        return False
+    return "task_loop.py" in cmd or "task-loop.sh" in cmd
+
+
+def _cmd_is_any_loop(cmd: str) -> bool:
+    return (
+        _cmd_is_forge_runner(cmd)
+        or _cmd_is_legacy_task_loop(cmd)
+        or "slice_loop.py" in cmd
+        or "slice-loop.sh" in cmd
+    )
+
+
+def _kill_legacy_task_loops() -> list[int]:
+    """SIGTERM stale task_loop.py processes that ignore slices / auto FULL-VERIFY."""
+    killed: list[int] = []
+    root = str(REPO_ROOT)
+    for pid, cmd in _ps_rows():
+        if not _cmd_is_legacy_task_loop(cmd):
+            continue
+        if root not in cmd and "PodWash" not in cmd and "task_loop" not in cmd:
+            continue
+        try:
+            os.kill(pid, 15)
+            killed.append(pid)
+        except (ProcessLookupError, PermissionError, OSError):
+            continue
+    if killed:
+        time.sleep(0.4)
+        for pid in killed:
+            if _pid_alive(pid):
+                try:
+                    os.kill(pid, 9)
+                except (ProcessLookupError, PermissionError, OSError):
+                    pass
+        sys.stderr.write(
+            f"[forge-floor] killed legacy task_loop pid(s): {killed}\n"
+        )
+    return killed
 
 
 def _verify_running() -> bool:
@@ -321,7 +394,7 @@ def _last_event_age_s(events: list[dict[str, Any]]) -> float | None:
 
 
 def _runner_alive(*, ctrl: dict[str, Any] | None = None) -> bool:
-    """True when a Floor-owned task-loop or slice-loop process is actually live.
+    """True when a Floor-owned forge / task / slice loop process is actually live.
 
     Order: in-process Popen → controls runner_pid → heartbeat pid → ps scan.
     A fresh heartbeat *timestamp* alone is not enough — that left Floor looking
@@ -347,11 +420,34 @@ def _runner_alive(*, ctrl: dict[str, Any] | None = None) -> bool:
         return True
     root = str(REPO_ROOT)
     for line in _ps_commands():
-        is_task = "task_loop.py" in line or "task-loop.sh" in line
-        is_slice = "slice_loop.py" in line or "slice-loop.sh" in line
-        if not (is_task or is_slice):
+        if not _cmd_is_any_loop(line):
             continue
-        if root in line or "PodWash" in line or "task_loop" in line or "slice_loop" in line:
+        if root in line or "PodWash" in line or "forge_loop" in line or "task_loop" in line or "slice_loop" in line:
+            return True
+    return False
+
+
+def _forge_runner_alive(*, ctrl: dict[str, Any] | None = None) -> bool:
+    """True only for the unified forge_loop (not a legacy task_loop)."""
+    global _runner_proc
+    with _runner_lock:
+        if _runner_proc is not None and _runner_proc.poll() is None:
+            return True
+    c = ctrl if ctrl is not None else read_controls()
+    lane = str(c.get("runner_lane") or "")
+    try:
+        ctrl_pid = int(c.get("runner_pid") or 0)
+    except (TypeError, ValueError):
+        ctrl_pid = 0
+    if lane == "forge" and ctrl_pid and _pid_alive(ctrl_pid):
+        # Confirm the pid is actually forge, not a recycled PID / stale task_loop.
+        for pid, cmd in _ps_rows():
+            if pid == ctrl_pid:
+                return _cmd_is_forge_runner(cmd) or "forge_supervisor" in cmd
+        return False
+    root = str(REPO_ROOT)
+    for _pid, cmd in _ps_rows():
+        if _cmd_is_forge_runner(cmd) and (root in cmd or "PodWash" in cmd):
             return True
     return False
 
@@ -1349,9 +1445,18 @@ def _spawn_runner(
 
 def start_runner() -> str:
     """Start the unified Forge loop (tasks + slices)."""
+    # Stale punch-list-only task_loop processes look "alive" to Floor and steal
+    # the tree with idle-drain FULL-VERIFY — never seeing queued slices.
+    _kill_legacy_task_loops()
     ctrl = read_controls()
-    if _runner_alive(ctrl=ctrl):
+    if _forge_runner_alive(ctrl=ctrl):
         return "already running"
+    # Clear stale controls pointing at a dead / legacy pid so spawn records forge.
+    if not _forge_runner_alive(ctrl=ctrl) and ctrl.get("runner_pid"):
+        ctrl = dict(ctrl)
+        ctrl["runner_pid"] = None
+        ctrl["running"] = False
+        write_controls(ctrl)
     msg = _spawn_runner(
         lane="forge",
         argv=[str(SCRIPTS / "forge.sh"), "--medic-no-push"],
@@ -1372,6 +1477,7 @@ def stop_runner() -> str:
     from task_loop import interrupt_inflight_on_pause
 
     interrupt_inflight_on_pause()
+    _kill_legacy_task_loops()
     ctrl = read_controls()
     ctrl["running"] = False
     ctrl["paused"] = True
@@ -2065,30 +2171,29 @@ function render() {
   const idle = document.getElementById("idle");
   const queuedAuto = items.filter(i => colFor(i)==="Queued" && i.type==="task" && !/needs-human/i.test(i.kind||""));
   const queuedSlices = items.filter(i => colFor(i)==="Queued" && i.type==="slice");
-  const inProg = items.filter(i => colFor(i)==="In Progress" && i.type==="task");
+  const inProg = items.filter(i => colFor(i)==="In Progress");
+  const hasQueuedWork = queuedAuto.length > 0 || queuedSlices.length > 0 || inProg.length > 0;
   const liveModes = ["working","batch","picking","batch_pending","starting","needs_decision","held","paused"];
   const looksLive = liveModes.includes(mode);
-  const sliceNote = queuedSlices.length
-    ? ` Feature slices in Queued (${queuedSlices.length}) run via Start Forge (unified queue).`
-    : "";
   let idleMsg = "Waiting for intake — queue work with forge-intake";
   if (mode === "orphan") {
     idleMsg = activity.detail || "Forge loop not running — click Restart Forge";
     idle.hidden = false;
     idle.textContent = idleMsg;
-  } else if (looksLive && queuedAuto.length===0 && inProg.length===0 && batch.state !== "needs_decision") {
+  } else if (looksLive && queuedSlices.length && (mode === "working" || mode === "picking" || mode === "paused")) {
+    idle.hidden = true;
+  } else if (looksLive && !hasQueuedWork && batch.state !== "needs_decision") {
     if (mode === "batch" || batch.state === "running" || batch.state === "verifying" || batch.batch_running) {
-      idleMsg = "No punch-list tickets left · running full test suite";
+      idleMsg = "Queue empty · running full test suite (ship gate)";
     } else if (batch.state === "held" || mode === "held") {
-      idleMsg = "No punch-list tickets left · not pushing (held)";
+      idleMsg = "Queue empty · not pushing (held)";
     } else if (batch.needed) {
       const why = (batch.plain || "").trim()
-        || "full test suite waiting before ship";
-      idleMsg = `No punch-list tickets left · ${why}`;
+        || "full test suite waiting — press Full verify & ship when ready";
+      idleMsg = `Queue empty · ${why}`;
     } else if (batch.state === "green") {
-      idleMsg = `No punch-list tickets left · full suite already passed @ ${(batch.last_green_sha||"").slice(0,12)}`;
+      idleMsg = `Queue empty · full suite already passed @ ${(batch.last_green_sha||"").slice(0,12)}`;
     }
-    idleMsg += sliceNote;
     idle.hidden = false;
     idle.textContent = idleMsg;
   } else if (!looksLive && queuedSlices.length && queuedAuto.length===0) {
@@ -2169,7 +2274,7 @@ function render() {
   const fail = batch.failure || null;
   const halted = items.filter(i => /Halted/i.test(i.status||""));
   const factoryStopped = mode === "stopped" || mode === "idle" || mode === "quiet";
-  const hasQueuedWork = queuedAuto.length > 0 || inProg.length > 0;
+  const hasQueuedWork = queuedAuto.length > 0 || queuedSlices.length > 0 || inProg.length > 0;
 
   function cantShipHtml() {
     const reason = (fail && fail.reason) || batch.reason || "still_red";
