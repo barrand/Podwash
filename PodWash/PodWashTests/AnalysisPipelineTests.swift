@@ -262,4 +262,103 @@ final class AnalysisPipelineTests: XCTestCase {
         let secondLoaded = transcriptCache.load(episodeID: episodeID)
         XCTAssertEqual(secondLoaded, firstLoaded, "cached transcript must remain stable on interval cache hit")
     }
+
+    // MARK: - Task 020: interval cache hit + missing transcript backfill
+
+    private let backfillEpisodeID = "fixture-transcript-backfill"
+
+    private func seedIntervalCacheOnly(
+        episodeID: String,
+        intervalCache: IntervalCache,
+        transcriptCache: TranscriptCache,
+        targetWords: Set<String>,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        let seeded = CensorInterval(start: 1.0, end: 2.0, action: .mute, source: .profanity)
+        try intervalCache.store([seeded], episodeID: episodeID, targetWords: targetWords)
+        XCTAssertNotNil(
+            intervalCache.load(episodeID: episodeID, targetWords: targetWords),
+            file: file,
+            line: line
+        )
+        XCTAssertNil(transcriptCache.load(episodeID: episodeID), file: file, line: line)
+    }
+
+    func testIntervalCacheHitWithMissingTranscriptPersistsTranscript() async throws {
+        let transcriptCacheDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("TranscriptCacheBackfill-\(UUID().uuidString)", isDirectory: true)
+        defer { try? TranscriptCache(baseDirectory: transcriptCacheDir).clear() }
+
+        let transcriptCache = TranscriptCache(baseDirectory: transcriptCacheDir)
+        let intervalCache = IntervalCache(baseDirectory: cacheDir)
+        try seedIntervalCacheOnly(
+            episodeID: backfillEpisodeID,
+            intervalCache: intervalCache,
+            transcriptCache: transcriptCache,
+            targetWords: fullTargetSet
+        )
+
+        let injectedTranscript = try loadTranscript()
+        XCTAssertEqual(injectedTranscript.count, 5)
+
+        let localSpy = ASRSpyTranscriber()
+        let localPipeline = AnalysisPipeline(
+            transcriber: localSpy,
+            cache: intervalCache,
+            transcriptCache: transcriptCache
+        )
+
+        _ = try await localPipeline.analyze(
+            episode: EpisodeIdentity(id: backfillEpisodeID),
+            audioURL: dummyAudioURL(),
+            targetWords: fullTargetSet,
+            injectedTranscript: injectedTranscript
+        )
+
+        let loaded = transcriptCache.load(episodeID: backfillEpisodeID)
+        XCTAssertNotNil(
+            loaded,
+            "interval cache hit with missing transcript must persist TranscriptCache"
+        )
+        XCTAssertEqual(loaded?.count, 5)
+        XCTAssertEqual(localSpy.transcribeCallCount, 0, "injected transcript must bypass ASR on backfill")
+    }
+
+    func testIntervalCacheHitWithMissingTranscriptInvokesASRForBackfill() async throws {
+        let transcriptCacheDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("TranscriptCacheBackfill-\(UUID().uuidString)", isDirectory: true)
+        defer { try? TranscriptCache(baseDirectory: transcriptCacheDir).clear() }
+
+        let transcriptCache = TranscriptCache(baseDirectory: transcriptCacheDir)
+        let intervalCache = IntervalCache(baseDirectory: cacheDir)
+        try seedIntervalCacheOnly(
+            episodeID: backfillEpisodeID,
+            intervalCache: intervalCache,
+            transcriptCache: transcriptCache,
+            targetWords: fullTargetSet
+        )
+
+        let localSpy = ASRSpyTranscriber()
+        localSpy.wordsToReturn = try loadTranscript()
+
+        let localPipeline = AnalysisPipeline(
+            transcriber: localSpy,
+            cache: intervalCache,
+            transcriptCache: transcriptCache
+        )
+
+        _ = try await localPipeline.analyze(
+            episode: EpisodeIdentity(id: backfillEpisodeID),
+            audioURL: dummyAudioURL(),
+            targetWords: fullTargetSet
+        )
+
+        XCTAssertGreaterThanOrEqual(
+            localSpy.transcribeCallCount,
+            1,
+            "interval cache hit with missing transcript must invoke ASR for backfill"
+        )
+        XCTAssertNotNil(transcriptCache.load(episodeID: backfillEpisodeID))
+    }
 }

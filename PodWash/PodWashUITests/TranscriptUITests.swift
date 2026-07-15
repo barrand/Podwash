@@ -17,6 +17,7 @@ final class TranscriptUITests: XCTestCase {
     private let fixtureTimeout: TimeInterval = 5
     private let transcriptOpenTimeout: TimeInterval = 3
     private let progressiveTimelineTimeout: TimeInterval = 5
+    private let backfillAffordanceTimeout: TimeInterval = 10
 
     private static let transcriptFixtureArg = "-UITestFixtureTranscript"
     private static let transcriptNoCacheArg = "-UITestFixtureTranscriptNoCache"
@@ -136,6 +137,36 @@ final class TranscriptUITests: XCTestCase {
 
         XCTAssertGreaterThanOrEqual(anchor, 28, "scroll anchor must be ≥ 28 for playbackPosition 30.0")
         XCTAssertLessThanOrEqual(anchor, 32, "scroll anchor must be ≤ 32 for playbackPosition 30.0")
+    }
+
+    // MARK: - Task 020
+
+    /// Fixture: interval cache seeded, transcript file omitted (`-UITestFixtureTranscriptNoCache`),
+    /// cleaning on, local bundled audio. Stable entry: `episode.viewTranscript` on row 0 after
+    /// first play/prepare (not full-player `playback.viewTranscript`).
+    @MainActor
+    func testTranscriptAffordanceAppearsAfterBackfillWhenIntervalsCached() throws {
+        let app = launchTranscriptFixtureApp(includeTranscriptCache: false)
+        navigateToEpisodeList(app)
+        ensureChannelCleaningOn(in: app)
+
+        assertTranscriptAffordanceAbsent("episode.viewTranscript", scopedToRow: 0, in: app)
+
+        let episodeCell = app.cells["episodeCell_0"]
+        XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
+        episodeCell.tap()
+
+        let miniPlayer = element("miniPlayer", in: app)
+        XCTAssertTrue(
+            miniPlayer.waitForExistence(timeout: fixtureTimeout),
+            "first play/prepare must surface miniPlayer"
+        )
+
+        let viewTranscript = episodeCell.descendants(matching: .any)["episode.viewTranscript"]
+        XCTAssertTrue(
+            waitForElementHittable(viewTranscript, timeout: backfillAffordanceTimeout),
+            "episode.viewTranscript must become hittable within \(backfillAffordanceTimeout)s after backfill"
+        )
     }
 
     // MARK: - AC9
@@ -276,6 +307,16 @@ final class TranscriptUITests: XCTestCase {
         guard channelToggle.waitForExistence(timeout: fixtureTimeout) else { return }
         guard (channelToggle.value as? String) != "on" else { return }
         channelToggle.tap()
+    }
+
+    @MainActor
+    private func waitForElementHittable(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if element.exists, element.isHittable { return true }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        return element.exists && element.isHittable
     }
 
     @MainActor
