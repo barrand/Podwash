@@ -70,10 +70,9 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     private nonisolated(unsafe) var timeControlObservation: NSKeyValueObservation?
     private let sourceURL: URL
 
-    /// Under XCTest, episode `AVPlayer` is muted so verify emits no host-audible sine (task-017).
-    private static let silenceEpisodeForTests: Bool = {
-        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
-    }()
+    /// Under XCTest / UITest / `PODWASH_SILENCE_HOST_AUDIO`, mute episode `AVPlayer`
+    /// so verify emits no host-audible sine (task-017 / task-018).
+    private static let silenceEpisodeForTests: Bool = HostAudioSilence.isEnabled
 
     /// Exposed for unit tests that observe `timeControlStatus` via KVO.
     var avPlayer: AVPlayer { player }
@@ -117,6 +116,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         player.automaticallyWaitsToMinimizeStalling = false
         if Self.silenceEpisodeForTests {
             player.isMuted = true
+            player.volume = 0
         }
         self.title = title
         self.artist = artist
@@ -155,6 +155,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         )
         if Self.silenceEpisodeForTests {
             player.isMuted = true
+            player.volume = 0
         }
         audioSessionConfigurator.activatePlaybackSession()
         startOrPendPlayback()

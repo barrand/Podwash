@@ -31,10 +31,9 @@ final class OverlayEngine {
     private var isSeekResyncing = false
     private let matchEpsilon: TimeInterval = 0.05
 
-    /// Under XCTest, overlay `AVAudioPlayer` volume is 0 so verify emits no host-audible beeps (task-004).
-    private static let silenceOverlayForTests: Bool = {
-        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
-    }()
+    /// Under XCTest / UITest / `PODWASH_SILENCE_HOST_AUDIO`, overlay volume is 0
+    /// so verify emits no host-audible beeps (task-004 / task-018).
+    private static let silenceOverlayForTests: Bool = HostAudioSilence.isEnabled
 
     init(
         player: AVPlayer,
