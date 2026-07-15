@@ -4,6 +4,7 @@
 //
 //  Slice 25 — Full-player combined timeline + playhead + tap-to-seek (ADR-021 §6).
 //  Slice 27 — Mute marker overlays + muteMarkers AX suffix (ADR-023 §5–§6).
+//  Slice 30 — Shared chrome for mini + full (ADR-026); height + AX id parameterized.
 //
 
 import SwiftUI
@@ -17,9 +18,10 @@ struct SuperSeekBarView: View {
     let muteMarkers: [MuteMarker]
     /// When non-nil, append `,muteMarkers:N` to timeline AX (complete colored bars only).
     let muteMarkerCountForAccessibility: Int?
+    let barHeight: CGFloat
+    let accessibilityIdentifier: String
     let onSeek: (Double) -> Void
 
-    private let barHeight = AnalysisTimelineModel.fullPlayerTimelineHeight
     private let minimumTickWidth: CGFloat = 2
 
     init(
@@ -29,6 +31,8 @@ struct SuperSeekBarView: View {
         processedEnd: Double,
         muteMarkers: [MuteMarker] = [],
         muteMarkerCountForAccessibility: Int? = nil,
+        barHeight: CGFloat = AnalysisTimelineModel.fullPlayerTimelineHeight,
+        accessibilityIdentifier: String = "playback.superSeekBar",
         onSeek: @escaping (Double) -> Void
     ) {
         self.colors = colors
@@ -37,6 +41,8 @@ struct SuperSeekBarView: View {
         self.processedEnd = processedEnd
         self.muteMarkers = muteMarkers
         self.muteMarkerCountForAccessibility = muteMarkerCountForAccessibility
+        self.barHeight = barHeight
+        self.accessibilityIdentifier = accessibilityIdentifier
         self.onSeek = onSeek
     }
 
@@ -89,7 +95,7 @@ struct SuperSeekBarView: View {
         }
         .frame(height: barHeight + 8)
         .accessibilityElement(children: .ignore)
-        .accessibilityIdentifier("playback.superSeekBar")
+        .accessibilityIdentifier(accessibilityIdentifier)
         .accessibilityLabel("Playback position")
         .accessibilityHint(
             "Tap to seek within analyzed audio. Seeks past unscanned audio move to the analyzed frontier. When analysis is complete, profanity mute regions appear as red marks on the bar."

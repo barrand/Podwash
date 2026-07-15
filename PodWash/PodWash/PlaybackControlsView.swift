@@ -79,6 +79,8 @@ struct PlaybackControlsView: View {
                     processedEnd: frontier,
                     muteMarkers: muteMarkers,
                     muteMarkerCountForAccessibility: muteMarkerCountForAccessibility,
+                    barHeight: AnalysisTimelineModel.fullPlayerTimelineHeight,
+                    accessibilityIdentifier: "playback.superSeekBar",
                     onSeek: { seconds in
                         if let onSeekTo {
                             onSeekTo(seconds)

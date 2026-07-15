@@ -77,7 +77,13 @@ enum FixtureProgressivePlayback {
     static func makeSteppedAnalyzer(
         pacing: any AnalysisProgressPacing = FixtureAnalysisProgressPacing(delayNanoseconds: 400_000_000)
     ) -> SteppedEpisodeAnalyzer {
-        SteppedEpisodeAnalyzer(
+        // Hold first chunk long enough for Library → full-player navigation + AC3 poll,
+        // but short enough that mid (AC5, 5 s wait) and terminal (AC4, 10 s) still arrive.
+        // When FreezeAt is set (seek-clamp tests), skip the long hold so mid-run is reachable
+        // within the 5 s AX poll — mini-player navigation is faster than full-player expand,
+        // so the wait often starts while the 7 s first-chunk hold is still active.
+        let firstHold: Duration? = freezeAtProcessedEnd == nil ? .seconds(7) : nil
+        return SteppedEpisodeAnalyzer(
             snapshots: pinnedSnapshots,
             pacing: pacing,
             partialIntervalsBySnapshot: [
@@ -86,9 +92,7 @@ enum FixtureProgressivePlayback {
                 [],
             ],
             freezeAtProcessedEnd: freezeAtProcessedEnd,
-            // Hold first chunk long enough for Library → full-player navigation + AC3 poll,
-            // but short enough that mid (AC5, 5 s wait) and terminal (AC4, 10 s) still arrive.
-            firstSnapshotHold: .seconds(7)
+            firstSnapshotHold: firstHold
         )
     }
 }

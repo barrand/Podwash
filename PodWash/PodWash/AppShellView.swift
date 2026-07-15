@@ -98,8 +98,12 @@ struct AppShellView: View {
                         podcastTitle: model.nowPlayingPodcastTitle,
                         timelineColors: model.miniPlayerTimelineColors,
                         isPreparingPlayback: model.isPreparingPlayback,
+                        episodeDuration: model.superSeekDuration,
+                        processedEnd: model.superSeekProcessedEnd,
+                        muteIntervals: model.nowPlayingMuteIntervals,
                         onExpand: { model.expandFullPlayer() },
-                        onTogglePlayPause: { model.toggleMiniPlayerPlayPause() }
+                        onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
+                        onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) }
                     )
                     // iOS 26 TabView bottom inset overlaps the tab bar unless we reserve its height.
                     Color.clear
@@ -139,7 +143,7 @@ struct AppShellView: View {
                         isPreparingPlayback: model.isPreparingPlayback,
                         episodeDuration: model.superSeekDuration,
                         processedEnd: model.superSeekProcessedEnd,
-                        muteIntervals: model.fullPlayerMuteIntervals,
+                        muteIntervals: model.nowPlayingMuteIntervals,
                         onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
                         onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) },
                         onSeekBy: { model.seekClampedToProcessedFrontier(by: $0) }

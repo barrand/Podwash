@@ -68,8 +68,8 @@ final class AppShellModel {
                 || FixtureMuteMarkers.isAnyEnabled)
     }
 
-    /// Applied / cached intervals for full-player mute-marker overlays (ADR-023).
-    var fullPlayerMuteIntervals: [CensorInterval] {
+    /// Applied / cached intervals for mute-marker overlays on mini + full player (ADR-023 / ADR-026).
+    var nowPlayingMuteIntervals: [CensorInterval] {
         playbackCoordinator?.cachedIntervals ?? []
     }
 
@@ -190,7 +190,7 @@ final class AppShellModel {
         return engine?.duration ?? 0
     }
 
-    /// Clamped seek used by full-player super seek bar and ±15 transport.
+    /// Clamped seek used by mini + full super seek bars and ±15 transport.
     func seekClampedToProcessedFrontier(to seconds: Double) {
         let frontier = superSeekProcessedEnd > 0
             ? superSeekProcessedEnd

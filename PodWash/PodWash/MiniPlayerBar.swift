@@ -3,8 +3,10 @@
 //  PodWash
 //
 //  Slice 23 — Compact player chrome above the tab bar (ADR-015 §4, slice-23-ux.md).
+//  Slice 30 — Hosts shared SuperSeekBarView (ADR-026 / slice-30-ux.md).
 //
 
+import AVFoundation
 import SwiftUI
 
 struct MiniPlayerBar: View {
@@ -13,14 +15,30 @@ struct MiniPlayerBar: View {
     let podcastTitle: String
     let timelineColors: [TimelineSegmentColor]?
     let isPreparingPlayback: Bool
+    let episodeDuration: Double
+    let processedEnd: Double
+    let muteIntervals: [CensorInterval]
     let onExpand: () -> Void
     let onTogglePlayPause: () -> Void
+    let onSeekTo: (Double) -> Void
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.25)) { _ in
             let _ = engine.uiRefreshToken
             let isPlaying = engine.isPlaying
             let isAnalyzing = isPreparingPlayback && !isPlaying
+            let elapsedSeconds = engine.avPlayer.currentTime().seconds
+            let duration = episodeDuration > 0 ? episodeDuration : engine.duration
+            let frontier = processedEnd > 0 ? processedEnd : duration
+            // Complete gate uses raw processedEnd (not seek frontier fallback).
+            let timelineComplete = duration > 0 && processedEnd >= duration
+            let showMuteMarkerAX = timelineColors != nil && timelineComplete
+            let muteMarkers = showMuteMarkerAX
+                ? SuperSeekBarModel.muteMarkers(from: muteIntervals, duration: duration)
+                : []
+            let muteMarkerCountForAccessibility: Int? = showMuteMarkerAX
+                ? muteMarkers.count
+                : nil
 
             VStack(spacing: 0) {
                 HStack(spacing: 12) {
@@ -67,15 +85,19 @@ struct MiniPlayerBar: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
 
-                if let timelineColors, !timelineColors.isEmpty {
-                    AnalysisTimelineView(
-                        colors: timelineColors,
-                        height: AnalysisTimelineModel.miniPlayerTimelineHeight,
-                        accessibilityIdentifier: "miniPlayerAnalysisTimeline"
-                    )
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-                }
+                SuperSeekBarView(
+                    colors: timelineColors,
+                    elapsed: elapsedSeconds,
+                    duration: duration,
+                    processedEnd: frontier,
+                    muteMarkers: muteMarkers,
+                    muteMarkerCountForAccessibility: muteMarkerCountForAccessibility,
+                    barHeight: AnalysisTimelineModel.miniPlayerTimelineHeight,
+                    accessibilityIdentifier: "miniPlayer.superSeekBar",
+                    onSeek: onSeekTo
+                )
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
             }
             .frame(maxWidth: .infinity)
             .background(.bar)
