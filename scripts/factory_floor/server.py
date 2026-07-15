@@ -1162,8 +1162,8 @@ def board_snapshot() -> dict[str, Any]:
                 sid = int(re.sub(r"\D", "", str(item.get("id") or "")) or 0)
             except ValueError:
                 sid = 0
-            if sid == active_id and re.search(
-                r"SLICE|IMPLEMENT|VERIFY|ADR|UX|TEST|STORY|REVIEW", phase, re.I
+            if sid == active_id and phase and not re.search(
+                r"^(idle|paused|FULL-VERIFY)?$", phase, re.I
             ):
                 item["active"] = True
         for item in tasks:
@@ -1171,7 +1171,7 @@ def board_snapshot() -> dict[str, Any]:
                 tid = int(re.sub(r"\D", "", str(item.get("id") or "")) or 0)
             except ValueError:
                 tid = 0
-            if tid == active_id and not re.search(r"SLICE", phase, re.I):
+            if tid == active_id and phase and not re.search(r"^SLICE", phase, re.I):
                 item["active"] = True
     runner_alive = _runner_alive(ctrl=ctrl)
     batch = _batch_snapshot(ctrl)
@@ -1678,6 +1678,12 @@ main {
   opacity: 0.92;
   background: #262b30;
 }
+.card.lane-slice.active {
+  border-style: solid;
+  border-color: var(--ok);
+  box-shadow: 0 0 0 1px var(--ok);
+  opacity: 1;
+}
 .card.lane-slice .lane-chip {
   display: inline-block; margin-top: 0.35rem; padding: 0.1rem 0.45rem;
   border-radius: 999px; font-size: 0.68rem; font-weight: 600;
@@ -2104,7 +2110,11 @@ function formatAge(sec) {
 function makeCard(item, st, activeTid, activity) {
   const card = document.createElement("div");
   const isSlice = item.type === "slice" || item.lane === "slice";
-  const isActive = item.type==="task" && activeTid && String(item.id).padStart(3,"0")===activeTid;
+  const idNum = String(parseInt(String(item.id || "").replace(/\D/g, ""), 10) || "");
+  const stNum = activeTid != null
+    ? String(parseInt(String(activeTid).replace(/\D/g, ""), 10) || "")
+    : "";
+  const isActive = !!(item.active) || (!!stNum && idNum === stNum);
   const mode = (activity && activity.mode) || "";
   const stalled = isActive && (mode === "orphan" || mode === "starting");
   card.className = "card"
