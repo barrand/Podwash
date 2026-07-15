@@ -21,15 +21,13 @@ struct HeuristicContentSegmenter: ContentSegmenting {
         let anchors = Self.findAnchors(in: tokens)
         var grown: [TimeRange] = anchors.map { Self.growFromAnchor($0, tokens: tokens, features: features) }
 
-        let episodeEnd = tokens[tokens.count - 1].end
         for dens in Self.densityWindows(tokens: tokens, features: features) {
-            let nearOpenClose = dens.start < 180.0 || dens.start > episodeEnd - 180.0
             let nearAnchor = grown.contains {
                 abs(dens.start - $0.start) < 30
                     || abs(dens.end - $0.end) < 30
                     || dens.start <= $0.end + 5 && dens.end >= $0.start - 5
             }
-            if nearOpenClose || nearAnchor {
+            if nearAnchor {
                 grown.append(dens)
             }
         }

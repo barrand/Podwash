@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 025 |
 | **Title** | Super seek bar yellow bands do not match real ads (segmenter false positives) |
-| **Status** | Queued |
+| **Status** | In Progress |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/HeuristicContentSegmenter.swift`, `PodWash/PodWash/AnalysisTimelineModel.swift`, `PodWash/PodWashTests/Fixtures/segmentation/`, `PodWash/PodWashTests/SegmentationSpikeTests.swift`, `PodWash/PodWashTests/AnalysisTimelineModelTests.swift` |
@@ -81,5 +81,5 @@
 > Loop writes `VERIFY RESULT:` here. For tasks, `tier=2` and `filtered=1` are valid for Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=13 passed=13 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260715-164846.xcresult tier=2 class=tests
 ```

@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 023 |
 | **Title** | Hide channel Clean Profanity / Skip ads toggles; default both on |
-| **Status** | In Progress |
+| **Status** | Implemented |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/PodcastDetailView.swift`, `PodWash/PodWash/CleaningToggleStore.swift`, `PodWash/PodWash/PodcastStore.swift`, `PodWash/PodWash/PersistenceController.swift` (or one-shot migrate helper), `PodWash/PodWashUITests/AnalysisProgressUITests.swift`, `PodWash/PodWashUITests/SkipOverrideUITests.swift`, UI helpers that tap `channelCleaningToggle` |
