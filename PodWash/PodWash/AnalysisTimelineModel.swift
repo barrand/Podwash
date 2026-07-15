@@ -26,9 +26,10 @@ enum AnalysisTimelineModel {
     ///
     /// - Parameters:
     ///   - intervals: Playback-projected intervals (profanity + enabled unrelated).
-    ///   - adRangeIntervals: Full analyzed union for yellow buckets; defaults to `intervals`.
-    ///     Pass the cache union so ad spans appear on the timeline even when unrelated
-    ///     skip/mute is disabled (ADR-013 playback filter vs ADR-018 display).
+    ///   - adRangeIntervals: Unrelated spans for yellow buckets; defaults to `intervals`.
+    ///     When unrelated skip/mute is on, pass playback-projected intervals so yellow
+    ///     matches applied skip (task-019). When unrelated is filtered from playback,
+    ///     pass the cache union so ads still appear on the timeline (ADR-013 vs ADR-018).
     static func completeSnapshot(
         duration: Double,
         intervals: [CensorInterval],

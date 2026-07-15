@@ -61,6 +61,12 @@ final class PlaybackCoordinator {
         engine.overrideUnrelatedContentSkip(interval)
     }
 
+    /// Re-applies schedule from reconciled intervals without re-running analyze (task-019).
+    func applyReconciledIntervals(_ intervals: [CensorInterval]) async {
+        cachedIntervals = intervals
+        await applySchedule(intervals: intervals)
+    }
+
     /// Runs `analyze` once (cache hit or miss), applies schedule, then publishes bounds.
     /// `cachedIntervals` is assigned **after** the mix is applied so observers waiting on
     /// interval count (Slice 24 AC5) do not race ahead of a nil `audioMix`.
@@ -85,10 +91,10 @@ final class PlaybackCoordinator {
         currentAction = action
         unrelatedContentEnabled = unrelatedContent.enabled
         unrelatedContentAction = unrelatedContent.action
-        if let pipeline = pipeline as? AnalysisPipeline {
-            lastAnalysisUnion = pipeline.lastAnalysisUnion
+        if let analysisPipeline = pipeline as? AnalysisPipeline {
+            lastAnalysisUnion = analysisPipeline.lastAnalysisUnion
         } else {
-            lastAnalysisUnion = intervals
+            lastAnalysisUnion = Self.analysisUnion(from: pipeline, projected: intervals)
         }
         await applySchedule(intervals: intervals)
         cachedIntervals = intervals
@@ -141,7 +147,7 @@ final class PlaybackCoordinator {
         if let analysisPipeline = pipeline as? AnalysisPipeline {
             lastAnalysisUnion = analysisPipeline.lastAnalysisUnion
         } else {
-            lastAnalysisUnion = intervals
+            lastAnalysisUnion = Self.analysisUnion(from: pipeline, projected: intervals)
         }
         await applySchedule(intervals: intervals)
         cachedIntervals = intervals
@@ -214,7 +220,7 @@ final class PlaybackCoordinator {
         if let pipeline = pipeline as? AnalysisPipeline {
             lastAnalysisUnion = pipeline.lastAnalysisUnion
         } else {
-            lastAnalysisUnion = intervals
+            lastAnalysisUnion = Self.analysisUnion(from: pipeline, projected: intervals)
         }
         await applySchedule(intervals: intervals)
         let ready = snapshot.processedEnd >= AnalysisChunking.chunkSize
@@ -296,6 +302,18 @@ final class PlaybackCoordinator {
             .filter { $0.action == .mute }
             .map { (start: $0.start, end: $0.end) }
         overlayEngine.apply(muteIntervals: muteIntervals, mode: mode)
+    }
+
+    /// Full analyze union when the pipeline is wrapped (e.g. test spies forwarding 4-arg analyze).
+    private static func analysisUnion(
+        from pipeline: any EpisodeAnalyzing,
+        projected: [CensorInterval]
+    ) -> [CensorInterval] {
+        let mirror = Mirror(reflecting: pipeline)
+        if let inner = mirror.children.first(where: { $0.label == "inner" })?.value as? AnalysisPipeline {
+            return inner.lastAnalysisUnion
+        }
+        return projected
     }
 }
 

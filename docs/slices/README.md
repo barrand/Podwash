@@ -56,6 +56,7 @@ The dependency graph and parallel groups live in [`multitask-workflow.md`](../mu
 | 24 | `slice-24-production-analysis-wiring.md` | **MVP closure** — production `AnalysisPipeline` + bundled tiny.en for phone dogfood (needs 07, 08, 13, 23) |
 | 25 | `slice-25-progressive-playback-super-seek-bar.md` | **UX** — progressive play after first ~30 s chunk; super seek bar with playhead, elapsed/remaining, frontier-clamped scrub (needs 20, 24; supersedes task-011) |
 | 26 | `slice-26-episode-transcript-viewer.md` | **UX** — read cached ASR transcript (complete only); listened + skipped-ad highlights; entry from episode row + full player (needs 24, 19) |
+| 27 | `slice-27-super-seek-bar-mute-markers.md` | **UX** — mute-interval markers on full-player super seek bar (distinct from yellow ads; needs 25) |
 
 **MVP app shell (Slices 22–23):** Inserted after lock-screen polish (14) and **before CarPlay (15)**.
 The factory built cleaning/playback engines but production `ContentView` was still a placeholder;

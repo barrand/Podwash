@@ -408,15 +408,25 @@ final class AppShellModel {
                         self.engine?.play()
                     }
                 )
+                let (playbackIntervals, analysisUnion) = reconcilePlaybackIntervals(
+                    profanityAction: action,
+                    unrelatedContent: unrelated,
+                    pipelineIntervals: coordinator.cachedIntervals,
+                    analysisUnion: coordinator.lastAnalysisUnion
+                )
+                if playbackIntervals != coordinator.cachedIntervals {
+                    await coordinator.applyReconciledIntervals(playbackIntervals)
+                }
                 PlaybackDiagnostics.logPreparePlaybackEnd(
                     episodeID: episode.id,
-                    intervals: coordinator.cachedIntervals,
-                    union: coordinator.lastAnalysisUnion,
+                    intervals: playbackIntervals,
+                    union: analysisUnion,
                     error: nil
                 )
                 await publishTerminalPlaybackAnalysisSnapshot(
-                    intervals: coordinator.cachedIntervals,
-                    union: coordinator.lastAnalysisUnion,
+                    intervals: playbackIntervals,
+                    analysisUnion: analysisUnion,
+                    unrelatedContent: unrelated,
                     audioURL: audioURL
                 )
             } catch {
@@ -548,7 +558,8 @@ final class AppShellModel {
     /// Pins the terminal colored timeline for player chrome after analysis completes.
     private func publishTerminalPlaybackAnalysisSnapshot(
         intervals: [CensorInterval],
-        union: [CensorInterval],
+        analysisUnion: [CensorInterval],
+        unrelatedContent: UnrelatedContentOptions,
         audioURL: URL
     ) async {
         let duration = await resolvedEpisodeDuration(audioURL: audioURL)
@@ -556,8 +567,33 @@ final class AppShellModel {
         playbackAnalysisSnapshot = AnalysisTimelineModel.completeSnapshot(
             duration: duration,
             intervals: intervals,
-            adRangeIntervals: union
+            adRangeIntervals: AnalysisPipeline.adRangePaintIntervals(
+                playbackIntervals: intervals,
+                analysisUnion: analysisUnion,
+                unrelatedContentEnabled: unrelatedContent.enabled
+            )
         )
+    }
+
+    /// Re-project analyze union when playback analyze omitted unrelated (legacy 4-arg spies).
+    private func reconcilePlaybackIntervals(
+        profanityAction: CensorAction,
+        unrelatedContent: UnrelatedContentOptions,
+        pipelineIntervals: [CensorInterval],
+        analysisUnion: [CensorInterval]
+    ) -> (playbackIntervals: [CensorInterval], analysisUnion: [CensorInterval]) {
+        guard unrelatedContent.enabled,
+              analysisUnion.contains(where: { $0.source == .unrelatedContent })
+        else {
+            return (pipelineIntervals, analysisUnion)
+        }
+
+        let projected = AnalysisPipeline.projectPlaybackIntervals(
+            union: analysisUnion,
+            profanityAction: profanityAction,
+            unrelatedContent: unrelatedContent
+        )
+        return (projected, analysisUnion)
     }
 
     private func resolvedEpisodeDuration(audioURL: URL) async -> Double {

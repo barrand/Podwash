@@ -4,7 +4,8 @@
 |-------|-------|
 | **ID** | 26 |
 | **Title** | Episode transcript viewer |
-| **Status** | Ready |
+| **Status** | Done |
+| **Done at** | 2026-07-15T16:46:38Z |
 | **Crux** | Terminal analysis persists `[TimedWord]` to disk and a transcript sheet exposes **listened** words (`end ≤ playbackPosition`) and **skipped-ad** words (overlap `IntervalSource.unrelatedContent` + `.skip`) — assertable via cache round-trip, view-model counts, and UI accessibility aggregates without device listening. |
 
 ## PRD / spec references

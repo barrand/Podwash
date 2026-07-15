@@ -174,7 +174,7 @@ final class AnalysisPipeline: @unchecked Sendable {
 
         lastAnalysisUnion = union
 
-        let projected = Self.project(
+        let projected = Self.projectPlaybackIntervals(
             union: union,
             profanityAction: profanityAction,
             unrelatedContent: unrelatedContent
@@ -185,7 +185,11 @@ final class AnalysisPipeline: @unchecked Sendable {
                 Self.completeSnapshot(
                     duration: duration,
                     intervals: projected,
-                    adRangeIntervals: union
+                    adRangeIntervals: Self.adRangePaintIntervals(
+                        playbackIntervals: projected,
+                        analysisUnion: union,
+                        unrelatedContentEnabled: unrelatedContent.enabled
+                    )
                 )
             )
         }
@@ -241,7 +245,7 @@ final class AnalysisPipeline: @unchecked Sendable {
             lastUnion = fullUnion
 
             let eligible = fullUnion.filter { $0.end <= chunkEnd }
-            let projectedEligible = Self.project(
+            let projectedEligible = Self.projectPlaybackIntervals(
                 union: eligible,
                 profanityAction: profanityAction,
                 unrelatedContent: unrelatedContent
@@ -250,14 +254,19 @@ final class AnalysisPipeline: @unchecked Sendable {
             let isTerminal = chunkEnd >= duration - 0.000_1
             let snapshot: AnalysisProgressSnapshot
             if isTerminal {
+                let terminalProjected = Self.projectPlaybackIntervals(
+                    union: fullUnion,
+                    profanityAction: profanityAction,
+                    unrelatedContent: unrelatedContent
+                )
                 snapshot = Self.completeSnapshot(
                     duration: duration,
-                    intervals: Self.project(
-                        union: fullUnion,
-                        profanityAction: profanityAction,
-                        unrelatedContent: unrelatedContent
-                    ),
-                    adRangeIntervals: fullUnion
+                    intervals: terminalProjected,
+                    adRangeIntervals: Self.adRangePaintIntervals(
+                        playbackIntervals: terminalProjected,
+                        analysisUnion: fullUnion,
+                        unrelatedContentEnabled: unrelatedContent.enabled
+                    )
                 )
             } else {
                 snapshot = AnalysisChunking.inFlightSnapshot(
@@ -313,8 +322,24 @@ final class AnalysisPipeline: @unchecked Sendable {
         }
     }
 
+    /// Intervals for yellow buckets: applied playback when unrelated skip/mute is on;
+    /// full analyze union when unrelated is filtered from playback (ADR-018 / task-019).
+    static func adRangePaintIntervals(
+        playbackIntervals: [CensorInterval],
+        analysisUnion: [CensorInterval],
+        unrelatedContentEnabled: Bool
+    ) -> [CensorInterval] {
+        if unrelatedContentEnabled {
+            return playbackIntervals
+        }
+        if analysisUnion.contains(where: { $0.source == .unrelatedContent }) {
+            return analysisUnion
+        }
+        return playbackIntervals
+    }
+
     /// Remap actions by source; drop unrelated when disabled.
-    private static func project(
+    static func projectPlaybackIntervals(
         union: [CensorInterval],
         profanityAction: CensorAction,
         unrelatedContent: UnrelatedContentOptions
