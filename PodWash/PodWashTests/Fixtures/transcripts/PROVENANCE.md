@@ -60,3 +60,14 @@ Hand computation (spec §5 quirk):
 Golden: `[{0.000, 0.175}]` — still 0.175 s (< MIN_CENSOR_SECONDS).
 
 Comparison tolerance for all Double assertions: **±0.0005 s**.
+
+## Slice 26 — transcript viewer (reuse + inline synthetic)
+
+- **`spec-section8.input.json`** — reused by `TranscriptCacheTests` / `AnalysisPipelineTests`
+  (AC1–AC2); same §8 hand-authored provenance as above.
+- **ViewModel synthetic 10-word table** — hand-computed in
+  `TranscriptViewModelTests.syntheticTenWordTranscript()` per
+  `docs/slices/slice-26-episode-transcript-viewer.md` fixture table (not generated from
+  `TranscriptViewModel` under test).
+- **UI fixture (`-UITestFixtureTranscript`)** — 24 words × 2.5 s pinned in ADR-022 /
+  slice-26 UX; seeded by app `FixtureTranscript.swift` (Engineer), not a JSON golden here.

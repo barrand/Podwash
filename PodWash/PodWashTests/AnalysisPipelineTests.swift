@@ -217,4 +217,49 @@ final class AnalysisPipelineTests: XCTestCase {
         XCTAssertTrue(cacheFile.lastPathComponent.hasPrefix("ep-"))
         XCTAssertTrue(cacheFile.lastPathComponent.hasSuffix(".json"))
     }
+
+    // MARK: - Slice 26 AC2: terminal transcript persist + interval cache hit reuse
+
+    func testAnalyzePersistsTranscriptAndReusesCache() async throws {
+        let transcript = try loadTranscript()
+        XCTAssertEqual(transcript.count, 5, "injected transcript fixture must contain 5 words")
+
+        let transcriptCacheDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("TranscriptCacheTests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? TranscriptCache(baseDirectory: transcriptCacheDir).clear() }
+
+        let transcriptCache = TranscriptCache(baseDirectory: transcriptCacheDir)
+        let localSpy = ASRSpyTranscriber()
+        localSpy.wordsToReturn = transcript
+
+        let localPipeline = AnalysisPipeline(
+            transcriber: localSpy,
+            cache: IntervalCache(baseDirectory: cacheDir),
+            transcriptCache: transcriptCache
+        )
+
+        let episode = EpisodeIdentity(id: episodeID)
+
+        _ = try await localPipeline.analyze(
+            episode: episode,
+            audioURL: dummyAudioURL(),
+            targetWords: fullTargetSet
+        )
+
+        let firstLoaded = transcriptCache.load(episodeID: episodeID)
+        XCTAssertNotNil(firstLoaded, "first analyze must persist transcript to TranscriptCache")
+        XCTAssertEqual(firstLoaded?.count, 5)
+
+        let second = try await localPipeline.analyze(
+            episode: episode,
+            audioURL: dummyAudioURL(),
+            targetWords: fullTargetSet
+        )
+
+        XCTAssertEqual(localSpy.transcribeCallCount, 1, "second analyze must hit interval cache without ASR")
+        XCTAssertFalse(second.isEmpty)
+
+        let secondLoaded = transcriptCache.load(episodeID: episodeID)
+        XCTAssertEqual(secondLoaded, firstLoaded, "cached transcript must remain stable on interval cache hit")
+    }
 }
