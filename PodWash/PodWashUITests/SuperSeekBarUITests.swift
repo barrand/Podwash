@@ -129,9 +129,11 @@ final class SuperSeekBarUITests: XCTestCase {
 
     @MainActor
     func testCleaningOffOmitsTimelineAndMarkers() throws {
-        let app = launchFixtureApp("-UITestFixtureMuteMarkers")
+        let app = launchFixtureApp(
+            "-UITestFixtureMuteMarkers",
+            extraArguments: ["-UITestChannelCleaningOff"]
+        )
         navigateToEpisodeList(app)
-        ensureChannelCleaningOff(in: app)
 
         let episodeCell = element("episodeCell_0", in: app)
         XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
@@ -153,10 +155,14 @@ final class SuperSeekBarUITests: XCTestCase {
     // MARK: - Launch + navigation (slice-27-ux.md)
 
     @MainActor
-    private func launchFixtureApp(_ argument: String) -> XCUIApplication {
+    private func launchFixtureApp(
+        _ argument: String,
+        extraArguments: [String] = []
+    ) -> XCUIApplication {
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchArguments.append(argument)
+        app.launchArguments.append(contentsOf: extraArguments)
         app.launch()
         return app
     }
@@ -218,15 +224,8 @@ final class SuperSeekBarUITests: XCTestCase {
 
     @MainActor
     private func ensureChannelCleaningOff(in app: XCUIApplication) {
-        let channelToggle = app.switches["channelCleaningToggle"]
-        guard channelToggle.waitForExistence(timeout: fixtureTimeout) else { return }
-        guard (channelToggle.value as? String) == "on" else { return }
-        channelToggle.tap()
-        let offExpectation = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "value == %@", "off"),
-            object: channelToggle
-        )
-        _ = XCTWaiter().wait(for: [offExpectation], timeout: 2)
+        // Task-023: launch with `-UITestChannelCleaningOff` — detail toggle removed.
+        _ = app
     }
 
     @MainActor

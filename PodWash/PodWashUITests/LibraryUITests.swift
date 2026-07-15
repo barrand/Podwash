@@ -233,9 +233,8 @@ final class LibraryUITests: XCTestCase {
         // Mini-player play/pause contract only (task-012). Fixture library mode plays
         // bundled FixtureAudio; Clean Profanity stays off so this test does not overlap
         // testTapEpisodeDownloadsBeforePlayWhenChannelCleaningOn.
-        let app = launchLibraryApp()
+        let app = launchLibraryApp(extraArguments: ["-UITestChannelCleaningOff"])
         navigateToEpisodeList(app)
-        ensureChannelCleaningOff(in: app)
 
         let episodeCell = element("episodeCell_0", in: app)
         XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
@@ -519,11 +518,8 @@ final class LibraryUITests: XCTestCase {
     }
 
     private func ensureChannelCleaningOff(in app: XCUIApplication) {
-        let channelToggle = app.switches["channelCleaningToggle"]
-        guard channelToggle.waitForExistence(timeout: fixtureTimeout) else { return }
-        guard (channelToggle.value as? String) == "on" else { return }
-        channelToggle.tap()
-        waitForSwitchValue("off", switch: channelToggle, timeout: fixtureTimeout)
+        // Task-023: launch with `-UITestChannelCleaningOff` — detail toggle removed.
+        _ = app
     }
 
     private func ensureChannelCleaningOn(in app: XCUIApplication) {
