@@ -513,60 +513,71 @@ def _ladder_plain(machine_tried: list[Any]) -> str:
 
 
 def _batch_plain(reason: str, state: str) -> str:
-    """Human-readable full-suite / push copy — no factory jargon."""
+    """Human-readable ship-gate copy — manual Full verify & ship, not auto-drain."""
     r = (reason or "").strip()
     mapping = {
         "never verified": (
-            "All tests have never been run green on this tree. "
-            "When the punch-list is clear, the factory runs every test, then pushes if green."
+            "No full-suite stamp yet. Press Full verify & ship when you want one "
+            "(optional — the queue keeps draining without it)."
         ),
         "HEAD moved": (
-            "New commits landed since the last time all tests passed. "
-            "A full test-suite run is waiting, then push if green."
+            "HEAD moved since the last green full suite. Optional: press Full verify & ship "
+            "to refresh the stamp (CI is the safety net between ships)."
         ),
-        "dirty tree": "There are uncommitted changes — a full test-suite run is needed before push.",
-        "ship_now": "You clicked Verify & push — full test suite runs next.",
-        "not needed": "All tests already passed at this commit — nothing left to verify before push.",
-        "skipped": "Full-suite check skipped for this session.",
-        "unavailable": "Full-suite status unavailable (internal import failed).",
-        "still_red": "Full test suite is still failing after an auto-fix pass — decide in Your move.",
+        "dirty tree": (
+            "Uncommitted changes on the tree. Optional: press Full verify & ship after they land."
+        ),
+        "ship_now": "Full verify & ship queued — running the full suite next.",
+        "Implemented awaiting ship": (
+            "Implemented item(s) waiting for Full verify & ship to promote to Done."
+        ),
+        "not needed": "Ship gate clean at this commit.",
+        "skipped": "Ship gate skipped for this session.",
+        "unavailable": "Ship-gate status unavailable (internal import failed).",
+        "still_red": "Full suite still failing after Mechanic — decide in Your move.",
         "needs_decision": (
-            "Full suite needs a decision in Your move — idle drain will not re-run until "
-            "you Retry, Don't push, or Verify & push."
+            "Ship gate blocked — decide in Your move (Retry, Don't push, or Full verify & ship)."
         ),
         "scope_miss": (
-            "Full suite failed on a test no recent punch-list ticket ran — "
-            "likely an old test conflicting with new behavior. Decide in Your move "
-            "(auto-fix skipped)."
+            "Full suite failed on a test outside recent surgical scope — decide in Your move."
         ),
-        "verified": "Last full test suite passed.",
-        "mechanic_retry": "Re-running the full test suite after an auto-fix pass.",
-        "held": (
-            "You chose not to push. Click Verify & push or Retry full suite when ready."
-        ),
-        "verify aborted": "Full test suite aborted (simulator/infra) — decide in Your move.",
+        "verified": "Last full suite passed.",
+        "mechanic_retry": "Re-running the full suite after Mechanic.",
+        "held": "You chose not to push. Full verify & ship or Retry when ready.",
+        "verify aborted": "Full suite aborted (simulator/infra) — decide in Your move.",
     }
     if state == "verifying" or state == "running":
-        return f"Running the full test suite now ({r or 'all tests'})."
+        return f"Running the full suite now ({r or 'all tests'})."
     if state == "needs_decision":
-        return mapping.get(r, f"Can't push ({r or 'failed'}). Decide in Your move.")
+        return mapping.get(r, f"Can't ship ({r or 'failed'}). Decide in Your move.")
     if state == "held":
         return mapping["held"]
     if state == "green" and not r:
         return mapping["verified"]
-    return mapping.get(r, f"Full suite: {r or state or 'idle'}.")
+    return mapping.get(r, f"Ship gate: {r or state or 'idle'}.")
+
+
+def _fmt_work_id(item_or_id: Any, *, kind: str | None = None) -> str:
+    """Format task-NNN or slice-NN for UI."""
+    if isinstance(item_or_id, dict):
+        kind = kind or str(item_or_id.get("type") or item_or_id.get("lane") or "task")
+        raw = item_or_id.get("id")
+    else:
+        raw = item_or_id
+        kind = kind or "task"
+    if raw is None or raw == "":
+        return ""
+    digits = re.sub(r"\D", "", str(raw))
+    if not digits:
+        return str(raw)
+    n = int(digits)
+    if kind in ("slice",) or str(kind).lower() == "slice":
+        return f"slice-{n:02d}"
+    return f"task-{n:03d}"
 
 
 def _fmt_task_id(task_id: Any) -> str:
-    if task_id is None or task_id == "":
-        return ""
-    try:
-        return f"task-{int(task_id):03d}"
-    except (TypeError, ValueError):
-        s = str(task_id)
-        if s.isdigit():
-            return f"task-{int(s):03d}"
-        return s if s.startswith("task-") else f"task-{s}"
+    return _fmt_work_id(task_id, kind="task")
 
 
 def _activity_ages(
@@ -601,23 +612,26 @@ def _activity_snapshot(
     events: list[dict[str, Any]],
     factory_hot: bool,
     runner_alive: bool,
+    slices: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Plain-English Now / agents / next for the Stations panel."""
     paused = bool(ctrl.get("paused"))
     pause_armed = bool(ctrl.get("pause_after_current")) and not paused
     marked_running = bool(ctrl.get("running")) or factory_hot
-    in_prog = [t for t in tasks if re.search(r"In Progress", t.get("status") or "", re.I)]
-    halted = [t for t in tasks if re.search(r"Halted", t.get("status") or "", re.I)]
+    work = list(tasks) + list(slices or [])
+    in_prog = [t for t in work if re.search(r"In Progress|^Verify", t.get("status") or "", re.I)]
+    halted = [t for t in work if re.search(r"Halted", t.get("status") or "", re.I)]
     queued = [
         t
-        for t in tasks
+        for t in work
         if re.search(r"Queued|Ready|Draft", t.get("status") or "", re.I)
         and not re.search(r"needs-human", t.get("kind") or "", re.I)
+        and not t.get("active")
     ]
     # Kind stays "needs-human" after Status → Done; only open Needs-human status waits.
     needs_human = [
         t
-        for t in tasks
+        for t in work
         if re.search(r"Needs-human", t.get("status") or "", re.I)
         and not re.search(r"^Done", t.get("status") or "", re.I)
     ]
@@ -626,7 +640,8 @@ def _activity_snapshot(
     phase = str(station.get("phase") or "").strip()
     role = str(station.get("role") or "").strip()
     detail = str(station.get("detail") or station.get("mission") or "").strip()
-    tid = _fmt_task_id(station.get("task_id"))
+    station_kind = "slice" if re.search(r"SLICE", phase, re.I) else "task"
+    tid = _fmt_work_id(station.get("task_id"), kind=station_kind)
     mission = str(station.get("mission") or "").strip()
 
     if phase and role:
@@ -656,6 +671,13 @@ def _activity_snapshot(
         )
     except (TypeError, ValueError):
         started_age_s = None
+    items_since = int(batch.get("items_since_green") or 0)
+    # Ship urgency = manual gate with Implemented waiting, or live verify / Your-move.
+    ship_urgent = bool(
+        batch.get("state") in ("verifying", "running", "needs_decision", "held")
+        or ctrl.get("ship_now")
+        or items_since > 0
+    )
 
     def pack(
         *,
@@ -693,10 +715,10 @@ def _activity_snapshot(
                 mode="batch",
                 headline="Full test suite still running",
                 detail=(
-                    "The factory loop process exited, but xcodebuild is still finishing. "
-                    "Wait for it, or Stop then Restart factory."
+                    "The Forge loop exited, but xcodebuild is still finishing. "
+                    "Wait for it, or Stop then Restart Forge."
                 ),
-                next_line="Wait for the full suite to finish, or Stop then Restart factory.",
+                next_line="Wait for the full suite to finish, or Stop then Restart Forge.",
                 agents_out=agents
                 or [
                     {
@@ -710,38 +732,38 @@ def _activity_snapshot(
             )
         if batch_flag and not verify_running:
             stuck = (
-                ", ".join(_fmt_task_id(t.get("id")) or str(t.get("id")) for t in in_prog)
+                ", ".join(_fmt_work_id(t) or str(t.get("id")) for t in in_prog)
                 or "none"
             )
             return pack(
                 mode="orphan",
-                headline="Factory loop not running",
+                headline="Forge loop not running",
                 detail=(
-                    f"A full-suite flag was left on, but nothing is alive. "
+                    f"A ship-gate flag was left on, but nothing is alive. "
                     f"In Progress stuck: {stuck}."
                 ),
-                next_line="Click Restart factory. Or Pause if you meant to reclaim the tree for hand-edits.",
+                next_line="Click Restart Forge. Or Pause if you meant to reclaim the tree for hand-edits.",
                 orphan=True,
             )
         if started_age_s is not None and started_age_s < STARTING_GRACE_S:
             return pack(
                 mode="starting",
-                headline="Starting factory…",
+                headline="Starting Forge…",
                 detail=f"Waiting for the worker process ({int(started_age_s)}s).",
-                next_line="Wait a few seconds. If this hangs, click Restart factory.",
+                next_line="Wait a few seconds. If this hangs, click Restart Forge.",
             )
         stuck = (
-            ", ".join(_fmt_task_id(t.get("id")) or str(t.get("id")) for t in in_prog)
+            ", ".join(_fmt_work_id(t) or str(t.get("id")) for t in in_prog)
             or "none"
         )
         return pack(
             mode="orphan",
-            headline="Factory loop not running",
+            headline="Forge loop not running",
             detail=(
                 f"Status says running, but no worker process is alive. "
                 f"In Progress stuck: {stuck}."
             ),
-            next_line="Click Restart factory. Or Pause if you meant to reclaim the tree for hand-edits.",
+            next_line="Click Restart Forge. Or Pause if you meant to reclaim the tree for hand-edits.",
             orphan=True,
         )
 
@@ -750,41 +772,41 @@ def _activity_snapshot(
             mode="paused",
             headline="Paused",
             detail="Workers are idle until you Resume.",
-            next_line="Click Resume to continue, or Stop to shut the factory down.",
+            next_line="Click Resume to continue, or Stop to shut Forge down.",
         )
 
     if not marked_running and not runner_alive:
         if halted:
             return pack(
                 mode="stopped",
-                headline="Factory stopped",
-                detail=f"Halted: {', '.join(str(t.get('id')) for t in halted)}.",
+                headline="Forge stopped",
+                detail=f"Halted: {', '.join(_fmt_work_id(t) or str(t.get('id')) for t in halted)}.",
                 next_line=(
-                    "Amend the ticket in Cursor if needed, Start factory, then Requeue Halted."
+                    "Amend the ticket in Cursor if needed, Start Forge, then Requeue Halted."
                 ),
                 agents_out=[],
             )
         if needs_human:
             return pack(
                 mode="stopped",
-                headline="Factory stopped",
+                headline="Forge stopped",
                 detail="Needs-human tickets are waiting.",
-                next_line="Handle Needs-human in Cursor, then Start factory.",
+                next_line="Handle Needs-human in Cursor, then Start Forge.",
                 agents_out=[],
             )
         if queued or in_prog:
             return pack(
                 mode="stopped",
-                headline="Factory stopped",
-                detail=f"{len(queued)} punch-list ticket(s) queued, {len(in_prog)} in progress — no workers.",
-                next_line="Click Start factory.",
+                headline="Forge stopped",
+                detail=f"{len(queued)} queued, {len(in_prog)} in progress — no workers.",
+                next_line="Click Start Forge.",
                 agents_out=[],
             )
         return pack(
             mode="idle",
-            headline="Factory idle",
+            headline="Forge idle",
             detail="No workers running.",
-            next_line="Queue punch-list work with forge-intake in Cursor, then Start factory.",
+            next_line="Queue work with forge-intake in Cursor, then Start Forge.",
             agents_out=[],
         )
 
@@ -795,8 +817,8 @@ def _activity_snapshot(
     ):
         return pack(
             mode="batch",
-            headline="Running full test suite",
-            detail=detail or batch_plain or "Running every test, then push if green.",
+            headline="Running Full verify & ship",
+            detail=detail or batch_plain or "Running the full suite.",
             next_line="Wait — no action needed unless the suite fails.",
             agents_out=agents
             or [
@@ -804,7 +826,7 @@ def _activity_snapshot(
                     "role": "loop",
                     "task": "",
                     "phase": "FULL-VERIFY",
-                    "doing": "running full test suite",
+                    "doing": "running full suite",
                 }
             ],
         )
@@ -815,14 +837,14 @@ def _activity_snapshot(
             if isinstance(batch.get("failure"), dict)
             else None
         )
-        detail_line = "Can't push — full test suite still failing."
+        detail_line = "Can't ship — full suite still failing."
         if fail_n is not None:
-            detail_line = f"Can't push — {fail_n} test(s) failed."
+            detail_line = f"Can't ship — {fail_n} test(s) failed."
         elif (batch.get("reason") or "") == "verify aborted":
-            detail_line = "Can't push — verify aborted."
+            detail_line = "Can't ship — verify aborted."
         return pack(
             mode="needs_decision",
-            headline="Can't push",
+            headline="Can't ship",
             detail=detail_line,
             next_line="Your move: Don't push, Retry full suite, or Copy for Cursor.",
         )
@@ -832,7 +854,7 @@ def _activity_snapshot(
             mode="held",
             headline="Not pushing (held)",
             detail=f"You acknowledged the failure at {(batch.get('head_sha') or '')[:12] or 'HEAD'}.",
-            next_line="Verify & push or Retry full suite when ready; or queue more punch-list work.",
+            next_line="Full verify & ship or Retry when ready; or queue more work.",
         )
 
     if agents:
@@ -844,40 +866,38 @@ def _activity_snapshot(
         if phase.lower() in ("halted",):
             nxt = "Amend ticket in Cursor if needed, then Requeue Halted."
         if phase.lower() in ("waiting",):
-            # Dependency / Halted park — do not pretend this is a full-suite wait.
             return pack(
                 mode="picking",
                 headline="Waiting on another ticket",
                 detail=who.get("doing") or mission or detail or "A Queued ticket is blocked.",
                 next_line=(
                     "Nothing needed from you if the blocker is Queued — it should start next. "
-                    "If this stalls, check Depends on in the ticket (prose like “orthogonal to "
-                    "task-NNN” is not a real dependency)."
+                    "If this stalls, check Depends on in the ticket."
                 ),
                 agents_out=agents,
             )
         if phase.lower() in ("idle",):
+            if halted:
+                return pack(
+                    mode="quiet",
+                    headline="Halted ticket parked",
+                    detail=who.get("doing") or mission or detail,
+                    next_line="Requeue Halted in Your move, or queue more work with forge-intake.",
+                    agents_out=agents,
+                )
+            if ship_urgent and items_since > 0:
+                return pack(
+                    mode="quiet",
+                    headline="Queue idle — ship gate optional",
+                    detail=f"{items_since} Implemented item(s) ready for Full verify & ship.",
+                    next_line="Press Full verify & ship when you want Done + a new stamp.",
+                    agents_out=agents,
+                )
             return pack(
-                mode="batch_pending" if batch.get("needed") or halted else "quiet",
-                headline=(
-                    "Full suite waiting — Halted ticket first"
-                    if halted
-                    else (
-                        "Waiting to run full test suite"
-                        if batch.get("needed")
-                        else "Waiting for punch-list work"
-                    )
-                ),
-                detail=who.get("doing") or mission or detail or batch_plain,
-                next_line=(
-                    "Requeue Halted in Your move, or queue more punch-list work with forge-intake."
-                    if halted
-                    else (
-                        "Nothing needed from you — or click Verify & push to start the full suite now."
-                        if batch.get("needed")
-                        else "Queue punch-list work with forge-intake, or click Verify & push."
-                    )
-                ),
+                mode="quiet",
+                headline="Waiting for intake",
+                detail=who.get("doing") or mission or detail or "Queue is empty.",
+                next_line="Queue work with forge-intake, or Full verify & ship if you want a new stamp.",
                 agents_out=agents,
             )
         return pack(
@@ -894,14 +914,14 @@ def _activity_snapshot(
             hint = f" Last event: {ev_phase} {ev_role} {ev_event}".strip()
         return pack(
             mode="working",
-            headline=f"Working on {_fmt_task_id(t0.get('id')) or t0.get('id')}",
+            headline=f"Working on {_fmt_work_id(t0) or t0.get('id')}",
             detail=(t0.get("title") or "") + ("." if hint else "") + hint,
-            next_line="Wait — a ticket is claimed. If this stalls for minutes, Stop then Start factory.",
+            next_line="Wait — a ticket is claimed. If this stalls for minutes, Stop then Start Forge.",
             agents_out=[
                 {
                     "role": ev_role or "pipeline",
-                    "task": _fmt_task_id(t0.get("id")),
-                    "phase": ev_phase or "task",
+                    "task": _fmt_work_id(t0),
+                    "phase": ev_phase or "work",
                     "doing": (t0.get("title") or "working")[:80],
                 }
             ],
@@ -910,68 +930,51 @@ def _activity_snapshot(
     if queued and runner_alive:
         return pack(
             mode="picking",
-            headline="Picking next punch-list ticket",
-            detail=f"{len(queued)} punch-list ticket(s) ready.",
+            headline="Picking next work item",
+            detail=f"{len(queued)} item(s) ready in the unified queue.",
             next_line="Nothing needed from you — the next card will move to In Progress shortly.",
             agents_out=[
                 {
                     "role": "loop",
                     "task": "",
                     "phase": "queue",
-                    "doing": "selecting next punch-list ticket",
+                    "doing": "selecting next task or slice",
                 }
             ],
         )
 
-    # No punch-list work — full suite pending (or blocked by Halted)
-    if batch.get("needed") and runner_alive:
-        if halted:
-            ids = ", ".join(
-                _fmt_task_id(t.get("id")) or str(t.get("id")) for t in halted
-            )
-            return pack(
-                mode="batch_pending",
-                headline="Full suite waiting — Halted ticket first",
-                detail=(
-                    f"{ids} is Halted. Requeue it (or leave it parked) before the factory "
-                    f"will run all tests and push. {batch_plain}"
-                ),
-                next_line="Requeue Halted in Your move, or queue more punch-list work with forge-intake.",
-                agents_out=[
-                    {
-                        "role": "loop",
-                        "task": "",
-                        "phase": "batch",
-                        "doing": "blocked on Halted ticket",
-                    }
-                ],
-            )
+    # Queue empty — ship gate is manual; do not nag on HEAD moved alone.
+    if halted and runner_alive:
+        ids = ", ".join(_fmt_work_id(t) or str(t.get("id")) for t in halted)
         return pack(
-            mode="batch_pending",
-            headline="Waiting to run full test suite",
-            detail=batch_plain,
-            next_line=(
-                "Nothing needed from you — all tests run next, then push if green. "
-                "Or click Verify & push to start now."
-            ),
+            mode="quiet",
+            headline="Halted ticket parked",
+            detail=f"{ids} is Halted.",
+            next_line="Requeue Halted in Your move, or queue more work with forge-intake.",
             agents_out=[
                 {
                     "role": "loop",
                     "task": "",
-                    "phase": "batch",
-                    "doing": "waiting to run full test suite",
+                    "phase": "halted",
+                    "doing": "blocked on Halted ticket",
                 }
             ],
+        )
+
+    if ship_urgent and items_since > 0 and runner_alive:
+        return pack(
+            mode="quiet",
+            headline="Queue empty — ship gate optional",
+            detail=f"{items_since} Implemented item(s) awaiting Full verify & ship.",
+            next_line="Press Full verify & ship when you want Done + a new stamp. CI covers the gap.",
+            agents_out=[],
         )
 
     return pack(
         mode="quiet",
         headline="Nothing to do right now",
-        detail="No punch-list tickets ready, and no full-suite run needed.",
-        next_line=(
-            "Queue punch-list work with forge-intake, or click Verify & push "
-            "if you only want all tests + push."
-        ),
+        detail="Queue is empty.",
+        next_line="Queue work with forge-intake, or Full verify & ship if you want a new stamp.",
         agents_out=[],
     )
 
@@ -1024,28 +1027,40 @@ def _batch_snapshot(ctrl: dict[str, Any]) -> dict[str, Any]:
     if verifying:
         state = "verifying"
         reason_out = reason if needed else "tier-3"
+        needed_out = True
     elif incident_at_head and incident.get("status") == "open":
         state = "needs_decision"
         reason_out = str(incident.get("reason") or "still_red")
+        needed_out = False
     elif incident_at_head and incident.get("status") == "acknowledged":
         state = "held"
         reason_out = "held"
+        needed_out = False
     elif last and head and last == head and not needed:
         state = "green"
         reason_out = reason
+        needed_out = False
+    elif needed and reason in ("HEAD moved", "dirty tree", "never verified"):
+        # Manual ship gate — HEAD drift is informational, not an auto-pending drain.
+        state = "idle"
+        reason_out = reason
+        needed_out = False
     elif needed:
         state = "pending"
         reason_out = reason
+        needed_out = True
     elif last:
         state = "green"
         reason_out = reason
+        needed_out = False
     else:
         state = "idle"
         reason_out = reason
+        needed_out = False
 
     return {
         "state": state,
-        "needed": needed,
+        "needed": needed_out,
         "reason": reason_out,
         "last_green_sha": last,
         "head_sha": head,
@@ -1185,6 +1200,7 @@ def board_snapshot() -> dict[str, Any]:
         station=station,
         batch=batch,
         tasks=tasks,
+        slices=slices,
         events=events[-40:],
         factory_hot=factory_hot,
         runner_alive=runner_alive,
@@ -1201,6 +1217,7 @@ def board_snapshot() -> dict[str, Any]:
             station=station,
             batch=batch,
             tasks=tasks,
+            slices=slices,
             events=events[-40:],
             factory_hot=factory_hot,
             runner_alive=runner_alive,
@@ -2028,45 +2045,41 @@ function renderTicket(t) {
 }
 
 function batchLabel(b, activity) {
+  const short = (s) => (s ? String(s).slice(0, 12) : "");
+  const sha = short(b && b.last_green_sha);
+  const st = (b && b.state) || "—";
+  // Idle / green: keep ship gate quiet — counter above handles Implemented urgency.
+  if (st === "idle" || st === "green" || st === "not_needed") {
+    if (sha) return `<strong>Ship gate · last green @ ${esc(sha)}</strong>`;
+    return `<strong>Ship gate · idle</strong>`;
+  }
   if (activity && activity.batch_plain) {
-    const short = (s) => (s ? String(s).slice(0, 12) : "");
-    const sha = short(b && b.last_green_sha);
     const stateLabels = {
       verifying: "running",
       running: "running",
-      pending: "waiting",
-      needs_decision: "can't push",
+      pending: "ready",
+      needs_decision: "can't ship",
       held: "not pushing",
-      green: "passed",
-      idle: "idle",
-      blocked: "can't push",
+      blocked: "can't ship",
     };
-    const st = (b && b.state) || "—";
     const stLabel = stateLabels[st] || st;
-    const head = `Full suite · ${stLabel}${sha ? " @ " + sha : ""}`;
+    const head = `Ship gate · ${stLabel}${sha ? " @ " + sha : ""}`;
     return `<strong>${esc(head)}</strong><br/>${esc(activity.batch_plain)}`;
   }
-  if (!b) return "Full suite · —";
-  const short = (s) => (s ? String(s).slice(0, 12) : "?");
+  if (!b) return "Ship gate · —";
   if (b.state === "running" || b.state === "verifying" || b.batch_running) {
-    return `<strong>Full suite · running</strong><br/>${esc(b.plain || "all tests")}`;
+    return `<strong>Ship gate · running</strong><br/>${esc(b.plain || "full suite")}`;
   }
   if (b.state === "needs_decision") {
-    return `<strong>Full suite · can't push</strong><br/>${esc(b.plain || "decide in Your move")}`;
+    return `<strong>Ship gate · can't ship</strong><br/>${esc(b.plain || "decide in Your move")}`;
   }
   if (b.state === "held") {
-    return `<strong>Full suite · not pushing</strong><br/>${esc(b.plain || "held")}`;
-  }
-  if (b.state === "blocked") {
-    return `<strong>Full suite · can't push</strong><br/>${esc(b.plain || "decide in Your move")}`;
+    return `<strong>Ship gate · not pushing</strong><br/>${esc(b.plain || "held")}`;
   }
   if (b.state === "pending" || b.needed) {
-    return `<strong>Full suite · waiting</strong><br/>${esc(b.plain || "needed before push")}`;
+    return `<strong>Ship gate · ready</strong><br/>${esc(b.plain || "Full verify & ship when ready")}`;
   }
-  if (b.state === "green" || b.last_green_sha) {
-    return `<strong>Full suite · passed @ ${esc(short(b.last_green_sha))}</strong><br/>${esc(b.plain || "ok")}`;
-  }
-  return `<strong>Full suite · idle</strong>`;
+  return `<strong>Ship gate · idle</strong>`;
 }
 
 
@@ -2205,24 +2218,15 @@ function render() {
     idleMsg = activity.detail || "Forge loop not running — click Restart Forge";
     idle.hidden = false;
     idle.textContent = idleMsg;
-  } else if (looksLive && queuedSlices.length && (mode === "working" || mode === "picking" || mode === "paused")) {
+  } else if (mode === "working" || mode === "picking" || mode === "paused" || mode === "starting" || hasQueuedWork) {
+    // Active queue / slice work — don't nag about empty punch-list or ship gate.
     idle.hidden = true;
-  } else if (looksLive && !hasQueuedWork && batch.state !== "needs_decision") {
-    if (mode === "batch" || batch.state === "running" || batch.state === "verifying" || batch.batch_running) {
-      idleMsg = "Queue empty · running full test suite (ship gate)";
-    } else if (batch.state === "held" || mode === "held") {
-      idleMsg = "Queue empty · not pushing (held)";
-    } else if (batch.needed) {
-      const why = (batch.plain || "").trim()
-        || "full test suite waiting — press Full verify & ship when ready";
-      idleMsg = `Queue empty · ${why}`;
-    } else if (batch.state === "green") {
-      idleMsg = `Queue empty · full suite already passed @ ${(batch.last_green_sha||"").slice(0,12)}`;
-    }
+  } else if (looksLive && mode === "batch") {
+    idleMsg = "Running Full verify & ship";
     idle.hidden = false;
     idle.textContent = idleMsg;
   } else if (!looksLive && queuedSlices.length && queuedAuto.length===0) {
-    idleMsg = `${queuedSlices.length} feature slice(s) waiting — Start Forge to drain the unified queue.`;
+    idleMsg = `${queuedSlices.length} feature slice(s) waiting — Start Forge.`;
     idle.hidden = false;
     idle.textContent = idleMsg;
   } else {
@@ -2365,7 +2369,7 @@ function render() {
   ymTitle.textContent = titles[lead] || "Your move";
 
   if (lead === "orphan") {
-    ymBody.textContent = activity.next || activity.detail || "Factory loop not running — Restart factory.";
+    ymBody.textContent = activity.next || activity.detail || "Forge loop not running — Restart Forge.";
   } else if (lead === "cant_ship") {
     ymBody.innerHTML = cantShipHtml();
   } else if (lead === "held") {
@@ -2463,8 +2467,9 @@ function render() {
   const sinceEl = document.getElementById("sinceGreen");
   if (sinceEl) {
     sinceEl.textContent = sinceN
-      ? (sinceN + " item(s) Implemented since last green full verify — press Full verify & ship when ready")
-      : "Ship gate clean — no Implemented items waiting";
+      ? (sinceN + " Implemented since last green full verify — Full verify & ship when ready")
+      : "";
+    sinceEl.hidden = !sinceN;
   }
   const ciEl = document.getElementById("ciLine");
   if (ciEl) {

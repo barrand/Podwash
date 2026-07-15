@@ -292,7 +292,7 @@ class ActivityCopyAndLivenessTests(unittest.TestCase):
             runner_alive=True,
         )
         self.assertEqual(activity["mode"], "needs_decision")
-        self.assertEqual(activity["headline"], "Can't push")
+        self.assertEqual(activity["headline"], "Can't ship")
         self.assertNotIn("Needs you", activity["headline"])
         self.assertNotIn("Needs you", activity["next"])
         self.assertIn("Your move", activity["next"])
@@ -309,7 +309,7 @@ class ActivityCopyAndLivenessTests(unittest.TestCase):
 
         plain = floor._batch_plain("scope_miss", "needs_decision")
         self.assertIn("Your move", plain)
-        self.assertIn("punch-list", plain.lower())
+        self.assertIn("surgical", plain.lower())
         self.assertNotIn("Needs you", plain)
         self.assertNotIn("Mechanic", plain)
         ladder = floor._ladder_plain(["tier3_retries"])
@@ -354,27 +354,30 @@ class ActivityCopyAndLivenessTests(unittest.TestCase):
     def test_batch_pending_plain_english_no_jargon(self):
         import factory_floor.server as floor
 
-        plain = floor._batch_plain("HEAD moved", "pending")
-        self.assertIn("New commits", plain)
+        plain = floor._batch_plain("HEAD moved", "idle")
+        self.assertIn("Full verify & ship", plain)
+        self.assertIn("Optional", plain)
         self.assertNotIn("idle drain", plain.lower())
-        self.assertNotIn("batch verify", plain.lower())
+        self.assertNotIn("waiting, then push", plain.lower())
 
+        # HEAD moved alone must not auto-nag as batch_pending.
         activity = floor._activity_snapshot(
             ctrl={"running": True, "paused": False, "batch_running": False},
             station={},
             batch={
-                "state": "pending",
+                "state": "idle",
                 "reason": "HEAD moved",
-                "needed": True,
+                "needed": False,
                 "verify_running": False,
+                "items_since_green": 0,
             },
             tasks=[],
             events=[],
             factory_hot=True,
             runner_alive=True,
         )
-        self.assertEqual(activity["mode"], "batch_pending")
-        self.assertEqual(activity["headline"], "Waiting to run full test suite")
+        self.assertEqual(activity["mode"], "quiet")
+        self.assertNotIn("Waiting to run", activity["headline"])
         self.assertNotIn("Idle drain", activity["headline"])
 
     def test_halted_blocks_full_suite_copy(self):
@@ -384,17 +387,18 @@ class ActivityCopyAndLivenessTests(unittest.TestCase):
             ctrl={"running": True, "paused": False, "batch_running": False},
             station={},
             batch={
-                "state": "pending",
+                "state": "idle",
                 "reason": "HEAD moved",
-                "needed": True,
+                "needed": False,
                 "verify_running": False,
+                "items_since_green": 0,
             },
-            tasks=[{"id": "011", "status": "Halted", "title": "Timeline"}],
+            tasks=[{"id": "011", "status": "Halted", "title": "Timeline", "type": "task"}],
             events=[],
             factory_hot=True,
             runner_alive=True,
         )
-        self.assertEqual(activity["mode"], "batch_pending")
+        self.assertEqual(activity["mode"], "quiet")
         self.assertIn("Halted", activity["headline"])
         self.assertIn("Requeue", activity["next"])
 
