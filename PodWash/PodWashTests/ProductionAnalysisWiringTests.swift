@@ -29,6 +29,10 @@ final class ProductionAnalysisWiringTests: XCTestCase {
     private let boundaryTolerance = 0.001
     private let sineFixtureName = "sine-300hz-5s"
     private let sineFixtureExt = "wav"
+    /// TAL 891 “The Test Case” duration (~72:05) — task-019 AC3 bucket math.
+    private let tal891Duration = 4325.0
+    private let midEpisodeAdStart = 600.0
+    private let midEpisodeAdEnd = 660.0
     private let modelSetupMessage =
         "Run scripts/setup-asr-models.sh and ensure the app target copies openai_whisper-tiny.en per ADR-020."
 
@@ -145,6 +149,26 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         return store
     }
 
+    /// Skip ads on, profanity targets off — task-019 AC3 unrelated-only fixture.
+    private func makeSkipAdsSettingsStore() -> SettingsStore {
+        guard let defaults = UserDefaults(suiteName: settingsDefaultsSuite!) else {
+            XCTFail("Could not create isolated UserDefaults suite for skip-ads settings")
+            return SettingsStore()
+        }
+        defaults.removePersistentDomain(forName: settingsDefaultsSuite!)
+        let store = SettingsStore(userDefaults: defaults)
+        for categoryID in WordCategories.allIDs {
+            store.setCategoryEnabled(categoryID, false)
+        }
+        store.unrelatedContentEnabled = true
+        XCTAssertEqual(store.unrelatedContentAction, .skip)
+        XCTAssertTrue(
+            store.activeNormalizedTargetSet().isEmpty,
+            "Precondition: skip-ads fixture must not add profanity intervals"
+        )
+        return store
+    }
+
     /// Injected ASR token for task-015 AC1–AC2 (first-minute fuck, no live Whisper).
     private func fuckInjectedTranscript() -> [TimedWord] {
         [TimedWord(word: "fuck", start: 0.52, end: 0.78)]
@@ -186,6 +210,76 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         XCTAssertTrue(
             FileManager.default.fileExists(atPath: destination.path),
             "Precondition: local download stand-in must exist for local-file gate"
+        )
+    }
+
+    /// Writes a mono 16-bit PCM silent WAV so AVFoundation reports the pinned TAL duration.
+    private func writeSilentWAV(to url: URL, duration: TimeInterval, sampleRate: UInt32 = 1000) throws {
+        let numSamples = UInt32((duration * Double(sampleRate)).rounded(.down))
+        let byteRate = sampleRate * 2
+        let dataSize = numSamples * 2
+        let riffSize = 36 + dataSize
+
+        var header = Data()
+        header.append(contentsOf: "RIFF".utf8)
+        header.append(contentsOf: withUnsafeBytes(of: riffSize.littleEndian) { Data($0) })
+        header.append(contentsOf: "WAVE".utf8)
+        header.append(contentsOf: "fmt ".utf8)
+        header.append(contentsOf: withUnsafeBytes(of: UInt32(16).littleEndian) { Data($0) })
+        header.append(contentsOf: withUnsafeBytes(of: UInt16(1).littleEndian) { Data($0) })
+        header.append(contentsOf: withUnsafeBytes(of: UInt16(1).littleEndian) { Data($0) })
+        header.append(contentsOf: withUnsafeBytes(of: sampleRate.littleEndian) { Data($0) })
+        header.append(contentsOf: withUnsafeBytes(of: byteRate.littleEndian) { Data($0) })
+        header.append(contentsOf: withUnsafeBytes(of: UInt16(2).littleEndian) { Data($0) })
+        header.append(contentsOf: withUnsafeBytes(of: UInt16(16).littleEndian) { Data($0) })
+        header.append(contentsOf: "data".utf8)
+        header.append(contentsOf: withUnsafeBytes(of: dataSize.littleEndian) { Data($0) })
+
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        FileManager.default.createFile(atPath: url.path, contents: nil)
+        let handle = try FileHandle(forWritingTo: url)
+        defer { try? handle.close() }
+        try handle.write(contentsOf: header)
+
+        let chunk = Data(repeating: 0, count: Int(byteRate))
+        var remaining = Int(dataSize)
+        while remaining > 0 {
+            let writeSize = min(remaining, chunk.count)
+            try handle.write(contentsOf: chunk.prefix(writeSize))
+            remaining -= writeSize
+        }
+    }
+
+    private func installLongLocalDownload(
+        for episodeID: String,
+        duration: TimeInterval = 4325.0
+    ) throws {
+        let destination = DownloadPaths.localFileURL(
+            episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory
+        )
+        try? FileManager.default.removeItem(at: destination)
+        try writeSilentWAV(to: destination, duration: duration)
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: destination.path),
+            "Precondition: long local download must exist for task-019 wiring fixture"
+        )
+    }
+
+    private func seedMidEpisodeAdCache(episodeID: String, targetWords: Set<String>) throws {
+        let interval = CensorInterval(
+            start: midEpisodeAdStart,
+            end: midEpisodeAdEnd,
+            action: .skip,
+            source: .unrelatedContent
+        )
+        try IntervalCache(baseDirectory: cacheDir).store(
+            [interval],
+            episodeID: episodeID,
+            targetWords: targetWords
         )
     }
 
@@ -719,6 +813,76 @@ final class ProductionAnalysisWiringTests: XCTestCase {
                 0,
                 "Without a local file, analyze must not run (ADR-008 local-file gate; download failed)"
             )
+        }
+    }
+
+    // MARK: - Task 019: super seek bar yellow matches applied unrelated skip (AC3)
+
+    func testSeekBarYellowMatchesAppliedUnrelatedSkipIntervals() async throws {
+        let settings = makeSkipAdsSettingsStore()
+        let targetWords = settings.activeNormalizedTargetSet()
+        let episode = fixtureEpisode()
+
+        try installLongLocalDownload(for: episode.id, duration: tal891Duration)
+        try seedMidEpisodeAdCache(episodeID: episode.id, targetWords: targetWords)
+
+        let model = makeShell(settingsStore: settings)
+        try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: false)
+        try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
+        try model.cleaningStore.setChannelUnrelatedContent(forFeedURL: feedURL, enabled: true)
+
+        model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+
+        await waitUntil { model.playbackAnalysisSnapshot != nil }
+        await waitUntil { model.engine?.activeSchedule != nil }
+
+        guard let schedule = model.engine?.activeSchedule else {
+            XCTFail("Expected PlaybackEngine schedule after prepare with skip ads on")
+            return
+        }
+        let appliedSkips = IntervalScheduler.skipIntervals(from: schedule.intervals)
+            .filter { $0.source == .unrelatedContent }
+        XCTAssertEqual(
+            appliedSkips.count,
+            1,
+            "Applied schedule must include exactly one unrelated-content skip interval"
+        )
+        XCTAssertEqual(appliedSkips[0].start, midEpisodeAdStart, accuracy: pipelineTolerance)
+        XCTAssertEqual(appliedSkips[0].end, midEpisodeAdEnd, accuracy: pipelineTolerance)
+
+        guard let snapshot = model.playbackAnalysisSnapshot else {
+            XCTFail("Expected terminal playback analysis snapshot")
+            return
+        }
+        XCTAssertEqual(snapshot.episodeDuration, tal891Duration, accuracy: boundaryTolerance)
+
+        let colors = AnalysisTimelineModel.segmentColors(snapshot: snapshot)
+        XCTAssertEqual(colors.count, AnalysisTimelineModel.defaultSegmentCount)
+        XCTAssertEqual(colors[0], .green, "Super seek bar opening bucket must not be yellow")
+
+        let bucketWidth = tal891Duration / Double(AnalysisTimelineModel.defaultSegmentCount)
+        for index in 0..<colors.count {
+            let bucketStart = Double(index) * bucketWidth
+            let bucketEnd = index == colors.count - 1
+                ? tal891Duration
+                : Double(index + 1) * bucketWidth
+            let overlapsAd = max(
+                0,
+                min(midEpisodeAdEnd, bucketEnd) - max(midEpisodeAdStart, bucketStart)
+            ) > 0
+            if overlapsAd {
+                XCTAssertEqual(
+                    colors[index],
+                    .yellow,
+                    "Bucket \(index) overlaps mid-episode ad and should be yellow"
+                )
+            } else {
+                XCTAssertNotEqual(
+                    colors[index],
+                    .yellow,
+                    "Bucket \(index) does not overlap mid-episode ad and must not be yellow"
+                )
+            }
         }
     }
 

@@ -15,6 +15,8 @@ final class AnalysisTimelineModelTests: XCTestCase {
 
     /// Pinned fixture: 120.0 s episode → 12 × 10.0 s buckets (slice-20 § Fixture strategy).
     private let episodeDuration = 120.0
+    /// TAL 891 “The Test Case” duration (~72:05) — task-019 AC1–AC2.
+    private let tal891Duration = 4325.0
     private let segmentCount = 12
 
     // MARK: - AC1: mid-analysis color counts
@@ -71,6 +73,71 @@ final class AnalysisTimelineModelTests: XCTestCase {
             AnalysisTimelineModel.accessibilityValue(from: colors),
             "ready:12,processing:0,pending:0"
         )
+    }
+
+    // MARK: - Task 019: super seek bar yellow vs applied skip (AC1–AC2)
+
+    func testCompletedTimelineAllGreenWhenNoAdRanges() {
+        let snapshot = AnalysisProgressSnapshot(
+            episodeDuration: tal891Duration,
+            processedEnd: tal891Duration,
+            processingStart: tal891Duration,
+            processingEnd: tal891Duration,
+            adRanges: []
+        )
+
+        let colors = AnalysisTimelineModel.segmentColors(
+            snapshot: snapshot,
+            segmentCount: segmentCount
+        )
+
+        XCTAssertEqual(colors.count, segmentCount)
+        XCTAssertEqual(count(colors, color: .yellow), 0)
+        XCTAssertEqual(count(colors, color: .green), segmentCount)
+        XCTAssertEqual(count(colors, color: .blue), 0)
+        XCTAssertEqual(count(colors, color: .grey), 0)
+    }
+
+    func testYellowOnlyOnBucketsOverlappingMidEpisodeAd() {
+        let adRange = AdTimeRange(start: 600.0, end: 660.0)
+        let snapshot = AnalysisProgressSnapshot(
+            episodeDuration: tal891Duration,
+            processedEnd: tal891Duration,
+            processingStart: tal891Duration,
+            processingEnd: tal891Duration,
+            adRanges: [adRange]
+        )
+
+        let colors = AnalysisTimelineModel.segmentColors(
+            snapshot: snapshot,
+            segmentCount: segmentCount
+        )
+        let bucketWidth = tal891Duration / Double(segmentCount)
+
+        XCTAssertEqual(colors.count, segmentCount)
+        XCTAssertEqual(colors[0], .green, "Opening bucket must stay green when ad is mid-episode only")
+        XCTAssertGreaterThan(count(colors, color: .yellow), 0)
+
+        for index in 0..<segmentCount {
+            let bucketStart = Double(index) * bucketWidth
+            let bucketEnd = index == segmentCount - 1
+                ? tal891Duration
+                : Double(index + 1) * bucketWidth
+            let overlapsAd = max(0, min(adRange.end, bucketEnd) - max(adRange.start, bucketStart)) > 0
+            if overlapsAd {
+                XCTAssertEqual(
+                    colors[index],
+                    .yellow,
+                    "Bucket \(index) [\(bucketStart), \(bucketEnd)) overlaps ad and should be yellow"
+                )
+            } else {
+                XCTAssertEqual(
+                    colors[index],
+                    .green,
+                    "Bucket \(index) [\(bucketStart), \(bucketEnd)) does not overlap ad and should be green"
+                )
+            }
+        }
     }
 
     /// Yellow buckets use the full analyze union, not playback-projected intervals.
