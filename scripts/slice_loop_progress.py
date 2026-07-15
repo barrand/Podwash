@@ -1195,12 +1195,32 @@ def architect_adr_path_from_slice(slice_file: str, repo_root: str) -> str | None
     return resolve_adr_placeholders_in_string(token, repo_root)
 
 
+# Role-artifacts cells sometimes use markdown links instead of backticks, e.g.
+# ``[ADR-023](../adr/023-foo.md)``. Gate checks must resolve the href, not the
+# literal bracket string (slice 27 false "missing artifacts" halt).
+_MD_LINK_RE = re.compile(r"\[([^\]]*)\]\(([^)]+)\)")
+
+
+def _normalize_artifact_path(token: str) -> str:
+    """Map slice-relative ADR hrefs to repo-root paths."""
+    token = (token or "").strip().strip("`")
+    if token.startswith("../adr/"):
+        return "docs/adr/" + token[len("../adr/") :]
+    if token.startswith("adr/") and not token.startswith("docs/"):
+        return "docs/" + token
+    return token
+
+
 def _artifact_token(raw: str) -> str:
     raw = (raw or "").strip().strip("`")
     if not raw or raw in ("—", "-", "n/a", "N/A"):
         return ""
+    m = _MD_LINK_RE.search(raw)
+    if m:
+        raw = m.group(2).strip()
     token = re.split(r"\s+[—–-]\s+", raw, maxsplit=1)[0].strip().strip("`")
-    return token.split()[0] if token.split() else token
+    token = token.split()[0] if token.split() else token
+    return _normalize_artifact_path(token)
 
 
 def _resolved_artifact_token(raw: str, repo_root: str) -> str:

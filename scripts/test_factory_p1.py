@@ -398,6 +398,54 @@ class ArtifactCellTests(unittest.TestCase):
             self.assertEqual(missing_artifact_paths(tmp, cell), [])
             self.assertTrue(artifact_cell_satisfied(tmp, cell))
 
+    def test_markdown_link_adr_cell_resolves(self):
+        """Slice 27: Role artifacts used [ADR-023](../adr/…) not backticks."""
+        from slice_loop_progress import (
+            architect_adr_path_from_slice,
+            artifact_cell_satisfied,
+            missing_artifact_paths,
+        )
+
+        cell = "[ADR-023](../adr/023-super-seek-bar-mute-markers.md)"
+        with tempfile.TemporaryDirectory() as tmp:
+            adr_dir = os.path.join(tmp, "docs", "adr")
+            os.makedirs(adr_dir, exist_ok=True)
+            self.assertEqual(
+                missing_artifact_paths(tmp, cell),
+                ["docs/adr/023-super-seek-bar-mute-markers.md"],
+            )
+            self.assertFalse(artifact_cell_satisfied(tmp, cell))
+            open(
+                os.path.join(adr_dir, "023-super-seek-bar-mute-markers.md"), "w"
+            ).write("# ADR-023\n")
+            self.assertEqual(missing_artifact_paths(tmp, cell), [])
+            self.assertTrue(artifact_cell_satisfied(tmp, cell))
+
+            slice_path = os.path.join(tmp, "slice-27.md")
+            with open(slice_path, "w", encoding="utf-8") as fh:
+                fh.write(
+                    "# Slice 27\n\n"
+                    "## Role artifacts\n\n"
+                    "| Role | Required? | Artifact |\n"
+                    "|------|-----------|----------|\n"
+                    f"| Architect | **Required** | {cell} |\n"
+                )
+            self.assertEqual(
+                architect_adr_path_from_slice(slice_path, tmp),
+                "docs/adr/023-super-seek-bar-mute-markers.md",
+            )
+
+    def test_markdown_link_missing_reports_repo_path_not_brackets(self):
+        from slice_loop_progress import missing_artifact_paths
+
+        cell = "[ADR-017](../adr/017-overlay-sync.md)"
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "docs", "adr"), exist_ok=True)
+            miss = missing_artifact_paths(tmp, cell)
+            self.assertEqual(miss, ["docs/adr/017-overlay-sync.md"])
+            self.assertNotIn("[", miss[0])
+            self.assertNotIn("(", miss[0])
+
 
 class SessionBundleTests(unittest.TestCase):
     def test_writes_halt_artifacts(self):
