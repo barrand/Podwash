@@ -43,11 +43,11 @@ final class SuperSeekBarUITests: XCTestCase {
             (Self.muteMarkerCount(from: value) ?? -1) >= 1
         }, in: app, timeout: fixtureTimeout)
 
-        XCTAssertEqual(
-            Self.segmentCounts(from: barValue),
-            (12, 0, 0),
-            "Complete fixture must pin terminal segment triple (12, 0, 0); got \(barValue)"
-        )
+        // 3-element tuples are not Equatable; assert components (Swift arity limit).
+        let muteCounts = Self.segmentCounts(from: barValue)
+        XCTAssertEqual(muteCounts?.ready, 12, "Complete fixture ready count; got \(barValue)")
+        XCTAssertEqual(muteCounts?.processing, 0, "Complete fixture processing count; got \(barValue)")
+        XCTAssertEqual(muteCounts?.pending, 0, "Complete fixture pending count; got \(barValue)")
         XCTAssertGreaterThanOrEqual(
             Self.muteMarkerCount(from: barValue) ?? -1,
             1,
@@ -79,11 +79,11 @@ final class SuperSeekBarUITests: XCTestCase {
             timeout: fixtureTimeout
         )
 
-        XCTAssertEqual(
-            Self.segmentCounts(from: barValue),
-            (12, 0, 0),
-            "Ad-only fixture segment triple must remain (12, 0, 0); got \(barValue)"
-        )
+        // 3-element tuples are not Equatable; assert components (Swift arity limit).
+        let adsCounts = Self.segmentCounts(from: barValue)
+        XCTAssertEqual(adsCounts?.ready, 12, "Ad-only fixture ready count; got \(barValue)")
+        XCTAssertEqual(adsCounts?.processing, 0, "Ad-only fixture processing count; got \(barValue)")
+        XCTAssertEqual(adsCounts?.pending, 0, "Ad-only fixture pending count; got \(barValue)")
         XCTAssertEqual(Self.muteMarkerCount(from: barValue), 0)
 
         let bar = element("playback.superSeekBar", in: app)
@@ -250,7 +250,7 @@ final class SuperSeekBarUITests: XCTestCase {
     @MainActor
     @discardableResult
     private func waitForSuperSeekBarValue(
-        matching predicate: (String) -> Bool,
+        matching predicate: @escaping (String) -> Bool,
         in app: XCUIApplication,
         timeout: TimeInterval
     ) -> String {

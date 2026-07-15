@@ -364,11 +364,12 @@ final class LibraryUITests: XCTestCase {
             message: "playback.superSeekBar must expose terminal segment triple plus muteMarkers:0"
         )
         if let superValue = element("playback.superSeekBar", in: app).value as? String {
-            XCTAssertEqual(
-                Self.segmentTriple(from: superValue),
-                Self.segmentTriple(from: miniValue),
-                "Super seek bar segment triple must match mini-player timeline"
-            )
+            // 3-element tuples are not Equatable; assert components (Swift arity limit).
+            let superTriple = Self.segmentTriple(from: superValue)
+            let miniTriple = Self.segmentTriple(from: miniValue)
+            XCTAssertEqual(superTriple?.0, miniTriple?.0, "Super seek bar ready must match mini-player")
+            XCTAssertEqual(superTriple?.1, miniTriple?.1, "Super seek bar processing must match mini-player")
+            XCTAssertEqual(superTriple?.2, miniTriple?.2, "Super seek bar pending must match mini-player")
         }
         XCTAssertFalse(
             element("playbackAnalysisTimeline", in: app).exists,

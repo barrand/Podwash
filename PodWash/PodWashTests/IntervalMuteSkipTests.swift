@@ -50,13 +50,14 @@ final class IntervalMuteSkipTests: XCTestCase {
         return tempURL
     }
 
-    /// Waits until the engine has loaded asset duration (item typically ready then).
+    /// Waits until the engine has loaded asset duration and the item is playable.
     private func waitForEngineReady(_ engine: PlaybackEngine, timeout: TimeInterval = 5) async {
         let ready = expectation(description: "engine duration loaded")
         let deadline = Date().addingTimeInterval(timeout)
         func poll() {
             engine.refreshCurrentTime()
-            if engine.duration > 0 {
+            let itemReady = engine.avPlayer.currentItem?.status == .readyToPlay
+            if engine.duration > 0, itemReady {
                 ready.fulfill()
             } else if Date() < deadline {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: poll)
@@ -64,6 +65,22 @@ final class IntervalMuteSkipTests: XCTestCase {
         }
         poll()
         await fulfillment(of: [ready], timeout: timeout)
+    }
+
+    /// Pumps the run loop until AVPlayer is advancing (same pattern as PlaybackRateTests).
+    private func waitForPlaying(_ engine: PlaybackEngine, timeout: TimeInterval = 5) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if engine.avPlayer.timeControlStatus == .playing || abs(engine.avPlayer.rate) > 0.0001 {
+                return
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+        }
+        XCTFail(
+            "Timed out waiting for playback to start "
+                + "(status=\(engine.avPlayer.timeControlStatus.rawValue), "
+                + "rate=\(engine.avPlayer.rate), time=\(engine.avPlayer.currentTime().seconds))"
+        )
     }
 
     // MARK: - AC1: scheduler consumes IntervalBuilder output directly
@@ -137,6 +154,7 @@ final class IntervalMuteSkipTests: XCTestCase {
         }
 
         engine.play()
+        waitForPlaying(engine)
         await fulfillment(of: [reached], timeout: 10)
 
         // `currentTime` is frozen at the skip seek's landing value (the seek
