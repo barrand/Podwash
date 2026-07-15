@@ -25,6 +25,13 @@ final class ProgressivePlaybackUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        // Sims often wake landscape (~402pt tall). PodcastDetail header + Up Next
+        // then crush episodeList to ~0 height so episodeCell_* exists but is not hittable.
+        XCUIDevice.shared.orientation = .portrait
+    }
+
+    override func tearDownWithError() throws {
+        XCUIDevice.shared.orientation = .portrait
     }
 
     // MARK: - AC3
@@ -180,6 +187,7 @@ final class ProgressivePlaybackUITests: XCTestCase {
 
     @MainActor
     private func launchProgressiveFixtureApp(freezeAtProcessedEnd: Double? = nil) -> XCUIApplication {
+        XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchArguments.append("-UITestFixtureProgressivePlayback")
         if let freezeAtProcessedEnd {
@@ -210,6 +218,15 @@ final class ProgressivePlaybackUITests: XCTestCase {
 
         let episodeCell = element("episodeCell_0", in: app)
         XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
+        let cellHittable = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"),
+            object: episodeCell
+        )
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [cellHittable], timeout: fixtureTimeout),
+            .completed,
+            "episodeCell_0 must be hittable (portrait list height); frame=\(episodeCell.frame)"
+        )
         episodeCell.tap()
 
         let miniPlayer = element("miniPlayer", in: app)
@@ -224,13 +241,19 @@ final class ProgressivePlaybackUITests: XCTestCase {
     @MainActor
     private func startPlaybackIfNeeded(_ app: XCUIApplication) {
         let playPause = element("playback.playPause", in: app)
-        if Self.accessibilityValue(for: "playback.playPause", in: app) == "analyzing" {
+        // Queue play while analyzing, or start immediately once paused/ready.
+        // Do not no-op on "paused" — episode tap leaves the session paused (slice-25-ux).
+        let value = Self.accessibilityValue(for: "playback.playPause", in: app)
+        if value != "playing" {
             playPause.tap()
         }
     }
 
     @MainActor
     private func ensureChannelCleaningOn(in app: XCUIApplication) {
+        // PodcastDetailView pins accessibilityValue to "on"/"off" (not UIKit "1"/"0").
+        // Checking != "1" incorrectly toggles an already-on fixture switch OFF and skips
+        // progressive prepare — every AC3–AC6 expectation then times out.
         let channelToggle = app.switches["channelCleaningToggle"]
         guard channelToggle.waitForExistence(timeout: fixtureTimeout) else { return }
         let hittable = XCTNSPredicateExpectation(
@@ -238,9 +261,13 @@ final class ProgressivePlaybackUITests: XCTestCase {
             object: channelToggle
         )
         _ = XCTWaiter().wait(for: [hittable], timeout: 3)
-        if (channelToggle.value as? String) != "1" {
-            channelToggle.tap()
-        }
+        guard (channelToggle.value as? String) != "on" else { return }
+        channelToggle.tap()
+        let onExpectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "on"),
+            object: channelToggle
+        )
+        _ = XCTWaiter().wait(for: [onExpectation], timeout: 2)
     }
 
     @MainActor
