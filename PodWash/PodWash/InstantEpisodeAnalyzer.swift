@@ -53,12 +53,18 @@ final class InstantEpisodeAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
             processingEnd: FixtureAnalysisTimeline.bucketWidth,
             adRanges: []
         )
+        let seededIntervals = FixtureMuteMarkers.isAnyEnabled
+            ? FixtureMuteMarkers.makeIntervals()
+            : []
+        let adRanges = seededIntervals
+            .filter { $0.source == .unrelatedContent }
+            .map { AdTimeRange(start: $0.start, end: $0.end) }
         let complete = AnalysisProgressSnapshot(
             episodeDuration: duration,
             processedEnd: duration,
             processingStart: duration,
             processingEnd: duration,
-            adRanges: []
+            adRanges: adRanges
         )
         await MainActor.run {
             onMainActorProgress?(start)
@@ -72,6 +78,6 @@ final class InstantEpisodeAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
             onMainActorProgress?(complete)
             onProgress?(complete)
         }
-        return []
+        return seededIntervals
     }
 }

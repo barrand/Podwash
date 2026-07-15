@@ -37,6 +37,7 @@ struct AppShellView: View {
         let useStubbedNetwork = FixtureLibrary.usesInMemoryPersistence
             || FixtureTranscript.usesInMemoryPersistence
             || FixtureProgressivePlayback.isEnabled
+            || FixtureMuteMarkers.isAnyEnabled
         let searchClient = useStubbedNetwork
             ? FixtureDiscover.makeSearchClient()
             : ITunesSearchClient()
@@ -138,6 +139,7 @@ struct AppShellView: View {
                         isPreparingPlayback: model.isPreparingPlayback,
                         episodeDuration: model.superSeekDuration,
                         processedEnd: model.superSeekProcessedEnd,
+                        muteIntervals: model.fullPlayerMuteIntervals,
                         onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
                         onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) },
                         onSeekBy: { model.seekClampedToProcessedFrontier(by: $0) }

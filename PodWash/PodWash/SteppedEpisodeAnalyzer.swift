@@ -82,10 +82,11 @@ final class SteppedEpisodeAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
             union.append(contentsOf: partial)
             // Publish on the main actor before sleeping so AX values update
             // before the next paced wait (UITests poll during Task.sleep idle).
+            // Pass cumulative union (matches AnalysisPipeline progressive apply).
             await MainActor.run {
                 onMainActorProgress?(snapshot)
                 onProgress?(snapshot)
-                onPartialIntervals?(partial, snapshot)
+                onPartialIntervals?(union, snapshot)
             }
             // Progressive prepare installs `onPartialIntervals` as Task { @MainActor };
             // yield so canStartPlayback / schedule apply land before the paced hold

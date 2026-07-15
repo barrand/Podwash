@@ -226,6 +226,11 @@ struct RootView: View {
                 resumeStore: model.resumeStore,
                 settingsStore: model.settingsStore
             )
+        } else if FixtureMuteMarkers.isAnyEnabled {
+            try? FixtureMuteMarkers.prepare(
+                podcastStore: model.podcastStore,
+                cleaningStore: model.cleaningStore
+            )
         } else if FixtureLibrary.isEnabled || FixtureProgressivePlayback.isEnabled {
             try? FixtureLibrary.prepareSeededStore(model.podcastStore)
             if FixtureProgressivePlayback.isEnabled {

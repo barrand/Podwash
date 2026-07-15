@@ -15,6 +15,8 @@ struct PlaybackControlsView: View {
     let isPreparingPlayback: Bool
     let episodeDuration: Double
     let processedEnd: Double
+    /// Applied / cached intervals for mute-marker overlays (ADR-023).
+    let muteIntervals: [CensorInterval]
     let onTogglePlayPause: (() -> Void)?
     let onSeekTo: ((Double) -> Void)?
     let onSeekBy: ((Double) -> Void)?
@@ -27,6 +29,7 @@ struct PlaybackControlsView: View {
         isPreparingPlayback: Bool = false,
         episodeDuration: Double = 0,
         processedEnd: Double = 0,
+        muteIntervals: [CensorInterval] = [],
         onTogglePlayPause: (() -> Void)? = nil,
         onSeekTo: ((Double) -> Void)? = nil,
         onSeekBy: ((Double) -> Void)? = nil
@@ -36,6 +39,7 @@ struct PlaybackControlsView: View {
         self.isPreparingPlayback = isPreparingPlayback
         self.episodeDuration = episodeDuration
         self.processedEnd = processedEnd
+        self.muteIntervals = muteIntervals
         self.onTogglePlayPause = onTogglePlayPause
         self.onSeekTo = onSeekTo
         self.onSeekBy = onSeekBy
@@ -57,6 +61,15 @@ struct PlaybackControlsView: View {
                 elapsed: elapsedSeconds,
                 duration: duration
             )
+            // Complete gate uses raw processedEnd (not seek frontier fallback).
+            let timelineComplete = duration > 0 && processedEnd >= duration
+            let showMuteMarkerAX = timelineColors != nil && timelineComplete
+            let muteMarkers = showMuteMarkerAX
+                ? SuperSeekBarModel.muteMarkers(from: muteIntervals, duration: duration)
+                : []
+            let muteMarkerCountForAccessibility: Int? = showMuteMarkerAX
+                ? muteMarkers.count
+                : nil
 
             VStack(spacing: 24) {
                 SuperSeekBarView(
@@ -64,6 +77,8 @@ struct PlaybackControlsView: View {
                     elapsed: elapsedSeconds,
                     duration: duration,
                     processedEnd: frontier,
+                    muteMarkers: muteMarkers,
+                    muteMarkerCountForAccessibility: muteMarkerCountForAccessibility,
                     onSeek: { seconds in
                         if let onSeekTo {
                             onSeekTo(seconds)

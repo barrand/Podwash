@@ -64,6 +64,9 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     /// Needed because `automaticallyWaitsToMinimizeStalling = false` makes
     /// `playImmediately` a no-op if the item is not yet ready.
     private var pendingPlayWhenReady = false
+    /// Cleared by `pause()`. Lets seek-completion and a deferred run-loop turn
+    /// re-engage playback when `playImmediately` no-ops after an exact seek.
+    private var wantsPlayback = false
     /// `nonisolated(unsafe)`: invalidated from `nonisolated deinit` without a MainActor hop.
     private nonisolated(unsafe) var itemStatusObservation: NSKeyValueObservation?
     /// `nonisolated(unsafe)`: playback stall / waiting diagnostics.
@@ -153,6 +156,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
             itemStatus: player.currentItem?.status ?? .unknown,
             timeControl: PlaybackDiagnostics.timeControlLabel(player.timeControlStatus)
         )
+        wantsPlayback = true
         if Self.silenceEpisodeForTests {
             player.isMuted = true
             player.volume = 0
@@ -166,6 +170,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     }
 
     func pause() {
+        wantsPlayback = false
         pendingPlayWhenReady = false
         player.pause()
         refreshCurrentTime()
@@ -179,12 +184,34 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     private func startOrPendPlayback() {
         if player.currentItem?.status == .readyToPlay {
             pendingPlayWhenReady = false
-            player.playImmediately(atRate: selectedRate)
+            engagePlayback()
             return
         }
         pendingPlayWhenReady = true
         // Best-effort: some items accept playImmediately while still `.unknown`.
+        engagePlayback()
+    }
+
+    /// `playImmediately` can no-op after an exact seek while status stays `.readyToPlay`
+    /// (`automaticallyWaitsToMinimizeStalling = false`). Force `rate` and retry once
+    /// on the next main-queue turn so seek-then-play (AC4) actually advances.
+    private func engagePlayback() {
         player.playImmediately(atRate: selectedRate)
+        if !isActivelyAdvancing {
+            player.rate = selectedRate
+        }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.wantsPlayback else { return }
+            if self.isActivelyAdvancing { return }
+            self.player.playImmediately(atRate: self.selectedRate)
+            if !self.isActivelyAdvancing {
+                self.player.rate = self.selectedRate
+            }
+        }
+    }
+
+    private var isActivelyAdvancing: Bool {
+        player.timeControlStatus == .playing || abs(player.rate) > 0.0001
     }
 
     private func handleItemStatusChange(_ status: AVPlayerItem.Status) {
@@ -200,7 +227,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
 
         guard pendingPlayWhenReady, status == .readyToPlay else { return }
         pendingPlayWhenReady = false
-        player.playImmediately(atRate: selectedRate)
+        engagePlayback()
         refreshCurrentTime()
         touchUI()
         updateNowPlaying()
@@ -337,6 +364,11 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
                     self.touchUI()
                     self.updateNowPlaying()
                     self.onSeekCompleted?(self.currentTime)
+                    // Exact seek can leave playImmediately inert until the next turn;
+                    // re-engage if the user already asked to play (or was playing).
+                    if self.wantsPlayback {
+                        self.startOrPendPlayback()
+                    }
                 }
                 completion?()
             }

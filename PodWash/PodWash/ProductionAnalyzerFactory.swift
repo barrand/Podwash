@@ -21,7 +21,8 @@ enum ProductionAnalyzerFactory {
             ?? (FixtureLibrary.isEnabled
                 || FixtureLibrary.isEmptyEnabled
                 || FixtureProgressivePlayback.isEnabled
-                || FixtureTranscript.isAnyEnabled)
+                || FixtureTranscript.isAnyEnabled
+                || FixtureMuteMarkers.isAnyEnabled)
 
         if effectiveFixtureLibrary {
             if FixtureProgressivePlayback.isEnabled {
@@ -33,6 +34,7 @@ enum ProductionAnalyzerFactory {
             if FixtureTranscript.isNoCacheEnabled {
                 return FixtureTranscript.makeAnalyzer()
             }
+            // FixtureMuteMarkers + other Library fixtures: Instant (seeds mute/ad intervals when enabled).
             return InstantEpisodeAnalyzer()
         }
 

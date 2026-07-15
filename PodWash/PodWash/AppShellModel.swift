@@ -64,7 +64,13 @@ final class AppShellModel {
             ?? (FixtureLibrary.isEnabled
                 || FixtureLibrary.isEmptyEnabled
                 || FixtureProgressivePlayback.isEnabled
-                || FixtureTranscript.isAnyEnabled)
+                || FixtureTranscript.isAnyEnabled
+                || FixtureMuteMarkers.isAnyEnabled)
+    }
+
+    /// Applied / cached intervals for full-player mute-marker overlays (ADR-023).
+    var fullPlayerMuteIntervals: [CensorInterval] {
+        playbackCoordinator?.cachedIntervals ?? []
     }
 
     private(set) var engine: PlaybackEngine?
@@ -347,11 +353,12 @@ final class AppShellModel {
         // Leave paused so AC4's play-button tap yields "playing".
 
         // Fixture Library play skips analysis even when cleaning is on (AC8),
-        // except when a player-timeline / progressive UITest fixture is active.
+        // except when a player-timeline / progressive / mute-marker UITest fixture is active.
         if isFixtureLibraryMode,
            !FixtureLibraryAnalysisTimeline.isEnabled,
            !FixtureProgressivePlayback.isEnabled,
-           !FixtureTranscript.isNoCacheEnabled {
+           !FixtureTranscript.isNoCacheEnabled,
+           !FixtureMuteMarkers.isAnyEnabled {
             PlaybackDiagnostics.info("playEpisode skip prepare — fixture library mode")
             return
         }
@@ -637,6 +644,9 @@ final class AppShellModel {
     private func resolveAudioURL(for episode: Episode) -> URL? {
         if FixtureProgressivePlayback.isEnabled {
             return FixtureProgressivePlayback.bundledURL()
+        }
+        if FixtureMuteMarkers.isAnyEnabled {
+            return FixtureMuteMarkers.bundledURL()
         }
         if isFixtureLibraryMode, !FixtureDownload.isEnabled {
             return FixtureAudio.bundledURL()
