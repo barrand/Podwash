@@ -2303,7 +2303,6 @@ function render() {
   const fail = batch.failure || null;
   const halted = items.filter(i => /Halted/i.test(i.status||""));
   const factoryStopped = mode === "stopped" || mode === "idle" || mode === "quiet";
-  const hasQueuedWork = queuedAuto.length > 0 || queuedSlices.length > 0 || inProg.length > 0;
 
   function cantShipHtml() {
     const reason = (fail && fail.reason) || batch.reason || "still_red";
