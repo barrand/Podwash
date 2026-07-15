@@ -20,7 +20,8 @@ enum ProductionAnalyzerFactory {
         let effectiveFixtureLibrary = fixtureLibraryMode
             ?? (FixtureLibrary.isEnabled
                 || FixtureLibrary.isEmptyEnabled
-                || FixtureProgressivePlayback.isEnabled)
+                || FixtureProgressivePlayback.isEnabled
+                || FixtureTranscript.isAnyEnabled)
 
         if effectiveFixtureLibrary {
             if FixtureProgressivePlayback.isEnabled {
@@ -57,12 +58,21 @@ enum ProductionAnalyzerFactory {
         let folder = try WhisperModelLocator.resolvedModelFolder(in: bundle)
         let transcriber = WhisperKitASRTranscriber(modelFolder: folder)
         let cache: IntervalCache
+        let transcriptCache: TranscriptCache
         if let cacheBaseDirectory {
             cache = IntervalCache(baseDirectory: cacheBaseDirectory)
+            transcriptCache = TranscriptCache(
+                baseDirectory: cacheBaseDirectory.appendingPathComponent("TranscriptCache", isDirectory: true)
+            )
         } else {
             cache = .applicationSupport
+            transcriptCache = .applicationSupport
         }
-        return AnalysisPipeline(transcriber: transcriber, cache: cache)
+        return AnalysisPipeline(
+            transcriber: transcriber,
+            cache: cache,
+            transcriptCache: transcriptCache
+        )
     }
 
     /// Exclusive RootView UITest fixtures that keep Instant / stepped analyzers locally.

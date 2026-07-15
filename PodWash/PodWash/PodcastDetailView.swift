@@ -14,6 +14,9 @@ struct PodcastDetailView: View {
     var queueStore: QueueStore
     /// Slice 23 — episode row tap starts playback in the app shell (nil in exclusive fixtures).
     var onPlayEpisode: ((Episode) -> Void)? = nil
+    /// Slice 26 — transcript affordance gate + present action.
+    var transcriptExists: ((String) -> Bool)? = nil
+    var onViewTranscript: ((String) -> Void)? = nil
     @State private var queueRevision = 0
     /// Landscape / short windows (~402pt) — keep episodeList tall enough to hit cells.
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -62,7 +65,9 @@ struct PodcastDetailView: View {
                 downloadManager: downloadManager,
                 queueStore: queueStore,
                 onQueueChanged: { queueRevision += 1 },
-                onPlayEpisode: onPlayEpisode
+                onPlayEpisode: onPlayEpisode,
+                transcriptExists: transcriptExists,
+                onViewTranscript: onViewTranscript
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             // Prefer list height over header intrinsic size when the window is short

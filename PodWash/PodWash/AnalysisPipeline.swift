@@ -35,6 +35,7 @@ final class AnalysisPipeline: @unchecked Sendable {
     /// (existentials of MainActor-isolated ASR types otherwise crash boxed destroy).
     nonisolated(unsafe) private let transcriber: any ASRTranscribing
     private let cache: IntervalCache
+    private let transcriptCache: TranscriptCache
     private let segmenter: any ContentSegmenting
 
     var onProgress: AnalysisProgressHandler?
@@ -47,10 +48,12 @@ final class AnalysisPipeline: @unchecked Sendable {
     init(
         transcriber: any ASRTranscribing,
         cache: IntervalCache,
+        transcriptCache: TranscriptCache = .applicationSupport,
         segmenter: any ContentSegmenting = HeuristicContentSegmenter()
     ) {
         self.transcriber = transcriber
         self.cache = cache
+        self.transcriptCache = transcriptCache
         self.segmenter = segmenter
     }
 
@@ -118,6 +121,7 @@ final class AnalysisPipeline: @unchecked Sendable {
 
         let union: [CensorInterval]
         if let cached = cache.load(episodeID: episode.id, targetWords: targetWords) {
+            // Interval cache hit — do not overwrite transcript (ADR-022 §4).
             union = cached
         } else if onPartialIntervals != nil {
             union = try await analyzeChunkedColdMiss(
@@ -165,6 +169,7 @@ final class AnalysisPipeline: @unchecked Sendable {
 
             union = (profanity + segmentIntervals).sorted { $0.start < $1.start }
             try cache.store(union, episodeID: episode.id, targetWords: targetWords)
+            try transcriptCache.store(transcript, episodeID: episode.id)
         }
 
         lastAnalysisUnion = union
@@ -266,6 +271,8 @@ final class AnalysisPipeline: @unchecked Sendable {
         }
 
         try cache.store(lastUnion, episodeID: episode.id, targetWords: targetWords)
+        // Terminal-only transcript write (ADR-022 §4 / ADR-021) — never mid-chunk.
+        try transcriptCache.store(fullTranscript, episodeID: episode.id)
         return lastUnion
     }
 

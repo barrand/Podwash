@@ -63,7 +63,8 @@ final class AppShellModel {
         fixtureLibraryModeForTesting
             ?? (FixtureLibrary.isEnabled
                 || FixtureLibrary.isEmptyEnabled
-                || FixtureProgressivePlayback.isEnabled)
+                || FixtureProgressivePlayback.isEnabled
+                || FixtureTranscript.isAnyEnabled)
     }
 
     private(set) var engine: PlaybackEngine?
@@ -76,6 +77,14 @@ final class AppShellModel {
     /// Full controls presentation (sheet).
     var isFullPlayerPresented: Bool = false
 
+    /// Transcript sheet presentation (Slice 26). Non-nil when the sheet should show.
+    var transcriptSheetEpisodeID: String? = nil
+    /// View model for the open transcript sheet (built on present).
+    private(set) var transcriptSheetViewModel: TranscriptViewModel?
+
+    private let transcriptCache: TranscriptCache
+    private let intervalCache: IntervalCache
+
     private(set) var nowPlayingEpisodeTitle: String = "Now playing"
     private(set) var nowPlayingPodcastTitle: String = ""
 
@@ -85,12 +94,16 @@ final class AppShellModel {
         episodeAnalyzer: (any EpisodeAnalyzing)? = nil,
         settingsStore: SettingsStore? = nil,
         fixtureLibraryModeForTesting: Bool? = nil,
-        downloadManager: DownloadManager? = nil
+        downloadManager: DownloadManager? = nil,
+        transcriptCache: TranscriptCache = .applicationSupport,
+        intervalCache: IntervalCache = .applicationSupport
     ) {
         self.persistence = persistence
         self.remoteCommands = remoteCommands
         self.fixtureLibraryModeForTesting = fixtureLibraryModeForTesting
         self.settingsStore = settingsStore ?? SettingsStore()
+        self.transcriptCache = transcriptCache
+        self.intervalCache = intervalCache
         let resolvedAnalyzer = episodeAnalyzer
             ?? Self.makeDefaultAnalyzer(fixtureLibraryMode: fixtureLibraryModeForTesting)
         self.episodeAnalyzer = resolvedAnalyzer
@@ -461,6 +474,54 @@ final class AppShellModel {
     func expandFullPlayer() {
         guard engine != nil else { return }
         isFullPlayerPresented = true
+    }
+
+    /// Affordance gate — complete transcript file on disk (ADR-022).
+    func transcriptExists(for episodeID: String) -> Bool {
+        transcriptCache.exists(episodeID: episodeID)
+    }
+
+    /// Whether the now-playing episode has a cached transcript (full-player affordance).
+    var nowPlayingTranscriptExists: Bool {
+        guard let episodeID = nowPlayingEpisodeID else { return false }
+        return transcriptExists(for: episodeID)
+    }
+
+    /// Present the transcript sheet for an episode (row or full-player entry).
+    func presentTranscript(for episodeID: String) {
+        guard let words = transcriptCache.load(episodeID: episodeID), !words.isEmpty else {
+            return
+        }
+
+        let intervals: [CensorInterval]
+        if let cached = playbackCoordinator?.cachedIntervals, nowPlayingEpisodeID == episodeID, !cached.isEmpty {
+            intervals = cached
+        } else if let fromDisk = intervalCache.load(
+            episodeID: episodeID,
+            targetWords: settingsStore.activeNormalizedTargetSet()
+        ) {
+            intervals = fromDisk
+        } else {
+            intervals = []
+        }
+
+        let position = resumeStore.position(for: episodeID)
+        transcriptSheetViewModel = TranscriptViewModel.make(
+            transcript: words,
+            intervals: intervals,
+            playbackPosition: position
+        )
+        transcriptSheetEpisodeID = episodeID
+    }
+
+    func presentTranscriptForNowPlaying() {
+        guard let episodeID = nowPlayingEpisodeID else { return }
+        presentTranscript(for: episodeID)
+    }
+
+    func dismissTranscript() {
+        transcriptSheetEpisodeID = nil
+        transcriptSheetViewModel = nil
     }
 
     func stopAndDismissPlayer() {

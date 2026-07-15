@@ -35,6 +35,8 @@ struct AppShellView: View {
         _libraryViewModel = State(initialValue: LibraryViewModel(store: model.podcastStore))
 
         let useStubbedNetwork = FixtureLibrary.usesInMemoryPersistence
+            || FixtureTranscript.usesInMemoryPersistence
+            || FixtureProgressivePlayback.isEnabled
         let searchClient = useStubbedNetwork
             ? FixtureDiscover.makeSearchClient()
             : ITunesSearchClient()
@@ -148,9 +150,74 @@ struct AppShellView: View {
                             }
                         }
                 }
+                // Content-tree leading control (not ToolbarItem). ToolbarItem wraps
+                // the button so `descendants(.any)["playback.viewTranscript"]` matches
+                // Other + Button and `.tap()` fails — same pattern as settingsButton.
+                .overlay(alignment: .topLeading) {
+                    if model.nowPlayingTranscriptExists {
+                        Button {
+                            model.presentTranscriptForNowPlaying()
+                        } label: {
+                            Image(systemName: "text.alignleft")
+                                .font(.body.weight(.medium))
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .accessibilityIdentifier("playback.viewTranscript")
+                        .accessibilityLabel("View transcript")
+                        .accessibilityHint("Shows the episode transcript.")
+                        .padding(.leading, 8)
+                        .safeAreaPadding(.top)
+                    }
+                }
+                .sheet(item: nestedTranscriptSheetItem) { _ in
+                    transcriptSheetContent
+                }
             }
         }
+        .sheet(item: rootTranscriptSheetItem) { _ in
+            transcriptSheetContent
+        }
         .background(TabBarAccessibilityConfigurator(tabBarHeight: $tabBarHeight))
+    }
+
+    @ViewBuilder
+    private var transcriptSheetContent: some View {
+        if let viewModel = model.transcriptSheetViewModel {
+            TranscriptView(viewModel: viewModel) {
+                model.dismissTranscript()
+            }
+        }
+    }
+
+    /// Transcript sheet when full player is closed (episode-row entry).
+    private var rootTranscriptSheetItem: Binding<TranscriptSheetToken?> {
+        Binding(
+            get: {
+                guard !model.isFullPlayerPresented else { return nil }
+                return model.transcriptSheetEpisodeID.map { TranscriptSheetToken(id: $0) }
+            },
+            set: { newValue in
+                if newValue == nil {
+                    model.dismissTranscript()
+                }
+            }
+        )
+    }
+
+    /// Nested transcript sheet on top of the full-player sheet.
+    private var nestedTranscriptSheetItem: Binding<TranscriptSheetToken?> {
+        Binding(
+            get: {
+                guard model.isFullPlayerPresented else { return nil }
+                return model.transcriptSheetEpisodeID.map { TranscriptSheetToken(id: $0) }
+            },
+            set: { newValue in
+                if newValue == nil {
+                    model.dismissTranscript()
+                }
+            }
+        )
     }
 
     /// Hide when a pushed Settings screen or full player would cover the affordance.
@@ -255,11 +322,18 @@ private struct LibraryPodcastDetailView: View {
                     podcastTitle: summary.title,
                     feedURL: summary.feedURL
                 )
-            }
+            },
+            transcriptExists: { model.transcriptExists(for: $0) },
+            onViewTranscript: { model.presentTranscript(for: $0) }
         )
         .navigationTitle(summary.title)
         .navigationBarTitleDisplayMode(.inline)
     }
+}
+
+/// Identifiable token for transcript sheet presentation.
+private struct TranscriptSheetToken: Identifiable {
+    let id: String
 }
 
 /// Applies tab-bar accessibility identifiers that SwiftUI `tabItem` does not always expose.

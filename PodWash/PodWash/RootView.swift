@@ -220,7 +220,13 @@ struct RootView: View {
 
         let model = AppShellModel(persistence: persistence, remoteCommands: remoteCommands)
         // Seed/clear via the shell's store so LibraryViewModel reads the same context rows.
-        if FixtureLibrary.isEnabled || FixtureProgressivePlayback.isEnabled {
+        if FixtureTranscript.isAnyEnabled {
+            try? FixtureTranscript.prepare(
+                podcastStore: model.podcastStore,
+                resumeStore: model.resumeStore,
+                settingsStore: model.settingsStore
+            )
+        } else if FixtureLibrary.isEnabled || FixtureProgressivePlayback.isEnabled {
             try? FixtureLibrary.prepareSeededStore(model.podcastStore)
             if FixtureProgressivePlayback.isEnabled {
                 // Cleaning on for every seeded feed so Library cell_0 play enters progressive prepare.
@@ -230,6 +236,8 @@ struct RootView: View {
                         enabled: true
                     )
                 }
+                // Ensure no leftover terminal transcript from a prior Transcript UITest (AC9).
+                FixtureTranscript.clearSeededTranscripts(podcastStore: model.podcastStore)
             }
         } else if FixtureLibrary.isEmptyEnabled {
             try? FixtureLibrary.prepareEmptyStore(model.podcastStore)

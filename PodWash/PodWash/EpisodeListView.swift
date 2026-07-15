@@ -15,6 +15,8 @@ struct EpisodeListView: View {
     var queueStore: QueueStore
     var onQueueChanged: () -> Void
     var onPlayEpisode: ((Episode) -> Void)? = nil
+    var transcriptExists: ((String) -> Bool)? = nil
+    var onViewTranscript: ((String) -> Void)? = nil
 
     var body: some View {
         // Observe generation so representable refreshes when analysis UI changes.
@@ -25,7 +27,9 @@ struct EpisodeListView: View {
             downloadManager: downloadManager,
             queueStore: queueStore,
             onQueueChanged: onQueueChanged,
-            onPlayEpisode: onPlayEpisode
+            onPlayEpisode: onPlayEpisode,
+            transcriptExists: transcriptExists,
+            onViewTranscript: onViewTranscript
         )
         .background(BrandTheme.surface)
     }
@@ -38,6 +42,8 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
     var queueStore: QueueStore
     var onQueueChanged: () -> Void
     var onPlayEpisode: ((Episode) -> Void)?
+    var transcriptExists: ((String) -> Bool)?
+    var onViewTranscript: ((String) -> Void)?
 
     func makeUIViewController(context: Context) -> EpisodeTableViewController {
         EpisodeTableViewController(
@@ -46,7 +52,9 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
             downloadManager: downloadManager,
             queueStore: queueStore,
             onQueueChanged: onQueueChanged,
-            onPlayEpisode: onPlayEpisode
+            onPlayEpisode: onPlayEpisode,
+            transcriptExists: transcriptExists,
+            onViewTranscript: onViewTranscript
         )
     }
 
@@ -57,7 +65,9 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
             downloadManager: downloadManager,
             queueStore: queueStore,
             onQueueChanged: onQueueChanged,
-            onPlayEpisode: onPlayEpisode
+            onPlayEpisode: onPlayEpisode,
+            transcriptExists: transcriptExists,
+            onViewTranscript: onViewTranscript
         )
     }
 }
@@ -69,6 +79,8 @@ private final class EpisodeTableViewController: UITableViewController {
     private var queueStore: QueueStore
     private var onQueueChanged: () -> Void
     private var onPlayEpisode: ((Episode) -> Void)?
+    private var transcriptExists: ((String) -> Bool)?
+    private var onViewTranscript: ((String) -> Void)?
 
     init(
         feed: PodcastFeed,
@@ -76,7 +88,9 @@ private final class EpisodeTableViewController: UITableViewController {
         downloadManager: DownloadManager,
         queueStore: QueueStore,
         onQueueChanged: @escaping () -> Void,
-        onPlayEpisode: ((Episode) -> Void)?
+        onPlayEpisode: ((Episode) -> Void)?,
+        transcriptExists: ((String) -> Bool)?,
+        onViewTranscript: ((String) -> Void)?
     ) {
         self.feed = feed
         self.analysisViewModel = analysisViewModel
@@ -84,6 +98,8 @@ private final class EpisodeTableViewController: UITableViewController {
         self.queueStore = queueStore
         self.onQueueChanged = onQueueChanged
         self.onPlayEpisode = onPlayEpisode
+        self.transcriptExists = transcriptExists
+        self.onViewTranscript = onViewTranscript
         super.init(style: .plain)
         analysisViewModel.onAnalyzingEpisodeIDChanged = { [weak self] in
             guard let self else { return }
@@ -123,7 +139,9 @@ private final class EpisodeTableViewController: UITableViewController {
         downloadManager: DownloadManager,
         queueStore: QueueStore,
         onQueueChanged: @escaping () -> Void,
-        onPlayEpisode: ((Episode) -> Void)?
+        onPlayEpisode: ((Episode) -> Void)?,
+        transcriptExists: ((String) -> Bool)?,
+        onViewTranscript: ((String) -> Void)?
     ) {
         let feedChanged = self.feed != feed
         self.feed = feed
@@ -132,6 +150,8 @@ private final class EpisodeTableViewController: UITableViewController {
         self.queueStore = queueStore
         self.onQueueChanged = onQueueChanged
         self.onPlayEpisode = onPlayEpisode
+        self.transcriptExists = transcriptExists
+        self.onViewTranscript = onViewTranscript
         analysisViewModel.onAnalyzingEpisodeIDChanged = { [weak self] in
             guard let self else { return }
             self.refreshAnalysisDisplayOnVisibleRows()
@@ -279,6 +299,14 @@ private final class EpisodeTableViewController: UITableViewController {
         }
     }
 
+    private func viewTranscriptHandler(for indexPath: IndexPath) -> () -> Void {
+        { [weak self] in
+            guard let self else { return }
+            let episode = self.feed.episodes[indexPath.row]
+            self.onViewTranscript?(episode.id)
+        }
+    }
+
     private func applyListAccessibility() {
         tableView.accessibilityIdentifier = "episodeList"
         tableView.accessibilityLabel = "Episodes"
@@ -293,14 +321,17 @@ private final class EpisodeTableViewController: UITableViewController {
         let cell = tableView.dequeueReusableCell(withIdentifier: EpisodeTableViewCell.reuseID, for: indexPath) as! EpisodeTableViewCell
         let episode = feed.episodes[indexPath.row]
         let isQueued = queueStore.queueEpisodeIDs().contains(episode.id)
+        let showsTranscript = transcriptExists?(episode.id) ?? false
         cell.configure(
             episode: episode,
             index: indexPath.row,
             analysisViewModel: analysisViewModel,
             downloadManager: downloadManager,
             isQueued: isQueued,
+            showsTranscript: showsTranscript,
             onDownload: downloadButtonHandler(for: indexPath),
             onQueueAdd: queueAddHandler(for: indexPath),
+            onViewTranscript: showsTranscript ? viewTranscriptHandler(for: indexPath) : nil,
             onPlay: onPlayEpisode == nil ? nil : playHandler(for: indexPath)
         )
         return cell
@@ -324,15 +355,18 @@ final class EpisodeTableViewCell: UITableViewCell {
     private let textStack = EpisodePlayStackView()
     private let downloadButton = UIButton(type: .system)
     private let queueAddButton = UIButton(type: .system)
+    private let transcriptButton = UIButton(type: .system)
     private let accessoryStack = UIStackView()
     private var onDownload: (() -> Void)?
     private var onQueueAdd: (() -> Void)?
+    private var onViewTranscript: (() -> Void)?
     private var onPlay: (() -> Void)?
     private var rowIndex: Int = 0
     private var cellAccessibilityValue: String?
     private var layoutTestingWidthConstraint: NSLayoutConstraint?
     private var downloadWidthConstraint: NSLayoutConstraint!
     private var queueAddWidthConstraint: NSLayoutConstraint!
+    private var transcriptWidthConstraint: NSLayoutConstraint!
     private var textLeadingConstraint: NSLayoutConstraint!
     private var textTrailingConstraint: NSLayoutConstraint!
     private var accessoryTrailingConstraint: NSLayoutConstraint!
@@ -466,10 +500,34 @@ final class EpisodeTableViewCell: UITableViewCell {
             queueAddButton.heightAnchor.constraint(equalToConstant: 44),
         ])
 
+        transcriptButton.addTarget(self, action: #selector(transcriptTapped), for: .touchUpInside)
+        transcriptButton.isAccessibilityElement = true
+        transcriptButton.accessibilityTraits = .button
+        transcriptButton.setImage(UIImage(systemName: "text.alignleft"), for: .normal)
+        transcriptButton.setPreferredSymbolConfiguration(
+            UIImage.SymbolConfiguration(textStyle: .body),
+            forImageIn: .normal
+        )
+        transcriptButton.translatesAutoresizingMaskIntoConstraints = false
+        transcriptButton.setContentHuggingPriority(.required, for: .horizontal)
+        transcriptButton.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        transcriptButton.accessibilityIdentifier = "episode.viewTranscript"
+        transcriptButton.accessibilityLabel = "View transcript"
+        transcriptButton.accessibilityHint = "Shows the episode transcript."
+        let transcriptWidth = transcriptButton.widthAnchor.constraint(equalToConstant: 44)
+        transcriptWidth.priority = Self.deferredHorizontalPriority
+        transcriptWidthConstraint = transcriptWidth
+        NSLayoutConstraint.activate([
+            transcriptWidth,
+            transcriptButton.heightAnchor.constraint(equalToConstant: 44),
+        ])
+        transcriptButton.isHidden = true
+
         accessoryStack.axis = .horizontal
         accessoryStack.spacing = 8
         accessoryStack.alignment = .center
         accessoryStack.distribution = .fill
+        accessoryStack.addArrangedSubview(transcriptButton)
         accessoryStack.addArrangedSubview(queueAddButton)
         accessoryStack.addArrangedSubview(downloadButton)
         accessoryStack.translatesAutoresizingMaskIntoConstraints = false
@@ -526,6 +584,7 @@ final class EpisodeTableViewCell: UITableViewCell {
         let priority: UILayoutPriority = tight ? .required : Self.deferredHorizontalPriority
         downloadWidthConstraint.priority = priority
         queueAddWidthConstraint.priority = priority
+        transcriptWidthConstraint.priority = priority
         textLeadingConstraint.priority = priority
         textTrailingConstraint.priority = priority
         accessoryTrailingConstraint.priority = priority
@@ -534,6 +593,7 @@ final class EpisodeTableViewCell: UITableViewCell {
         let compression: UILayoutPriority = tight ? .required : .defaultHigh
         downloadButton.setContentCompressionResistancePriority(compression, for: .horizontal)
         queueAddButton.setContentCompressionResistancePriority(compression, for: .horizontal)
+        transcriptButton.setContentCompressionResistancePriority(compression, for: .horizontal)
         accessoryStack.setContentCompressionResistancePriority(compression, for: .horizontal)
     }
 
@@ -543,12 +603,15 @@ final class EpisodeTableViewCell: UITableViewCell {
         analysisViewModel: AnalysisUIViewModel,
         downloadManager: DownloadManager,
         isQueued: Bool,
+        showsTranscript: Bool,
         onDownload: @escaping () -> Void,
         onQueueAdd: @escaping () -> Void,
+        onViewTranscript: (() -> Void)?,
         onPlay: (() -> Void)? = nil
     ) {
         self.onDownload = onDownload
         self.onQueueAdd = onQueueAdd
+        self.onViewTranscript = onViewTranscript
         self.onPlay = onPlay
         self.rowIndex = index
 
@@ -557,6 +620,7 @@ final class EpisodeTableViewCell: UITableViewCell {
 
         downloadButton.accessibilityIdentifier = "downloadButton_\(index)"
         applyQueueDisplay(isQueued: isQueued, index: index)
+        applyTranscriptDisplay(showsTranscript: showsTranscript)
         applyAnalysisDisplay(analysisViewModel: analysisViewModel, episodeID: episode.id)
         applyDownloadDisplay(
             downloadManager: downloadManager,
@@ -566,21 +630,24 @@ final class EpisodeTableViewCell: UITableViewCell {
 
         cellAccessibilityValue = EpisodeListFormatting.iso8601String(from: episode.pubDate)
 
-        // Play region owns activation when Library wires `onPlay`. Keep the cell
-        // identifier for `app.cells["episodeCell_*"]` queries on the Feed path;
-        // on the Library path, move `episodeCell_*` onto `textStack` so XCTest
-        // taps a hittable play target without collapsing accessories into the cell.
+        // Single `episodeCell_*` on the UITableViewCell only — never also on
+        // textStack. Duplicate IDs make `app.descendants[.any]["episodeCell_N"]`
+        // ambiguous and XCTest `.tap()` fails with "Multiple matching elements".
+        // Library play: textStack stays the activatable child; cell center taps
+        // route via hitTest / accessibilityActivate. `app.cells[...]` still
+        // scopes `episode.viewTranscript` (Slice 26).
         isAccessibilityElement = false
         accessibilityTraits = .none
+        accessibilityIdentifier = "episodeCell_\(index)"
         accessoryStack.accessibilityElementsHidden = false
         accessoryStack.isUserInteractionEnabled = true
         queueAddButton.isAccessibilityElement = true
         downloadButton.isAccessibilityElement = true
+        transcriptButton.isAccessibilityElement = showsTranscript
 
         if onPlay != nil {
-            accessibilityIdentifier = nil
             accessibilityLabel = nil
-            textStack.accessibilityIdentifier = "episodeCell_\(index)"
+            textStack.accessibilityIdentifier = nil
             textStack.isAccessibilityElement = true
             textStack.accessibilityTraits = .button
             textStack.accessibilityLabel = episode.title
@@ -588,7 +655,6 @@ final class EpisodeTableViewCell: UITableViewCell {
             textStack.accessibilityValue = cellAccessibilityValue
             textStack.onActivate = { [weak self] in self?.onPlay?() }
         } else {
-            accessibilityIdentifier = "episodeCell_\(index)"
             accessibilityLabel = episode.title
             textStack.accessibilityIdentifier = nil
             textStack.isAccessibilityElement = false
@@ -601,6 +667,14 @@ final class EpisodeTableViewCell: UITableViewCell {
 
         titleLabel.isAccessibilityElement = false
         dateLabel.isAccessibilityElement = false
+    }
+
+    func applyTranscriptDisplay(showsTranscript: Bool) {
+        transcriptButton.isHidden = !showsTranscript
+        transcriptButton.isAccessibilityElement = showsTranscript
+        transcriptButton.accessibilityIdentifier = showsTranscript ? "episode.viewTranscript" : nil
+        transcriptButton.accessibilityLabel = showsTranscript ? "View transcript" : nil
+        transcriptButton.accessibilityHint = showsTranscript ? "Shows the episode transcript." : nil
     }
 
     func applyQueueDisplay(isQueued: Bool, index: Int) {
@@ -734,6 +808,7 @@ final class EpisodeTableViewCell: UITableViewCell {
         accessoryStack.accessibilityElementsHidden = false
         queueAddButton.isAccessibilityElement = true
         downloadButton.isAccessibilityElement = true
+        transcriptButton.isAccessibilityElement = !transcriptButton.isHidden
 
         var axChildren: [UIView] = []
         if onPlay != nil {
@@ -742,6 +817,9 @@ final class EpisodeTableViewCell: UITableViewCell {
             axChildren.append(textStack)
         } else {
             textStack.isAccessibilityElement = false
+        }
+        if !transcriptButton.isHidden {
+            axChildren.append(transcriptButton)
         }
         axChildren.append(contentsOf: [queueAddButton, downloadButton])
         if showsDownloadProgress {
@@ -764,6 +842,10 @@ final class EpisodeTableViewCell: UITableViewCell {
 
     @objc private func queueAddTapped() {
         onQueueAdd?()
+    }
+
+    @objc private func transcriptTapped() {
+        onViewTranscript?()
     }
 
     @objc private func playTapped() {
@@ -845,8 +927,10 @@ enum EpisodeTableViewCellLayoutTesting {
             analysisViewModel: analysisViewModel,
             downloadManager: downloadManager,
             isQueued: isQueued,
+            showsTranscript: false,
             onDownload: {},
-            onQueueAdd: {}
+            onQueueAdd: {},
+            onViewTranscript: nil
         )
         return cell
     }
