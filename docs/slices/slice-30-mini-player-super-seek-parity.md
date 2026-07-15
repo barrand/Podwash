@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 30 |
 | **Title** | Mini-player super seek bar parity (shared chrome) |
-| **Status** | Ready |
+| **Status** | In Progress |
 | **Priority** | P3 |
 | **Crux** | Mini and full player host the **same** `SuperSeekBarView` (one paint + seek + mute-marker implementation): with analysis complete and ≥ **1** profanity mute, both expose matching segment + `muteMarkers:N` AX, and mini supports playhead + frontier-clamped tap-to-seek without a second bar implementation. |
 
@@ -34,11 +34,23 @@ Give the mini player full visual/interaction parity with the full-player super s
 
 ## Deliverables
 
-- ADR amend (or short ADR-024) — lift mini interactive OOS from ADR-021; lift mini mute OOS from ADR-023; pin shared-host architecture and expand-vs-seek hit targets
+- ADR — [`docs/adr/026-mini-player-super-seek-parity.md`](../adr/026-mini-player-super-seek-parity.md) (lifts mini OOS from ADR-021 / ADR-023; shared host + expand-vs-seek)
 - UX spec `docs/slices/slice-30-ux.md` — mini layout heights, expand vs bar hit targets, AX ids, fixture scenarios
 - Wire `MiniPlayerBar` to host `SuperSeekBarView` with mute intervals + seek callbacks (same seams as full player)
 - Remove / stop painting mini-only `AnalysisTimelineView` path for player chrome (episode-row bar unchanged)
 - Tests — unit (shared model unchanged or thin host wiring) + UI (mini AX + seek + mute parity with full)
+
+## Design note (Architect)
+
+**ADR-026** is the gate artifact. Summary for downstream roles:
+
+| Concern | Decision |
+|---------|----------|
+| Shared type | One `SuperSeekBarView` (+ existing `SuperSeekBarModel`); parameterize `barHeight` + `accessibilityIdentifier` |
+| Mini id | `miniPlayer.superSeekBar` (retire `miniPlayerAnalysisTimeline`); same AX value grammar as full |
+| Expand vs seek | Title/artwork = `miniPlayer` expand; bar = seek only; not nested in expand button |
+| Mute / seek | Same ADR-023 complete-only gate + ADR-021 frontier clamp; shell reuses `seekClampedToProcessedFrontier` + cached intervals |
+| Visibility | Host bar whenever mini player is visible (grey track when no colors) — do not hide when colors nil |
 
 ## Depends on
 
@@ -72,12 +84,13 @@ Automatable only. **XCTSkip is not allowed on core ACs.**
 
 | AC# | Test file | Test method | Notes |
 |-----|-----------|-------------|-------|
-| 1 | `PodWash/PodWashUITests/…` | `test…` | TBD — QA pins id + fixture |
-| 2 | `PodWash/PodWashUITests/…` | `test…` | Mini ↔ full muteMarkers parity |
-| 3 | `PodWash/PodWashUITests/…` | `test…` | Ads-only |
-| 4 | `PodWash/PodWashUITests/…` | `test…` | Frontier clamp on mini |
-| 5 | `PodWash/PodWashUITests/…` | `test…` | Expand still works |
-| 6 | `PodWash/PodWashTests/…` | `test…` | Shared host / no dual paint |
+| 1 | `PodWash/PodWashUITests/MiniPlayerSuperSeekBarUITests.swift` | `testMiniPlayerExposesMuteMarkersWhenProfanityMutePresent` | `-UITestFixtureMuteMarkers`; `miniPlayer.superSeekBar`; pinned `muteMarkers:2` |
+| 2 | `PodWash/PodWashUITests/MiniPlayerSuperSeekBarUITests.swift` | `testMiniAndFullPlayerMuteMarkersParity` | Same session; expand; segment triple + mute count match |
+| 3 | `PodWash/PodWashUITests/MiniPlayerSuperSeekBarUITests.swift` | `testMiniPlayerMuteMarkersZeroForAdsOnly` | `-UITestFixtureMuteMarkersAdsOnly`; `muteMarkers:0`; sum 12 |
+| 4 | `PodWash/PodWashUITests/MiniPlayerSuperSeekBarUITests.swift` | `testMiniPlayerSeekClampsToProcessedFrontier` | Progressive freeze at 60 s; mini tap `dx=0.75`; expand; elapsed 55–65 |
+| 5 | `PodWash/PodWashUITests/MiniPlayerSuperSeekBarUITests.swift` | `testMiniPlayerExpandStillOpensFullPlayer` | Tap `miniPlayer` (not seek bar); full chrome within 5 s |
+| 6 | `PodWash/PodWashTests/MiniPlayerSuperSeekBarHostTests.swift` | `testMiniPlayerBarHostsSuperSeekBarViewNotParallelTimelinePaint` | Source-contract seam; no `AnalysisTimelineView` in mini chrome |
+| 6 | `PodWash/PodWashTests/MiniPlayerSuperSeekBarHostTests.swift` | `testPlaybackControlsViewHostsSuperSeekBarView` | Full-player host seam; no parallel `AnalysisTimelineView` seek path |
 | 7 | — | — | Unfiltered `scripts/verify.sh` |
 
 **Expected authorized migrations (QA):** `LibraryUITests` mini timeline asserts that require exact `ready:12,processing:0,pending:0` without `muteMarkers:` and/or `miniPlayerAnalysisTimeline` id; any UX copy that says mini is read-only strip only.
@@ -96,19 +109,19 @@ scripts/verify.sh
 ## Verification record (QA fills at Verify)
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=7 passed=7 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260715-172330.xcresult tier=2 class=tests
 ```
 
 ## Plan review record (coordinator fills before downstream roles)
 
 ```
-ADR review: (pending)
-Test spec review: (pending)
+ADR review (2026-07-15): (pending) QA cleared — pipeline worker finished PM cleared — pipeline worker finished
+Test spec review (2026-07-15): Architect cleared — pipeline worker finished
 ```
 
 ## Done gate
 
-- [ ] Every AC mapped to a test; all rows in the mapping table filled
+- [x] Every AC mapped to a test; all rows in the mapping table filled
 - [ ] **Full suite green:** unfiltered `scripts/verify.sh` exit 0, failed 0, skipped 0
 - [ ] Verification record pasted above
 - [ ] Auto-commit on green: `slice-30: mini-player super seek parity`
@@ -124,7 +137,7 @@ Test spec review: (pending)
 | Role | Required? | Artifact |
 |------|-----------|----------|
 | PM | **Required** | This story |
-| Architect | **Required** | ADR amend ADR-021 + ADR-023 and/or new ADR for shared mini host |
+| Architect | **Required** | [`docs/adr/026-mini-player-super-seek-parity.md`](../adr/026-mini-player-super-seek-parity.md) |
 | UX | **Required** | `docs/slices/slice-30-ux.md` |
 | QA | **Required** | Test mapping + fixtures; migrate Library mini AX asserts |
 | Engineer | **Required** | Shared `SuperSeekBarView` in mini + full; wire mute + seek |

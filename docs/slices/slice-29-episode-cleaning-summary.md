@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 29 |
 | **Title** | Episode cleaning summary on channel screen |
-| **Status** | In Progress |
+| **Status** | Implemented |
 | **Priority** | P3 |
 | **Crux** | On the podcast detail (channel) episode list, when an episode has a **complete** interval-cache result, the row exposes an assertable **cleaning summary** — profanity section count, ad section count, and total ad duration as **`X.X min`** — derived from cached `[CensorInterval]` without requiring the episode to be playing. |
 
