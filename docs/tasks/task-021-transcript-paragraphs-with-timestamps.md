@@ -4,7 +4,8 @@
 |-------|-------|
 | **ID** | 021 |
 | **Title** | Transcript sentence paragraphs with start timestamps |
-| **Status** | In Progress |
+| **Status** | Done |
+| **Done at** | 2026-07-15T18:19:48Z |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/TranscriptView.swift`, `PodWash/PodWash/TranscriptViewModel.swift`, `PodWash/PodWashTests/TranscriptViewModelTests.swift`, `PodWash/PodWashUITests/TranscriptUITests.swift` |

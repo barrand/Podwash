@@ -398,7 +398,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         guard !overriddenSkipKeys.contains(key) else { return }
         overriddenSkipKeys.insert(key)
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            skipSeek(to: skip.end) { [weak self] in
+            skipSeek(to: skip.end, resumePlaybackIfPaused: false) { [weak self] in
                 if skip.source == .unrelatedContent {
                     let skippedSeconds = skip.end - skip.start
                     self?.onUnrelatedContentSkip?(skip, skippedSeconds)
@@ -465,7 +465,11 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     /// (`toleranceBefore = 0.1 s`, `toleranceAfter = .zero`) so it never overshoots,
     /// and does NOT pause, so `timeControlStatus` stays `.playing` (AC4). Additive —
     /// the public `seek(to:completion:)` signature/behavior is untouched.
-    private func skipSeek(to seconds: TimeInterval, completion: (() -> Void)? = nil) {
+    private func skipSeek(
+        to seconds: TimeInterval,
+        resumePlaybackIfPaused: Bool = true,
+        completion: (() -> Void)? = nil
+    ) {
         // Seeking exactly to asset duration often cancels (`finished == false`) or
         // ends the item; prefer a target still inside ADR-002's [end − 0.1, end]
         // window when `seconds` is at/past EOF.
@@ -491,7 +495,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
                 self.refreshCurrentTime()
                 self.touchUI()
                 self.updateNowPlaying()
-                if self.player.timeControlStatus != .playing {
+                if resumePlaybackIfPaused, self.player.timeControlStatus != .playing {
                     self.startOrPendPlayback()
                 }
                 completion?()

@@ -521,11 +521,12 @@ def _activity_snapshot(
         if re.search(r"Queued|Ready|Draft", t.get("status") or "", re.I)
         and not re.search(r"needs-human", t.get("kind") or "", re.I)
     ]
+    # Kind stays "needs-human" after Status → Done; only open Needs-human status waits.
     needs_human = [
         t
         for t in tasks
         if re.search(r"Needs-human", t.get("status") or "", re.I)
-        or re.search(r"needs-human", t.get("kind") or "", re.I)
+        and not re.search(r"^Done", t.get("status") or "", re.I)
     ]
 
     agents: list[dict[str, str]] = []
@@ -972,10 +973,12 @@ def board_snapshot() -> dict[str, Any]:
             meta = parse_meta(path)
             kind = meta.get("Kind", "")
             status = meta.get("Status", "?")
-            needs_human = bool(
-                re.search(r"needs-human", kind, re.I)
-                or re.search(r"Needs-human", status, re.I)
-            )
+            # Kind is durable taxonomy; Status drives the board. Done needs-human
+            # tickets must not stay "open" / non-runnable forever.
+            status_needs_human = bool(re.search(r"Needs-human", status, re.I))
+            kind_needs_human = bool(re.search(r"needs-human", kind, re.I))
+            is_done = bool(re.search(r"^Done", status, re.I))
+            needs_human = status_needs_human or (kind_needs_human and not is_done)
             tasks.append(
                 {
                     "id": meta.get("ID", path.name),
@@ -987,7 +990,7 @@ def board_snapshot() -> dict[str, Any]:
                     "path": str(path.relative_to(REPO_ROOT)),
                     "type": "task",
                     "lane": "task",
-                    "runnable": not needs_human,
+                    "runnable": not needs_human and not is_done,
                     "done_at": _meta_done_at(meta),
                 }
             )
@@ -1120,6 +1123,21 @@ def requeue_task(task_id: Any) -> str:
     return f"requeued task-{tid:03d} → Queued"
 
 
+def mark_done_task(task_id: Any) -> str:
+    """Immediately mark a Needs-human (or any) task Done — do not wait for the loop."""
+    try:
+        tid = int(task_id)
+    except (TypeError, ValueError):
+        return f"invalid task_id {task_id!r}"
+    path = _task_path_for_id(tid)
+    if path is None:
+        return f"task-{tid:03d} not found"
+    from task_ticket import set_task_status
+
+    set_task_status(str(path), "Done")
+    return f"marked done task-{tid:03d} → Done"
+
+
 def apply_control(action: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
     """Apply a Floor control action; return {ok, message?, controls?, error?}."""
     data = data or {}
@@ -1185,7 +1203,8 @@ def apply_control(action: str, data: dict[str, Any] | None = None) -> dict[str, 
         ctrl["cancel_task_id"] = data.get("task_id")
         write_controls(ctrl)
     elif action == "mark_done":
-        ctrl["mark_done_task_id"] = data.get("task_id")
+        msg = mark_done_task(data.get("task_id"))
+        ctrl["mark_done_task_id"] = None
         write_controls(ctrl)
     elif action == "batch_hold":
         incident = _read_batch_failure()
@@ -1668,10 +1687,11 @@ let showDoneSlices = false;
 
 function colFor(item) {
   const s = (item.status||"");
-  if (/Needs-human/i.test(s) || /needs-human/i.test(item.kind||"")) return "Needs-human";
+  // Status wins over kind — Kind "needs-human" stays after Status → Done.
+  if (/^Done/i.test(s)) return "Done";
   if (/Halted/i.test(s)) return "Halted";
   if (/In Progress/i.test(s)) return "In Progress";
-  if (/^Done/i.test(s)) return "Done";
+  if (/Needs-human/i.test(s) || /needs-human/i.test(item.kind||"")) return "Needs-human";
   if (/Queued|Ready|Draft/i.test(s)) return "Queued";
   return "Queued";
 }
@@ -1887,9 +1907,12 @@ function makeCard(item, st, activeTid, activity) {
     }
   }
   const halted = item.type === "task" && /Halted/i.test(item.status || "");
+  const needsHumanOpen = item.type === "task" && /Needs-human/i.test(item.status || "");
   let actionsHtml = "";
   if (halted) {
     actionsHtml = `<div class="card-actions"><button type="button" data-requeue="${esc(item.id)}">Requeue</button></div>`;
+  } else if (needsHumanOpen) {
+    actionsHtml = `<div class="card-actions"><button type="button" data-mark-done="${esc(item.id)}">Mark done</button></div>`;
   }
   const closedMeta = (/^Done/i.test(item.status || "") && item.done_at)
     ? `<div class="meta">${esc(formatDoneClosedMeta(item.done_at))}</div>`
@@ -1901,12 +1924,20 @@ function makeCard(item, st, activeTid, activity) {
     <div>${esc(item.title||"")}</div>
     <div class="meta">${esc(item.kind||"")} · ${esc((item.area||"").slice(0,40))}</div>${laneChip}${closedMeta}${phaseHtml}${actionsHtml}`;
   card.onclick = (e) => {
-    const btn = e.target && e.target.closest && e.target.closest("[data-requeue]");
-    if (btn) {
+    const requeueBtn = e.target && e.target.closest && e.target.closest("[data-requeue]");
+    if (requeueBtn) {
       e.stopPropagation();
-      const id = parseInt(String(btn.getAttribute("data-requeue") || "").replace(/\D/g, ""), 10);
+      const id = parseInt(String(requeueBtn.getAttribute("data-requeue") || "").replace(/\D/g, ""), 10);
       if (!id) return alert("Bad task id");
       post("/api/control", {action: "requeue", task_id: id});
+      return;
+    }
+    const doneBtn = e.target && e.target.closest && e.target.closest("[data-mark-done]");
+    if (doneBtn) {
+      e.stopPropagation();
+      const id = parseInt(String(doneBtn.getAttribute("data-mark-done") || "").replace(/\D/g, ""), 10);
+      if (!id) return alert("Bad task id");
+      post("/api/control", {action: "mark_done", task_id: id});
       return;
     }
     openDrawer(item);

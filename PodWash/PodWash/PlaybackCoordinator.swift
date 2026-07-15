@@ -29,6 +29,14 @@ final class PlaybackCoordinator {
     /// Progressive prepare: latest chunk frontier in seconds.
     private(set) var processedEnd: Double = 0
 
+    /// Intervals last projected onto `PlaybackEngine` (post enablement / action remap).
+    var appliedPlaybackIntervals: [CensorInterval] {
+        lastScheduledIntervals
+    }
+
+    /// Serializes progressive partial schedule applies (task-022 intro catch-up race).
+    private var partialApplyChain: Task<Void, Never>?
+
     init(
         pipeline: any EpisodeAnalyzing,
         engine: PlaybackEngine,
@@ -121,18 +129,26 @@ final class PlaybackCoordinator {
         unrelatedContentAction = unrelatedContent.action
 
         let chunkReadyGate = OnceFlag()
+        partialApplyChain = nil
         let installation = installPartialIntervalsHandler { [weak self] intervals, snapshot in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 guard let self else { return }
-                await self.handleProgressivePartial(
-                    intervals: intervals,
-                    snapshot: snapshot,
-                    chunkReadyGate: chunkReadyGate,
-                    onChunkReady: onChunkReady
-                )
+                let previous = self.partialApplyChain
+                self.partialApplyChain = Task { @MainActor in
+                    await previous?.value
+                    await self.handleProgressivePartial(
+                        intervals: intervals,
+                        snapshot: snapshot,
+                        chunkReadyGate: chunkReadyGate,
+                        onChunkReady: onChunkReady
+                    )
+                }
             }
         }
-        defer { installation.restore() }
+        defer {
+            installation.restore()
+            partialApplyChain = nil
+        }
 
         let intervals = try await pipeline.analyze(
             episode: episode,
@@ -142,8 +158,8 @@ final class PlaybackCoordinator {
             profanityAction: action,
             unrelatedContent: unrelatedContent
         )
-        // Allow in-flight partial Tasks to apply schedule before finalizing.
-        await Task.yield()
+        // Wait for chained partial applies before terminal schedule (task-022).
+        await partialApplyChain?.value
         if let analysisPipeline = pipeline as? AnalysisPipeline {
             lastAnalysisUnion = analysisPipeline.lastAnalysisUnion
         } else {

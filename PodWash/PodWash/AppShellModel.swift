@@ -515,8 +515,20 @@ final class AppShellModel {
         }
 
         let intervals: [CensorInterval]
-        if let cached = playbackCoordinator?.cachedIntervals, nowPlayingEpisodeID == episodeID, !cached.isEmpty {
-            intervals = cached
+        if let coordinator = playbackCoordinator, nowPlayingEpisodeID == episodeID {
+            let applied = coordinator.appliedPlaybackIntervals
+            if !applied.isEmpty {
+                intervals = applied
+            } else if !coordinator.cachedIntervals.isEmpty {
+                intervals = coordinator.cachedIntervals
+            } else if let fromDisk = intervalCache.load(
+                episodeID: episodeID,
+                targetWords: settingsStore.activeNormalizedTargetSet()
+            ) {
+                intervals = fromDisk
+            } else {
+                intervals = []
+            }
         } else if let fromDisk = intervalCache.load(
             episodeID: episodeID,
             targetWords: settingsStore.activeNormalizedTargetSet()

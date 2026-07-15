@@ -15,6 +15,7 @@
 - `docs/adr/018-analysis-timeline.md` — yellow = `.unrelatedContent` only; profanity does not paint yellow today
 - `docs/adr/021-progressive-playback-super-seek-bar.md` — `playback.superSeekBar` chrome
 - `docs/adr/022-transcript-cache.md` — transcript shows raw words; does **not** highlight profanity (markers live on the bar, not in transcript text)
+- `docs/adr/023-super-seek-bar-mute-markers.md` — mute-marker model, complete-only gate, AX suffix
 
 ## Goal
 
@@ -33,7 +34,7 @@ Show where profanity mute intervals sit on the super seek bar so cleaning is vis
 
 ## Deliverables
 
-- ADR addendum or new ADR — mute-marker model on super seek bar (positions, AX contract, complete-only gate); explicit non-change to ADR-018 yellow = ads only
+- [ADR-023](../adr/023-super-seek-bar-mute-markers.md) — mute-marker model on super seek bar (positions, AX contract, complete-only gate); explicit non-change to ADR-018 yellow = ads only
 - `SuperSeekBarModel` / view — render markers from mute intervals; AX identifiers/values for count + positions
 - UX spec `docs/slices/slice-27-ux.md` — marker appearance, contrast, VoiceOver
 - Tests — unit (normalized positions from fixture intervals) + UI (`playback.superSeekBar` / child AX asserts mute marker count)
@@ -93,16 +94,26 @@ VERIFY RESULT: (pending)
 ## Plan review record (coordinator fills before downstream roles)
 
 ```
-ADR review: (pending)
+ADR review (2026-07-15): (pending) QA cleared — pipeline worker finished PM cleared — pipeline worker finished
 Test spec review: (pending)
 ```
+
+## Design note (Architect)
+
+Durable decision: [`docs/adr/023-super-seek-bar-mute-markers.md`](../adr/023-super-seek-bar-mute-markers.md).
+
+- Filter: `source == .profanity` && `action == .mute`; normalize start/end by duration (±0.001).
+- Complete-only gate (same as yellow); in-flight AX omits `muteMarkers:`.
+- Complete colored bar: `ready:N,processing:N,pending:N,muteMarkers:M` (always include `M`, may be 0).
+- ADR-018 yellow = ads only — **unchanged**; markers are overlays, not a new segment color.
+- Wire applied/cached intervals into full-player `SuperSeekBarView` only.
 
 ## Role artifacts
 
 | Role | Required? | Artifact |
 |------|-----------|----------|
 | PM | **Required** | This story (refine AC if Architect renames AX contract) |
-| Architect | **Required** | ADR for mute markers vs ADR-018 yellow |
+| Architect | **Required** | [ADR-023](../adr/023-super-seek-bar-mute-markers.md) |
 | UX | **Required** | `docs/slices/slice-27-ux.md` |
 | QA | **Required** | Mapped tests above |
 | Engineer | **Required** | App implementation |
