@@ -8,6 +8,7 @@
 //  temp dirs — independent of app implementation.
 //
 
+import Darwin
 import XCTest
 
 final class ASRModelSetupCopyContractTests: XCTestCase {
@@ -160,6 +161,9 @@ final class ASRModelSetupCopyContractTests: XCTestCase {
         let modelsDir = root.appendingPathComponent("Models/whisperkit-coreml", isDirectory: true)
         let modelDir = modelsDir.appendingPathComponent(tinyModel, isDirectory: true)
         let buildDir = root.appendingPathComponent("out", isDirectory: true)
+        // SRCROOT must exist: macOS will not resolve `$SRCROOT/../Models/...` through a
+        // missing intermediate directory (copy script uses `${SRCROOT}/../Models/...`).
+        try FileManager.default.createDirectory(at: podWashDir, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
 
         if simulatorModelComplete {
@@ -189,20 +193,91 @@ final class ASRModelSetupCopyContractTests: XCTestCase {
         resourcesFolder: String,
         platformName: String
     ) throws -> Int32 {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = [copyScriptURL.path]
+        // Foundation.Process is macOS-only; iOS XCTest uses posix_spawn (simulator).
         var environment = ProcessInfo.processInfo.environment
         environment["SRCROOT"] = srcRoot.path
         environment["TARGET_BUILD_DIR"] = targetBuildDir.path
         environment["UNLOCALIZED_RESOURCES_FOLDER_PATH"] = resourcesFolder
         environment["PLATFORM_NAME"] = platformName
-        process.environment = environment
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-        try process.run()
-        process.waitUntilExit()
-        return process.terminationStatus
+        // Prefer host tool paths if the script still uses bare names; ADR-024 copy
+        // script uses /bin/* absolutes, but keep PATH sane for simulator RuntimeRoot.
+        let path = environment["PATH"] ?? ""
+        if !path.split(separator: ":").contains(where: { $0 == "/bin" || $0 == "/usr/bin" }) {
+            environment["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin" + (path.isEmpty ? "" : ":\(path)")
+        }
+        return try spawnAndWait(
+            executable: "/bin/sh",
+            arguments: ["/bin/sh", copyScriptURL.path],
+            environment: environment
+        )
     }
+
+    private func spawnAndWait(
+        executable: String,
+        arguments: [String],
+        environment: [String: String]
+    ) throws -> Int32 {
+        // Null-terminated C argv/envp; pass buffer baseAddress (not &Array).
+        var argv: [UnsafeMutablePointer<CChar>?] = arguments.map { strdup($0) }
+        argv.append(nil)
+        defer { for ptr in argv { free(ptr) } }
+
+        var envp: [UnsafeMutablePointer<CChar>?] = environment.map {
+            strdup("\($0.key)=\($0.value)")
+        }
+        envp.append(nil)
+        defer { for ptr in envp { free(ptr) } }
+
+        var pid: pid_t = 0
+        let spawnError: Int32 = argv.withUnsafeMutableBufferPointer { argvBuf in
+            envp.withUnsafeMutableBufferPointer { envBuf in
+                executable.withCString { exePath in
+                    posix_spawn(
+                        &pid,
+                        exePath,
+                        nil,
+                        nil,
+                        argvBuf.baseAddress,
+                        envBuf.baseAddress
+                    )
+                }
+            }
+        }
+        guard spawnError == 0 else {
+            throw NSError(
+                domain: NSPOSIXErrorDomain,
+                code: Int(spawnError),
+                userInfo: [NSLocalizedDescriptionKey: "posix_spawn(\(executable)) failed"]
+            )
+        }
+
+        var status: Int32 = 0
+        let waited = waitpid(pid, &status, 0)
+        guard waited == pid else {
+            throw NSError(
+                domain: NSPOSIXErrorDomain,
+                code: Int(errno),
+                userInfo: [NSLocalizedDescriptionKey: "waitpid failed"]
+            )
+        }
+
+        // Darwin sys/wait.h macros are not imported into Swift; mirror their semantics.
+        if Self.waitIfExited(status) {
+            return Self.waitExitStatus(status)
+        }
+        if Self.waitIfSignaled(status) {
+            return 128 + Self.waitTermSig(status)
+        }
+        return status
+    }
+
+    /// `_WSTATUS` / `WIFEXITED` from Darwin `sys/wait.h`.
+    private static func waitStatusBits(_ status: Int32) -> Int32 { status & 0o177 }
+    private static func waitIfExited(_ status: Int32) -> Bool { waitStatusBits(status) == 0 }
+    private static func waitExitStatus(_ status: Int32) -> Int32 { (status >> 8) & 0xff }
+    private static func waitIfSignaled(_ status: Int32) -> Bool {
+        let bits = waitStatusBits(status)
+        return bits != 0 && bits != 0o177
+    }
+    private static func waitTermSig(_ status: Int32) -> Int32 { waitStatusBits(status) }
 }
