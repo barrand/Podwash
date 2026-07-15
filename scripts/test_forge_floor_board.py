@@ -68,7 +68,7 @@ class BatchNeededHeldTests(unittest.TestCase):
             fail = os.path.join(td, "batch-failure.json")
             stamp = os.path.join(td, "batch-gate.json")
             with mock.patch("task_loop.head_sha", return_value="newsha"):
-                with mock.patch("task_loop.worktree_dirty", return_value=False):
+                with mock.patch("task_loop.dirty_fingerprint", return_value=""):
                     write_batch_failure(
                         {"status": "acknowledged", "head_sha": "oldsha"},
                         path=fail,
@@ -83,6 +83,30 @@ class BatchNeededHeldTests(unittest.TestCase):
                     )
                     self.assertFalse(needed)
                     self.assertEqual(reason, "not needed")
+
+    def test_open_incident_at_head_parks(self):
+        from task_loop import batch_needed, write_batch_failure
+
+        with tempfile.TemporaryDirectory() as td:
+            fail = os.path.join(td, "batch-failure.json")
+            stamp = os.path.join(td, "batch-gate.json")
+            with mock.patch("task_loop.head_sha", return_value="abc123"):
+                write_batch_failure(
+                    {
+                        "status": "open",
+                        "head_sha": "abc123",
+                        "reason": "still_red",
+                        "failures": [],
+                    },
+                    path=fail,
+                )
+                with open(stamp, "w", encoding="utf-8") as fh:
+                    json.dump({"sha": "old"}, fh)
+                needed, reason = batch_needed(
+                    force=False, stamp_path=stamp, failure_path=fail, repo_root=REPO
+                )
+                self.assertFalse(needed)
+                self.assertEqual(reason, "needs_decision")
 
 
 class BuildIncidentTests(unittest.TestCase):

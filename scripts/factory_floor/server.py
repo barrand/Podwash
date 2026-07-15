@@ -420,6 +420,10 @@ def _batch_plain(reason: str, state: str) -> str:
         "skipped": "Full-suite check skipped for this session.",
         "unavailable": "Full-suite status unavailable (internal import failed).",
         "still_red": "Full test suite is still failing after an auto-fix pass — decide in Your move.",
+        "needs_decision": (
+            "Full suite needs a decision in Your move — idle drain will not re-run until "
+            "you Retry, Don't push, or Verify & push."
+        ),
         "scope_miss": (
             "Full suite failed on a test no recent punch-list ticket ran — "
             "likely an old test conflicting with new behavior. Decide in Your move "

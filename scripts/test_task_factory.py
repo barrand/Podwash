@@ -10,6 +10,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+from unittest import mock
 
 SCRIPTS = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(SCRIPTS)
@@ -897,17 +898,15 @@ class TestBatchNeeded(unittest.TestCase):
             stamp = os.path.join(td, "batch-gate.json")
             sha = tl.head_sha(repo_root=REPO)
             self.assertTrue(sha)
-            tl.write_batch_gate({"sha": sha, "green": True}, path=stamp)
-            # If the real worktree is dirty, needed will be dirty tree — that's ok;
-            # stub worktree_dirty for a deterministic assert.
-            old_dirty = tl.worktree_dirty
+            tl.write_batch_gate({"sha": sha, "green": True, "dirty_fingerprint": ""}, path=stamp)
+            old_fp = tl.dirty_fingerprint
             try:
-                tl.worktree_dirty = lambda repo_root=None: False  # type: ignore[assignment]
+                tl.dirty_fingerprint = lambda repo_root=None: ""  # type: ignore[assignment]
                 needed, reason = tl.batch_needed(force=False, stamp_path=stamp, repo_root=REPO)
                 self.assertFalse(needed)
                 self.assertEqual(reason, "not needed")
             finally:
-                tl.worktree_dirty = old_dirty
+                tl.dirty_fingerprint = old_fp
 
     def test_head_moved(self):
         import task_loop as tl
@@ -915,14 +914,14 @@ class TestBatchNeeded(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             stamp = os.path.join(td, "batch-gate.json")
             tl.write_batch_gate({"sha": "deadbeef" * 5, "green": True}, path=stamp)
-            old_dirty = tl.worktree_dirty
+            old_fp = tl.dirty_fingerprint
             try:
-                tl.worktree_dirty = lambda repo_root=None: False  # type: ignore[assignment]
+                tl.dirty_fingerprint = lambda repo_root=None: ""  # type: ignore[assignment]
                 needed, reason = tl.batch_needed(force=False, stamp_path=stamp, repo_root=REPO)
                 self.assertTrue(needed)
                 self.assertEqual(reason, "HEAD moved")
             finally:
-                tl.worktree_dirty = old_dirty
+                tl.dirty_fingerprint = old_fp
 
     def test_dirty_tree(self):
         import task_loop as tl
@@ -930,15 +929,87 @@ class TestBatchNeeded(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             stamp = os.path.join(td, "batch-gate.json")
             sha = tl.head_sha(repo_root=REPO)
-            tl.write_batch_gate({"sha": sha, "green": True}, path=stamp)
-            old_dirty = tl.worktree_dirty
+            tl.write_batch_gate({"sha": sha, "green": True, "dirty_fingerprint": ""}, path=stamp)
+            old_fp = tl.dirty_fingerprint
             try:
-                tl.worktree_dirty = lambda repo_root=None: True  # type: ignore[assignment]
+                tl.dirty_fingerprint = lambda repo_root=None: "abc123deadbeef"  # type: ignore[assignment]
                 needed, reason = tl.batch_needed(force=False, stamp_path=stamp, repo_root=REPO)
                 self.assertTrue(needed)
                 self.assertEqual(reason, "dirty tree")
             finally:
-                tl.worktree_dirty = old_dirty
+                tl.dirty_fingerprint = old_fp
+
+    def test_same_dirty_fingerprint_not_needed(self):
+        import task_loop as tl
+
+        with tempfile.TemporaryDirectory() as td:
+            stamp = os.path.join(td, "batch-gate.json")
+            sha = tl.head_sha(repo_root=REPO)
+            fp = "samefp01234567"
+            tl.write_batch_gate(
+                {"sha": sha, "green": True, "dirty_fingerprint": fp}, path=stamp
+            )
+            old_fp = tl.dirty_fingerprint
+            try:
+                tl.dirty_fingerprint = lambda repo_root=None: fp  # type: ignore[assignment]
+                needed, reason = tl.batch_needed(force=False, stamp_path=stamp, repo_root=REPO)
+                self.assertFalse(needed)
+                self.assertEqual(reason, "not needed")
+            finally:
+                tl.dirty_fingerprint = old_fp
+
+    def test_pycache_noise_not_dirty(self):
+        import task_loop as tl
+
+        self.assertTrue(tl._is_dirty_noise_path("scripts/__pycache__/foo.cpython-313.pyc"))
+        self.assertTrue(tl._is_dirty_noise_path("scripts/factory_floor/__pycache__/"))
+        self.assertTrue(tl._is_dirty_noise_path("mod.pyc"))
+        self.assertFalse(tl._is_dirty_noise_path("scripts/task_loop.py"))
+        self.assertFalse(tl._is_dirty_noise_path("docs/tasks/task-017.md"))
+
+        with tempfile.TemporaryDirectory() as td:
+            noise = [
+                "?? scripts/__pycache__/",
+                "?? scripts/factory_floor/__pycache__/x.pyc",
+            ]
+            with mock.patch.object(tl, "porcelain_lines", return_value=noise):
+                self.assertEqual(tl.meaningful_porcelain(), [])
+                self.assertFalse(tl.worktree_dirty())
+                self.assertEqual(tl.dirty_fingerprint(), "")
+
+    def test_open_incident_parks_idle_drain(self):
+        import task_loop as tl
+
+        with tempfile.TemporaryDirectory() as td:
+            fail = os.path.join(td, "batch-failure.json")
+            stamp = os.path.join(td, "batch-gate.json")
+            sha = "abc123open"
+            with mock.patch.object(tl, "head_sha", return_value=sha):
+                tl.write_batch_failure(
+                    {"status": "open", "head_sha": sha, "reason": "still_red"},
+                    path=fail,
+                )
+                tl.write_batch_gate({"sha": "other", "green": True}, path=stamp)
+                needed, reason = tl.batch_needed(
+                    force=False, stamp_path=stamp, failure_path=fail, repo_root=REPO
+                )
+                self.assertFalse(needed)
+                self.assertEqual(reason, "needs_decision")
+
+    def test_force_ignores_open_incident(self):
+        import task_loop as tl
+
+        with tempfile.TemporaryDirectory() as td:
+            fail = os.path.join(td, "batch-failure.json")
+            with mock.patch.object(tl, "head_sha", return_value="abc"):
+                tl.write_batch_failure(
+                    {"status": "open", "head_sha": "abc"}, path=fail
+                )
+                needed, reason = tl.batch_needed(
+                    force=True, failure_path=fail, repo_root=REPO
+                )
+                self.assertTrue(needed)
+                self.assertEqual(reason, "ship_now")
 
     def test_station_roundtrip(self):
         import task_loop as tl

@@ -8,6 +8,7 @@ Polls build/factory/controls.json for soft controls (pause, ship_now, etc.).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -70,9 +71,52 @@ def head_sha(*, repo_root: str | None = None) -> str:
     return (proc.stdout or "").strip() if proc.returncode == 0 else ""
 
 
-def worktree_dirty(*, repo_root: str | None = None) -> bool:
+def _porcelain_path(line: str) -> str:
+    """Extract path from a `git status --porcelain` line."""
+    raw = line[3:] if len(line) > 3 else line
+    if " -> " in raw:
+        raw = raw.split(" -> ", 1)[-1]
+    return raw.strip().strip('"')
+
+
+def _is_dirty_noise_path(path: str) -> bool:
+    """Python bytecode / cache noise that must not force idle FULL-VERIFY."""
+    parts = path.replace("\\", "/").split("/")
+    if "__pycache__" in parts:
+        return True
+    base = parts[-1] if parts else path
+    return base.endswith((".pyc", ".pyo", ".pyd")) or base.endswith(".py.class")
+
+
+def porcelain_lines(*, repo_root: str | None = None) -> list[str]:
     proc = _git(["status", "--porcelain"], cwd=repo_root)
-    return bool((proc.stdout or "").strip())
+    if proc.returncode != 0:
+        return []
+    return [ln for ln in (proc.stdout or "").splitlines() if ln.strip()]
+
+
+def meaningful_porcelain(*, repo_root: str | None = None) -> list[str]:
+    """Porcelain lines excluding ignored noise (e.g. __pycache__)."""
+    out: list[str] = []
+    for ln in porcelain_lines(repo_root=repo_root):
+        if _is_dirty_noise_path(_porcelain_path(ln)):
+            continue
+        out.append(ln)
+    return out
+
+
+def worktree_dirty(*, repo_root: str | None = None) -> bool:
+    """True when the worktree has meaningful (non-noise) uncommitted changes."""
+    return bool(meaningful_porcelain(repo_root=repo_root))
+
+
+def dirty_fingerprint(*, repo_root: str | None = None) -> str:
+    """Stable short hash of meaningful porcelain; empty string when clean."""
+    lines = meaningful_porcelain(repo_root=repo_root)
+    if not lines:
+        return ""
+    payload = "\n".join(sorted(lines)) + "\n"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
 def ahead_of_upstream(*, repo_root: str | None = None) -> bool:
@@ -118,20 +162,22 @@ def batch_needed(
     """Whether idle-drain should run a full tier-3 verify.
 
     Ship now passes force=True. Otherwise skip when HEAD matches last green
-    stamp and the worktree is clean, or when an incident at HEAD is acknowledged
-    (Don't push).
+    stamp and meaningful dirt matches the stamped fingerprint, when an open
+    incident at HEAD needs a human decision, or when Don't push acknowledged
+    the incident at HEAD.
     """
     if force:
         return True, "ship_now"
     root = repo_root or REPO_ROOT
     sha = head_sha(repo_root=root)
     incident = read_batch_failure(path=failure_path)
-    if (
-        incident.get("status") == "acknowledged"
-        and sha
-        and str(incident.get("head_sha") or "").strip() == sha
-    ):
-        return False, "held"
+    incident_sha = str(incident.get("head_sha") or "").strip()
+    incident_status = str(incident.get("status") or "").strip()
+    if sha and incident_sha == sha and incident_status:
+        if incident_status == "acknowledged":
+            return False, "held"
+        # Open / needs_decision / mechanic_pending — park for Your move.
+        return False, "needs_decision"
     stamp = read_batch_gate(path=stamp_path)
     last = str(stamp.get("sha") or "").strip()
     if not last:
@@ -140,9 +186,13 @@ def batch_needed(
         return True, "unknown HEAD"
     if sha != last:
         return True, "HEAD moved"
-    if worktree_dirty(repo_root=root):
-        return True, "dirty tree"
-    return False, "not needed"
+    fp = dirty_fingerprint(repo_root=root)
+    if not fp:
+        return False, "not needed"
+    stamped_fp = str(stamp.get("dirty_fingerprint") or "").strip()
+    if fp == stamped_fp:
+        return False, "not needed"
+    return True, "dirty tree"
 
 
 def read_batch_failure(*, path: str | None = None) -> dict[str, Any]:
@@ -786,8 +836,17 @@ def run_batch_gate(
     if outcome.green:
         log("batch gate GREEN")
         sha = head_sha()
+        fp = dirty_fingerprint()
         clear_batch_failure()
-        write_batch_gate({"sha": sha, "green": True, "pushed": False, "tier": 3})
+        write_batch_gate(
+            {
+                "sha": sha,
+                "green": True,
+                "pushed": False,
+                "tier": 3,
+                "dirty_fingerprint": fp,
+            }
+        )
         set_station(
             phase="batch",
             role="loop",
@@ -800,7 +859,15 @@ def run_batch_gate(
                 log(f"git push failed: {proc.stderr.strip()}")
                 notify("Forge", "Batch green but push failed")
                 return EXIT_RUN_FAILED
-            write_batch_gate({"sha": sha, "green": True, "pushed": True, "tier": 3})
+            write_batch_gate(
+                {
+                    "sha": sha,
+                    "green": True,
+                    "pushed": True,
+                    "tier": 3,
+                    "dirty_fingerprint": fp,
+                }
+            )
             log("pushed")
             notify("Forge", "Batch pushed")
         return EXIT_OK
