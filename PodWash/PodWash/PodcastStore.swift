@@ -140,8 +140,8 @@ nonisolated final class PodcastStore: @unchecked Sendable {
                 podcast = CDPodcast(context: self.context)
                 podcast.feedURLString = key
                 podcast.subscribedAt = Date()
-                podcast.channelCleaningEnabled = false
-                podcast.channelUnrelatedContentEnabled = false
+                podcast.channelCleaningEnabled = true
+                podcast.channelUnrelatedContentEnabled = true
             }
 
             podcast.title = title

@@ -115,6 +115,7 @@ private final class EpisodeTableViewController: UITableViewController {
         analysisViewModel.primingEpisodeProvider = { [weak self] in
             self?.feed.episodes.first?.id
         }
+        analysisViewModel.startAnalysisIfChannelCleaningAlreadyEnabled()
         downloadManager.onStateChanged = { [weak self] in
             guard let self else { return }
             self.refreshDownloadDisplayOnVisibleRows()
@@ -138,6 +139,7 @@ private final class EpisodeTableViewController: UITableViewController {
         // download / cleaning controls feel dead on device (Library path).
         tableView.delaysContentTouches = false
         applyListAccessibility()
+        analysisViewModel.startAnalysisIfChannelCleaningAlreadyEnabled()
     }
 
     func update(
@@ -168,6 +170,7 @@ private final class EpisodeTableViewController: UITableViewController {
         analysisViewModel.primingEpisodeProvider = { [weak self] in
             self?.feed.episodes.first?.id
         }
+        analysisViewModel.startAnalysisIfChannelCleaningAlreadyEnabled()
         downloadManager.onStateChanged = { [weak self] in
             guard let self else { return }
             self.refreshDownloadDisplayOnVisibleRows()

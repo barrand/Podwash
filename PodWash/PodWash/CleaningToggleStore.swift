@@ -92,6 +92,27 @@ final class CleaningToggleStore {
         try context.save()
     }
 
+    /// One-shot launch migrate (task-023): flip every stored channel to cleaning + skip-ads on.
+    /// Idempotent — a second call is a no-op when all rows are already true.
+    func migrateAllChannelsCleaningAndUnrelatedOnIfNeeded() throws {
+        let request = CDPodcast.fetchRequest()
+        let rows = try context.fetch(request)
+        var changed = false
+        for podcast in rows {
+            if !podcast.channelCleaningEnabled {
+                podcast.channelCleaningEnabled = true
+                changed = true
+            }
+            if !podcast.channelUnrelatedContentEnabled {
+                podcast.channelUnrelatedContentEnabled = true
+                changed = true
+            }
+        }
+        if changed {
+            try context.save()
+        }
+    }
+
     private func fetchPodcast() -> CDPodcast? {
         let request = CDPodcast.fetchRequest()
         request.fetchLimit = 1
@@ -119,8 +140,9 @@ final class CleaningToggleStore {
         let podcast = CDPodcast(context: context)
         podcast.title = ""
         podcast.feedURLString = ""
-        podcast.channelCleaningEnabled = false
-        podcast.channelUnrelatedContentEnabled = false
+        // Task-023: new channel rows default cleaning + skip-ads on.
+        podcast.channelCleaningEnabled = true
+        podcast.channelUnrelatedContentEnabled = true
         return podcast
     }
 
@@ -132,8 +154,9 @@ final class CleaningToggleStore {
         let podcast = CDPodcast(context: context)
         podcast.title = ""
         podcast.feedURLString = key
-        podcast.channelCleaningEnabled = false
-        podcast.channelUnrelatedContentEnabled = false
+        // Task-023: new channel rows default cleaning + skip-ads on.
+        podcast.channelCleaningEnabled = true
+        podcast.channelUnrelatedContentEnabled = true
         return podcast
     }
 

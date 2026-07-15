@@ -188,13 +188,23 @@ struct RootView: View {
             try? queue.clear()
         }
 
+        guard let data = FixtureFeed.bundledData() else { return }
+        // Load + migrate *before* publishing view models so EpisodeList auto-start
+        // sees channel cleaning already on (task-023; no channelCleaningToggle).
+        await feedViewModel.load(data: data)
+        try? cleaningStore.migrateAllChannelsCleaningAndUnrelatedOnIfNeeded()
+        if FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled {
+            try? cleaningStore.setChannelCleaning(true)
+        }
+        try? FixtureChannelCleaningOff.applyIfNeeded(
+            cleaningStore: cleaningStore,
+            podcastStore: store
+        )
+
         fixtureFeedViewModel = feedViewModel
         fixtureAnalysisViewModel = analysisViewModel
         fixtureDownloadManager = downloadManager
         queueStore = queue
-
-        guard let data = FixtureFeed.bundledData() else { return }
-        await feedViewModel.load(data: data)
     }
 
     private func loadFixtureDiscoverIfNeeded() {
@@ -247,6 +257,10 @@ struct RootView: View {
         } else if FixtureLibrary.isEmptyEnabled {
             try? FixtureLibrary.prepareEmptyStore(model.podcastStore)
         }
+        try? FixtureChannelCleaningOff.applyIfNeeded(
+            cleaningStore: model.cleaningStore,
+            podcastStore: model.podcastStore
+        )
         appShellModel = model
     }
 }

@@ -111,6 +111,7 @@ final class AnalysisUIViewModel {
     @ObservationIgnored private let autoAnalyzeEpisodeEnable: Bool
     @ObservationIgnored private let settingsStore: SettingsStore
     @ObservationIgnored private var progressHandlerID: UUID?
+    @ObservationIgnored private var didAutoStartChannelAnalysis = false
     @ObservationIgnored var onAnalyzingEpisodeIDChanged: (() -> Void)?
     /// Fixture UITests: first visible episode to prime when channel cleaning turns on.
     @ObservationIgnored var primingEpisodeProvider: (() -> String?)?
@@ -185,6 +186,7 @@ final class AnalysisUIViewModel {
         if enabled {
             _ = transition(to: .channelOn)
             if autoAnalyzeOnEpisodeEnable, let episodeID = primingEpisodeProvider?() {
+                didAutoStartChannelAnalysis = true
                 primeEpisodeCleaningToggle(episodeID: episodeID)
                 Task { @MainActor in
                     await completePrimedEpisodeAnalysis(episodeID: episodeID)
@@ -195,6 +197,36 @@ final class AnalysisUIViewModel {
         }
         syncStateFromStore()
         markContentChanged()
+    }
+
+    /// Task-023: channel cleaning defaults on and the detail toggle is gone, so fixture
+    /// UITests no longer flip `channelCleaningToggle` to kick analysis. When auto-analyze
+    /// fixtures load with cleaning already enabled, start the same primed path once.
+    func startAnalysisIfChannelCleaningAlreadyEnabled() {
+        guard !didAutoStartChannelAnalysis else { return }
+        guard autoAnalyzeOnEpisodeEnable else { return }
+        guard analyzingEpisodeID == nil else { return }
+        guard primingEpisodeProvider?() != nil else { return }
+
+        // Fixture / defaults-on: if Core Data still has cleaning off (pre-migrate row,
+        // failed clear, etc.), flip via the view-model path so analysis primes.
+        if !store.isChannelCleaningEnabled {
+            if FixtureChannelCleaningOff.isEnabled {
+                return
+            }
+            setChannelCleaning(true)
+            return
+        }
+
+        guard let episodeID = primingEpisodeProvider?() else { return }
+        didAutoStartChannelAnalysis = true
+        syncStateFromStore()
+        // Prime synchronously so `analysisTimeline` is in VM state before the first
+        // cell configures (no pre-delay race with XCTest appear expectations).
+        primeEpisodeCleaningToggle(episodeID: episodeID)
+        Task { @MainActor in
+            await completePrimedEpisodeAnalysis(episodeID: episodeID)
+        }
     }
 
     func setChannelUnrelatedContent(_ enabled: Bool) {
@@ -250,8 +282,9 @@ final class AnalysisUIViewModel {
         // the AX tree while waiters poll. Clear only after the observable window.
         // Keep toggle→done under AC ≤5 s.
         if FixtureAnalysis.isEnabled && !FixtureAnalysisTimeline.isEnabled {
-            // Slice 09: single hold so appear + disappear assertions can settle.
-            try? await Task.sleep(for: .milliseconds(3_500))
+            // Slice 09 / task-023: hold long enough for launch→episodeList→appear
+            // waits without a toggle tap, but clear before the 5 s disappear budget.
+            try? await Task.sleep(for: .milliseconds(4_000))
         }
         if FixtureAnalysisTimeline.isEnabled {
             // Re-assert primed first snapshot in case a SwiftUI representable

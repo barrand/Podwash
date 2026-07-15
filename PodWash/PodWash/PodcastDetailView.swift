@@ -167,7 +167,6 @@ struct PodcastDetailView: View {
     private func podcastHeader(_ feed: PodcastFeed) -> some View {
         let artworkSide: CGFloat = isCompactHeight ? 48 : 72
         let stackSpacing: CGFloat = isCompactHeight ? 6 : 12
-        let toggleSpacing: CGFloat = isCompactHeight ? 4 : 8
         let headerPadding: CGFloat = isCompactHeight ? 8 : 16
         return VStack(alignment: .leading, spacing: stackSpacing) {
             HStack(alignment: .top, spacing: 12) {
@@ -196,70 +195,8 @@ struct PodcastDetailView: View {
 
                 Spacer(minLength: 0)
             }
-
-            VStack(alignment: .leading, spacing: toggleSpacing) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        // Visible caption must stay in the a11y tree so UI tests can
-                        // assert the exact string (task-016 AC2). VoiceOver still uses
-                        // the toggle's label as the interactive control name.
-                        Text("Clean Profanity")
-                            .font(.caption)
-                            .accessibilityIdentifier("channelCleaningCaption")
-                            .accessibilityLabel("Clean Profanity")
-                            .accessibilityAddTraits(.isStaticText)
-
-                        Spacer(minLength: 8)
-
-                        Toggle(isOn: channelCleaningBinding) {
-                            Text("Clean Profanity")
-                        }
-                        .labelsHidden()
-                        .accessibilityIdentifier("channelCleaningToggle")
-                        .accessibilityLabel("Clean Profanity")
-                        .accessibilityValue(analysisViewModel.isChannelCleaningEnabled ? "on" : "off")
-                    }
-                    .padding(.vertical, 2)
-                    .padding(.horizontal, 12)
-                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
-                }
-
-                HStack {
-                    Text("Skip ads on channel")
-                        .font(.caption)
-                        .accessibilityHidden(true)
-
-                    Spacer(minLength: 8)
-
-                    Toggle(isOn: channelUnrelatedContentBinding) {
-                        Text("Skip ads on channel")
-                    }
-                    .labelsHidden()
-                    .accessibilityIdentifier("channelUnrelatedContentToggle")
-                    .accessibilityLabel("Skip ads on channel")
-                    .accessibilityValue(analysisViewModel.isChannelUnrelatedContentEnabled ? "1" : "0")
-                    .accessibilityHint("Enables ad skipping for this podcast when on.")
-                }
-                .padding(.vertical, 2)
-                .padding(.horizontal, 12)
-                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
-            }
         }
         .padding(headerPadding)
-    }
-
-    private var channelCleaningBinding: Binding<Bool> {
-        Binding(
-            get: { analysisViewModel.isChannelCleaningEnabled },
-            set: { analysisViewModel.setChannelCleaning($0) }
-        )
-    }
-
-    private var channelUnrelatedContentBinding: Binding<Bool> {
-        Binding(
-            get: { analysisViewModel.isChannelUnrelatedContentEnabled },
-            set: { analysisViewModel.setChannelUnrelatedContent($0) }
-        )
     }
 
     @ViewBuilder

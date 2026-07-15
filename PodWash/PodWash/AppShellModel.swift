@@ -123,6 +123,7 @@ final class AppShellModel {
         queueStore = QueueStore(context: context)
         resumeStore = ResumePositionStore(context: context)
         cleaningStore = CleaningToggleStore(context: context)
+        try? cleaningStore.migrateAllChannelsCleaningAndUnrelatedOnIfNeeded()
         if let downloadManager {
             self.downloadManager = downloadManager
         } else {

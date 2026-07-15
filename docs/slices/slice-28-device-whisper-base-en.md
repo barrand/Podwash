@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 28 |
 | **Title** | Device Whisper base.en (lean dual-SDK pin) |
-| **Status** | In Progress |
+| **Status** | Implemented |
 | **Crux** | Device (`iphoneos`) builds analyze with bundled `openai_whisper-base.en`; simulator builds keep `openai_whisper-tiny.en`; cache cannot reuse pre-upgrade `tiny` intervals/transcripts after pin change — all assertable on simulator via pin injection, fingerprint miss, and wipe tests without live TAL or device listening. |
 
 ## PRD / spec references
