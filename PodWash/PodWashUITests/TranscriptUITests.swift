@@ -105,9 +105,15 @@ final class TranscriptUITests: XCTestCase {
 
         assertTranscriptAffordanceAbsent("episode.viewTranscript", scopedToRow: 0, in: app)
 
-        let episodeCell = element("episodeCell_0", in: app)
+        // Expand full player (mini bar → sheet) before asserting player affordance —
+        // `playback.playPause` / `playback.viewTranscript` live on the expanded sheet.
+        let episodeCell = app.cells["episodeCell_0"]
         XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
         episodeCell.tap()
+
+        let miniPlayer = element("miniPlayer", in: app)
+        XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout))
+        miniPlayer.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).tap()
 
         let fullPlayPause = element("playback.playPause", in: app)
         XCTAssertTrue(fullPlayPause.waitForExistence(timeout: fixtureTimeout))
@@ -140,7 +146,7 @@ final class TranscriptUITests: XCTestCase {
         navigateToEpisodeList(app)
         ensureChannelCleaningOn(in: app)
 
-        let episodeCell = element("episodeCell_0", in: app)
+        let episodeCell = app.cells["episodeCell_0"]
         XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
         episodeCell.tap()
 
@@ -219,7 +225,9 @@ final class TranscriptUITests: XCTestCase {
     private func navigateToExpandedFullPlayer(_ app: XCUIApplication) {
         navigateToEpisodeList(app)
 
-        let episodeCell = element("episodeCell_0", in: app)
+        // Prefer `app.cells` over descendants(.any) — slice-06-ux / slice-26-ux.
+        // A descendants query can match more than one node if identifiers collide.
+        let episodeCell = app.cells["episodeCell_0"]
         XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
         episodeCell.tap()
 
