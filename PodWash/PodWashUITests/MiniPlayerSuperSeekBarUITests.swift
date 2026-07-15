@@ -17,6 +17,9 @@ final class MiniPlayerSuperSeekBarUITests: XCTestCase {
     private let fixtureTimeout: TimeInterval = 5
     private let libraryRootTimeout: TimeInterval = 10
     private let elapsedClampTimeout: TimeInterval = 2
+    /// Mid-run sync under FreezeAt — must cover pacing past the first chunk (not the
+    /// 7 s firstSnapshotHold used by non-freeze progressive tests).
+    private let progressiveMidRunTimeout: TimeInterval = 10
 
     private static let muteMarkersPinnedValue = "ready:12,processing:0,pending:0,muteMarkers:2"
     private static let adsOnlyTerminalValue = "ready:12,processing:0,pending:0,muteMarkers:0"
@@ -86,10 +89,22 @@ final class MiniPlayerSuperSeekBarUITests: XCTestCase {
             Self.muteMarkerCount(from: fullValue),
             "Mini and full muteMarkers counts must match for the same episode"
         )
+        let miniSegments = Self.segmentCounts(from: miniValue)
+        let fullSegments = Self.segmentCounts(from: fullValue)
         XCTAssertEqual(
-            Self.segmentCounts(from: miniValue),
-            Self.segmentCounts(from: fullValue),
-            "Mini and full segment triple must match; mini=\(miniValue) full=\(fullValue)"
+            miniSegments?.ready,
+            fullSegments?.ready,
+            "Mini and full ready counts must match; mini=\(miniValue) full=\(fullValue)"
+        )
+        XCTAssertEqual(
+            miniSegments?.processing,
+            fullSegments?.processing,
+            "Mini and full processing counts must match; mini=\(miniValue) full=\(fullValue)"
+        )
+        XCTAssertEqual(
+            miniSegments?.pending,
+            fullSegments?.pending,
+            "Mini and full pending counts must match; mini=\(miniValue) full=\(fullValue)"
         )
     }
 
@@ -126,7 +141,7 @@ final class MiniPlayerSuperSeekBarUITests: XCTestCase {
         waitForMiniSuperSeekBarValue(
             equalTo: Self.progressiveMidRunValue,
             in: app,
-            timeout: fixtureTimeout
+            timeout: progressiveMidRunTimeout
         )
 
         let bar = element("miniPlayer.superSeekBar", in: app)
