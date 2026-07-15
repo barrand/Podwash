@@ -71,8 +71,34 @@ user, not an agent call.
 No hardcoded simulator names anywhere in docs, rules, or slice files.
 `scripts/verify.sh` resolves an available iPhone simulator dynamically, writes an
 `.xcresult` bundle, prints executed/failed/skipped counts, and is the **only**
-sanctioned way to run verification. Slice Done requires a **full-suite** green
-run of this script (filtered `-only-testing:` runs are for the inner loop only).
+sanctioned way to run verification.
+
+**Amended 2026-07-15 — Forge verification / Done semantics.** Full unfiltered
+suite wall-time was blocking Forge UX when every task and slice had to wait on
+tier-3 before exit. Verification is now two gates:
+
+1. **Per-item exit gate (Implemented).** A green **tier-2** surgical run
+   (`VERIFY_TIER=2`, filtered slice/task tests via `-only-testing:` /
+   `VERIFY_SLICE_TESTS`) is enough to mark the item **Implemented**. This
+   applies to **both** Forge tasks and slices. Filtered runs remain the fast
+   inner loop; they are not the ship gate.
+
+2. **Ship gate (Done).** **Done** requires an unfiltered full suite:
+   `VERIFY_TIER=3` with `filtered=0`, run from Forge Floor **Full verify & ship**
+   (or `forge_loop` `ship_now`). On green, all **Implemented** items are
+   promoted to **Done** and receive that run's `VERIFY RESULT:` line as the
+   recorded ship evidence.
+
+3. **Split ship diagnostics.** `VERIFY_TIER=3a` (PodWashTests only) and
+   `VERIFY_TIER=3b` (PodWashUITests only) exist for faster ship-gate
+   diagnostics. Ship-green still requires a full **tier-3** run, **or**
+   sequential **3a + 3b** both green and recorded together as the ship gate.
+
+4. **Push policy.** Push may happen per-item once the item is **Implemented**
+   (green-on-surgical, verified-on-batch). CI remains a safety net for
+   regressions between surgical exit and the next ship-gate promotion.
+
+iOS floor (§5) and offline-render audio assertions (§2) are unchanged.
 
 ### 7. Beep/quack overlay: deferred, flagged hard
 

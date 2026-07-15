@@ -372,7 +372,7 @@ class VerifyOutcome:
     output: str = ""
     elapsed_secs: float = 0.0
     packet: FailurePacket | None = None
-    tier: int = 3
+    tier: int | str = 3
 
 
 def resolve_tier2_slice_tests(slice_file: str, repo_root: str) -> list[str]:
@@ -405,19 +405,22 @@ def test_ids_for_tier1(packet: FailurePacket | None, failures: list[str]) -> lis
 
 
 def verify_env_for_tier(
-    tier: int,
+    tier: int | str,
     *,
     failed_tests: list[str] | None = None,
     slice_tests: list[str] | None = None,
 ) -> dict[str, str]:
-    """Environment overrides passed to scripts/verify.sh for a given tier."""
+    """Environment overrides passed to scripts/verify.sh for a given tier.
+
+    ``tier`` may be ``0|1|2|3`` or split ship passes ``\"3a\"`` / ``\"3b\"``.
+    """
     env = {"VERIFY_TIER": str(tier)}
-    if tier == 1:
+    if tier == 1 or str(tier) == "1":
         ids = failed_tests or []
         if not ids:
             raise ValueError("tier 1 requires failed_tests")
         env["VERIFY_FAILED_TESTS"] = " ".join(ids)
-    elif tier == 2:
+    elif tier == 2 or str(tier) == "2":
         ids = slice_tests or failed_tests or []
         if ids:
             env["VERIFY_SLICE_TESTS"] = " ".join(ids)
@@ -834,15 +837,16 @@ def assess_gate_state(slice_file: str, repo_root: str) -> GateState:
     green = verify_is_green(verify)
     status_l = status.lower()
     record_ok = green and bool(verify)  # VERIFY RESULT present and green
-    commit_ok = status_l == "done" and green
+    # Implemented = tier-2 exit; Done = ship-gate promote. Both clear commit gate.
+    commit_ok = status_l in ("done", "implemented") and green
 
-    # P1: implement exit gate prefers tier-2 marker. Done/green slices stay
+    # P1: implement exit gate prefers tier-2 marker. Implemented/Done/green stay
     # satisfied without a marker (backward compatible).
     sid = slice_id_from_path(slice_file)
     artifacts = _implement_artifacts_exist(text, repo_root)
     implement_ok = artifacts and (
         tier2_marker_ok(repo_root, sid)
-        or status_l in ("done", "verify")
+        or status_l in ("done", "implemented", "verify")
         or green
     )
 
@@ -977,6 +981,56 @@ def _controls_paused() -> bool:
         return False
 
 
+def _honor_soft_controls_at_gate_boundary(*, log: LogFn | None = None) -> str | None:
+    """Check controls.json between gates. Returns 'pause' | None.
+
+    Never called mid-verify — only at gate boundaries.
+    """
+    _log = log or (lambda m: None)
+    try:
+        import task_loop as tl
+
+        ctrl = tl.apply_control_side_effects(tl.read_controls())
+        tl.write_heartbeat()
+        if ctrl.get("paused"):
+            _log("soft control: paused at gate boundary")
+            return "pause"
+        if ctrl.get("pause_after_current") or ctrl.get("pause_after_current_gate"):
+            ctrl["paused"] = True
+            ctrl["pause_after_current"] = False
+            if "pause_after_current_gate" in ctrl:
+                ctrl["pause_after_current_gate"] = False
+            tl.write_controls(ctrl)
+            tl.set_station(phase="paused", role="loop", detail="paused after gate")
+            _log("soft control: pause_after_current honored")
+            return "pause"
+    except Exception as exc:  # noqa: BLE001
+        _log(f"soft control check failed: {exc}")
+    return None
+
+
+def _set_slice_station(
+    *,
+    slice_id: int,
+    gate: str,
+    role: str,
+    detail: str = "",
+) -> None:
+    try:
+        import task_loop as tl
+
+        tl.write_heartbeat()
+        tl.set_station(
+            phase="SLICE",
+            role=role,
+            task_id=slice_id,
+            mission=f"slice-{slice_id:02d} · {gate}",
+            detail=detail,
+        )
+    except Exception:
+        pass
+
+
 def _fmt_verify_elapsed(seconds: float) -> str:
     s = max(0, int(seconds))
     if s < 60:
@@ -984,15 +1038,24 @@ def _fmt_verify_elapsed(seconds: float) -> str:
     return f"{s // 60}m {s % 60:02d}s"
 
 
-def _verify_expect_hint(tier: int) -> str:
+def _verify_expect_hint(tier: int | str) -> str:
     """One-line expectation so a quiet console does not look hung."""
-    if tier >= 3:
+    label = str(tier)
+    if label == "3a":
+        return "unit-only (3a) — usually a few minutes"
+    if label == "3b":
+        return "UI-only (3b) — often the slowest pass; progress every ~45s"
+    try:
+        t = int(tier)
+    except (TypeError, ValueError):
+        t = 3
+    if t >= 3:
         return "full suite — often 8–15+ min; progress every ~45s"
-    if tier == 2:
+    if t == 2:
         return "slice-filtered — usually a few minutes; progress every ~45s"
-    if tier == 1:
+    if t == 1:
         return "failed-tests only"
-    if tier == 0:
+    if t == 0:
         return "build-for-testing"
     return ""
 
@@ -1008,7 +1071,7 @@ def _verify_progress_interval_secs() -> float:
 def _verify_progress_ticker(
     *,
     log: LogFn,
-    tier: int,
+    tier: int | str,
     started: float,
     stop: threading.Event,
     interval_secs: float,
@@ -1026,14 +1089,15 @@ def run_verify(
     log: LogFn | None = None,
     extra_args: list[str] | None = None,
     slice_file: str = "",
-    tier: int = 3,
+    tier: int | str = 3,
     failed_tests: list[str] | None = None,
     slice_tests: list[str] | None = None,
     env: dict[str, str] | None = None,
 ) -> VerifyOutcome | None:
     """Run scripts/verify.sh as a subprocess; parse VERIFY RESULT as truth.
 
-    ``tier`` maps to VERIFY_TIER (0 build / 1 failed-tests / 2 slice / 3 full).
+    ``tier`` maps to VERIFY_TIER (0 build / 1 failed-tests / 2 slice / 3 full /
+    3a unit-only / 3b UI-only).
     """
     _log = log or (lambda m: None)
     cmd = [VERIFY_SH if repo_root == REPO_ROOT_DEFAULT else os.path.join(repo_root, "scripts", "verify.sh")]
@@ -1042,9 +1106,10 @@ def run_verify(
     has_cli_only = any(
         (a or "").startswith("-only-testing:") for a in (extra_args or [])
     )
-    if tier == 2 and slice_file and slice_tests is None:
+    tier_key = tier if isinstance(tier, str) else int(tier)
+    if tier_key == 2 and slice_file and slice_tests is None:
         slice_tests = resolve_tier2_slice_tests(slice_file, repo_root)
-    if tier == 2 and not slice_tests and not has_cli_only:
+    if tier_key == 2 and not slice_tests and not has_cli_only:
         sid = slice_id_from_path(slice_file)
         label = f"slice-{sid:02d}" if sid is not None else "slice"
         msg = (
@@ -2148,9 +2213,12 @@ def append_plan_review_outcome(
 def record_green_verify(
     slice_file: str, repo_root: str, result: dict[str, str]
 ) -> None:
-    """Write VERIFY RESULT and set Status to Done."""
+    """Write VERIFY RESULT and set Status to Implemented (tier-2 exit).
+
+    Ship-gate Done (tier-3 filtered=0) is applied by the batch promote step.
+    """
     write_verify_result(slice_file, repo_root, result)
-    set_slice_status(slice_file, repo_root, "Done")
+    set_slice_status(slice_file, repo_root, "Implemented")
 
 
 def is_ignored_commit_path(path: str) -> bool:
@@ -2564,6 +2632,10 @@ def run_pipeline_slice(
 
         # Authoring gates until implement artifacts exist (tier-2 is separate)
         while True:
+            if _honor_soft_controls_at_gate_boundary(log=_log) == "pause":
+                elapsed = int(time.time() - t0)
+                _emit_recap("halt", elapsed)
+                return False, elapsed, last_verify, _slice_meta()
             state = assess_gate_state(slice_file, repo_root)
             gid = next_gate(state)
             if gid is None:
@@ -2584,6 +2656,9 @@ def run_pipeline_slice(
                     agent = names.assign(role, slot=rg)
                     act, total = _act_position(state, rg)
                     label = GATE_LABELS.get(rg, rg)
+                    _set_slice_station(
+                        slice_id=slice_id, gate=label, role=role, detail="authoring"
+                    )
                     narrate_chapter_open(
                         slice_id=slice_id,
                         gate_label=label,
@@ -2821,13 +2896,14 @@ def run_pipeline_slice(
                 fix_worker=role in FIX_WORKER_ROLES,
             )
 
-        # P1: implement exit = tier-2 green
+        # Implement exit = tier-2 surgical green → Status Implemented (ship gate is batch).
         text = _read_slice_text(slice_file, repo_root)
+        outcome: VerifyOutcome | None = None
         if _implement_artifacts_exist(text, repo_root) and not tier2_marker_ok(
             repo_root, slice_id
         ):
             try:
-                run_tier2_implement_gate(
+                outcome = run_tier2_implement_gate(
                     client,
                     slice_file=slice_file,
                     repo_root=repo_root,
@@ -2844,40 +2920,37 @@ def run_pipeline_slice(
                 elapsed = int(time.time() - t0)
                 _emit_recap("halt", elapsed)
                 raise
+        elif tier2_marker_ok(repo_root, slice_id):
+            # Already green at tier-2 — reuse latest verify result if present.
+            from slice_loop_progress import read_verify_from_slice
 
-        try:
-            outcome = run_fix_loop(
-                client,
-                slice_file=slice_file,
-                repo_root=repo_root,
-                api_key=api_key,
-                budget=budget,
-                log=_log,
-                progress_factory=progress_factory,
-                event_log=events,
-                names=names,
-                cast=cast,
-            )
-        except InfraHalt as infra:
-            _log(f"INFRA HALT: {infra.reason}")
-            elapsed = int(time.time() - t0)
-            _emit_recap("halt", elapsed)
-            raise
-        except ThrashHalt as thrash:
-            _log(f"THRASH HALT: {thrash.reason}")
-            elapsed = int(time.time() - t0)
-            _emit_recap("halt", elapsed)
-            raise
+            prior = read_verify_from_slice(slice_file, repo_root)
+            if prior and verify_is_green(prior):
+                outcome = VerifyOutcome(result=prior, green=True, tier=2)
+            else:
+                # Marker without a parseable VERIFY — re-run tier-2 once.
+                outcome = run_tier2_implement_gate(
+                    client,
+                    slice_file=slice_file,
+                    repo_root=repo_root,
+                    api_key=api_key,
+                    log=_log,
+                    progress_factory=progress_factory,
+                    max_runs=max_implement_verify_runs,
+                    event_log=events,
+                    names=names,
+                    cast=cast,
+                )
 
-        last_verify = outcome.result
-        if not outcome.green or not outcome.result:
+        if outcome is None or not outcome.green or not outcome.result:
             elapsed = int(time.time() - t0)
             _emit_recap("red", elapsed)
-            return False, elapsed, last_verify, _slice_meta()
+            return False, elapsed, (outcome.result if outcome else None), _slice_meta()
 
+        last_verify = outcome.result
         events.record("RECORD", "loop", "record_start", timeline=True, mission="VERIFY RESULT")
         write_verify_result(slice_file, repo_root, outcome.result)
-        _log("recorded VERIFY RESULT")
+        _log("recorded VERIFY RESULT (tier-2)")
 
         if do_commit:
             events.record("COMMIT", "loop", "commit_start", timeline=True, mission="split commits")
@@ -2889,11 +2962,11 @@ def run_pipeline_slice(
                 elapsed = int(time.time() - t0)
                 _emit_recap("halt", elapsed)
                 return False, elapsed, last_verify, _slice_meta()
-            set_slice_status(slice_file, repo_root, "Done")
-            _log("Status Done" + (" + pushed" if do_push else ""))
+            set_slice_status(slice_file, repo_root, "Implemented")
+            _log("Status Implemented" + (" + pushed" if do_push else ""))
         else:
-            set_slice_status(slice_file, repo_root, "Done")
-            _log("Status Done (commit skipped)")
+            set_slice_status(slice_file, repo_root, "Implemented")
+            _log("Status Implemented (commit skipped)")
 
     elapsed = int(time.time() - t0)
     _emit_recap("green", elapsed)

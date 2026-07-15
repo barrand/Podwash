@@ -70,10 +70,10 @@ Use [`_template.md`](_template.md). Beyond the classic sections (crux, deliverab
 
 | Section | Rule |
 |---------|------|
-| **Verification commands** | Reference **`scripts/verify.sh`** — never raw `xcodebuild` with a hardcoded simulator. Filtered runs are the inner loop; **Done requires the full suite**. |
-| **Verification record** | QA pastes the `VERIFY RESULT:` line (exit code, counts, `.xcresult` path) from the full-suite run. No artifact = not verified. |
+| **Verification commands** | Reference **`scripts/verify.sh`** — never raw `xcodebuild` with a hardcoded simulator. Filtered/tier-2 runs are the inner loop → **Implemented**; **Done** requires ship-gate full suite (`tier=3 filtered=0`) via Floor **Full verify & ship**. |
+| **Verification record** | QA pastes the `VERIFY RESULT:` line (exit code, counts, `.xcresult` path). Tier-2 for Implemented; unfiltered tier-3 for Done. No artifact = not verified. |
 | **Plan review record** | Coordinator pastes readonly ADR + test-spec review outcomes before QA test spec / Engineer. No record = next role blocked. |
-| **Done gate** | Includes **"full suite green"** and the **auto-commit** (`slice-NN: <description>`) made on green. Push only when the user asks. |
+| **Done gate** | Ship gate: full suite green (`tier=3 filtered=0`), Implemented→Done promote, verification record. Per-item exit is **Implemented** (tier-2). |
 | **Acceptance criteria** | Numeric thresholds where thresholds exist. Golden fixtures need documented **independent provenance** (hand-computed or spec-derived — never generated from code under test). **No XCTSkip on core ACs** — tests fail, not skip. |
 
 ## Lifecycle statuses
@@ -83,8 +83,9 @@ Use [`_template.md`](_template.md). Beyond the classic sections (crux, deliverab
 | **Draft** | Story stubbed; AC may be incomplete; mapping may be TBD |
 | **Ready** | Coordinator approved: crux clear, AC automatable + numeric, gates planned |
 | **In Progress** | Implement phase active |
-| **Verify** | Code landed; QA running `scripts/verify.sh` |
-| **Done** | Full suite green, verification record pasted, auto-commit made |
+| **Verify** | Code landed; tier-2 / surgical verify running |
+| **Implemented** | Tier-2 surgical green (work finished; awaiting ship gate) |
+| **Done** | Promoted by **Full verify & ship** (tier-3 `filtered=0`) |
 
 Only the Coordinator changes the `status` field (Engineers never do).
 
@@ -98,8 +99,8 @@ Only the Coordinator changes the `status` field (Engineers never do).
 6. **QA** fills the verification mapping with real test names; writes the test skeleton.
 7. **Coordinator** runs **test spec plan review** (Architect, readonly); records in slice file; resolves blockers.
 8. **Engineer** implements → status **In Progress**.
-9. **QA** runs `scripts/verify.sh` (full suite) → pastes verification record → status **Verify**, then **Done** when green with zero skips.
-10. **Coordinator** makes the auto-commit `slice-NN: <description>`.
+9. **QA** / forge loop runs tier-2 → pastes verification record → status **Implemented** (pushed per item).
+10. Floor **Full verify & ship** promotes Implemented→**Done** on unfiltered tier-3 green.
 
 PM does not run verify or mark Done. Engineer never edits test assertions, thresholds, slice status, or goldens (see `.cursor/rules/podwash-engineer.mdc`).
 

@@ -157,7 +157,7 @@ def test_id_in_surgical_scope(failure_id: str, surgical: list[str]) -> bool:
 
 
 def collect_done_surgical_tests(tasks_dir: str) -> list[str]:
-    """Union of Surgical test scope ids from Status=Done tickets under tasks_dir."""
+    """Union of Surgical test scope ids from Done/Implemented tickets under tasks_dir."""
     if not os.path.isdir(tasks_dir):
         return []
     found: list[str] = []
@@ -170,7 +170,8 @@ def collect_done_surgical_tests(tasks_dir: str) -> list[str]:
             ticket = parse_task_ticket(path)
         except OSError:
             continue
-        if (ticket.status or "").strip().lower() != "done":
+        st = (ticket.status or "").strip().lower()
+        if st not in ("done", "implemented"):
             continue
         for tid in ticket.surgical_tests:
             if tid not in seen:

@@ -16,7 +16,7 @@ from the relevant slice file's Role artifacts table.
 
 | # | Title | Status |
 |---|-------|--------|
-| [000](000-foundations.md) | Foundations: playback, verification, transcript schema, iOS floor | Accepted |
+| [000](000-foundations.md) | Foundations: playback, verification, transcript schema, iOS floor (§6 amended 2026-07-15: Forge Implemented vs Done / ship gate) | Accepted |
 | [001](001-playback-engine.md) | Playback engine module boundaries | Accepted |
 | [002](002-interval-scheduler.md) | Interval scheduler: mute mix + skip | Accepted |
 | [003](003-asr-stack-choice.md) | On-device ASR stack choice: WhisperKit (Core ML) tiny.en | Accepted |

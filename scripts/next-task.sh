@@ -7,7 +7,8 @@
 #   scripts/next-task.sh --status   # kanban table
 #   scripts/next-task.sh --help
 #
-# Done when Status=Done AND VERIFY RESULT is green (tier-2 filtered=1 accepted).
+# Complete when Status=Done OR Implemented AND VERIFY RESULT is green
+# (tier-2 filtered=1 accepted for Implemented; ship-gate Done requires tier-3).
 # Needs-human tickets are never started by the automatable queue (action skips them).
 # Among Queued (or equivalent) automatable tasks with deps met, pick highest
 # Priority (P0>P1>P2>P3), then lowest id.
@@ -180,7 +181,7 @@ function dep_blocks(id, dd) {
     kind[id]=$7
     area[id]=$8
     file[id]=$9
-    done_[id] = ($2 == "Done" && $3+0 == 1) ? 1 : 0
+    done_[id] = (($2 == "Done" || $2 == "Implemented") && $3+0 == 1) ? 1 : 0
     needs_human[id] = ($2 ~ /[Nn]eeds-[Hh]uman/ || $7 ~ /needs-human/) ? 1 : 0
     queued[id] = ($2 ~ /^Queued/ || $2 == "Ready") ? 1 : 0
 }
@@ -282,7 +283,7 @@ if [ "$MODE" = status ]; then
     {
         id=$1+0; ids[id]=1; status[id]=$2; vg[id]=$3; deps[id]=$4
         prio[id]=$6; kind[id]=$7
-        done_[id] = ($2 == "Done" && $3+0 == 1) ? 1 : 0
+        done_[id] = (($2 == "Done" || $2 == "Implemented") && $3+0 == 1) ? 1 : 0
     }
     END {
         n=0; for (k in ids) arr[++n]=k+0

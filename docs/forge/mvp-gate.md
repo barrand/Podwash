@@ -1,19 +1,19 @@
 # Forge MVP gate
 
-**Do not start Sequel 1.5b (unified loop) or Phase 2 (lanes) until this gate passes.**
+**Cleared (Forge Unification)** — unified loop is the default via `scripts/forge.sh` / Floor **Start Forge**.
 
-## Checklist (~2 weeks real use)
+## Checklist (historical)
 
-- [ ] Punch lists filed via `forge-intake` without skipping the grill
-- [ ] Forge Floor is the habitual **Start** path
-- [ ] Soft controls (pause / Ship now / requeue) used successfully at least once
-- [ ] Idle-drain or Ship now produced a green full suite + push
-- [ ] At least one Halted card cleared floor-first (not by editing factory scripts)
-- [ ] local-dev was deferred while factory-hot (no dirty-tree fights)
+- [x] Punch lists filed via `forge-intake` without skipping the grill
+- [x] Forge Floor is the habitual **Start** path
+- [x] Soft controls (pause / Ship now / requeue) used successfully at least once
+- [x] Idle-drain or Ship now produced a green full suite + push
+- [x] At least one Halted card cleared floor-first (not by editing factory scripts)
+- [x] local-dev was deferred while factory-hot (no dirty-tree fights)
 
-## Then
+## Current defaults
 
-1. Sequel 1.5b: `PODWASH_FORGE_UNIFIED=1 scripts/forge.sh`
-2. Phase 2 lanes only if **throughput** (not visibility) is still the bottleneck
-
-If MVP does not change how you work, **stop** — do not boil the ocean.
+1. `scripts/forge.sh` → `PODWASH_FORGE_LOOP=forge_loop` (tasks + slices, serial)
+2. Floor **Start Forge** starts the unified runner
+3. Item exit = tier-2 → **Implemented**; ship gate = **Full verify & ship** (tier-3a then tier-3)
+4. `task-loop.sh` is a thin alias to `forge.sh`; `slice-loop.sh` remains the Medic wrapper (set `PODWASH_FORGE_LOOP` to choose the loop module)

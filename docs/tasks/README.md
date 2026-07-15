@@ -14,10 +14,11 @@ Punch-list work for Factory v3: bugs, tweaks, and Needs-human items. Features la
 
 | Status | Meaning |
 |--------|---------|
-| Queued | Eligible for the task loop |
-| In Progress | A worker lane owns it |
-| Done | Green `VERIFY RESULT` recorded (tier-2 filtered OK) |
-| Halted | Thrash after one retry — floor soft-control to requeue/cancel |
+| Queued | Eligible for the unified forge loop |
+| In Progress | A worker owns it |
+| Implemented | Tier-2 surgical green (work finished; awaiting ship gate) |
+| Done | Promoted by **Full verify & ship** (tier-3 `filtered=0`) |
+| Halted | Thrash after retry — floor soft-control to requeue/cancel |
 | Needs-human | Not auto-run; human checklist + floor **Mark done** |
 
 ## Kind & priority defaults (intake)
@@ -29,7 +30,7 @@ Punch-list work for Factory v3: bugs, tweaks, and Needs-human items. Features la
 | feature → slice | P3 |
 | needs-human | P2 (unless stated) |
 
-Dispatcher order: **In Progress (reclaim)** first, then highest Priority among Queued/Ready, then lowest id. Soft controls can bump. Halted is never auto-started (Requeue on Floor).
+Dispatcher order (via `next-work.sh`): reclaim In Progress, then highest Priority among Queued/Ready tasks, then eligible slices (default P3). Soft controls can bump. Halted is never auto-started (Requeue on Floor).
 
 ## Depends on (contract)
 
@@ -38,24 +39,21 @@ Parsed by `scripts/next-task.sh` from the `## Depends on` section only:
 | Bullet | Meaning |
 |--------|---------|
 | `- None` | No deps (parentheticals after None are ignored) |
-| `- Task 007 …` / `- task-007` / `- 007` | Depends on that id (must be Done + green verify) |
+| `- Task 007 …` / `- task-007` / `- 007` | Depends on that id (must be Implemented or Done + green verify) |
 
 Related-but-not-blocking tickets go in **Out of scope**, never as dep prose. Cycles among open tickets are **ignored** (stderr warning) so the factory cannot deadlock.
 
 ## Done signal
 
-Unlike slices, task Done accepts **tier-2 filtered** green:
+Per-item exit is **Implemented** on tier-2 filtered green:
 
 ```
 VERIFY RESULT: exit=0 … failed=0 skipped=0 filtered=1 … tier=2 …
 ```
 
-**Scripts-only tickets** (`scripts.test_…` surgical ids): Done evidence is the same
-`VERIFY RESULT` line with `class=unittest` / `bundle=scripts-unittest` from
-`python3 -m unittest` (no simulator / xcodebuild). Do not mix PodWashTests and
-`scripts.test_*` ids on one ticket — split them.
+**Scripts-only tickets** (`scripts.test_…` surgical ids): same `VERIFY RESULT` line with `class=unittest` / `bundle=scripts-unittest`.
 
-Full-suite (tier-3) runs at **idle drain** / **Ship now**, not per task. Idle drain only runs when there is no Queued/Ready work **and** no In Progress ticket (In Progress is reclaimed first). Halted tickets park the loop for Requeue — they do not trigger full verify. Idle drain skips when HEAD already matches the last green stamp **and** meaningful dirt is unchanged (fingerprint); `__pycache__` / `*.pyc` do not count as dirt. An open batch failure incident parks for Your move instead of re-running full verify.
+Ship-gate **Done** requires tier-3 `filtered=0` from Floor **Full verify & ship** (promotes all Implemented items). CI is the safety net between manual ship gates.
 
 ## Queue brain
 
@@ -70,9 +68,9 @@ Override dir for tests: `PODWASH_TASKS_DIR=…`.
 ## Runner
 
 ```bash
-scripts/task-loop.sh              # Phase 1 headless
-# Prefer after Phase 1.5:
-scripts/forge-floor.sh            # open http://127.0.0.1:7420 → Start factory
+scripts/forge.sh                 # unified serial runner (preferred)
+scripts/task-loop.sh             # thin alias → forge.sh
+scripts/forge-floor.sh           # open http://127.0.0.1:7420 → Start Forge
 ```
 
 See [`docs/forge-floor.md`](../forge-floor.md).

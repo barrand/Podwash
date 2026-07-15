@@ -445,11 +445,11 @@ def run_task_pipeline(
         write_task_verify_result(path, result)
         if not no_commit:
             commit_task_changes(ticket.id, root, log=_log)
-        set_task_status(path, "Done")
-        events.record("task", "pipeline", "done", timeline=True)
+        set_task_status(path, "Implemented")
+        events.record("task", "pipeline", "implemented", timeline=True)
         _set_phase(
             task_id=ticket.id,
-            phase="done",
+            phase="implemented",
             role="pipeline",
             mission=ticket.title,
             detail="tier-2 green" if not scripts_only else "scripts unittest green",

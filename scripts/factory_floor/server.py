@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Forge Floor — localhost mission control (port 7420).
 
-Lens + soft controls. Starts/attaches task-loop or slice-loop via controls.json.
+Lens + soft controls. Starts/attaches the unified forge loop via controls.json.
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ def _default_controls() -> dict[str, Any]:
         "batch_running": False,
         "mark_done_task_id": None,
         "runner_pid": None,
-        "runner_lane": None,  # "task" | "slice" | None
+        "runner_lane": None,  # "forge" | legacy "task"|"slice" | None
         "started_at": None,
         "updated_at": None,
     }
@@ -367,11 +367,8 @@ def maybe_restart_orphan_runner(*, ctrl: dict[str, Any], activity_mode: str) -> 
     if now - _last_orphan_restart_ts < ORPHAN_RESTART_COOLDOWN_S:
         return None
     _last_orphan_restart_ts = now
-    lane = ctrl.get("runner_lane") or "task"
-    if lane == "slice":
-        msg = start_slice_runner()
-    else:
-        msg = start_runner()
+    lane = ctrl.get("runner_lane") or "forge"
+    msg = start_runner()
     sys.stderr.write(f"[forge-floor] auto-restart orphan runner ({lane}): {msg}\n")
     return msg
 
@@ -978,7 +975,10 @@ def board_snapshot() -> dict[str, Any]:
             status_needs_human = bool(re.search(r"Needs-human", status, re.I))
             kind_needs_human = bool(re.search(r"needs-human", kind, re.I))
             is_done = bool(re.search(r"^Done", status, re.I))
+            is_implemented = bool(re.search(r"^Implemented", status, re.I))
             needs_human = status_needs_human or (kind_needs_human and not is_done)
+            from forge_work import task_gate_chips
+
             tasks.append(
                 {
                     "id": meta.get("ID", path.name),
@@ -990,8 +990,9 @@ def board_snapshot() -> dict[str, Any]:
                     "path": str(path.relative_to(REPO_ROOT)),
                     "type": "task",
                     "lane": "task",
-                    "runnable": not needs_human and not is_done,
+                    "runnable": not needs_human and not is_done and not is_implemented,
                     "done_at": _meta_done_at(meta),
+                    "gates": task_gate_chips(),
                 }
             )
     slices = []
@@ -1004,6 +1005,10 @@ def board_snapshot() -> dict[str, Any]:
             st = meta.get("Status", "")
             if re.search(r"Deferred|post-MVP", st, re.I):
                 continue
+            from forge_work import slice_gate_chips
+
+            is_done = bool(re.search(r"^Done", st, re.I))
+            is_implemented = bool(re.search(r"^Implemented", st, re.I))
             slices.append(
                 {
                     "id": meta.get("ID", path.name),
@@ -1015,9 +1020,11 @@ def board_snapshot() -> dict[str, Any]:
                     "path": str(path.relative_to(REPO_ROOT)),
                     "type": "slice",
                     "lane": "slice",
-                    # Not auto-drained by punch-list task-loop; use Start slices.
-                    "runnable": False,
+                    "runnable": not is_done and not is_implemented,
                     "done_at": _meta_done_at(meta),
+                    "gates": slice_gate_chips(
+                        str(path.relative_to(REPO_ROOT)), repo_root=str(REPO_ROOT)
+                    ),
                 }
             )
     events: list[dict[str, Any]] = []
@@ -1084,6 +1091,26 @@ def board_snapshot() -> dict[str, Any]:
             f"Auto-restarted dead worker ({restarted}). "
             + (activity.get("detail") or "")
         ).strip()
+    from forge_work import (
+        count_items_since_batch_gate,
+        fetch_ci_status,
+        find_open_halt_cards,
+    )
+
+    since = count_items_since_batch_gate(repo_root=str(REPO_ROOT))
+    # Attach items_since_green onto batch snapshot for the UI counter.
+    batch = dict(batch)
+    batch["items_since_green"] = since.get("items_since_green", 0)
+    batch["implemented_count"] = since.get("implemented_count", 0)
+    if since.get("items_since_green") and batch.get("state") in (
+        None,
+        "",
+        "idle",
+        "green",
+        "not_needed",
+    ):
+        batch["needed"] = True
+        batch["reason"] = batch.get("reason") or "Implemented awaiting ship"
     return {
         "tasks": tasks,
         "slices": slices,
@@ -1094,6 +1121,13 @@ def board_snapshot() -> dict[str, Any]:
         "batch": batch,
         "activity": activity,
         "events": events[-40:],
+        "items_since_green": since.get("items_since_green", 0),
+        "ci": (
+            []
+            if os.environ.get("PODWASH_FLOOR_SKIP_CI") == "1"
+            else fetch_ci_status(repo_root=str(REPO_ROOT), limit=8)
+        ),
+        "halts": find_open_halt_cards(repo_root=str(REPO_ROOT)),
         "ts": time.time(),
     }
 
@@ -1146,32 +1180,18 @@ def apply_control(action: str, data: dict[str, Any] | None = None) -> dict[str, 
     if action == "start":
         msg = start_runner()
     elif action == "start_slices":
-        msg = start_slice_runner()
+        # Legacy alias — unified runner handles slices too.
+        msg = start_runner()
     elif action == "stop":
         msg = stop_runner()
     elif action == "pause":
-        lane = ctrl.get("runner_lane") or "task"
         ctrl["paused"] = True
         ctrl["pause_after_current"] = False
         write_controls(ctrl)
-        if lane == "slice":
-            # slice-loop ignores controls.json — Pause = hard stop, keep lane for Resume.
-            msg = _kill_owned_runner()
-            ctrl = read_controls()
-            ctrl["paused"] = True
-            ctrl["running"] = False
-            ctrl["runner_pid"] = None
-            ctrl["runner_lane"] = "slice"
-            ctrl["started_at"] = None
-            ctrl["batch_running"] = False
-            write_controls(ctrl)
-            _set_factory_hot(False)
-            msg = "paused (slice hard-stop)"
-        else:
-            from task_loop import interrupt_inflight_on_pause
+        from task_loop import interrupt_inflight_on_pause
 
-            interrupt_inflight_on_pause()
-            msg = "paused"
+        interrupt_inflight_on_pause()
+        msg = "paused"
     elif action == "pause_after_current":
         ctrl["pause_after_current"] = True
         write_controls(ctrl)
@@ -1180,8 +1200,7 @@ def apply_control(action: str, data: dict[str, Any] | None = None) -> dict[str, 
         ctrl["pause_after_current"] = False
         write_controls(ctrl)
         if not _runner_alive(ctrl=ctrl):
-            lane = ctrl.get("runner_lane") or "task"
-            msg = start_slice_runner() if lane == "slice" else start_runner()
+            msg = start_runner()
         else:
             msg = "resumed"
     elif action == "ship_now":
@@ -1191,12 +1210,15 @@ def apply_control(action: str, data: dict[str, Any] | None = None) -> dict[str, 
         if not _runner_alive(ctrl=ctrl):
             msg = start_runner()
         else:
-            msg = "verify & push queued"
+            msg = "full verify & ship queued"
     elif action == "requeue":
-        msg = requeue_task(data.get("task_id"))
+        # Prefer task_id; fall back to slice_path for slice halt requeue.
+        if data.get("slice_path"):
+            msg = requeue_slice(data.get("slice_path"))
+        else:
+            msg = requeue_task(data.get("task_id"))
         ctrl["requeue_task_id"] = None
         write_controls(ctrl)
-        # Wake a dead runner so Requeue actually gets picked up.
         if not _runner_alive(ctrl=read_controls()):
             start_runner()
     elif action == "cancel":
@@ -1206,6 +1228,13 @@ def apply_control(action: str, data: dict[str, Any] | None = None) -> dict[str, 
         msg = mark_done_task(data.get("task_id"))
         ctrl["mark_done_task_id"] = None
         write_controls(ctrl)
+    elif action == "answer_halt":
+        msg = answer_halt(
+            data.get("slice_path") or data.get("path"),
+            data.get("answer") or "",
+        )
+        if not _runner_alive(ctrl=read_controls()):
+            start_runner()
     elif action == "batch_hold":
         incident = _read_batch_failure()
         if incident:
@@ -1235,6 +1264,41 @@ def apply_control(action: str, data: dict[str, Any] | None = None) -> dict[str, 
     else:
         return {"ok": False, "error": f"unknown action {action}"}
     return {"ok": True, "message": msg, "controls": read_controls()}
+
+
+def requeue_slice(slice_path: Any) -> str:
+    """Move a slice Status back to Ready so the unified loop can reclaim it."""
+    rel = str(slice_path or "").strip()
+    if not rel:
+        return "missing slice_path"
+    path = REPO_ROOT / rel
+    if not path.is_file():
+        return f"slice not found: {rel}"
+    from slice_pipeline import set_slice_status
+
+    set_slice_status(str(path), str(REPO_ROOT), "Ready")
+    return f"requeued {rel} → Ready"
+
+
+def answer_halt(slice_path: Any, answer: str) -> str:
+    """Write a Floor halt-and-ask answer and mark the slice Ready for resume."""
+    rel = str(slice_path or "").strip()
+    if not rel or not str(answer or "").strip():
+        return "slice_path and answer required"
+    path = REPO_ROOT / rel
+    if not path.is_file():
+        # Allow absolute or bare basename under docs/slices
+        cand = Path(rel)
+        if cand.is_file():
+            path = cand
+        else:
+            return f"slice not found: {rel}"
+    from forge_work import append_slice_decision
+    from slice_pipeline import set_slice_status
+
+    append_slice_decision(str(path), str(answer), repo_root=str(REPO_ROOT))
+    set_slice_status(str(path), str(REPO_ROOT), "Ready")
+    return f"answer recorded on {path.name}; Status → Ready"
 
 
 def _spawn_runner(
@@ -1284,36 +1348,24 @@ def _spawn_runner(
 
 
 def start_runner() -> str:
-    """Start punch-list task-loop (mutually exclusive with slice-loop)."""
+    """Start the unified Forge loop (tasks + slices)."""
     ctrl = read_controls()
-    if _runner_alive(ctrl=ctrl) and (ctrl.get("runner_lane") or "task") == "slice":
-        stop_runner()
-    elif _runner_alive(ctrl=ctrl) and (ctrl.get("runner_lane") or "task") == "task":
-        return "already running"
-    return _spawn_runner(
-        lane="task",
-        argv=[str(SCRIPTS / "task-loop.sh"), "--medic-no-push"],
-        env_loop="task_loop",
-        log_name="task-loop.log",
-    )
-
-
-def start_slice_runner() -> str:
-    """Start feature slice-loop (mutually exclusive with task-loop)."""
-    ctrl = read_controls()
-    if _runner_alive(ctrl=ctrl) and (ctrl.get("runner_lane") or "task") == "task":
-        stop_runner()
-    elif _runner_alive(ctrl=ctrl) and ctrl.get("runner_lane") == "slice":
+    if _runner_alive(ctrl=ctrl):
         return "already running"
     msg = _spawn_runner(
-        lane="slice",
-        argv=[str(SCRIPTS / "slice-loop.sh"), "--medic-no-push"],
-        env_loop="slice_loop",
-        log_name="slice-loop.log",
+        lane="forge",
+        argv=[str(SCRIPTS / "forge.sh"), "--medic-no-push"],
+        env_loop="forge_loop",
+        log_name="forge-loop.log",
     )
     if msg.startswith("started"):
         _set_factory_hot(True)
     return msg
+
+
+def start_slice_runner() -> str:
+    """Legacy alias — unified runner."""
+    return start_runner()
 
 
 def stop_runner() -> str:
@@ -1360,8 +1412,8 @@ def reconcile_runner_on_boot() -> None:
         return
     if _runner_alive(ctrl=ctrl):
         return
-    lane = ctrl.get("runner_lane") or "task"
-    msg = start_slice_runner() if lane == "slice" else start_runner()
+    lane = ctrl.get("runner_lane") or "forge"
+    msg = start_runner()
     sys.stderr.write(f"[forge-floor] boot reconcile ({lane}): {msg}\n")
 
 
@@ -1621,6 +1673,12 @@ main {
 .drawer .loading, .drawer .error { color: var(--muted); font-size: 0.9rem; margin-top: 1rem; }
 .drawer .error { color: var(--warn); }
 .idle { text-align: center; padding: 2rem; color: var(--muted); }
+.gates { margin-top: 0.35rem; display: flex; flex-wrap: wrap; gap: 0.2rem; }
+.gate-chip {
+  font-size: 0.65rem; padding: 0.1rem 0.35rem; border-radius: 3px;
+  border: 1px solid var(--border, #444); color: var(--muted); opacity: 0.85;
+}
+.gate-chip.done { border-color: var(--ok, #3a3); color: var(--ok, #3a3); opacity: 1; }
 </style>
 </head>
 <body>
@@ -1631,18 +1689,18 @@ main {
   </div>
   <span id="hot" class="status-pill">stopped</span>
   <div class="toolbar">
-    <button class="primary" id="btnStart">Start factory</button>
-    <button id="btnStartSlices" title="Run feature slice-loop (not punch-list)">Start slices</button>
+    <button class="primary" id="btnStart">Start Forge</button>
     <button id="btnPause">Pause</button>
     <button id="btnPauseAfter">Pause after current</button>
     <button id="btnResume">Resume</button>
-    <button id="btnShip" title="Run all tests, then git push if green">Verify &amp; push</button>
+    <button id="btnShip" title="Run full suite, promote Implemented→Done, then push">Full verify &amp; ship</button>
     <button id="btnStop">Stop</button>
   </div>
 </header>
 <main>
   <section>
-    <div id="idle" class="idle" hidden>Waiting for intake — queue a punch list with forge-intake</div>
+    <div id="idle" class="idle" hidden>Waiting for intake — queue a punch list or feature with forge-intake</div>
+    <div id="sinceGreen" class="hint" style="margin:0.5rem 0 0.75rem; font-size:0.85rem; color:var(--muted)"></div>
     <div class="columns" id="board"></div>
   </section>
   <aside class="side">
@@ -1653,8 +1711,10 @@ main {
       <div class="sub" id="stationSub"></div>
       <div class="fresh" id="stationFresh"></div>
       <div class="agents" id="agentList"></div>
-      <div class="label">Full test suite (before push)</div>
+      <div class="label">Ship gate (full suite)</div>
       <div class="batch-line" id="batchLine">—</div>
+      <div class="label" style="margin-top:0.75rem">CI safety net</div>
+      <div class="batch-line" id="ciLine">—</div>
     </div>
     <div class="your-move" id="yourMove">
       <h3 id="yourMoveTitle">Your move</h3>
@@ -1664,6 +1724,10 @@ main {
         <button id="btnRetry">Retry full suite</button>
         <button id="btnCopy">Copy for Cursor</button>
         <button id="btnRequeue">Requeue Halted</button>
+      </div>
+      <div id="haltAnswerBox" hidden style="margin-top:0.5rem">
+        <textarea id="haltAnswer" rows="3" style="width:100%; font:inherit" placeholder="Answer the halt-and-ask question…"></textarea>
+        <button id="btnAnswerHalt" style="margin-top:0.35rem">Submit answer &amp; resume</button>
       </div>
       <div class="consequence" id="yourMoveHint" hidden></div>
       <div class="also-strip" id="alsoStrip" hidden></div>
@@ -1680,19 +1744,21 @@ main {
   <div id="drawerBody"></div>
 </div>
 <script>
-const cols = ["Queued","In Progress","Needs-human","Halted","Done"];
+const cols = ["Queued","In Progress","Implemented","Needs-human","Halted","Done"];
 let snap = null;
 let selected = null;
 let showDoneSlices = false;
+let pendingHaltPath = null;
 
 function colFor(item) {
   const s = (item.status||"");
   // Status wins over kind — Kind "needs-human" stays after Status → Done.
   if (/^Done/i.test(s)) return "Done";
+  if (/^Implemented/i.test(s)) return "Implemented";
   if (/Halted/i.test(s)) return "Halted";
   if (/In Progress/i.test(s)) return "In Progress";
   if (/Needs-human/i.test(s) || /needs-human/i.test(item.kind||"")) return "Needs-human";
-  if (/Queued|Ready|Draft/i.test(s)) return "Queued";
+  if (/Queued|Ready|Draft|Verify/i.test(s)) return "Queued";
   return "Queued";
 }
 
@@ -1701,8 +1767,19 @@ function statusChipClass(status) {
   if (/Needs-human/i.test(s)) return "status-needs";
   if (/Halted/i.test(s)) return "status-halted";
   if (/In Progress/i.test(s)) return "status-progress";
+  if (/^Implemented/i.test(s)) return "status-progress";
   if (/^Done/i.test(s)) return "status-done";
   return "status-queued";
+}
+
+function gateChipsHtml(item) {
+  const gates = item.gates || [];
+  if (!gates.length) return "";
+  const bits = gates.map(g => {
+    const done = g.done || g.status === "done" || g.status === "waived";
+    return `<span class="gate-chip${done ? " done" : ""}" title="${esc(g.label||g.id)}">${esc(g.label||g.id)}${done?"✓":""}</span>`;
+  }).join(" ");
+  return `<div class="gates">${bits}</div>`;
 }
 
 function esc(s) {
@@ -1918,11 +1995,11 @@ function makeCard(item, st, activeTid, activity) {
     ? `<div class="meta">${esc(formatDoneClosedMeta(item.done_at))}</div>`
     : "";
   const laneChip = isSlice
-    ? `<div><span class="lane-chip">Slice pipeline</span></div>`
-    : "";
+    ? `<div><span class="lane-chip">Feature</span></div>`
+    : `<div><span class="lane-chip">Bug/tweak</span></div>`;
   card.innerHTML = `<div><span class="prio">${esc(item.priority||"")}</span> ${esc(item.type)} ${esc(item.id)}</div>
     <div>${esc(item.title||"")}</div>
-    <div class="meta">${esc(item.kind||"")} · ${esc((item.area||"").slice(0,40))}</div>${laneChip}${closedMeta}${phaseHtml}${actionsHtml}`;
+    <div class="meta">${esc(item.kind||"")} · ${esc((item.area||"").slice(0,40))}</div>${laneChip}${gateChipsHtml(item)}${closedMeta}${phaseHtml}${actionsHtml}`;
   card.onclick = (e) => {
     const requeueBtn = e.target && e.target.closest && e.target.closest("[data-requeue]");
     if (requeueBtn) {
@@ -1975,7 +2052,7 @@ function render() {
     hot.textContent = "will pause after current";
     hot.className = "status-pill hot";
   } else if (["working","batch","picking","batch_pending","needs_decision","held"].includes(mode)) {
-    hot.textContent = runnerLane === "slice" ? "slices" : "factory";
+    hot.textContent = "forge";
     hot.className = "status-pill hot";
   } else {
     hot.textContent = "stopped";
@@ -1992,23 +2069,21 @@ function render() {
   const liveModes = ["working","batch","picking","batch_pending","starting","needs_decision","held","paused"];
   const looksLive = liveModes.includes(mode);
   const sliceNote = queuedSlices.length
-    ? ` Feature slices in Queued (${queuedSlices.length}) are not auto-run by Start factory — use Start slices.`
+    ? ` Feature slices in Queued (${queuedSlices.length}) run via Start Forge (unified queue).`
     : "";
-  let idleMsg = "Waiting for intake — queue a punch list with forge-intake";
+  let idleMsg = "Waiting for intake — queue work with forge-intake";
   if (mode === "orphan") {
-    idleMsg = activity.detail || "Factory loop not running — click Restart factory";
+    idleMsg = activity.detail || "Forge loop not running — click Restart Forge";
     idle.hidden = false;
     idle.textContent = idleMsg;
   } else if (looksLive && queuedAuto.length===0 && inProg.length===0 && batch.state !== "needs_decision") {
-    if (runnerLane === "slice") {
-      idleMsg = "Slice pipeline running — feature work via slice-loop";
-    } else if (mode === "batch" || batch.state === "running" || batch.state === "verifying" || batch.batch_running) {
+    if (mode === "batch" || batch.state === "running" || batch.state === "verifying" || batch.batch_running) {
       idleMsg = "No punch-list tickets left · running full test suite";
     } else if (batch.state === "held" || mode === "held") {
       idleMsg = "No punch-list tickets left · not pushing (held)";
     } else if (batch.needed) {
       const why = (batch.plain || "").trim()
-        || "full test suite waiting before push";
+        || "full test suite waiting before ship";
       idleMsg = `No punch-list tickets left · ${why}`;
     } else if (batch.state === "green") {
       idleMsg = `No punch-list tickets left · full suite already passed @ ${(batch.last_green_sha||"").slice(0,12)}`;
@@ -2017,7 +2092,7 @@ function render() {
     idle.hidden = false;
     idle.textContent = idleMsg;
   } else if (!looksLive && queuedSlices.length && queuedAuto.length===0) {
-    idleMsg = `${queuedSlices.length} feature slice(s) waiting — use Start slices (not Start factory).`;
+    idleMsg = `${queuedSlices.length} feature slice(s) waiting — Start Forge to drain the unified queue.`;
     idle.hidden = false;
     idle.textContent = idleMsg;
   } else {
@@ -2153,7 +2228,7 @@ function render() {
     halted: "Halted ticket",
     paused: "Paused",
     starting: "Starting…",
-    start: "Start factory",
+    start: "Start Forge",
     idle: "Your move",
     quiet: "Your move",
   };
@@ -2254,6 +2329,41 @@ function render() {
   }
   document.getElementById("stationSub").textContent = subText;
   document.getElementById("batchLine").innerHTML = batchLabel(batch, activity);
+  const sinceN = snap.items_since_green != null ? snap.items_since_green : (batch.items_since_green || 0);
+  const sinceEl = document.getElementById("sinceGreen");
+  if (sinceEl) {
+    sinceEl.textContent = sinceN
+      ? (sinceN + " item(s) Implemented since last green full verify — press Full verify & ship when ready")
+      : "Ship gate clean — no Implemented items waiting";
+  }
+  const ciEl = document.getElementById("ciLine");
+  if (ciEl) {
+    const ci = snap.ci || [];
+    if (!ci.length) {
+      ciEl.textContent = "CI status unavailable (gh)";
+    } else {
+      ciEl.innerHTML = ci.slice(0, 5).map(r => {
+        const badge = r.badge || "unknown";
+        const color = badge === "pass" ? "var(--ok,#3c3)" : badge === "fail" ? "var(--warn,#c66)" : "var(--muted)";
+        return `<span style="color:${color}">●</span> ${esc(r.sha||"?")} ${esc(badge)}`;
+      }).join(" · ");
+    }
+  }
+  // Halt-and-ask control room
+  const haltBox = document.getElementById("haltAnswerBox");
+  const halts = snap.halts || [];
+  pendingHaltPath = null;
+  if (haltBox && halts.length && /halt/i.test(String(halts[halts.length-1].reason||""))) {
+    const h = halts[halts.length - 1];
+    pendingHaltPath = (h.halt && h.halt.slice_file) || null;
+    // Best-effort: prefer slice path from halt payload
+    if (!pendingHaltPath && h.slice != null) {
+      pendingHaltPath = "docs/slices/slice-" + String(h.slice).padStart(2,"0");
+    }
+    haltBox.hidden = false;
+  } else if (haltBox) {
+    haltBox.hidden = true;
+  }
 
   const freshEl = document.getElementById("stationFresh");
   const ageLabel = formatAge(activity.activity_age_s);
@@ -2297,27 +2407,21 @@ function render() {
 function syncToolbar(snap, activity) {
   const mode = (activity && activity.mode) || "";
   const btnStart = document.getElementById("btnStart");
-  const btnStartSlices = document.getElementById("btnStartSlices");
   const btnPause = document.getElementById("btnPause");
   const btnPauseAfter = document.getElementById("btnPauseAfter");
   const btnResume = document.getElementById("btnResume");
   const btnStop = document.getElementById("btnStop");
   const btnShip = document.getElementById("btnShip");
   const pauseAfterArmed = !!(snap.controls && snap.controls.pause_after_current && !snap.controls.paused);
-  const lane = (snap.controls && snap.controls.runner_lane) || "";
 
-  [btnStart, btnStartSlices, btnPause, btnPauseAfter, btnResume, btnStop, btnShip].forEach((b) => {
+  [btnStart, btnPause, btnPauseAfter, btnResume, btnStop, btnShip].forEach((b) => {
     if (b) b.classList.remove("primary");
   });
 
   if (mode === "orphan") {
-    btnStart.textContent = "Restart factory";
+    btnStart.textContent = "Restart Forge";
     btnStart.disabled = false;
     btnStart.classList.add("primary");
-    if (btnStartSlices) {
-      btnStartSlices.textContent = "Start slices";
-      btnStartSlices.disabled = false;
-    }
     btnPause.disabled = true;
     btnPauseAfter.disabled = true;
     btnResume.disabled = true;
@@ -2328,22 +2432,8 @@ function syncToolbar(snap, activity) {
 
   if (mode === "starting") {
     const age = activity.started_age_s != null ? Math.floor(activity.started_age_s) : null;
-    if (lane === "slice") {
-      btnStart.textContent = "Start factory";
-      btnStart.disabled = true;
-      if (btnStartSlices) {
-        btnStartSlices.textContent = age != null ? `Starting slices… (${age}s)` : "Starting slices…";
-        btnStartSlices.disabled = true;
-        btnStartSlices.classList.add("primary");
-      }
-    } else {
-      btnStart.textContent = age != null ? `Starting… (${age}s)` : "Starting…";
-      btnStart.disabled = true;
-      if (btnStartSlices) {
-        btnStartSlices.textContent = "Start slices";
-        btnStartSlices.disabled = true;
-      }
-    }
+    btnStart.textContent = age != null ? `Starting… (${age}s)` : "Starting…";
+    btnStart.disabled = true;
     btnPause.disabled = true;
     btnPauseAfter.disabled = true;
     btnResume.disabled = true;
@@ -2355,10 +2445,6 @@ function syncToolbar(snap, activity) {
   if (mode === "paused") {
     btnStart.textContent = "Paused";
     btnStart.disabled = true;
-    if (btnStartSlices) {
-      btnStartSlices.textContent = "Start slices";
-      btnStartSlices.disabled = true;
-    }
     btnPause.disabled = true;
     btnPauseAfter.disabled = true;
     btnResume.disabled = false;
@@ -2369,42 +2455,22 @@ function syncToolbar(snap, activity) {
   }
 
   if (["working","batch","picking","batch_pending","needs_decision","held"].includes(mode)) {
-    if (lane === "slice") {
-      btnStart.textContent = "Start factory";
-      btnStart.disabled = true;
-      if (btnStartSlices) {
-        btnStartSlices.textContent = "Slices running";
-        btnStartSlices.disabled = true;
-        btnStartSlices.classList.add("primary");
-      }
-      btnPauseAfter.disabled = true;
-      btnShip.disabled = true;
-    } else {
-      btnStart.textContent = "Running";
-      btnStart.disabled = true;
-      if (btnStartSlices) {
-        btnStartSlices.textContent = "Start slices";
-        btnStartSlices.disabled = true;
-      }
-      btnPauseAfter.disabled = pauseAfterArmed;
-      btnShip.disabled = false;
-    }
+    btnStart.textContent = "Running";
+    btnStart.disabled = true;
+    btnPauseAfter.disabled = pauseAfterArmed;
+    btnShip.disabled = false;
     btnPause.disabled = false;
     btnPause.classList.add("primary");
-    btnResume.disabled = !pauseAfterArmed || lane === "slice";
-    if (pauseAfterArmed && lane !== "slice") btnResume.classList.add("primary");
+    btnResume.disabled = !pauseAfterArmed;
+    if (pauseAfterArmed) btnResume.classList.add("primary");
     btnStop.disabled = false;
     return;
   }
 
   // stopped / idle / quiet
-  btnStart.textContent = "Start factory";
+  btnStart.textContent = "Start Forge";
   btnStart.disabled = false;
   btnStart.classList.add("primary");
-  if (btnStartSlices) {
-    btnStartSlices.textContent = "Start slices";
-    btnStartSlices.disabled = false;
-  }
   btnPause.disabled = true;
   btnPauseAfter.disabled = true;
   btnResume.disabled = true;
@@ -2449,42 +2515,45 @@ async function refresh() {
 }
 
 document.getElementById("btnClose").onclick = () => document.getElementById("drawer").classList.remove("open");
-document.getElementById("btnStart").onclick = () => {
-  if (snap && snap.controls && snap.runner_alive && snap.controls.runner_lane === "slice") {
-    if (!confirm("Stop slice-loop and start punch-list factory instead?")) return;
-  }
-  post("/api/control", {action:"start"});
-};
-document.getElementById("btnStartSlices").onclick = () => {
-  if (snap && snap.controls && snap.runner_alive && snap.controls.runner_lane === "task") {
-    if (!confirm("Stop punch-list factory and start slice-loop instead?")) return;
-  }
-  post("/api/control", {action:"start_slices"});
-};
+document.getElementById("btnStart").onclick = () => post("/api/control", {action:"start"});
 document.getElementById("btnStop").onclick = () => post("/api/control", {action:"stop"});
 document.getElementById("btnPause").onclick = () => post("/api/control", {action:"pause"});
 document.getElementById("btnPauseAfter").onclick = () => post("/api/control", {action:"pause_after_current"});
 document.getElementById("btnResume").onclick = () => post("/api/control", {action:"resume"});
 document.getElementById("btnShip").onclick = () => post("/api/control", {action:"ship_now"});
 document.getElementById("btnHold").onclick = () => {
-  if (confirm("Don't push — leave commits local and idle until new work or Verify & push?")) {
+  if (confirm("Don't push — leave commits local and idle until new work or Full verify & ship?")) {
     post("/api/control", {action:"batch_hold"});
   }
 };
 document.getElementById("btnRetry").onclick = () => {
-  if (confirm("Retry full suite? Reruns tier-3 + one auto-fix pass (~10–15 min).")) {
+  if (confirm("Retry full suite? Reruns tier-3a + tier-3 + Mechanic (~10–15 min).")) {
     post("/api/control", {action:"batch_retry"});
   }
 };
+document.getElementById("btnAnswerHalt") && (document.getElementById("btnAnswerHalt").onclick = () => {
+  const answer = (document.getElementById("haltAnswer") || {}).value || "";
+  if (!answer.trim()) return alert("Type an answer first");
+  // Prefer an In Progress / Ready slice path from board when halt lacks path
+  let path = pendingHaltPath;
+  if (!path) {
+    const slice = (snap.slices||[]).find(s => /In Progress|Ready|Draft/i.test(s.status||""));
+    path = slice && slice.path;
+  }
+  if (!path) return alert("No slice path for this halt — open the slice file and answer there");
+  post("/api/control", {action:"answer_halt", slice_path: path, answer});
+});
 document.getElementById("btnCopy").onclick = async () => {
   const fail = (snap && snap.batch && snap.batch.failure) || {};
   const fails = fail.failures || [];
+  const bisect = fail.bisect || {};
   const lines = [
     "Forge batch can't ship",
     `HEAD: ${fail.head_sha || (snap.batch && snap.batch.head_sha) || "?"}`,
     `Reason: ${fail.reason || "still_red"}`,
     `Passed: ${fail.passed ?? "?"}  Failed: ${fail.failed ?? fails.length}`,
     fail.ladder ? fail.ladder : "",
+    bisect.message ? `Bisect: ${bisect.message}` : "",
     "",
     "Failures:",
     ...(fails.length ? fails.map(f => `- ${(f && f.id) || "?"} — ${(f && f.assertion) || ""}`) : ["- (none listed)"]),

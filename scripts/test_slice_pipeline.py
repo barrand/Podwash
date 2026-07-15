@@ -146,26 +146,31 @@ class VerifyTierHelpersTests(unittest.TestCase):
             os.makedirs(os.path.dirname(slice_path), exist_ok=True)
             with open(slice_path, "w", encoding="utf-8") as fh:
                 fh.write(mapping)
+            scripts = os.path.join(tmp, "scripts")
+            os.makedirs(scripts, exist_ok=True)
+            with open(os.path.join(scripts, "verify.sh"), "w", encoding="utf-8") as fh:
+                fh.write("#!/bin/sh\nexit 0\n")
             captured: dict[str, str] = {}
 
-            def fake_run(cmd, **kwargs):
+            def fake_popen(cmd, **kwargs):
                 captured.update(kwargs.get("env") or {})
                 proc = mock.MagicMock()
                 proc.returncode = 0
-                proc.stdout = (
+                proc.communicate.return_value = (
                     "VERIFY RESULT: exit=0 total=1 passed=1 failed=0 skipped=0 "
-                    "filtered=1 bundle=b.xcresult tier=2 class=tests\n"
+                    "filtered=1 bundle=b.xcresult tier=2 class=tests\n",
+                    "",
                 )
-                proc.stderr = ""
                 return proc
 
-            with mock.patch("slice_pipeline.subprocess.run", side_effect=fake_run):
-                outcome = run_verify(
-                    tmp,
-                    slice_file=slice_path,
-                    tier=2,
-                    log=lambda _m: None,
-                )
+            with mock.patch("slice_pipeline.subprocess.Popen", side_effect=fake_popen):
+                with mock.patch("slice_pipeline._controls_paused", return_value=False):
+                    outcome = run_verify(
+                        tmp,
+                        slice_file=slice_path,
+                        tier=2,
+                        log=lambda _m: None,
+                    )
             self.assertTrue(outcome.green)
             self.assertIn(
                 "PodWashTests/QueueTests/testQueueOperationsAndPersistence()",
@@ -587,7 +592,7 @@ class DocWriterTests(unittest.TestCase):
                 text = fh.read()
             self.assertIn("VERIFY RESULT: exit=0", text)
             self.assertIn("bundle=x.xcresult", text)
-            self.assertIn("| **Status** | Done |", text)
+            self.assertIn("| **Status** | Implemented |", text)
 
     def test_write_verify_inserts_when_missing(self):
         with tempfile.TemporaryDirectory() as tmp:

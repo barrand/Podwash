@@ -11,13 +11,14 @@
 #   scripts/next-slice.sh --status   # table of every slice: ID, status, deps-met, blocked-by
 #   scripts/next-slice.sh --help     # this help
 #
-# A slice counts as DONE only when BOTH are true (conservative finish signal, so
-# a half-finished slice never advances the queue):
-#   - its file has `| **Status** | Done |`
-#   - its verification record has a `VERIFY RESULT: exit=0 ... failed=0 ... skipped=0` line
+# A slice counts as COMPLETE for queue advancement when BOTH are true:
+#   - Status is Done OR Implemented
+#   - VERIFY RESULT: exit=0 ... failed=0 ... skipped=0
+# Implemented = tier-2 surgical green (work finished; awaiting batch ship gate).
+# Done = promoted by Full verify & ship (tier=3 filtered=0).
 #
 # Actions:
-#   start  lowest eligible (deps all Done, not halt-gated) slice — run it now
+#   start  lowest eligible (deps all complete, not halt-gated) slice — run it now
 #   halt   lowest eligible slice needs a user decision first (halt-and-ask gate)
 #   wait   every remaining slice is blocked on an unfinished dependency
 #   done   no slices remain — the queue is complete
@@ -128,7 +129,7 @@ BEGIN { split(HALT, hs, " "); for (i in hs) halt[hs[i]+0]=1 }
     deps[id]=$4
     title[id]=$5
     file[id]=$6
-    done_[id] = ($2 == "Done" && $3+0 == 1) ? 1 : 0
+    done_[id] = (($2 == "Done" || $2 == "Implemented") && $3+0 == 1) ? 1 : 0
     skip_[id] = ($2 ~ /[Dd]eferred|[Pp]ost-MVP/) ? 1 : 0
 }
 END {
@@ -195,7 +196,7 @@ deps_desc() {
 }
 
 coordinator_prompt_oneline() {
-    printf 'Run Slice %02d per %s. Coordinator: enforce gates, spawn role subagents by name (podwash-pm, podwash-ux, podwash-qa, podwash-architect, podwash-engineer). Coordinator must NOT edit PodWash/PodWash or test sources — delegate to engineer/qa. Never composer-2.5-fast or grok-4.5-fast-xhigh. Done = scripts/verify.sh full suite green + verification record + auto-commit. If this slice hits a halt-and-ask item, stop and ask before implementation.' "$1" "$2"
+    printf 'Run Slice %02d per %s. Coordinator: enforce gates, spawn role subagents by name (podwash-pm, podwash-ux, podwash-qa, podwash-architect, podwash-engineer). Coordinator must NOT edit PodWash/PodWash or test sources — delegate to engineer/qa. Never composer-2.5-fast or grok-4.5-fast-xhigh. Per-item exit = tier-2 Implemented; ship-gate Done = Floor Full verify & ship (tier-3 filtered=0). If this slice hits a halt-and-ask item, stop and ask before implementation.' "$1" "$2"
 }
 
 coordinator_prompt_block() {
@@ -205,7 +206,7 @@ Coordinator: enforce gates, spawn role subagents by name
 (podwash-pm, podwash-ux, podwash-qa, podwash-architect, podwash-engineer).
 Coordinator must NOT edit PodWash/PodWash/** or test sources — delegate to engineer/qa.
 Never composer-2.5-fast or grok-4.5-fast-xhigh.
-Done = scripts/verify.sh full suite green + verification record + auto-commit.
+Done = ship-gate Full verify & ship (tier-3 filtered=0); per-item exit = Implemented (tier-2).
 If this slice hits a halt-and-ask item, stop and ask before implementation.
 EOF
 }
@@ -215,7 +216,7 @@ if [ "$MODE" = status ]; then
     awk -F'\t' '
     {
         id=$1+0; ids[id]=1; status[id]=$2; vg[id]=$3; deps[id]=$4
-        done_[id] = ($2 == "Done" && $3+0 == 1) ? 1 : 0
+        done_[id] = (($2 == "Done" || $2 == "Implemented") && $3+0 == 1) ? 1 : 0
     }
     END {
         n=0; for (k in ids) arr[++n]=k+0
@@ -229,6 +230,7 @@ if [ "$MODE" = status ]; then
             depsmet = done_[id] ? "done" : (blocked=="" ? "yes" : "no")
             st=status[id]
             if      (st ~ /^Done/)        st="Done"
+            else if (st ~ /^Implemented/) st="Implemented"
             else if (st ~ /^In Progress/) st="In Progress"
             else if (st ~ /^Draft/)       st="Draft"
             else if (st ~ /^Ready/)       st="Ready"

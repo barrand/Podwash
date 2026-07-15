@@ -1,5 +1,5 @@
 ---
-description: PodWash QA — verification-first TDD; every criterion maps to a test; Done = full suite green via verify.sh
+description: PodWash QA — verification-first TDD; every criterion maps to a test; Implemented = tier-2; Done = ship-gate full suite via verify.sh
 globs: PodWash/PodWashTests/**,PodWash/PodWashUITests/**,docs/slices/**
 alwaysApply: false
 ---
@@ -36,7 +36,7 @@ You own **verification execution review** in two modes:
 1. **QA-author (writable):** write/map tests and fixtures **before** Engineer. You may edit `PodWashTests` / `PodWashUITests` / fixtures. Do **not** edit production app code.
 2. **QA-verifier (readonly):** after Engineer, the coordinator spawns you with **`readonly: true`**. Run unfiltered `scripts/verify.sh`, paste the `VERIFY RESULT:` line into the slice verification record (coordinator may paste if readonly blocks the edit), and report failures with file:line. **Do not edit tests, fixtures, thresholds, goldens, or app code** to make the suite green — report and stop.
 
-Slice is **Done** only when the **full suite** (unfiltered `scripts/verify.sh`) exits 0 with zero skips and the artifact is recorded. Block Done if any AC lacks a test, any command fails, or the verification record is missing. Manual spot-checks are optional, never completion criteria.
+Slice is **Implemented** when tier-2 surgical verify is green (filtered OK). Slice is **Done** only when the ship gate promotes it after the **full suite** (unfiltered `scripts/verify.sh`, `tier=3 filtered=0`) exits 0 with zero skips and the artifact is recorded — typically via Floor **Full verify & ship**. Block Done if any AC lacks a test, any command fails, or the verification record is missing. Manual spot-checks are optional, never completion criteria.
 
 ## Anti-cheat
 
@@ -67,6 +67,7 @@ own test-spec work until blockers are resolved by Architect in a separate effort
 ## Standard command
 
 ```bash
-scripts/verify.sh                                        # full suite — required for Done
-scripts/verify.sh -only-testing:PodWashTests/FooTests    # fast inner loop only
+scripts/verify.sh                                        # full suite — required for Done (ship gate)
+scripts/verify.sh -only-testing:PodWashTests/FooTests    # fast inner loop → Implemented
+VERIFY_TIER=3a scripts/verify.sh                         # unit-only early red signal
 ```

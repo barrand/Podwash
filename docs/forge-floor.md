@@ -1,28 +1,28 @@
 # Forge Floor & task factory
 
-Mission control for PodWash Factory v3. **MVP** = `forge-intake` + task board + serial `task-loop` + Forge Floor. Unified `forge.sh` / parallel lanes are sequels.
+Mission control for PodWash Factory. **One process:** `forge-intake` + unified board (tasks + slices) + serial `forge_loop` + Forge Floor.
 
 ## Day in the life
 
 1. `scripts/forge-floor.sh` → open [http://127.0.0.1:7420](http://127.0.0.1:7420)
-2. **Start factory** for punch-list tasks, or **Start slices** for feature `slice-loop`
-3. In Cursor: invoke **forge-intake** for each punch-list item (features still land as slices under `docs/slices/`)
-4. Watch **Now** (what's happening) and **Your move** (what you should do). OS notify on Halted, can't-ship, or Pushed
-5. Halted → **Your move** → Requeue (amend the ticket in Cursor if the spec was wrong)
-6. Can't ship (full suite still red) → **Your move** → Don't push, Retry full suite, or Copy for Cursor
-7. When the punch-list is empty, runs full `scripts/verify.sh` **only when needed** (HEAD moved, or meaningful dirt changed vs last green stamp; skips `__pycache__` noise, same-dirt after green, acknowledged Don't push, and open Your-move incidents) — then auto-pushes — or click **Verify & push** to force. Halted tickets park for Requeue first (they block that full suite until Requeue). The loop **stays alive** while waiting (Halted / empty queue) — it should not silently exit and force a manual Restart.
-8. **Pause** before hand-editing app code (factory-hot owns the tree). On the slice lane, Pause is a **hard stop** (slice-loop does not soft-park mid-gate).
-9. If Floor is killed/relaunched while the factory was running, it **auto-restarts** the worker (boot reconcile + orphan auto-heal). A dead worker is detected by live PID / process scan — not a stale heartbeat timestamp.
+2. **Start Forge** — one serial runner drains punch-list tasks and feature slices by priority
+3. In Cursor: invoke **forge-intake** (bugs/tweaks → `docs/tasks/`; features → `docs/slices/`)
+4. Watch **Now**, **Your move**, and the **N items since last green full verify** counter
+5. Each item exits at tier-2 green → Status **Implemented** (pushed per item)
+6. When you're ready, press **Full verify & ship** (tier-3a then tier-3). On green, all Implemented → **Done**
+7. Halted / halt-and-ask → **Your move** (Requeue, answer, Don't push, Retry)
+8. **Pause** before hand-editing app code (`factory-hot` owns the tree). Soft pause parks at gate boundaries.
 
 ## Commands
 
 | Command | Role |
 |---------|------|
 | `scripts/forge-floor.sh` | Mission control UI (primary) |
-| `scripts/task-loop.sh` | Headless serial task runner (Phase 1) — Floor **Start factory** |
-| `scripts/slice-loop.sh` | Feature slice pipeline — Floor **Start slices** |
-| `scripts/forge.sh` | Alias → task-loop; set `PODWASH_FORGE_UNIFIED=1` for sequel unified loop |
-| `scripts/next-task.sh` | Queue brain (`--json` / `--status`) |
+| `scripts/forge.sh` | Unified serial runner (default) |
+| `scripts/task-loop.sh` | Thin alias → `forge.sh` |
+| `scripts/slice-loop.sh` | Medic wrapper; set `PODWASH_FORGE_LOOP` for the loop module |
+| `scripts/next-work.sh` | Unified queue brain (`--json`) |
+| `scripts/next-task.sh` / `next-slice.sh` | Per-kind queue brains (used by next-work) |
 
 Auth: `export CURSOR_API_KEY=cursor_...`
 
@@ -30,42 +30,38 @@ Auth: `export CURSOR_API_KEY=cursor_...`
 
 See [`docs/tasks/README.md`](tasks/README.md). Intake skill: [`.cursor/skills/forge-intake/SKILL.md`](../.cursor/skills/forge-intake/SKILL.md).
 
-**Slices vs tasks on Floor:** Feature slices appear on the same board with a dashed **Slice pipeline** card style. They are **not** drained by **Start factory** (punch-list). Use **Start slices** to run `slice-loop.sh --medic-no-push`. Hot pill shows `factory` vs `slices`. The two runners are mutually exclusive (starting one stops the other).
+**One board, two kinds:** Bugs/tweaks (tasks) and features (slices) share Queued → In Progress → **Implemented** → Done. Cards show gate chips (short for tasks, full strip for slices). Both are drained by **Start Forge**.
 
 ## Controls
 
-Floor writes `build/factory/controls.json` (pause, ship_now, requeue, cancel, batch_action, `runner_lane`).  
-`build/factory/factory-hot` is present while the loop owns the tree — **local-dev defers**. Floor also touches hot when the slice lane is running.
-
-Live status for the Stations panel:
+Floor writes `build/factory/controls.json` (pause, ship_now, requeue, cancel, answer_halt, `runner_lane=forge`).  
+`build/factory/factory-hot` is present while the loop owns the tree — **local-dev defers**.
 
 | File | Role |
 |------|------|
-| `build/factory/station.json` | Current phase (QA / Engineer / tier-2 / FULL-VERIFY) |
+| `build/factory/station.json` | Current phase (QA / Engineer / SLICE gate / FULL-VERIFY) |
 | `build/factory/batch-gate.json` | Last green tier-3 SHA stamp |
-| `build/factory/heartbeat.json` | Loop liveness (`pid`, `ts`) — Floor derives hot/orphan/starting from this + `runner_pid` |
+| `build/factory/heartbeat.json` | Loop liveness |
+| `build/factory/batch-failure.json` | Open ship-gate incident (+ optional bisect) |
 
-**Verify & push** (control: `ship_now`) = force a full suite (tier-3) immediately, then `git push` if green. Not App Store submit.
+**Full verify & ship** (`ship_now`) = force ship gate (3a then 3), promote Implemented→Done, then `git push` if green.
 
 ## Verify policy
 
-- Per task: tier-2 surgical tests only (`filtered=1` OK for task Done)
-- **Idle drain** (punch-list empty): run tier-3 **only if** HEAD moved, meaningful worktree dirt changed since the last green stamp, or never stamped green; otherwise skip (push-only if ahead of upstream). `__pycache__` / `*.pyc` noise is ignored. After a green idle verify, the same dirt fingerprint does not re-trigger. Halted tickets block this until Requeue. An **open** batch incident at HEAD parks for Your move (does not re-verify); **Don't push** acknowledges and also holds.
-- Tier-3 uses xcodebuild `-retry-tests-on-failure` (same as tier-2 unit runs) so flakes are absorbed before Mechanic / Medic / human
-- **Verify & push**: always force tier-3, then push
-- On persistent red: write `build/factory/batch-failure.json` (open incident), then Mechanic once, then Medic (Floor starts the loop with `--medic-no-push`). If still stuck → Floor **Your move** (Can't push)
-- **Don't push** acknowledges the incident (idle drain skips until HEAD moves or Verify & push / Retry)
-- **Retry full suite** reopens the incident and sets `ship_now`
-- Quarantine / sticky `batch_blocked` are gone — blocked state is derived from the incident file alone
+- Per item (task or slice): tier-2 surgical tests → **Implemented** (`filtered=1` OK)
+- Ship gate: tier-3a (units) then tier-3 (full); requires `tier=3 filtered=0` to promote to **Done**
+- Tier-3 full suite does **not** retry flakes (avoids doubling wall time); tier-3a / unit-filtered runs still retry once
+- On batch red: Mechanic once, then lightweight commit-range bisect (tier-3a), then **Your move**
+- CI status is surfaced on the Floor as a safety net between manual ship gates (push-per-item)
+- **Don't push** acknowledges the incident; **Retry** reopens + `ship_now`
+
+### Verify speed notes
+
+- `verify.sh` records `elapsed_s` plus boot / xcodebuild / parse phases in `build/test-results/verify-timing-latest.json`
+- Observed 30–45 min full runs were often **retry doubling** + serial UITests + cold sim; retries are off for tier-3/3b
+- Split **3a** (units) then **3b**/full gives an early red signal before the UI-dominant cost
+- **Parallel `PodWashTests`:** scheme still `parallelizable=NO`. Offline-render units may be safe (ADR-001 serializes UI/audio). Flip only after **3 consecutive green** `VERIFY_TIER=3a` runs with parallel enabled — do not land without that gate
 
 ## MVP gate
 
-Use Phase 1+1.5 for real punch lists before enabling:
-
-```bash
-PODWASH_FORGE_UNIFIED=1 scripts/forge.sh
-# or parallel lanes (after unified feels solid):
-# scripts/forge.sh --lanes 2   # via forge_loop
-```
-
-See [`docs/forge/mvp-gate.md`](forge/mvp-gate.md).
+Cleared — see [`docs/forge/mvp-gate.md`](forge/mvp-gate.md).

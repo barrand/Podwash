@@ -560,7 +560,7 @@ class ActivityCopyAndLivenessTests(unittest.TestCase):
                             with mock.patch("builtins.open", mock.mock_open()):
                                 floor.start_runner()
         self.assertEqual(written.get("runner_pid"), 55555)
-        self.assertEqual(written.get("runner_lane"), "task")
+        self.assertEqual(written.get("runner_lane"), "forge")
         self.assertIsNotNone(written.get("started_at"))
         floor._runner_proc = None
 
@@ -572,28 +572,28 @@ class ActivityCopyAndLivenessTests(unittest.TestCase):
             with mock.patch.object(floor, "HOT") as hot:
                 hot.is_file.return_value = False
                 msg = floor.maybe_restart_orphan_runner(
-                    ctrl={"running": True, "runner_lane": "task"}, activity_mode="orphan"
+                    ctrl={"running": True, "runner_lane": "forge"}, activity_mode="orphan"
                 )
                 self.assertEqual(msg, "started pid=1")
                 msg2 = floor.maybe_restart_orphan_runner(
-                    ctrl={"running": True, "runner_lane": "task"}, activity_mode="orphan"
+                    ctrl={"running": True, "runner_lane": "forge"}, activity_mode="orphan"
                 )
                 self.assertIsNone(msg2)
                 self.assertEqual(start.call_count, 1)
 
-    def test_maybe_restart_orphan_uses_slice_lane(self):
+    def test_maybe_restart_orphan_uses_unified_runner(self):
         import factory_floor.server as floor
 
         floor._last_orphan_restart_ts = 0.0
         with mock.patch.object(
-            floor, "start_slice_runner", return_value="started pid=2 lane=slice"
+            floor, "start_runner", return_value="started pid=2 lane=forge"
         ) as start:
             with mock.patch.object(floor, "HOT") as hot:
                 hot.is_file.return_value = True
                 msg = floor.maybe_restart_orphan_runner(
                     ctrl={"running": True, "runner_lane": "slice"}, activity_mode="orphan"
                 )
-        self.assertEqual(msg, "started pid=2 lane=slice")
+        self.assertEqual(msg, "started pid=2 lane=forge")
         start.assert_called_once()
 
 
@@ -612,10 +612,10 @@ class ControlHandlerTests(unittest.TestCase):
         argv = popen.call_args[0][0]
         self.assertIn("--medic-no-push", argv)
         self.assertNotIn("--no-self-heal", argv)
-        self.assertTrue(str(argv[0]).endswith("task-loop.sh"))
+        self.assertTrue(str(argv[0]).endswith("forge.sh"))
         floor._runner_proc = None
 
-    def test_start_slice_runner_uses_slice_loop_and_hot(self):
+    def test_start_slice_runner_aliases_unified_forge(self):
         import factory_floor.server as floor
 
         written: dict = {}
@@ -636,11 +636,11 @@ class ControlHandlerTests(unittest.TestCase):
                                 with mock.patch("builtins.open", mock.mock_open()):
                                     msg = floor.start_slice_runner()
         self.assertIn("started", msg)
-        self.assertIn("lane=slice", msg)
+        self.assertIn("lane=forge", msg)
         argv = popen.call_args[0][0]
-        self.assertTrue(str(argv[0]).endswith("slice-loop.sh"))
+        self.assertTrue(str(argv[0]).endswith("forge.sh"))
         self.assertIn("--medic-no-push", argv)
-        self.assertEqual(written.get("runner_lane"), "slice")
+        self.assertEqual(written.get("runner_lane"), "forge")
         self.assertEqual(written.get("runner_pid"), 99901)
         hot.assert_called_with(True)
         floor._runner_proc = None
@@ -648,8 +648,9 @@ class ControlHandlerTests(unittest.TestCase):
     def test_apply_control_start_slices(self):
         import factory_floor.server as floor
 
+        # Legacy start_slices aliases to unified start_runner.
         with mock.patch.object(
-            floor, "start_slice_runner", return_value="started pid=1 lane=slice"
+            floor, "start_runner", return_value="started pid=1 lane=forge"
         ) as start:
             with mock.patch.object(floor, "read_controls", return_value=floor._default_controls()):
                 result = floor.apply_control("start_slices")
@@ -672,7 +673,8 @@ class ControlHandlerTests(unittest.TestCase):
                         alive = floor._runner_alive(ctrl={"runner_pid": None})
         self.assertTrue(alive)
 
-    def test_start_runner_stops_slice_lane_first(self):
+    def test_start_runner_does_not_stop_for_legacy_slice_lane(self):
+        """Unified runner: no mutual-exclusion kill of a prior slice lane."""
         import factory_floor.server as floor
 
         fake = mock.Mock(pid=777, poll=mock.Mock(return_value=None))
@@ -684,13 +686,12 @@ class ControlHandlerTests(unittest.TestCase):
                 with mock.patch.object(floor.subprocess, "Popen", return_value=fake):
                     with mock.patch.object(floor, "read_controls", return_value=ctrl):
                         with mock.patch.object(floor, "write_controls"):
-                            with mock.patch.object(
-                                floor, "_runner_alive", side_effect=[True, False]
-                            ):
+                            with mock.patch.object(floor, "_runner_alive", return_value=False):
                                 with mock.patch("builtins.open", mock.mock_open()):
                                     msg = floor.start_runner()
-        stop.assert_called_once()
+        stop.assert_not_called()
         self.assertIn("started", msg)
+        self.assertIn("lane=forge", msg)
         floor._runner_proc = None
 
     def test_board_snapshot_lane_fields(self):
@@ -745,10 +746,13 @@ class ControlHandlerTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            with mock.patch.object(floor, "REPO_ROOT", root):
-                with mock.patch.object(floor, "_runner_alive", return_value=False):
-                    with mock.patch.object(floor, "maybe_restart_orphan_runner", return_value=None):
-                        snap = floor.board_snapshot()
+            with mock.patch.dict(os.environ, {"PODWASH_FLOOR_SKIP_CI": "1"}):
+                with mock.patch.object(floor, "REPO_ROOT", root):
+                    with mock.patch.object(floor, "_runner_alive", return_value=False):
+                        with mock.patch.object(
+                            floor, "maybe_restart_orphan_runner", return_value=None
+                        ):
+                            snap = floor.board_snapshot()
         by_task = {t["id"]: t for t in snap["tasks"]}
         self.assertEqual(by_task["020"]["lane"], "task")
         self.assertTrue(by_task["020"]["runnable"])
@@ -757,8 +761,9 @@ class ControlHandlerTests(unittest.TestCase):
         self.assertEqual(len(snap["slices"]), 1)
         sl = snap["slices"][0]
         self.assertEqual(sl["lane"], "slice")
-        self.assertFalse(sl["runnable"])
-        self.assertIn("Start slices", floor.INDEX_HTML)
+        self.assertTrue(sl["runnable"])
+        self.assertIn("Start Forge", floor.INDEX_HTML)
+        self.assertNotIn("Start slices", floor.INDEX_HTML)
         self.assertIn("lane-slice", floor.INDEX_HTML)
 
     def test_requeue_applies_immediately(self):

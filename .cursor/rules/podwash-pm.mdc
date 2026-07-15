@@ -17,7 +17,7 @@ alwaysApply: false
 - **Deliverables** — concrete files, modules, or fixtures.
 - **Automated acceptance criteria** — every item assertable by XCTest or `scripts/verify.sh` (use `[ ]` checklist). **Thresholds must be numeric** (e.g. "RMS < 0.01", "±0.25 s"), never "approximately" or "reasonable".
 - **Out-of-scope** — explicit list to prevent creep.
-- **Verification commands** — reference `scripts/verify.sh` (optionally with `-only-testing:` for the inner loop); Done always requires the full suite.
+- **Verification commands** — reference `scripts/verify.sh` (optionally with `-only-testing:` for the inner loop → Implemented); ship-gate **Done** requires the full suite (`tier=3 filtered=0`).
 - **Verification mapping** — AC# → test file → test method table in the slice file (QA fills methods; PM ensures AC are mappable).
 - **Depends on / parallelizable** — per kanban order in workflow doc.
 

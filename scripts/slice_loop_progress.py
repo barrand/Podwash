@@ -538,9 +538,17 @@ def enrich_build_failures(
 
 
 def verify_is_green(v: dict[str, str] | None) -> bool:
+    """True when exit/failed/skipped are all zero (any tier — surgical OK)."""
     if not v:
         return False
     return v.get("exit") == "0" and v.get("failed") == "0" and v.get("skipped") == "0"
+
+
+def verify_is_ship_green(v: dict[str, str] | None) -> bool:
+    """Ship-gate green: verify_is_green AND tier=3 AND filtered=0."""
+    from forge_work import verify_is_ship_green as _ship
+
+    return _ship(v)
 
 
 def _result_blob(result: Any) -> str:
@@ -1435,10 +1443,11 @@ def assess_slice_gates(slice_file: str, repo_root: str) -> dict[str, Any]:
     story_done = _story_done(text)
     implement_done = _implement_artifacts_exist(text, repo_root) or status_l in (
         "verify",
+        "implemented",
         "done",
     )
     verify_done = green
-    commit_done = status_l == "done" and green
+    commit_done = status_l in ("done", "implemented") and green
 
     gates: list[dict[str, Any]] = []
 
