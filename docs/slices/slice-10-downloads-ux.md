@@ -15,7 +15,7 @@ Extends Slice 06/09 episode rows (`slice-06-ux.md`, `slice-09-ux.md`):
    - Accessory layout: horizontal stack `[ downloadButton_<index> | episodeCleaningToggle_<index> ]`, trailing-aligned
    - **Download progress** — inline below the title/date block (same vertical band as `analysisProgress`), visible only while a download is in flight for that row
 
-**Affordance contract:** One discrete button per row toggles download ↔ delete. No separate delete control. Icon may change (e.g. arrow-down-circle vs trash), but UI tests key off `accessibilityValue`, not icon identity.
+**Affordance contract:** One discrete button per row toggles download ↔ delete. No separate delete control. Icons differ by state: `arrow.down.circle` with accent tint when not downloaded; `trash` (or `trash.fill`) with **system red** tint when downloaded. UI tests key off `accessibilityValue`, not icon identity.
 
 **Coexistence with analysis UI:** Download progress and analysis progress are independent. Both may be visible on the same row if both pipelines run (out of scope for Slice 10 UI tests; layout must not hide either indicator).
 

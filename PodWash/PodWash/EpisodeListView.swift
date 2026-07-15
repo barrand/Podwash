@@ -759,12 +759,12 @@ final class EpisodeTableViewCell: UITableViewCell {
             value = "downloaded"
             label = "Delete download"
             hint = "Removes downloaded audio from this device. Tap to delete."
-            symbolName = "trash.circle"
+            symbolName = "trash"
             isEnabled = true
         }
 
         downloadButton.setImage(UIImage(systemName: symbolName), for: .normal)
-        downloadButton.tintColor = state == .failed ? .systemRed : .tintColor
+        downloadButton.tintColor = (state == .failed || state == .downloaded) ? .systemRed : .tintColor
         downloadButton.isEnabled = isEnabled
         downloadButton.isAccessibilityElement = true
         downloadButton.accessibilityTraits = .button

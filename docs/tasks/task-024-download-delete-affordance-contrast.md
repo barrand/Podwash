@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 024 |
 | **Title** | Distinguish download vs delete affordances |
-| **Status** | Queued |
+| **Status** | In Progress |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/EpisodeListView.swift`, `PodWash/PodWashTests/` (download affordance layout/unit tests), `docs/slices/slice-10-downloads-ux.md` (icon/tint note only) |
@@ -55,5 +55,5 @@ Tweaks only — named existing assertions the human approved changing at intake.
 > Loop writes `VERIFY RESULT:` here. For tasks, `tier=2` and `filtered=1` are valid for Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=3 passed=3 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260715-165028.xcresult tier=2 class=tests
 ```

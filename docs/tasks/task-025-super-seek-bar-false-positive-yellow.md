@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 025 |
 | **Title** | Super seek bar yellow bands do not match real ads (segmenter false positives) |
-| **Status** | In Progress |
+| **Status** | Implemented |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/HeuristicContentSegmenter.swift`, `PodWash/PodWash/AnalysisTimelineModel.swift`, `PodWash/PodWashTests/Fixtures/segmentation/`, `PodWash/PodWashTests/SegmentationSpikeTests.swift`, `PodWash/PodWashTests/AnalysisTimelineModelTests.swift` |
