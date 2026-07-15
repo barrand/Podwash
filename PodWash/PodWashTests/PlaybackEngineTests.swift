@@ -74,6 +74,32 @@ final class PlaybackEngineTests: XCTestCase {
         return tempURL
     }
 
+    /// Slice 04 sine fixture — host-audible if `AVPlayer` is not muted under XCTest (task-017).
+    private func sineFixtureURL(file: StaticString = #filePath, line: UInt = #line) -> URL {
+        let bundle = Bundle(for: type(of: self))
+        guard let bundledURL = bundle.url(
+            forResource: "sine-300hz-5s",
+            withExtension: "wav",
+            subdirectory: "Fixtures/audio"
+        ) ?? bundle.url(forResource: "sine-300hz-5s", withExtension: "wav") else {
+            XCTFail("Missing sine-300hz-5s.wav", file: file, line: line)
+            return URL(fileURLWithPath: "/dev/null")
+        }
+
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("podwash-engine-muted-\(UUID().uuidString)-sine-300hz-5s.wav")
+        do {
+            try FileManager.default.copyItem(at: bundledURL, to: tempURL)
+        } catch {
+            XCTFail("Could not copy sine fixture: \(error)", file: file, line: line)
+            return bundledURL
+        }
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: tempURL)
+        }
+        return tempURL
+    }
+
     func testPlayReachesPlayingViaKVOExpectation() throws {
         let url = fixtureURL()
         let engine = PlaybackEngine(
@@ -158,6 +184,47 @@ final class PlaybackEngineTests: XCTestCase {
         let engine = PlaybackEngine(url: source, title: "MP3 remap", artist: "PodWash QA")
         let assetURL = (engine.avPlayer.currentItem?.asset as? AVURLAsset)?.url
         XCTAssertEqual(assetURL?.pathExtension.lowercased(), "mp3")
+    }
+
+    // MARK: - Task-017 AC1–2: episode AVPlayer muted under XCTest
+
+    func testPlayerMutedUnderXCTest() throws {
+        XCTAssertNotNil(
+            ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"],
+            "AC requires XCTest host environment (XCTestConfigurationFilePath)"
+        )
+
+        let url = sineFixtureURL()
+        let engine = PlaybackEngine(
+            url: url,
+            title: "Sine 300 Hz",
+            artist: "PodWash QA"
+        )
+
+        XCTAssertTrue(
+            engine.avPlayer.isMuted,
+            "AVPlayer.isMuted must be true at construction under XCTest"
+        )
+
+        let playingExpectation = expectation(description: "timeControlStatus reaches playing")
+        let observation = engine.avPlayer.observe(\.timeControlStatus, options: [.new]) { player, _ in
+            if player.timeControlStatus == .playing {
+                playingExpectation.fulfill()
+            }
+        }
+        addTeardownBlock { [engine] in
+            engine.pause()
+            observation.invalidate()
+        }
+
+        engine.play()
+        wait(for: [playingExpectation], timeout: 5)
+        XCTAssertEqual(engine.avPlayer.timeControlStatus, .playing)
+
+        XCTAssertTrue(
+            engine.avPlayer.isMuted,
+            "AVPlayer.isMuted must remain true after play() under XCTest"
+        )
     }
 
     func testUITestTargetParallelizationDisabledInScheme() throws {
