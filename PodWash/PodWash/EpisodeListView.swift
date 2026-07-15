@@ -18,6 +18,7 @@ struct EpisodeListView: View {
     var transcriptExists: ((String) -> Bool)? = nil
     var onViewTranscript: ((String) -> Void)? = nil
     var transcriptAffordanceGeneration: Int = 0
+    var cleaningSummary: ((String) -> EpisodeCleaningSummary?)? = nil
 
     var body: some View {
         // Observe generation so representable refreshes when analysis UI changes.
@@ -32,7 +33,8 @@ struct EpisodeListView: View {
             onPlayEpisode: onPlayEpisode,
             transcriptExists: transcriptExists,
             onViewTranscript: onViewTranscript,
-            transcriptAffordanceGeneration: transcriptAffordanceGeneration
+            transcriptAffordanceGeneration: transcriptAffordanceGeneration,
+            cleaningSummary: cleaningSummary
         )
         .background(BrandTheme.surface)
     }
@@ -49,6 +51,7 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
     var onViewTranscript: ((String) -> Void)?
     /// Explicit input so SwiftUI always calls `updateUIViewController` after backfill.
     var transcriptAffordanceGeneration: Int
+    var cleaningSummary: ((String) -> EpisodeCleaningSummary?)?
 
     func makeUIViewController(context: Context) -> EpisodeTableViewController {
         EpisodeTableViewController(
@@ -59,7 +62,8 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
             onQueueChanged: onQueueChanged,
             onPlayEpisode: onPlayEpisode,
             transcriptExists: transcriptExists,
-            onViewTranscript: onViewTranscript
+            onViewTranscript: onViewTranscript,
+            cleaningSummary: cleaningSummary
         )
     }
 
@@ -73,7 +77,8 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
             onPlayEpisode: onPlayEpisode,
             transcriptExists: transcriptExists,
             onViewTranscript: onViewTranscript,
-            transcriptAffordanceGeneration: transcriptAffordanceGeneration
+            transcriptAffordanceGeneration: transcriptAffordanceGeneration,
+            cleaningSummary: cleaningSummary
         )
     }
 }
@@ -87,6 +92,7 @@ private final class EpisodeTableViewController: UITableViewController {
     private var onPlayEpisode: ((Episode) -> Void)?
     private var transcriptExists: ((String) -> Bool)?
     private var onViewTranscript: ((String) -> Void)?
+    private var cleaningSummary: ((String) -> EpisodeCleaningSummary?)?
     private var transcriptAffordanceGeneration = 0
 
     init(
@@ -97,7 +103,8 @@ private final class EpisodeTableViewController: UITableViewController {
         onQueueChanged: @escaping () -> Void,
         onPlayEpisode: ((Episode) -> Void)?,
         transcriptExists: ((String) -> Bool)?,
-        onViewTranscript: ((String) -> Void)?
+        onViewTranscript: ((String) -> Void)?,
+        cleaningSummary: ((String) -> EpisodeCleaningSummary?)?
     ) {
         self.feed = feed
         self.analysisViewModel = analysisViewModel
@@ -107,6 +114,7 @@ private final class EpisodeTableViewController: UITableViewController {
         self.onPlayEpisode = onPlayEpisode
         self.transcriptExists = transcriptExists
         self.onViewTranscript = onViewTranscript
+        self.cleaningSummary = cleaningSummary
         super.init(style: .plain)
         analysisViewModel.onAnalyzingEpisodeIDChanged = { [weak self] in
             guard let self else { return }
@@ -151,7 +159,8 @@ private final class EpisodeTableViewController: UITableViewController {
         onPlayEpisode: ((Episode) -> Void)?,
         transcriptExists: ((String) -> Bool)?,
         onViewTranscript: ((String) -> Void)?,
-        transcriptAffordanceGeneration: Int = 0
+        transcriptAffordanceGeneration: Int = 0,
+        cleaningSummary: ((String) -> EpisodeCleaningSummary?)?
     ) {
         let feedChanged = self.feed != feed
         self.feed = feed
@@ -163,6 +172,7 @@ private final class EpisodeTableViewController: UITableViewController {
         self.transcriptExists = transcriptExists
         self.onViewTranscript = onViewTranscript
         self.transcriptAffordanceGeneration = transcriptAffordanceGeneration
+        self.cleaningSummary = cleaningSummary
         analysisViewModel.onAnalyzingEpisodeIDChanged = { [weak self] in
             guard let self else { return }
             self.refreshAnalysisDisplayOnVisibleRows()
@@ -248,7 +258,8 @@ private final class EpisodeTableViewController: UITableViewController {
             let episode = feed.episodes[indexPath.row]
             cell.applyAnalysisDisplay(
                 analysisViewModel: analysisViewModel,
-                episodeID: episode.id
+                episodeID: episode.id,
+                cleaningSummary: cleaningSummary
             )
         }
         layoutEpisodeTableIfReady()
@@ -358,6 +369,7 @@ private final class EpisodeTableViewController: UITableViewController {
             downloadManager: downloadManager,
             isQueued: isQueued,
             showsTranscript: showsTranscript,
+            cleaningSummary: cleaningSummary,
             onDownload: downloadButtonHandler(for: indexPath),
             onQueueAdd: queueAddHandler(for: indexPath),
             onViewTranscript: showsTranscript ? viewTranscriptHandler(for: indexPath) : nil,
@@ -377,6 +389,7 @@ final class EpisodeTableViewCell: UITableViewCell {
     private let dateLabel = UILabel()
     private let timelineBar = AnalysisTimelineBarView()
     private let progressAccessibilityHost = UIView()
+    private let cleaningSummaryLabel = UILabel()
     private let downloadProgressView = UIActivityIndicatorView(style: .medium)
     private let downloadProgressLabel = UILabel()
     private let downloadProgressStack = UIStackView()
@@ -456,7 +469,19 @@ final class EpisodeTableViewCell: UITableViewCell {
         textStack.addArrangedSubview(titleLabel)
         textStack.addArrangedSubview(dateLabel)
         textStack.addArrangedSubview(progressAccessibilityHost)
+        textStack.addArrangedSubview(cleaningSummaryLabel)
         textStack.addArrangedSubview(downloadProgressAccessibilityHost)
+
+        cleaningSummaryLabel.font = .preferredFont(forTextStyle: .caption1)
+        cleaningSummaryLabel.textColor = .secondaryLabel
+        cleaningSummaryLabel.numberOfLines = 1
+        cleaningSummaryLabel.isHidden = true
+        cleaningSummaryLabel.isAccessibilityElement = false
+        cleaningSummaryLabel.isUserInteractionEnabled = false
+        cleaningSummaryLabel.accessibilityTraits = .staticText
+        cleaningSummaryLabel.accessibilityLabel = "Cleaning summary"
+        cleaningSummaryLabel.accessibilityHint =
+            "Shows how many profanity and ad sections were cleaned and total ad time skipped."
 
         downloadProgressLabel.font = .preferredFont(forTextStyle: .caption1)
         downloadProgressLabel.text = "Downloading…"
@@ -597,6 +622,7 @@ final class EpisodeTableViewCell: UITableViewCell {
         // Baseline AX children so buttons stay queryable before any timeline host is published.
         updateAccessibilityElements(
             showsAnalysisTimeline: false,
+            showsCleaningSummary: false,
             showsDownloadProgress: false
         )
     }
@@ -633,6 +659,7 @@ final class EpisodeTableViewCell: UITableViewCell {
         downloadManager: DownloadManager,
         isQueued: Bool,
         showsTranscript: Bool,
+        cleaningSummary: ((String) -> EpisodeCleaningSummary?)?,
         onDownload: @escaping () -> Void,
         onQueueAdd: @escaping () -> Void,
         onViewTranscript: (() -> Void)?,
@@ -650,7 +677,11 @@ final class EpisodeTableViewCell: UITableViewCell {
         downloadButton.accessibilityIdentifier = "downloadButton_\(index)"
         applyQueueDisplay(isQueued: isQueued, index: index)
         applyTranscriptDisplay(showsTranscript: showsTranscript)
-        applyAnalysisDisplay(analysisViewModel: analysisViewModel, episodeID: episode.id)
+        applyAnalysisDisplay(
+            analysisViewModel: analysisViewModel,
+            episodeID: episode.id,
+            cleaningSummary: cleaningSummary
+        )
         applyDownloadDisplay(
             downloadManager: downloadManager,
             episodeID: episode.id,
@@ -786,6 +817,7 @@ final class EpisodeTableViewCell: UITableViewCell {
 
         updateAccessibilityElements(
             showsAnalysisTimeline: !progressAccessibilityHost.isHidden,
+            showsCleaningSummary: !cleaningSummaryLabel.isHidden,
             showsDownloadProgress: showsProgress
         )
 
@@ -795,7 +827,11 @@ final class EpisodeTableViewCell: UITableViewCell {
         // update. Extra posts during the analyzing window race XCTest idle.
     }
 
-    func applyAnalysisDisplay(analysisViewModel: AnalysisUIViewModel, episodeID: String) {
+    func applyAnalysisDisplay(
+        analysisViewModel: AnalysisUIViewModel,
+        episodeID: String,
+        cleaningSummary: ((String) -> EpisodeCleaningSummary?)?
+    ) {
         let showsTimeline = analysisViewModel.episodeRowShowsTimeline(episodeID: episodeID)
 
         progressAccessibilityHost.isHidden = !showsTimeline
@@ -821,10 +857,28 @@ final class EpisodeTableViewCell: UITableViewCell {
             progressAccessibilityHost.accessibilityValue = nil
         }
 
+        // Complete gate: summary only when not in-flight and cache hit (ADR-025 §5).
+        let summary = showsTimeline ? nil : cleaningSummary?(episodeID)
+        let showsSummary = summary != nil
+        cleaningSummaryLabel.isHidden = !showsSummary
+        cleaningSummaryLabel.isAccessibilityElement = showsSummary
+        cleaningSummaryLabel.accessibilityIdentifier = showsSummary ? "episode.cleaningSummary" : nil
+        if let summary {
+            cleaningSummaryLabel.text = CleaningSummaryModel.visibleLabel(from: summary)
+            cleaningSummaryLabel.accessibilityLabel = "Cleaning summary"
+            cleaningSummaryLabel.accessibilityHint =
+                "Shows how many profanity and ad sections were cleaned and total ad time skipped."
+            cleaningSummaryLabel.accessibilityValue = CleaningSummaryModel.accessibilityValue(from: summary)
+        } else {
+            cleaningSummaryLabel.text = nil
+            cleaningSummaryLabel.accessibilityValue = nil
+        }
+
         // Explicit AX children so UITableViewCell exposes timeline alongside the
         // accessory controls (grouped cell AX can otherwise omit nested hosts).
         updateAccessibilityElements(
             showsAnalysisTimeline: showsTimeline,
+            showsCleaningSummary: showsSummary,
             showsDownloadProgress: !downloadProgressAccessibilityHost.isHidden
         )
 
@@ -834,6 +888,7 @@ final class EpisodeTableViewCell: UITableViewCell {
 
     private func updateAccessibilityElements(
         showsAnalysisTimeline: Bool,
+        showsCleaningSummary: Bool,
         showsDownloadProgress: Bool
     ) {
         // Always keep accessories queryable/tappable. Library play uses `textStack`
@@ -861,6 +916,9 @@ final class EpisodeTableViewCell: UITableViewCell {
         }
         if showsAnalysisTimeline {
             axChildren.append(progressAccessibilityHost)
+        }
+        if showsCleaningSummary {
+            axChildren.append(cleaningSummaryLabel)
         }
         // Publish AX children on the *cell* (not contentView). After Slice 22 moved
         // accessories into contentView, assigning only timeline to
@@ -962,6 +1020,7 @@ enum EpisodeTableViewCellLayoutTesting {
             downloadManager: downloadManager,
             isQueued: isQueued,
             showsTranscript: false,
+            cleaningSummary: nil,
             onDownload: {},
             onQueueAdd: {},
             onViewTranscript: nil

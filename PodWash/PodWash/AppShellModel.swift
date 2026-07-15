@@ -507,6 +507,17 @@ final class AppShellModel {
         transcriptCache.exists(episodeID: episodeID)
     }
 
+    /// Channel-row cleaning summary from IntervalCache hit (ADR-025). Nil on miss.
+    func cleaningSummary(for episodeID: String) -> EpisodeCleaningSummary? {
+        guard let intervals = intervalCache.load(
+            episodeID: episodeID,
+            targetWords: settingsStore.activeNormalizedTargetSet()
+        ) else {
+            return nil
+        }
+        return CleaningSummaryModel.summary(from: intervals)
+    }
+
     /// Whether the now-playing episode has a cached transcript (full-player affordance).
     var nowPlayingTranscriptExists: Bool {
         // Observe generation so the full-player overlay refreshes after backfill

@@ -61,13 +61,16 @@ struct RootView: View {
                     ProgressView()
                         .accessibilityIdentifier("playback.loading")
                 }
-            } else if FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch {
+            } else if FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled || FixtureCleaningSummary.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch {
                 if let fixtureFeedViewModel, let fixtureAnalysisViewModel, let fixtureDownloadManager, let queueStore {
                     PodcastDetailView(
                         viewModel: fixtureFeedViewModel,
                         analysisViewModel: fixtureAnalysisViewModel,
                         downloadManager: fixtureDownloadManager,
-                        queueStore: queueStore
+                        queueStore: queueStore,
+                        cleaningSummary: { episodeID in
+                            Self.fixtureCleaningSummary(for: episodeID)
+                        }
                     )
                 } else {
                     ProgressView()
@@ -158,10 +161,12 @@ struct RootView: View {
     }
 
     private func loadFixtureFeedIfNeeded() async {
-        guard FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch else { return }
+        guard FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled || FixtureCleaningSummary.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch else { return }
         guard fixtureFeedViewModel == nil else { return }
 
         FixtureDownload.clearDownloadsDirectoryIfNeeded()
+        // Shared Application Support — clear leftover intervals so Feed-only AC4 stays a miss.
+        FixtureCleaningSummary.clearIntervalCache()
 
         let context = persistence.viewContext
         let store = PodcastStore(context: context)
@@ -201,10 +206,30 @@ struct RootView: View {
             podcastStore: store
         )
 
+        if FixtureCleaningSummary.isEnabled {
+            try? FixtureCleaningSummary.prepare(
+                podcastStore: store,
+                settingsStore: SettingsStore()
+            )
+        }
+
         fixtureFeedViewModel = feedViewModel
         fixtureAnalysisViewModel = analysisViewModel
         fixtureDownloadManager = downloadManager
         queueStore = queue
+    }
+
+    /// Cache lookup for fixture PodcastDetailView (same fingerprint as production).
+    private static func fixtureCleaningSummary(for episodeID: String) -> EpisodeCleaningSummary? {
+        let settingsStore = SettingsStore()
+        let intervalCache = IntervalCache.applicationSupport
+        guard let intervals = intervalCache.load(
+            episodeID: episodeID,
+            targetWords: settingsStore.activeNormalizedTargetSet()
+        ) else {
+            return nil
+        }
+        return CleaningSummaryModel.summary(from: intervals)
     }
 
     private func loadFixtureDiscoverIfNeeded() {
@@ -223,7 +248,7 @@ struct RootView: View {
               !FixtureSettings.isEnabled,
               !FixtureBranding.isEnabled,
               !FixtureAudio.isEnabled,
-              !(FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch),
+              !(FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled || FixtureCleaningSummary.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch),
               !FixtureDiscover.isEnabled
         else { return }
         guard appShellModel == nil else { return }

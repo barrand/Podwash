@@ -14,6 +14,7 @@ enum FixtureFeed {
         ProcessInfo.processInfo.arguments.contains(launchArgument)
             || FixtureAnalysis.isEnabled
             || FixtureAnalysisTimeline.isEnabled
+            || FixtureCleaningSummary.isEnabled
             || FixtureQueue.isEnabled
             || FixtureQueue.shouldPreserveOnLaunch
     }

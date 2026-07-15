@@ -327,7 +327,8 @@ private struct LibraryPodcastDetailView: View {
             },
             transcriptExists: { model.transcriptExists(for: $0) },
             onViewTranscript: { model.presentTranscript(for: $0) },
-            transcriptAffordanceGeneration: model.transcriptAffordanceGeneration
+            transcriptAffordanceGeneration: model.transcriptAffordanceGeneration,
+            cleaningSummary: { model.cleaningSummary(for: $0) }
         )
         .navigationTitle(summary.title)
         .navigationBarTitleDisplayMode(.inline)

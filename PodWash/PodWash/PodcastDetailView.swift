@@ -18,6 +18,8 @@ struct PodcastDetailView: View {
     var transcriptExists: ((String) -> Bool)? = nil
     var onViewTranscript: ((String) -> Void)? = nil
     var transcriptAffordanceGeneration: Int = 0
+    /// Slice 29 — cleaning summary from IntervalCache (nil = miss / omit).
+    var cleaningSummary: ((String) -> EpisodeCleaningSummary?)? = nil
     @State private var queueRevision = 0
     /// Landscape / short windows (~402pt) — keep episodeList tall enough to hit cells.
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -70,7 +72,8 @@ struct PodcastDetailView: View {
                 onPlayEpisode: onPlayEpisode,
                 transcriptExists: transcriptExists,
                 onViewTranscript: onViewTranscript,
-                transcriptAffordanceGeneration: transcriptAffordanceGeneration
+                transcriptAffordanceGeneration: transcriptAffordanceGeneration,
+                cleaningSummary: cleaningSummary
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             // Prefer list height over header intrinsic size when the window is short
