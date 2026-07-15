@@ -83,18 +83,19 @@ final class AnalysisProgressUITests: XCTestCase {
         app.launchArguments.append(contentsOf: ["-UITestFixtureFeed", "-UITestFixtureAnalysis"])
         app.launch()
 
-        let episodeList = app.descendants(matching: .any)["episodeList"]
-        XCTAssertTrue(episodeList.waitForExistence(timeout: 10))
-
-        let episodeCell = app.cells["episodeCell_0"]
-        XCTAssertTrue(episodeCell.waitForExistence(timeout: 5))
-
-        // Channel cleaning defaults on; -UITestFixtureAnalysis auto-starts analysis (no toggle).
+        // Register immediately after launch so the auto-started analyzing window
+        // (task-023: no channel toggle) is observed during episodeList settle.
         let timelineAppeared = expectation(
             for: Self.analysisTimelineVisiblePredicate,
             evaluatedWith: app,
             handler: nil
         )
+
+        let episodeList = app.descendants(matching: .any)["episodeList"]
+        XCTAssertTrue(episodeList.waitForExistence(timeout: 10))
+
+        let episodeCell = app.cells["episodeCell_0"]
+        XCTAssertTrue(episodeCell.waitForExistence(timeout: 5))
 
         wait(for: [timelineAppeared], timeout: 5)
 
