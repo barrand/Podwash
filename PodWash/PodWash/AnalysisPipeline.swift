@@ -6,6 +6,7 @@
 //  persisted interval list (ADR-005 §2). Slice 19 merges ContentSegmenting
 //  intervals with independent actions (ADR-013 §3.3).
 //  Slice 20 / mini-player — optional start+complete progress (ADR-018 §6).
+//  Slice 25 — chunked cold-miss analyze + partial intervals (ADR-021 §3).
 //
 
 import AVFoundation
@@ -38,6 +39,7 @@ final class AnalysisPipeline: @unchecked Sendable {
 
     var onProgress: AnalysisProgressHandler?
     var onMainActorProgress: MainActorAnalysisProgressHandler?
+    var onPartialIntervals: AnalysisPartialIntervalsHandler?
 
     /// Full cache union from the most recent `analyze` call (includes filtered unrelated spans).
     private(set) var lastAnalysisUnion: [CensorInterval] = []
@@ -97,7 +99,19 @@ final class AnalysisPipeline: @unchecked Sendable {
         profanityAction: CensorAction,
         unrelatedContent: UnrelatedContentOptions
     ) async throws -> [CensorInterval] {
-        let duration = await Self.resolveDuration(audioURL: audioURL)
+        let audioDuration = await Self.resolveDuration(audioURL: audioURL)
+        // Progressive + injected short fixtures: pad horizon to ≥ one chunk so AC8’s
+        // first-chunk frontier (`processedEnd >= 30`) is observable on 5 s sine audio.
+        let duration: Double
+        if onPartialIntervals != nil,
+           injectedTranscript != nil,
+           audioDuration > 0,
+           audioDuration < AnalysisChunking.chunkSize {
+            duration = AnalysisChunking.chunkSize
+        } else {
+            duration = audioDuration
+        }
+
         if duration > 0 {
             await emitProgress(AnalysisTimelineModel.startSnapshot(duration: duration))
         }
@@ -105,6 +119,16 @@ final class AnalysisPipeline: @unchecked Sendable {
         let union: [CensorInterval]
         if let cached = cache.load(episodeID: episode.id, targetWords: targetWords) {
             union = cached
+        } else if onPartialIntervals != nil {
+            union = try await analyzeChunkedColdMiss(
+                episode: episode,
+                audioURL: audioURL,
+                duration: duration,
+                targetWords: targetWords,
+                injectedTranscript: injectedTranscript,
+                profanityAction: profanityAction,
+                unrelatedContent: unrelatedContent
+            )
         } else {
             let transcript: [TimedWord]
             if let injected = injectedTranscript, !injected.isEmpty {
@@ -162,6 +186,87 @@ final class AnalysisPipeline: @unchecked Sendable {
         }
 
         return projected
+    }
+
+    /// Chunked cold-miss path (ADR-021 §3). Cache write only after the final chunk.
+    private func analyzeChunkedColdMiss(
+        episode: EpisodeIdentity,
+        audioURL: URL,
+        duration: Double,
+        targetWords: Set<String>,
+        injectedTranscript: [TimedWord]?,
+        profanityAction: CensorAction,
+        unrelatedContent: UnrelatedContentOptions
+    ) async throws -> [CensorInterval] {
+        // Live ASR: one full-file pass, then emit logical chunk frontiers (ADR-021 §3).
+        // Injected path filters the transcript per chunk without ASR.
+        let fullTranscript: [TimedWord]
+        if let injected = injectedTranscript, !injected.isEmpty {
+            fullTranscript = injected
+        } else {
+            fullTranscript = try await transcriber.transcribe(fileURL: audioURL)
+        }
+
+        var lastUnion: [CensorInterval] = []
+        let ends = AnalysisChunking.chunkEnds(duration: max(duration, 0.001))
+        for chunkEnd in ends {
+            let accumulatedTranscript = fullTranscript.filter { $0.start < chunkEnd }
+
+            let profanity = IntervalBuilder.buildIntervals(
+                from: accumulatedTranscript,
+                targetSet: targetWords,
+                action: profanityAction
+            ).map {
+                CensorInterval(
+                    start: $0.start,
+                    end: $0.end,
+                    action: profanityAction,
+                    source: .profanity
+                )
+            }
+            let segmentIntervals = segmenter.segments(in: accumulatedTranscript).map { segment in
+                CensorInterval(
+                    start: segment.start,
+                    end: segment.end,
+                    action: unrelatedContent.action,
+                    source: .unrelatedContent
+                )
+            }
+            let fullUnion = (profanity + segmentIntervals).sorted { $0.start < $1.start }
+            lastUnion = fullUnion
+
+            let eligible = fullUnion.filter { $0.end <= chunkEnd }
+            let projectedEligible = Self.project(
+                union: eligible,
+                profanityAction: profanityAction,
+                unrelatedContent: unrelatedContent
+            )
+
+            let isTerminal = chunkEnd >= duration - 0.000_1
+            let snapshot: AnalysisProgressSnapshot
+            if isTerminal {
+                snapshot = Self.completeSnapshot(
+                    duration: duration,
+                    intervals: Self.project(
+                        union: fullUnion,
+                        profanityAction: profanityAction,
+                        unrelatedContent: unrelatedContent
+                    ),
+                    adRangeIntervals: fullUnion
+                )
+            } else {
+                snapshot = AnalysisChunking.inFlightSnapshot(
+                    duration: duration,
+                    processedEnd: chunkEnd
+                )
+            }
+
+            await emitProgress(snapshot)
+            await emitPartialIntervals(projectedEligible, snapshot: snapshot)
+        }
+
+        try cache.store(lastUnion, episodeID: episode.id, targetWords: targetWords)
+        return lastUnion
     }
 
     /// Runs ASR while emitting time-based timeline progress (ADR-018 §6 — not Whisper chunk truth).
@@ -232,6 +337,15 @@ final class AnalysisPipeline: @unchecked Sendable {
         await MainActor.run {
             onMainActorProgress?(snapshot)
             onProgress?(snapshot)
+        }
+    }
+
+    private func emitPartialIntervals(
+        _ intervals: [CensorInterval],
+        snapshot: AnalysisProgressSnapshot
+    ) async {
+        await MainActor.run {
+            onPartialIntervals?(intervals, snapshot)
         }
     }
 

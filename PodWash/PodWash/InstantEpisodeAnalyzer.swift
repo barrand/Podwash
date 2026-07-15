@@ -12,6 +12,7 @@ import Foundation
 final class InstantEpisodeAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
     var onProgress: AnalysisProgressHandler?
     var onMainActorProgress: MainActorAnalysisProgressHandler?
+    var onPartialIntervals: AnalysisPartialIntervalsHandler?
 
     func analyze(
         episode: EpisodeIdentity,

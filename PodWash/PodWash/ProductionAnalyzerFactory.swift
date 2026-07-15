@@ -18,9 +18,14 @@ enum ProductionAnalyzerFactory {
         fixtureLibraryMode: Bool? = nil
     ) -> any EpisodeAnalyzing {
         let effectiveFixtureLibrary = fixtureLibraryMode
-            ?? (FixtureLibrary.isEnabled || FixtureLibrary.isEmptyEnabled)
+            ?? (FixtureLibrary.isEnabled
+                || FixtureLibrary.isEmptyEnabled
+                || FixtureProgressivePlayback.isEnabled)
 
         if effectiveFixtureLibrary {
+            if FixtureProgressivePlayback.isEnabled {
+                return FixtureProgressivePlayback.makeSteppedAnalyzer()
+            }
             if FixtureLibraryAnalysisTimeline.isEnabled {
                 return FixtureLibraryAnalysisTimeline.makeSteppedAnalyzer()
             }

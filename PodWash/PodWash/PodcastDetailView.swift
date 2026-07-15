@@ -15,6 +15,12 @@ struct PodcastDetailView: View {
     /// Slice 23 — episode row tap starts playback in the app shell (nil in exclusive fixtures).
     var onPlayEpisode: ((Episode) -> Void)? = nil
     @State private var queueRevision = 0
+    /// Landscape / short windows (~402pt) — keep episodeList tall enough to hit cells.
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
+    private var isCompactHeight: Bool {
+        verticalSizeClass == .compact
+    }
 
     var body: some View {
         return Group {
@@ -59,6 +65,10 @@ struct PodcastDetailView: View {
                 onPlayEpisode: onPlayEpisode
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Prefer list height over header intrinsic size when the window is short
+            // (UITest sims often launch landscape; without this episodeList collapses
+            // to ~0pt and episodeCell_* exists but is not hittable).
+            .layoutPriority(1)
         }
     }
 
@@ -76,11 +86,14 @@ struct PodcastDetailView: View {
     private func upNextSection(feed: PodcastFeed) -> some View {
         let ids = queueStore.queueEpisodeIDs()
         let titleByID = Dictionary(uniqueKeysWithValues: feed.episodes.map { ($0.id, $0.title) })
-        return VStack(alignment: .leading, spacing: 8) {
+        let sectionSpacing: CGFloat = isCompactHeight ? 4 : 8
+        let topPad: CGFloat = isCompactHeight ? 2 : 8
+        let emptyBottomPad: CGFloat = isCompactHeight ? 2 : 8
+        return VStack(alignment: .leading, spacing: sectionSpacing) {
             Text("Up Next")
                 .font(.headline)
                 .padding(.horizontal)
-                .padding(.top, 8)
+                .padding(.top, topPad)
 
             if ids.isEmpty {
                 Text("Nothing queued")
@@ -88,7 +101,7 @@ struct PodcastDetailView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, emptyBottomPad)
                     .accessibilityElement(children: .ignore)
                     .accessibilityIdentifier("queueEmpty")
                     .accessibilityLabel("Nothing queued")
@@ -144,10 +157,14 @@ struct PodcastDetailView: View {
     }
 
     private func podcastHeader(_ feed: PodcastFeed) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let artworkSide: CGFloat = isCompactHeight ? 48 : 72
+        let stackSpacing: CGFloat = isCompactHeight ? 6 : 12
+        let toggleSpacing: CGFloat = isCompactHeight ? 4 : 8
+        let headerPadding: CGFloat = isCompactHeight ? 8 : 16
+        return VStack(alignment: .leading, spacing: stackSpacing) {
             HStack(alignment: .top, spacing: 12) {
                 artworkView(feed.artworkURL)
-                    .frame(width: 72, height: 72)
+                    .frame(width: artworkSide, height: artworkSide)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -156,7 +173,7 @@ struct PodcastDetailView: View {
                         .fontWeight(.semibold)
                         .accessibilityHidden(true)
 
-                    if let description = feed.description {
+                    if let description = feed.description, !isCompactHeight {
                         Text(description)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -172,7 +189,7 @@ struct PodcastDetailView: View {
                 Spacer(minLength: 0)
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: toggleSpacing) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         // Visible caption must stay in the a11y tree so UI tests can
@@ -220,7 +237,7 @@ struct PodcastDetailView: View {
                 .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
             }
         }
-        .padding()
+        .padding(headerPadding)
     }
 
     private var channelCleaningBinding: Binding<Bool> {
@@ -257,10 +274,11 @@ struct PodcastDetailView: View {
                 .accessibilityLabel("Podcast artwork")
                 .accessibilityValue(Self.artworkAccessibilityValue(for: phase))
             }
-            .frame(width: 72, height: 72)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
         } else {
             detailArtworkPlaceholderIcon
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityElement(children: .ignore)
                 .accessibilityIdentifier("podcastArtwork")
                 .accessibilityLabel("Podcast artwork")

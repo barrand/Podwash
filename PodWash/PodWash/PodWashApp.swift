@@ -33,7 +33,7 @@ struct PodWashApp: App {
             persistence = PersistenceController.inMemory(
                 identifier: "uitest-library-empty-\(UUID().uuidString)"
             )
-        } else if FixtureLibrary.isEnabled {
+        } else if FixtureLibrary.isEnabled || FixtureProgressivePlayback.isEnabled {
             persistence = PersistenceController.inMemory(
                 identifier: "uitest-library-\(UUID().uuidString)"
             )

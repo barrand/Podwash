@@ -61,7 +61,9 @@ final class AppShellModel {
     /// Effective Library-fixture gate used by `playEpisode` and default analyzer choice.
     var isFixtureLibraryMode: Bool {
         fixtureLibraryModeForTesting
-            ?? (FixtureLibrary.isEnabled || FixtureLibrary.isEmptyEnabled)
+            ?? (FixtureLibrary.isEnabled
+                || FixtureLibrary.isEmptyEnabled
+                || FixtureProgressivePlayback.isEnabled)
     }
 
     private(set) var engine: PlaybackEngine?
@@ -144,6 +146,39 @@ final class AppShellModel {
     /// Segment colors for the full-player timeline, matching the mini-player contract.
     var fullPlayerTimelineColors: [TimelineSegmentColor]? {
         miniPlayerTimelineColors
+    }
+
+    /// Seek frontier for the super seek bar (processedEnd while in flight; duration when complete / cleaning off).
+    var superSeekProcessedEnd: Double {
+        guard let snapshot = playbackAnalysisSnapshot else {
+            return engine?.duration ?? 0
+        }
+        if snapshot.processedEnd >= snapshot.episodeDuration {
+            return snapshot.episodeDuration
+        }
+        return snapshot.processedEnd
+    }
+
+    /// Episode duration for seek bar math — prefers analysis snapshot (120 s fixture) over asset.
+    var superSeekDuration: Double {
+        if let snapshot = playbackAnalysisSnapshot, snapshot.episodeDuration > 0 {
+            return snapshot.episodeDuration
+        }
+        return engine?.duration ?? 0
+    }
+
+    /// Clamped seek used by full-player super seek bar and ±15 transport.
+    func seekClampedToProcessedFrontier(to seconds: Double) {
+        let frontier = superSeekProcessedEnd > 0
+            ? superSeekProcessedEnd
+            : (engine?.duration ?? seconds)
+        let clamped = SuperSeekBarModel.clampedSeek(requested: seconds, processedEnd: frontier)
+        engine?.seek(to: clamped)
+    }
+
+    func seekClampedToProcessedFrontier(by delta: Double) {
+        let current = engine?.avPlayer.currentTime().seconds ?? 0
+        seekClampedToProcessedFrontier(to: current + delta)
     }
 
     /// Library / detail entry: resolve audio, prepare engine + coordinators, show mini-player paused.
@@ -296,8 +331,10 @@ final class AppShellModel {
         // Leave paused so AC4's play-button tap yields "playing".
 
         // Fixture Library play skips analysis even when cleaning is on (AC8),
-        // except when the Library player-timeline UITest fixture is active.
-        if isFixtureLibraryMode, !FixtureLibraryAnalysisTimeline.isEnabled {
+        // except when a player-timeline / progressive UITest fixture is active.
+        if isFixtureLibraryMode,
+           !FixtureLibraryAnalysisTimeline.isEnabled,
+           !FixtureProgressivePlayback.isEnabled {
             PlaybackDiagnostics.info("playEpisode skip prepare — fixture library mode")
             return
         }
@@ -339,18 +376,24 @@ final class AppShellModel {
                 isPreparingPlayback = false
                 let shouldPlay = pendingPlayAfterPrepare
                 pendingPlayAfterPrepare = false
-                if shouldPlay {
+                if shouldPlay, engine?.isPlaying != true {
                     engine?.play()
                 }
             }
             do {
-                try await coordinator.preparePlayback(
+                try await coordinator.preparePlaybackProgressive(
                     episode: EpisodeIdentity(id: episode.id),
                     audioURL: audioURL,
                     targetWords: targetWords,
                     action: action,
                     unrelatedContent: unrelated,
-                    injectedTranscript: injected
+                    injectedTranscript: injected,
+                    onChunkReady: { [weak self] in
+                        guard let self else { return }
+                        guard self.pendingPlayAfterPrepare else { return }
+                        self.pendingPlayAfterPrepare = false
+                        self.engine?.play()
+                    }
                 )
                 PlaybackDiagnostics.logPreparePlaybackEnd(
                     episodeID: episode.id,
@@ -390,8 +433,12 @@ final class AppShellModel {
         if engine.isPlaying {
             engine.pause()
         } else if isPreparingPlayback {
-            pendingPlayAfterPrepare = true
-            PlaybackDiagnostics.info("miniPlayer play queued — waiting for analysis")
+            if playbackCoordinator?.canStartPlayback == true {
+                engine.play()
+            } else {
+                pendingPlayAfterPrepare = true
+                PlaybackDiagnostics.info("miniPlayer play queued — waiting for analysis")
+            }
         } else {
             engine.play()
         }
@@ -400,8 +447,12 @@ final class AppShellModel {
     /// Starts playback when allowed, or queues play until analysis finishes.
     func startPlaybackWhenReady() {
         if isPreparingPlayback {
-            pendingPlayAfterPrepare = true
-            PlaybackDiagnostics.info("playback queued — analysis in flight")
+            if playbackCoordinator?.canStartPlayback == true {
+                engine?.play()
+            } else {
+                pendingPlayAfterPrepare = true
+                PlaybackDiagnostics.info("playback queued — analysis in flight")
+            }
             return
         }
         engine?.play()
@@ -464,6 +515,9 @@ final class AppShellModel {
     }
 
     private func resolveAudioURL(for episode: Episode) -> URL? {
+        if FixtureProgressivePlayback.isEnabled {
+            return FixtureProgressivePlayback.bundledURL()
+        }
         if isFixtureLibraryMode, !FixtureDownload.isEnabled {
             return FixtureAudio.bundledURL()
         }

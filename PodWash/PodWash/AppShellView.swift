@@ -134,7 +134,11 @@ struct AppShellView: View {
                         engine: engine,
                         timelineColors: model.fullPlayerTimelineColors,
                         isPreparingPlayback: model.isPreparingPlayback,
-                        onTogglePlayPause: { model.toggleMiniPlayerPlayPause() }
+                        episodeDuration: model.superSeekDuration,
+                        processedEnd: model.superSeekProcessedEnd,
+                        onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
+                        onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) },
+                        onSeekBy: { model.seekClampedToProcessedFrontier(by: $0) }
                     )
                         .toolbar {
                             ToolbarItem(placement: .topBarTrailing) {
