@@ -116,6 +116,14 @@ make_slice "$D5" 1 Done 1 "Foundation" "None"
 make_slice "$D5" 2 Done 1 "Matching"   "Slice 01"
 assert_json "done: all slices Done" "$D5" '"action":"done"'
 
+# ---- case 5b: done (only deferred slices remain) ----------------------------
+# A deferred/post-MVP slice must not count as "lowest remaining" — that used to
+# produce a perpetual {"action":"wait","blocked_by":[]} that spun the forge loop.
+D5B="$WORK/case5b"; mkdir -p "$D5B"
+make_slice "$D5B" 13 Done  1 "Settings" "None"
+make_slice "$D5B" 17 "Deferred — **post-MVP**" 0 "StoreKit" "Slice 13"
+assert_json "done: deferred-only remainder is done, not wait" "$D5B" '"action":"done"'
+
 # ---- case 6: half-finished slice does NOT count as done --------------------
 # Status Done but verification not green -> treated as not-done, so the queue
 # surfaces slice 01 to finish rather than advancing to slice 02.
@@ -125,9 +133,9 @@ make_slice "$D6" 2 Draft 0 "Matching"   "Slice 01"
 assert_json "guard: Done-without-green does not advance to 02" "$D6" '"action":"start"' '"id":1'
 
 # ---- case 7: smoke test against the real repo ------------------------------
-# After shell insert: 15/16/20/21 wait on 22–23; lowest eligible is 18 (segmentation)
-# or 22 if 18 were blocked. Assert start + id 18.
-assert_json "smoke: real repo -> start slice 18" "$REPO_ROOT/docs/slices" '"action":"start"' '"id":18'
+# Live queue state moves, so only assert the script parses the real slices dir
+# and emits a well-formed decision (any action) without erroring.
+assert_json "smoke: real repo emits a decision" "$REPO_ROOT/docs/slices" '"action":"'
 
 # ---- summary ---------------------------------------------------------------
 echo ""

@@ -530,7 +530,11 @@ def main(argv: list[str] | None = None) -> int:
             if action == "wait":
                 if args.once:
                     return EXIT_WAIT
-                tl.wait_while_next_is_wait(decision)
+                # Poll the same unified queue this loop used, not the punch-list
+                # queue — otherwise the wait park exits instantly and re-notifies.
+                tl.wait_while_next_is_wait(
+                    decision, query=lambda: query_next_work(repo_root=REPO_ROOT)
+                )
                 continue
 
             if action != "start":

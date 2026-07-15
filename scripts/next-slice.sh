@@ -140,12 +140,15 @@ END {
     candidate=-1; lowest_nondone=-1
     for (i=1; i<=n; i++) {
         id=arr[i]
-        if (done_[id]) continue
+        # Deferred / post-MVP slices are out of the queue entirely: they are
+        # never candidates AND never count as "lowest remaining", otherwise an
+        # all-deferred remainder reports a perpetual wait with no blockers.
+        if (done_[id] || skip_[id]) continue
         if (lowest_nondone < 0) lowest_nondone=id
         ok=1
         m=split(deps[id], d, " ")
         for (k=1; k<=m; k++) if (!done_[d[k]+0]) ok=0
-        if (ok && !skip_[id]) { candidate=id; break }
+        if (ok) { candidate=id; break }
     }
 
     if (lowest_nondone < 0) { printf "done\t\t\t\t\n"; exit }

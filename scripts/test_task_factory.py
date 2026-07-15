@@ -786,6 +786,31 @@ class TestWaitKeepsRunnerAlive(unittest.TestCase):
         station = self.tl.read_station()
         self.assertEqual(station.get("phase"), "waiting")
 
+    def test_wait_while_next_is_wait_polls_custom_query_and_notifies_once(self) -> None:
+        """Forge loop passes its unified queue — the park must poll THAT queue,
+        stay parked while it says wait, and fire exactly one notification
+        (regression: polling next-task made this exit instantly every second)."""
+        from unittest import mock
+
+        calls = {"n": 0}
+
+        def unified_next():
+            calls["n"] += 1
+            if calls["n"] < 4:
+                return {"action": "wait", "id": 17, "message": "Slice 17 waiting"}
+            return {"action": "start", "id": 18, "file": "y.md"}
+
+        with mock.patch.object(self.tl, "query_next") as punch_list:
+            with mock.patch.object(self.tl, "notify") as notify:
+                with mock.patch.object(self.tl.time, "sleep"):
+                    self.tl.wait_while_next_is_wait(
+                        {"action": "wait", "id": 17, "message": "Slice 17 waiting"},
+                        query=unified_next,
+                    )
+        punch_list.assert_not_called()
+        self.assertEqual(calls["n"], 4)
+        notify.assert_called_once()
+
     def test_wait_while_next_is_wait_exits_on_ship_now(self) -> None:
         from unittest import mock
 

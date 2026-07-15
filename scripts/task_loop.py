@@ -16,6 +16,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections.abc import Callable
 from typing import Any
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1074,12 +1075,21 @@ def wait_while_paused() -> None:
         time.sleep(2)
 
 
-def wait_while_next_is_wait(decision: dict[str, Any]) -> None:
+def wait_while_next_is_wait(
+    decision: dict[str, Any],
+    query: Callable[[], dict[str, Any]] | None = None,
+) -> None:
     """Halted / dependency wait — keep the Floor runner alive and poll.
 
     Exiting here used to look like 'stuck then stopped' on Forge Floor: the UI
     still showed batch-pending until the heartbeat went stale.
+
+    `query` must be the same "what's next?" source the caller used to obtain
+    `decision` (defaults to the punch-list query_next). Polling a different
+    queue here made this function exit instantly, and the caller re-entered
+    every iteration — re-firing the once-per-park notification each second.
     """
+    poll = query or query_next
     msg = (decision.get("message") or "waiting")[:200]
     tid = int(decision["id"]) if decision.get("id") is not None else None
     log(msg)
@@ -1096,7 +1106,7 @@ def wait_while_next_is_wait(decision: dict[str, Any]) -> None:
         if not notified:
             notify("Forge", msg[:120])
             notified = True
-        again = query_next()
+        again = poll()
         if again.get("action") != "wait":
             return
         msg = (again.get("message") or msg)[:200]
