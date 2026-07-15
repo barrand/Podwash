@@ -57,6 +57,55 @@ final class TranscriptViewModelTests: XCTestCase {
         XCTAssertEqual(listenedIndices, [0, 1, 2, 3, 4, 5])
     }
 
+    // MARK: - Task 021
+
+    func testParagraphsSplitAfterSentenceEndingPunctuation() {
+        let transcript: [TimedWord] = [
+            TimedWord(word: "Hello", start: 0, end: 1),
+            TimedWord(word: "there.", start: 1, end: 2),
+            TimedWord(word: "Next", start: 2, end: 3),
+            TimedWord(word: "bit.", start: 3, end: 4),
+            TimedWord(word: "End", start: 4, end: 5),
+        ]
+
+        let paragraphs = TranscriptViewModel.paragraphs(from: transcript)
+
+        XCTAssertEqual(paragraphs.count, 3)
+        XCTAssertEqual(paragraphs[0].firstWordIndex, 0)
+        XCTAssertEqual(paragraphs[0].lastWordIndex, 1)
+        XCTAssertEqual(paragraphs[1].firstWordIndex, 2)
+        XCTAssertEqual(paragraphs[1].lastWordIndex, 3)
+        XCTAssertEqual(paragraphs[2].firstWordIndex, 4)
+        XCTAssertEqual(paragraphs[2].lastWordIndex, 4)
+    }
+
+    func testParagraphTimestampUsesFirstWordStartWholeSeconds() {
+        let transcript = [
+            TimedWord(word: "Intro.", start: 12.7, end: 13.7),
+        ]
+
+        let paragraphs = TranscriptViewModel.paragraphs(from: transcript)
+
+        XCTAssertEqual(paragraphs.count, 1)
+        XCTAssertEqual(paragraphs[0].startSeconds, 12, "floor first word start to whole seconds")
+        XCTAssertEqual(paragraphs[0].formattedStartTimestamp, "0:12")
+    }
+
+    func testNoPunctuationYieldsSingleParagraph() {
+        let transcript: [TimedWord] = [
+            TimedWord(word: "One", start: 0, end: 1),
+            TimedWord(word: "Two", start: 1, end: 2),
+            TimedWord(word: "Three", start: 2, end: 3),
+            TimedWord(word: "Four", start: 3, end: 4),
+        ]
+
+        let paragraphs = TranscriptViewModel.paragraphs(from: transcript)
+
+        XCTAssertEqual(paragraphs.count, 1)
+        XCTAssertEqual(paragraphs[0].firstWordIndex, 0)
+        XCTAssertEqual(paragraphs[0].lastWordIndex, 3)
+    }
+
     // MARK: - Synthetic fixture (slice-26 fixture table)
 
     /// 10 words, 2.0 s each: word[i] = [2i, 2i+2) seconds.

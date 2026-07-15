@@ -139,6 +139,49 @@ final class TranscriptUITests: XCTestCase {
         XCTAssertLessThanOrEqual(anchor, 32, "scroll anchor must be ≤ 32 for playbackPosition 30.0")
     }
 
+    // MARK: - Task 021
+
+    @MainActor
+    func testTranscriptShowsParagraphStartTimestamp() throws {
+        let app = launchTranscriptFixtureApp()
+        openTranscriptFromEpisodeRow(app)
+
+        let timestamp = element("transcript.paragraph_0.timestamp", in: app)
+        XCTAssertTrue(
+            timestamp.waitForExistence(timeout: transcriptOpenTimeout),
+            "transcript.paragraph_0.timestamp must appear within \(transcriptOpenTimeout)s"
+        )
+        XCTAssertEqual(
+            accessibilityValue(for: "transcript.paragraph_0.timestamp", in: app),
+            "0:00",
+            "paragraph 0 timestamp must match fixture first-word start (0.0 s)"
+        )
+    }
+
+    @MainActor
+    func testAdjacentTranscriptWordsShareLine() throws {
+        let app = launchTranscriptFixtureApp()
+        openTranscriptFromEpisodeRow(app)
+
+        let word0 = element("transcript.word_0", in: app)
+        let word1 = element("transcript.word_1", in: app)
+        XCTAssertTrue(
+            word0.waitForExistence(timeout: transcriptOpenTimeout),
+            "transcript.word_0 must appear within \(transcriptOpenTimeout)s"
+        )
+        XCTAssertTrue(
+            word1.waitForExistence(timeout: transcriptOpenTimeout),
+            "transcript.word_1 must appear within \(transcriptOpenTimeout)s"
+        )
+
+        let midYDelta = abs(word0.frame.midY - word1.frame.midY)
+        XCTAssertLessThanOrEqual(
+            midYDelta,
+            8,
+            "adjacent words must share a wrapped line (midY delta \(midYDelta) pt)"
+        )
+    }
+
     // MARK: - Task 020
 
     /// Fixture: interval cache seeded, transcript file omitted (`-UITestFixtureTranscriptNoCache`),
