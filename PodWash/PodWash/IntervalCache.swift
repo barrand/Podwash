@@ -4,6 +4,7 @@
 //
 //  Slice 07 — Analyze-episode pipeline. On-disk JSON cache of merged censor
 //  intervals keyed by episode ID + normalized target-word fingerprint (ADR-005 §3).
+//  Slice 28 — `asr-model:<pin>` fingerprint token (ADR-024).
 //
 
 import CryptoKit
@@ -18,15 +19,29 @@ struct EpisodeIdentity: Hashable, Codable, Equatable, Sendable {
 struct IntervalCache: Sendable {
 
     let baseDirectory: URL
+    /// Logical ASR pin included in fingerprint material as `asr-model:<pin>`.
+    let asrModelPin: String
 
-    init(baseDirectory: URL) {
+    /// - Parameter asrModelPin: Logical pin (e.g. `openai_whisper-tiny.en`). Default keeps
+    ///   pre-slice call sites compiling; production factory always passes the bundled pin.
+    init(baseDirectory: URL, asrModelPin: String = "openai_whisper-tiny.en") {
         self.baseDirectory = baseDirectory
+        self.asrModelPin = asrModelPin
     }
 
-    /// Production cache location under Application Support.
-    static var applicationSupport: IntervalCache {
+    /// Production cache location under Application Support for a known pin.
+    static func applicationSupport(asrModelPin: String) -> IntervalCache {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        return IntervalCache(baseDirectory: support.appendingPathComponent("IntervalCache", isDirectory: true))
+        return IntervalCache(
+            baseDirectory: support.appendingPathComponent("IntervalCache", isDirectory: true),
+            asrModelPin: asrModelPin
+        )
+    }
+
+    /// Production cache using the main-bundle logical pin when available (fixtures / shell defaults).
+    static var applicationSupport: IntervalCache {
+        let pin = (try? WhisperModelLocator.logicalPin(in: .main)) ?? "openai_whisper-tiny.en"
+        return applicationSupport(asrModelPin: pin)
     }
 
     /// Deterministic fingerprint: sorted, normalized target words joined by `\n`.
@@ -61,11 +76,14 @@ struct IntervalCache: Sendable {
     private func cacheFileURL(episodeID: String, targetWords: Set<String>) -> URL {
         // ADR-013 §3.4 — format token so sourced unions do not collide with v1 payloads.
         // Segmenter revision bumps invalidate stale unions missing unrelated spans.
+        // ADR-024 — asr-model pin so pre-upgrade tiny intervals miss after pin change.
         let fp = Self.fingerprint(for: targetWords)
             + "\n"
             + "interval-format:v2"
             + "\n"
             + "segmenter:heuristic-cue-v5"
+            + "\n"
+            + "asr-model:\(asrModelPin)"
         let digest = SHA256.hash(data: Data(fp.utf8))
         let hash = digest.map { String(format: "%02x", $0) }.joined()
         let safeStem = DownloadPaths.fileNameStem(for: episodeID)
