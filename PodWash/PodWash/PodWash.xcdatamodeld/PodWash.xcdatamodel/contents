@@ -38,4 +38,7 @@
         <attribute name="episodeID" attributeType="String" defaultValueString=""/>
         <attribute name="sortIndex" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
     </entity>
+    <entity name="CDNowPlayingSession" representedClassName="CDNowPlayingSession" syncable="YES">
+        <attribute name="activeEpisodeID" attributeType="String" defaultValueString=""/>
+    </entity>
 </model>

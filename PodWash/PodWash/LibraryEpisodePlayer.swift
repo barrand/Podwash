@@ -9,11 +9,17 @@ import Foundation
 
 @MainActor
 final class LibraryEpisodePlayer: EpisodePlaying {
-    private let engine: PlaybackEngine
+    /// `nonisolated(unsafe)`: released from `nonisolated deinit` without a MainActor TaskLocal hop
+    /// (NowPlayingSessionTests otherwise SIGABRT via swift_task_deinitOnExecutorImpl).
+    nonisolated(unsafe) private let engine: PlaybackEngine
 
     init(engine: PlaybackEngine) {
         self.engine = engine
     }
+
+    // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION
+    // (XCTest teardown / stopAndDismissPlayer otherwise SIGABRT via swift_task_deinitOnExecutorImpl).
+    nonisolated deinit {}
 
     func play(episodeID: String) {
         _ = episodeID

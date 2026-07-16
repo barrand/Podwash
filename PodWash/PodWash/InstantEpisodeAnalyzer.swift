@@ -11,8 +11,13 @@ import Foundation
 /// Returns immediately with an empty interval list for deterministic UI tests.
 final class InstantEpisodeAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
     var onProgress: AnalysisProgressHandler?
-    var onMainActorProgress: MainActorAnalysisProgressHandler?
+    /// `nonisolated(unsafe)`: cleared from `nonisolated deinit` without a MainActor TaskLocal hop.
+    nonisolated(unsafe) var onMainActorProgress: MainActorAnalysisProgressHandler?
     var onPartialIntervals: AnalysisPartialIntervalsHandler?
+
+    // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION
+    // (boxed as `any EpisodeAnalyzing` in PlaybackCoordinator teardown).
+    nonisolated deinit {}
 
     func analyze(
         episode: EpisodeIdentity,

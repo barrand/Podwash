@@ -255,7 +255,9 @@ struct RootView: View {
 
         let model = AppShellModel(persistence: persistence, remoteCommands: remoteCommands)
         // Seed/clear via the shell's store so LibraryViewModel reads the same context rows.
-        if FixtureTranscript.isAnyEnabled {
+        if FixtureNowPlayingSession.shouldPreserveOnLaunch {
+            // Skip wipe/reseed — queue, resume position, and active session survive (ADR-027 §8).
+        } else if FixtureTranscript.isAnyEnabled {
             try? FixtureTranscript.prepare(
                 podcastStore: model.podcastStore,
                 resumeStore: model.resumeStore,
@@ -268,6 +270,11 @@ struct RootView: View {
             )
         } else if FixtureLibrary.isEnabled || FixtureProgressivePlayback.isEnabled {
             try? FixtureLibrary.prepareSeededStore(model.podcastStore)
+            if FixtureNowPlayingSession.isEnabled {
+                // Fixed-id store may retain queue/session from a prior UITest run.
+                try? model.queueStore.clear()
+                try? model.nowPlayingSessionStore.clear()
+            }
             // Seed runs after AppShellModel's launch migrate — re-apply defaults-on so
             // LibraryAnalysisTimeline + Download UITests enter download-before-play.
             try? model.cleaningStore.migrateAllChannelsCleaningAndUnrelatedOnIfNeeded()
@@ -298,6 +305,11 @@ struct RootView: View {
             podcastStore: model.podcastStore
         )
         appShellModel = model
+        // Prefer an immediate bootstrap for the fixed-id relaunch family — SwiftUI `.task`
+        // alone can lag under XCTest host pressure (ADR-027 §5; restore is idempotent).
+        if FixtureNowPlayingSession.usesFixedPersistence {
+            model.restoreNowPlayingSessionIfNeeded()
+        }
     }
 }
 

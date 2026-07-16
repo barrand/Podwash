@@ -120,6 +120,32 @@ nonisolated final class PodcastStore: @unchecked Sendable {
         currentFeed?.episodes ?? []
     }
 
+    /// First match across subscriptions (`CDEpisode.id` is globally unique). ADR-027 bootstrap.
+    func episodeLookup(id: String) -> (episode: Episode, podcastTitle: String, feedURL: URL)? {
+        context.performAndWait {
+            let request = CDEpisode.fetchRequest()
+            request.predicate = NSPredicate(format: "id == %@", id)
+            request.fetchLimit = 1
+            guard let row = try? self.context.fetch(request).first,
+                  let podcast = row.podcast,
+                  let feedURLString = podcast.feedURLString,
+                  !feedURLString.isEmpty,
+                  let feedURL = URL(string: feedURLString)
+            else {
+                return nil
+            }
+            let episode = Episode(
+                id: row.id ?? "",
+                title: row.title ?? "",
+                pubDate: row.pubDate ?? Date(timeIntervalSince1970: 0),
+                artworkURL: row.artworkURLString.flatMap(URL.init(string:)),
+                showNotes: row.showNotes,
+                audioURL: row.audioURLString.flatMap(URL.init(string:))
+            )
+            return (episode, podcast.title ?? "", feedURL)
+        }
+    }
+
     private func upsert(
         feed: PodcastFeed,
         feedURL: URL,

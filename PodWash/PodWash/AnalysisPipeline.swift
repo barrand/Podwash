@@ -50,7 +50,8 @@ final class AnalysisPipeline: @unchecked Sendable {
     private let segmenter: any ContentSegmenting
 
     var onProgress: AnalysisProgressHandler?
-    var onMainActorProgress: MainActorAnalysisProgressHandler?
+    /// `nonisolated(unsafe)`: cleared from `nonisolated deinit` without a MainActor TaskLocal hop.
+    nonisolated(unsafe) var onMainActorProgress: MainActorAnalysisProgressHandler?
     var onPartialIntervals: AnalysisPartialIntervalsHandler?
 
     /// Full cache union from the most recent `analyze` call (includes filtered unrelated spans).

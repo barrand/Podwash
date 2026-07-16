@@ -408,6 +408,8 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     func seek(to seconds: TimeInterval, completion: (() -> Void)? = nil) {
         let upperBound = duration > 0 ? duration : .greatestFiniteMagnitude
         let clamped = max(0, min(upperBound, seconds))
+        // Optimistic clock so UI / restore polls see the target before async seek lands.
+        currentTime = clamped
         let time = CMTime(seconds: clamped, preferredTimescale: 600)
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
             Task { @MainActor [weak self] in
@@ -427,6 +429,30 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
                     }
                 }
                 completion?()
+            }
+        }
+    }
+
+    /// Cold-start restore (ADR-027): adopt the resume-store clock while remaining paused.
+    /// Resume position is authoritative for the observable clock so a short fixture asset
+    /// cannot clamp displayed time away from the saved scalar before play.
+    func restorePausedPosition(_ seconds: TimeInterval) {
+        let requested = max(0, seconds)
+        currentTime = requested
+        let upperBound = duration > 0 ? duration : .greatestFiniteMagnitude
+        let clamped = min(upperBound, requested)
+        let time = CMTime(seconds: clamped, preferredTimescale: 600)
+        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if !self.wantsPlayback {
+                    self.currentTime = requested
+                } else {
+                    self.refreshCurrentTime()
+                }
+                self.touchUI()
+                self.updateNowPlaying()
+                self.onSeekCompleted?(self.currentTime)
             }
         }
     }

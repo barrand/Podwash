@@ -21,6 +21,7 @@ private enum ShellSettingsRoute: Hashable, Identifiable {
 
 struct AppShellView: View {
     @Bindable var model: AppShellModel
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: AppShellTab = .library
     @State private var libraryViewModel: LibraryViewModel
     @State private var discoverViewModel: DiscoverViewModel
@@ -185,6 +186,14 @@ struct AppShellView: View {
             transcriptSheetContent
         }
         .background(TabBarAccessibilityConfigurator(tabBarHeight: $tabBarHeight))
+        .task {
+            model.restoreNowPlayingSessionIfNeeded()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .inactive || newPhase == .background {
+                model.flushPlaybackPosition()
+            }
+        }
     }
 
     @ViewBuilder

@@ -15,6 +15,7 @@ final class AppShellModel {
     let podcastStore: PodcastStore
     let queueStore: QueueStore
     let resumeStore: ResumePositionStore
+    let nowPlayingSessionStore: NowPlayingSessionStore
     let cleaningStore: CleaningToggleStore
     let downloadManager: DownloadManager
     let settingsStore: SettingsStore
@@ -80,12 +81,17 @@ final class AppShellModel {
     private(set) var engine: PlaybackEngine?
     private(set) var playbackCoordinator: PlaybackCoordinator?
     private(set) var queueCoordinator: QueueCoordinator?
-    private var episodePlayer: LibraryEpisodePlayer?
+    /// Not observation-tracked: releasing via `@Observable` setter trips
+    /// `swift_task_deinitOnExecutorImpl` on `LibraryEpisodePlayer` (Slice 31 unit teardown).
+    @ObservationIgnored private var episodePlayer: LibraryEpisodePlayer?
 
     /// Drives mini-player visibility (true after a successful episode play start).
     private(set) var isMiniPlayerVisible: Bool = false
     /// Full controls presentation (sheet).
     var isFullPlayerPresented: Bool = false
+
+    /// Idempotency gate for cold-start / relaunch restore (ADR-027 §5).
+    private var didAttemptNowPlayingRestore = false
 
     /// Bumped after playback prepare when a transcript file exists — refreshes episode-row affordance.
     private(set) var transcriptAffordanceGeneration = 0
@@ -126,6 +132,7 @@ final class AppShellModel {
         podcastStore = PodcastStore(context: context, retaining: persistence)
         queueStore = QueueStore(context: context)
         resumeStore = ResumePositionStore(context: context)
+        nowPlayingSessionStore = NowPlayingSessionStore(context: context)
         cleaningStore = CleaningToggleStore(context: context)
         try? cleaningStore.migrateAllChannelsCleaningAndUnrelatedOnIfNeeded()
         if let downloadManager {
@@ -215,10 +222,16 @@ final class AppShellModel {
             : (engine?.duration ?? seconds)
         let clamped = SuperSeekBarModel.clampedSeek(requested: seconds, processedEnd: frontier)
         engine?.seek(to: clamped)
+        // Seek-while-paused must still land in ResumePositionStore (ADR-027 flush budget).
+        if engine?.isPlaying != true {
+            flushPlaybackPosition()
+        }
     }
 
     func seekClampedToProcessedFrontier(by delta: Double) {
-        let current = engine?.avPlayer.currentTime().seconds ?? 0
+        // Prefer the engine's observable clock — AVPlayer may still report 0/NaN while
+        // the item loads, which would wipe a paused restore / pinned seek target.
+        let current = engine?.currentTime ?? 0
         seekClampedToProcessedFrontier(to: current + delta)
     }
 
@@ -327,7 +340,8 @@ final class AppShellModel {
         feedURL: URL?,
         audioURL: URL,
         localCandidate: URL?,
-        remoteCandidate: URL?
+        remoteCandidate: URL?,
+        startAnalysis: Bool = true
     ) {
         PlaybackDiagnostics.logAudioURLResolution(
             episodeID: episode.id,
@@ -353,8 +367,10 @@ final class AppShellModel {
         let queue = QueueCoordinator(
             queue: queueStore,
             player: player,
-            resume: resumeStore
+            resume: resumeStore,
+            sessionStore: nowPlayingSessionStore
         )
+        queue.bindCurrentEpisode(episode.id)
 
         engine = newEngine
         playbackCoordinator = coordinator
@@ -366,10 +382,17 @@ final class AppShellModel {
         nowPlayingEpisodeTitle = episode.title
         nowPlayingPodcastTitle = podcastTitle
         isMiniPlayerVisible = true
+        try? nowPlayingSessionStore.setActiveEpisodeID(episode.id)
         PlaybackDiagnostics.info(
             "playEpisode session ready episodeID=\(episode.id) miniPlayer=visible paused=true"
         )
         // Leave paused so AC4's play-button tap yields "playing".
+
+        // Cold-start restore must stay paused without kicking prepare → play races (ADR-027).
+        if !startAnalysis {
+            PlaybackDiagnostics.info("playEpisode skip prepare — restore path")
+            return
+        }
 
         // Fixture Library play skips analysis even when cleaning is on (AC8),
         // except when a player-timeline / progressive / mute-marker UITest fixture is active.
@@ -489,6 +512,7 @@ final class AppShellModel {
         }
         if engine.isPlaying {
             engine.pause()
+            flushPlaybackPosition()
         } else if isPreparingPlayback {
             if playbackCoordinator?.canStartPlayback == true {
                 engine.play()
@@ -595,17 +619,71 @@ final class AppShellModel {
     }
 
     func stopAndDismissPlayer() {
+        flushPlaybackPosition()
         engine?.pause()
+        remoteCommands.bind(nil)
         isFullPlayerPresented = false
         isMiniPlayerVisible = false
-        engine = nil
+        // Drop coordinators before the player/engine so retain graphs unwind cleanly
+        // (QueueCoordinator holds EpisodePlaying; LibraryEpisodePlayer holds engine).
         playbackCoordinator = nil
         queueCoordinator = nil
         episodePlayer = nil
+        engine = nil
         nowPlayingEpisodeID = nil
         nowPlayingEpisodeTitle = "Now playing"
         nowPlayingPodcastTitle = ""
         clearPlaybackAnalysisProgress()
+        // Durable session id is intentionally retained (ADR-027 intake).
+    }
+
+    /// Cold-start / post-relaunch: rebuild paused mini session from durable stores.
+    /// Idempotent: no-op if already restored / no durable id / episode missing.
+    func restoreNowPlayingSessionIfNeeded() {
+        if didAttemptNowPlayingRestore { return }
+        didAttemptNowPlayingRestore = true
+
+        if isMiniPlayerVisible, nowPlayingEpisodeID != nil { return }
+
+        guard let id = nowPlayingSessionStore.activeEpisodeID(), !id.isEmpty else { return }
+
+        guard let lookup = podcastStore.episodeLookup(id: id) else {
+            try? nowPlayingSessionStore.clear()
+            return
+        }
+
+        let localCandidate = resolvedLocalFileURL(for: lookup.episode.id)
+        let remoteCandidate = lookup.episode.audioURL
+        guard let audioURL = resolveAudioURL(for: lookup.episode) else {
+            try? nowPlayingSessionStore.clear()
+            return
+        }
+
+        beginPlaybackSession(
+            episode: lookup.episode,
+            podcastTitle: lookup.podcastTitle,
+            feedURL: lookup.feedURL,
+            audioURL: audioURL,
+            localCandidate: localCandidate,
+            remoteCandidate: remoteCandidate,
+            startAnalysis: false
+        )
+
+        let position = resumeStore.position(for: id)
+        if position > 0 {
+            // Prefer restorePausedPosition — do not call pause() afterward (refreshCurrentTime
+            // would wipe an in-flight seek). beginPlaybackSession already left transport paused.
+            engine?.restorePausedPosition(position)
+        }
+        // Pause-not-play: never call play() / startPlaybackWhenReady on this path.
+    }
+
+    /// Writes `ResumePositionStore` from the live engine clock for the active id.
+    func flushPlaybackPosition() {
+        let episodeID = nowPlayingEpisodeID ?? nowPlayingSessionStore.activeEpisodeID()
+        guard let episodeID, let engine else { return }
+        let seconds = engine.currentTime
+        try? resumeStore.setPosition(seconds, for: episodeID)
     }
 
     private func clearPlaybackAnalysisProgress() {
@@ -764,6 +842,7 @@ extension AppShellModel: EpisodePlaying {
 
     func pause() {
         engine?.pause()
+        flushPlaybackPosition()
     }
 
     func seek(to seconds: TimeInterval) {

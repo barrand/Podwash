@@ -14,18 +14,31 @@ final class QueueCoordinator {
     nonisolated(unsafe) private let queue: QueueStore
     nonisolated(unsafe) private let player: any EpisodePlaying
     nonisolated(unsafe) private let resume: ResumePositionStore
+    nonisolated(unsafe) private let sessionStore: NowPlayingSessionStore?
     nonisolated(unsafe) private(set) var currentEpisodeID: String?
 
     /// Wires queue + resume Core Data stores to an `EpisodePlaying` surface.
-    init(queue: QueueStore, player: any EpisodePlaying, resume: ResumePositionStore) {
+    /// Optional `sessionStore` updates the durable active episode on end / advance (ADR-027).
+    init(
+        queue: QueueStore,
+        player: any EpisodePlaying,
+        resume: ResumePositionStore,
+        sessionStore: NowPlayingSessionStore? = nil
+    ) {
         self.queue = queue
         self.player = player
         self.resume = resume
+        self.sessionStore = sessionStore
     }
 
     // Avoid MainActor/TaskLocal deinit crash (same pattern as AnalysisUIViewModel).
     // Keep this nonisolated so the test-host executable does not abort on teardown.
     nonisolated deinit {}
+
+    /// Records the in-memory current episode without seeking or playing (paused restore).
+    func bindCurrentEpisode(_ episodeID: String) {
+        currentEpisodeID = episodeID
+    }
 
     /// Sets current episode; restores saved position via `player.seek` then `play`
     /// when `resume.position(for:) > 0`.
@@ -63,11 +76,13 @@ final class QueueCoordinator {
         let ids = queue.queueEpisodeIDs()
         guard let nextID = ids.first else {
             currentEpisodeID = nil
+            try? sessionStore?.clear()
             return
         }
 
         try? queue.remove(nextID)
         currentEpisodeID = nextID
+        try? sessionStore?.setActiveEpisodeID(nextID)
         player.play(episodeID: nextID)
     }
 }

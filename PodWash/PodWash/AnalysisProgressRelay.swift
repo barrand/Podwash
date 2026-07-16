@@ -11,7 +11,8 @@ import Foundation
 /// Fan-out for `onMainActorProgress` / `onProgress` on progress-capable analyzers.
 final class AnalysisProgressRelay: @unchecked Sendable {
     private let lock = NSLock()
-    private var handlers: [UUID: MainActorAnalysisProgressHandler] = [:]
+    /// `nonisolated(unsafe)`: MainActor handler values must not destroy via TaskLocal hop in deinit.
+    nonisolated(unsafe) private var handlers: [UUID: MainActorAnalysisProgressHandler] = [:]
 
     /// Registers a main-actor handler; call `removeHandler` on teardown.
     @discardableResult
@@ -40,12 +41,17 @@ final class AnalysisProgressRelay: @unchecked Sendable {
         }
     }
 
+    // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION
+    // (XCTest teardown otherwise SIGABRT via swift_task_deinitOnExecutorImpl).
+    nonisolated deinit {}
+
     /// Installs this relay as the sole `onMainActorProgress` sink on supported analyzers.
     /// Leaves `onProgress` alone so non-UI observers are not double-fired (analyzers invoke both).
     static func install(on analyzer: any EpisodeAnalyzing) -> AnalysisProgressRelay {
         let relay = AnalysisProgressRelay()
-        let mainActorSink: MainActorAnalysisProgressHandler = { snapshot in
-            relay.publish(snapshot)
+        // Weak capture: analyzer must not keep the relay alive past AppShellModel teardown.
+        let mainActorSink: MainActorAnalysisProgressHandler = { [weak relay] snapshot in
+            relay?.publish(snapshot)
         }
 
         if let stepped = analyzer as? SteppedEpisodeAnalyzer {

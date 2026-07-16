@@ -29,7 +29,12 @@ struct PodWashApp: App {
         }
         // Fresh temp-SQLite per launch (ADR-015 §6). Fixed identifiers reuse durable
         // files across UITest launches and can leave seeded rows in the empty fixture.
-        if FixtureLibrary.isEmptyEnabled {
+        if FixtureNowPlayingSession.usesFixedPersistence {
+            // ADR-027 §8 — seed + preserve relaunch share one temp-SQLite id.
+            persistence = PersistenceController.inMemory(
+                identifier: FixtureNowPlayingSession.persistenceIdentifier
+            )
+        } else if FixtureLibrary.isEmptyEnabled {
             persistence = PersistenceController.inMemory(
                 identifier: "uitest-library-empty-\(UUID().uuidString)"
             )

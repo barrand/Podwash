@@ -13,7 +13,9 @@ import Foundation
 @MainActor
 final class PlaybackCoordinator {
 
-    private var pipeline: any EpisodeAnalyzing
+    /// `nonisolated(unsafe)`: released from `nonisolated deinit` without a MainActor hop
+    /// (existentials of progress-handler owners otherwise crash boxed destroy).
+    nonisolated(unsafe) private var pipeline: any EpisodeAnalyzing
     private let engine: PlaybackEngine
     private let settingsStore: SettingsStore?
     private let overlayEngine: OverlayEngine
@@ -331,6 +333,10 @@ final class PlaybackCoordinator {
         }
         return projected
     }
+
+    // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION
+    // (XCTest teardown otherwise SIGABRT via swift_task_deinitOnExecutorImpl).
+    nonisolated deinit {}
 }
 
 /// One-shot gate for progressive `onChunkReady` (Sendable across partial callbacks).

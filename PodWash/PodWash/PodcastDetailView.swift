@@ -120,9 +120,15 @@ struct PodcastDetailView: View {
 
             VStack(spacing: 0) {
                 ForEach(Array(ids.enumerated()), id: \.element) { index, episodeID in
+                    // Put queueCell_* on the title leaf — HStack + children:.contain +
+                    // label/value collapses the row container in XCUITest (only
+                    // queueRemoveButton_* remained queryable).
                     HStack {
                         Text(titleByID[episodeID] ?? episodeID)
                             .lineLimit(2)
+                            .accessibilityIdentifier("queueCell_\(index)")
+                            .accessibilityLabel(titleByID[episodeID] ?? episodeID)
+                            .accessibilityValue(episodeID)
                         Spacer()
                         Button("Remove") {
                             try? queueStore.remove(episodeID)
@@ -135,10 +141,6 @@ struct PodcastDetailView: View {
                     }
                     .padding(.horizontal)
                     .padding(.vertical, 8)
-                    .accessibilityElement(children: .contain)
-                    .accessibilityIdentifier("queueCell_\(index)")
-                    .accessibilityLabel(titleByID[episodeID] ?? episodeID)
-                    .accessibilityValue(episodeID)
                 }
             }
             .accessibilityElement(children: .contain)

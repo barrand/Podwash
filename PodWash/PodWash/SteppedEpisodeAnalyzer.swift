@@ -22,8 +22,12 @@ final class SteppedEpisodeAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
     let firstSnapshotHold: Duration?
     var onProgress: AnalysisProgressHandler?
     /// Preferred UI sink: invoked on the main actor before each paced wait.
-    var onMainActorProgress: MainActorAnalysisProgressHandler?
+    /// `nonisolated(unsafe)`: cleared from `nonisolated deinit` without a MainActor TaskLocal hop.
+    nonisolated(unsafe) var onMainActorProgress: MainActorAnalysisProgressHandler?
     var onPartialIntervals: AnalysisPartialIntervalsHandler?
+
+    // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION.
+    nonisolated deinit {}
 
     init(
         snapshots: [AnalysisProgressSnapshot],
