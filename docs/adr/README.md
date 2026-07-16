@@ -46,3 +46,4 @@ from the relevant slice file's Role artifacts table.
 | [027](027-restore-now-playing-session.md) | Restore now-playing session: durable active id, paused cold-start bootstrap, clear-on-finish+empty-queue | Accepted |
 | [028](028-transcript-follow-along.md) | Transcript follow-along: per-word active index, follow auto-scroll, user-scroll break, snap-back | Accepted |
 | [029](029-smart-autoplay-prewarm.md) | Smart autoplay + analysis pre-warm: binge/LRP order, warm 2–3 (cap 5), queue precedence | Accepted |
+| [030](030-timestamp-seek-bar-ads-progress.md) | Timestamp seek-bar ads + analysis progress: retire in-flight 12-bucket paint; yellow = skip-interval overlays | Accepted |

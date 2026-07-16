@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 32 |
 | **Title** | Transcript follow-along (karaoke + auto-scroll) |
-| **Status** | In Progress |
+| **Status** | Implemented |
 | **Priority** | P3 |
 | **Crux** | While `transcript.view` is open and playback advances, the **current word** is marked active and (in follow mode) the list auto-scrolls to it; a **manual scroll** turns follow **off** without freezing the active highlight; **`transcript.snapToFollow`** restores follow and scrolls to the live word. |
 

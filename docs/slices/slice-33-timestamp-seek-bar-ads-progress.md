@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 33 |
 | **Title** | Timestamp seek-bar ads + analysis progress chrome |
-| **Status** | Ready |
+| **Status** | In Progress |
 | **Priority** | P3 |
 | **Crux** | While cleaning analysis is in flight, player chrome shows **only** an analyzing affordance + overall analysis progress (no 12-segment green/blue/grey/yellow); after analysis completes, `playback.superSeekBar` paints **timestamp-proportional** yellow bands from applied `.unrelatedContent` **skip** intervals (same set as transcript `skippedAd`) over green content — a **30.0 s** preroll yellows ≈ **30/duration** of bar width, not whole multi-minute buckets — while progressive early play after the first chunk remains. |
 
@@ -38,7 +38,7 @@ Make the super seek bar match what users already trust: transcript ad yellow and
 
 ## Deliverables
 
-- ADR — `docs/adr/028-timestamp-seek-bar-ads-progress.md` (supersedes ADR-018 **player** yellow-bucket rule; revises ADR-021 in-flight chrome; yellow overlay model parallel to ADR-023 mute markers; AX contract)
+- ADR — `docs/adr/030-timestamp-seek-bar-ads-progress.md` (supersedes ADR-018 **player** yellow-bucket rule; revises ADR-021 in-flight chrome; yellow overlay model parallel to ADR-023 mute markers; AX contract)
 - UX spec `docs/slices/slice-33-ux.md` — in-flight progress UI, complete yellow/green layout, identifiers, fixture scenarios
 - Retire publishing/consuming in-flight `segmentColors` (ready/processing/pending dance) on player chrome
 - `SuperSeekBarModel` (+ view): timestamp-normalized **ad bands** from unrelated skips; paint yellow by fraction of duration
@@ -106,14 +106,14 @@ scripts/verify.sh
 ## Verification record (QA fills at Verify)
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=7 passed=7 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260716-121112.xcresult tier=2 class=tests
 ```
 
 ## Plan review record (coordinator fills before downstream roles)
 
 ```
-ADR review: (pending)
-Test spec review: (pending)
+ADR review (2026-07-16): (pending) QA cleared — pipeline worker finished PM cleared — pipeline worker finished
+Test spec review (2026-07-16): Architect cleared — pipeline worker finished
 ```
 
 ## Done gate
@@ -134,7 +134,7 @@ Test spec review: (pending)
 | Role | Required? | Artifact |
 |------|-----------|----------|
 | PM | **Required** | This story |
-| Architect | **Required** | `docs/adr/028-timestamp-seek-bar-ads-progress.md` |
+| Architect | **Required** | `docs/adr/030-timestamp-seek-bar-ads-progress.md` |
 | UX | **Required** | `docs/slices/slice-33-ux.md` |
 | QA | **Required** | Ad-band + progress chrome tests; migrate Slice 25/27 player AX |
 | Engineer | **Required** | Progress chrome + timestamp yellow overlays; retire in-flight segment paint |
