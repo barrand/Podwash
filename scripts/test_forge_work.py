@@ -87,5 +87,52 @@ class CountItemsTests(unittest.TestCase):
             self.assertEqual(info["implemented_count"], 1)
 
 
+class SummarizeCISafetyNetTests(unittest.TestCase):
+    def _run(self, sha: str, badge: str) -> dict:
+        return {
+            "sha": sha[:12],
+            "head_sha": sha,
+            "badge": badge,
+            "url": f"https://example.test/{sha[:7]}",
+            "title": "CI",
+        }
+
+    def test_head_pass_with_collapsed_older_fails(self):
+        head = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        runs = [
+            self._run(head, "pass"),
+            self._run("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "fail"),
+            self._run("cccccccccccccccccccccccccccccccccccccccc", "fail"),
+            self._run("dddddddddddddddddddddddddddddddddddddddd", "pass"),
+            self._run("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "pending"),
+        ]
+        summary = fw.summarize_ci_safety_net(runs, head_sha=head)
+        self.assertEqual(summary["head"]["badge"], "pass")
+        self.assertEqual(summary["head"]["sha"], head[:12])
+        self.assertTrue(summary["head"]["matches_head"])
+        self.assertEqual(summary["older_total"], 4)
+        self.assertEqual(summary["older_fail"], 2)
+        self.assertEqual(summary["older_pass"], 1)
+        self.assertEqual(summary["older_pending"], 1)
+
+    def test_no_head_match_falls_back_to_latest(self):
+        runs = [
+            self._run("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "pending"),
+            self._run("cccccccccccccccccccccccccccccccccccccccc", "fail"),
+        ]
+        summary = fw.summarize_ci_safety_net(
+            runs, head_sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        )
+        self.assertEqual(summary["head"]["badge"], "pending")
+        self.assertFalse(summary["head"]["matches_head"])
+        self.assertEqual(summary["older_total"], 1)
+        self.assertEqual(summary["older_fail"], 1)
+
+    def test_empty_runs(self):
+        summary = fw.summarize_ci_safety_net([], head_sha="aaa")
+        self.assertIsNone(summary["head"])
+        self.assertEqual(summary["older_total"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()

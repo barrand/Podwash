@@ -67,7 +67,7 @@ Floor writes `build/factory/controls.json` (pause, pause_after_current, ship_now
 - Ship thrash/infra **returns to `forge_supervisor`** — do not idle-continue into another overnight Full verify
 - Medic heals **factory scripts only** (`scripts/**`); product XCTest failures are `lane=test` → Medic declines → Floor **Your move** (Mechanic/Engineer own app fixes)
 - Event feed timestamps display in **Mountain Time** (`MT`); live verify elapsed tracks the current `verify-*.xcresult` bundle
-- CI status is surfaced on the Floor as a safety net between manual ship gates (push-per-item)
+- CI safety net on Floor shows **HEAD** pass/fail/pending plus a muted collapsed older count (not a parade of past SHAs)
 - **Don't push** acknowledges the incident; **Retry** reopens + `ship_now`
 
 ### Verify speed notes

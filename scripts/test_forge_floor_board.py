@@ -863,6 +863,9 @@ class ControlHandlerTests(unittest.TestCase):
         self.assertGreater(ship_idx, ci_idx)
         self.assertIn("syncToolbar", html)
         self.assertIn("pause_after_current", html)
+        self.assertIn("ci_summary", html)
+        self.assertIn("ci-older", html)
+        self.assertIn("older", html)
 
 def _task_ticket_body(
     n: int,
