@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 33 |
 | **Title** | Timestamp seek-bar ads + analysis progress chrome |
-| **Status** | In Progress |
+| **Status** | Implemented |
 | **Priority** | P3 |
 | **Crux** | While cleaning analysis is in flight, player chrome shows **only** an analyzing affordance + overall analysis progress (no 12-segment green/blue/grey/yellow); after analysis completes, `playback.superSeekBar` paints **timestamp-proportional** yellow bands from applied `.unrelatedContent` **skip** intervals (same set as transcript `skippedAd`) over green content — a **30.0 s** preroll yellows ≈ **30/duration** of bar width, not whole multi-minute buckets — while progressive early play after the first chunk remains. |
 

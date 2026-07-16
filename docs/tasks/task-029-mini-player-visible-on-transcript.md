@@ -1,10 +1,10 @@
-# Task 027 — Mini player visible on transcript screen
+# Task 029 — Mini player visible on transcript screen
 
 | Field | Value |
 |-------|-------|
-| **ID** | 027 |
+| **ID** | 029 |
 | **Title** | Mini player visible on transcript screen |
-| **Status** | Queued |
+| **Status** | In Progress |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/AppShellView.swift`, `PodWash/PodWash/MiniPlayerBar.swift`, `PodWash/PodWash/TranscriptView.swift` (presentation only if needed), `PodWash/PodWashUITests/TranscriptUITests.swift` |
@@ -57,5 +57,5 @@
 > Loop writes `VERIFY RESULT:` here. For tasks, `tier=2` and `filtered=1` are valid for Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=12 passed=12 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260716-121858.xcresult tier=2 class=tests
 ```

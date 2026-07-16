@@ -92,37 +92,8 @@ struct AppShellView: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if model.isMiniPlayerVisible, let engine = model.engine {
-                VStack(spacing: 0) {
-                    MiniPlayerBar(
-                        engine: engine,
-                        episodeTitle: model.nowPlayingEpisodeTitle,
-                        podcastTitle: model.nowPlayingPodcastTitle,
-                        showsCompleteSeekBarPaint: model.isPlayerSeekBarAnalysisComplete,
-                        analysisProgress: model.analysisProgressFraction,
-                        isPreparingPlayback: model.isPreparingPlayback,
-                        isPreparingNextEpisode: model.isPreparingNextEpisode,
-                        preparingNextAnnouncement: model.preparingNextAnnouncement,
-                        comingUpItems: model.comingUpItems,
-                        episodeDuration: model.superSeekDuration,
-                        processedEnd: model.superSeekProcessedEnd,
-                        muteIntervals: model.nowPlayingMuteIntervals,
-                        onExpand: { model.expandFullPlayer() },
-                        onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
-                        onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) },
-                        onSkipToNextShow: { model.skipToNextShow() }
-                    )
-                    .onChange(of: model.preparingAnnouncementGeneration) { _, _ in
-                        if let text = model.preparingNextAnnouncement {
-                            PreparingSpeech.announce(text)
-                        }
-                    }
-                    // iOS 26 TabView bottom inset overlaps the tab bar unless we reserve its height.
-                    Color.clear
-                        .frame(height: tabBarHeight)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-                }
+            if showsMiniPlayerInShellInset, let engine = model.engine {
+                shellMiniPlayerBar(engine: engine, reservesTabBarClearance: true)
             }
         }
         // Content-tree Settings control (not ToolbarItem). iOS 26 nav-bar glass +
@@ -208,6 +179,53 @@ struct AppShellView: View {
         }
     }
 
+    /// Root transcript sheet covers the tab `safeAreaInset`; host the same bar inside the sheet (task-029).
+    private var showsMiniPlayerInTranscriptInset: Bool {
+        model.isMiniPlayerVisible
+            && model.transcriptSheetEpisodeID != nil
+            && !model.isFullPlayerPresented
+    }
+
+    private var showsMiniPlayerInShellInset: Bool {
+        model.isMiniPlayerVisible && !showsMiniPlayerInTranscriptInset
+    }
+
+    @ViewBuilder
+    private func shellMiniPlayerBar(engine: PlaybackEngine, reservesTabBarClearance: Bool) -> some View {
+        VStack(spacing: 0) {
+            MiniPlayerBar(
+                engine: engine,
+                episodeTitle: model.nowPlayingEpisodeTitle,
+                podcastTitle: model.nowPlayingPodcastTitle,
+                showsCompleteSeekBarPaint: model.isPlayerSeekBarAnalysisComplete,
+                analysisProgress: model.analysisProgressFraction,
+                isPreparingPlayback: model.isPreparingPlayback,
+                isPreparingNextEpisode: model.isPreparingNextEpisode,
+                preparingNextAnnouncement: model.preparingNextAnnouncement,
+                comingUpItems: model.comingUpItems,
+                episodeDuration: model.superSeekDuration,
+                processedEnd: model.superSeekProcessedEnd,
+                muteIntervals: model.nowPlayingMuteIntervals,
+                onExpand: { model.expandFullPlayer() },
+                onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
+                onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) },
+                onSkipToNextShow: { model.skipToNextShow() }
+            )
+            .onChange(of: model.preparingAnnouncementGeneration) { _, _ in
+                if let text = model.preparingNextAnnouncement {
+                    PreparingSpeech.announce(text)
+                }
+            }
+            if reservesTabBarClearance {
+                // iOS 26 TabView bottom inset overlaps the tab bar unless we reserve its height.
+                Color.clear
+                    .frame(height: tabBarHeight)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+
     @ViewBuilder
     private var transcriptSheetContent: some View {
         if let viewModel = model.transcriptSheetViewModel {
@@ -217,6 +235,11 @@ struct AppShellView: View {
                 openPlaybackPosition: model.transcriptSheetOpenPlaybackPosition
             ) {
                 model.dismissTranscript()
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if showsMiniPlayerInTranscriptInset, let engine = model.engine {
+                    shellMiniPlayerBar(engine: engine, reservesTabBarClearance: false)
+                }
             }
         }
     }
