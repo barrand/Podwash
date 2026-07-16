@@ -10,7 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ad_eval_common import DEFAULT_WORKDIR, SHOWS, fmt_time, http_get, load_meta, show_dir
+from ad_eval_common import DEFAULT_WORKDIR, fmt_time, http_get, load_meta, select_shows, show_dir
 
 
 def strip_html(text: str) -> str:
@@ -205,7 +205,7 @@ def transcribe_show(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Transcribe ad-eval episodes")
     parser.add_argument("--workdir", type=Path, default=DEFAULT_WORKDIR)
-    parser.add_argument("--model", default="tiny.en")
+    parser.add_argument("--model", default="base.en")
     parser.add_argument("--show", action="append")
     parser.add_argument("--force", action="store_true")
     parser.add_argument(
@@ -213,13 +213,12 @@ def main() -> None:
         action="store_true",
         help="Use TAL website script text with synthetic timings (not for ad eval)",
     )
+    parser.add_argument("--include-optional", action="store_true")
     args = parser.parse_args()
 
     workdir = args.workdir.resolve()
-    selected = SHOWS
-    if args.show:
-        wanted = set(args.show)
-        selected = [(s, _) for s, _ in SHOWS if s in wanted]
+    wanted = set(args.show) if args.show else None
+    selected = select_shows(wanted, include_optional=args.include_optional)
 
     for slug, _ in selected:
         transcribe_show(workdir, slug, args.model, args.force, args.tal_web)

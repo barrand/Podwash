@@ -1,30 +1,42 @@
-# ADR-012 — Content segmentation approach: span-grow (`heuristic-cue-v5`)
+# ADR-012 — Content segmentation approach: sentence-scored (`heuristic-cue-v6`)
 
 | Field | Value |
 |-------|-------|
-| **Status** | Accepted (amended 2026-07-14 — production approach `heuristic-cue-v5`) |
+| **Status** | Accepted (amended 2026-07-16 — production approach `heuristic-cue-v6`) |
 | **Date** | 2026-07-10 |
 | **Supersedes** | — |
 | **Builds on** | [ADR-000](000-foundations.md) §4 (`TimedWord` schema — segmenter **consumes** `[TimedWord]`), §6 (`scripts/verify.sh` full-suite gate); [ADR-003](003-asr-stack-choice.md) §3.4 (fast committed-artifact / slow regeneration pattern); [ADR-005](005-analysis-pipeline.md) (transcript-injection seam — Slice 19 wires the segmenter into the pipeline) |
 | **Resolves** | Slice 18 spike — pick an on-device, transcript-based segmenter that meets precision ≥ 0.7 / recall ≥ 0.5 on a hand-golden fixture before Slice 19 integration |
 
-## Amendment (2026-07-14) — `heuristic-cue-v5` / span-grow-v1
+## Amendment (2026-07-16) — `heuristic-cue-v6` / sentence-score + hysteresis
 
-Production `HeuristicContentSegmenter` is now **precision-first span-grow**:
+Production `HeuristicContentSegmenter` **replaces** span-grow / density / gap-snap (`heuristic-cue-v5`) with:
+
+1. **Sentence grouping** (ASR punctuation + speech-gap ≥ 0.6 s fallback)
+2. **One scoring model** — fuzzy openers/closers, second-person, CTA, price, **brand-name carry** after openers
+3. **Two-state hysteresis** — enter on opener (or strong enter score); stay through low-cue hook sentences; exit on resume starters / sustained low scores / post-closer low run
+
+URL/closer features are **stay/exit** only — they do not alone enter ad state (prevents educational `.edu` / `.gov` false positives).
+
+**Pinned `approach` string (AC4 / artifact):** `heuristic-cue-v6`
+
+**Interval cache fingerprint** includes `segmenter:heuristic-cue-v6` (invalidates v5 caches).
+
+**Eval:** `scripts/build_segmenter_cli.sh` builds a CLI from the shipped Swift sources; `ad_eval_score.py --detector swift-cli` measures the same algorithm. The Python `ad_eval_detector.py` span-grow mirror is **historical** (v5), not the production path.
+
+**Corpus gate (evidence):** worst-episode time-weighted precision ≥ **0.98**, recall ≥ **0.95**, median boundary error ≤ **2.0 s**, tuned leave-one-show-out. Committed fixture floors remain Slice 18 IoU ≥ 0.5 with P ≥ 0.700 / R ≥ 0.500 on `spike_transcript.json`.
+
+## Amendment (2026-07-14) — `heuristic-cue-v5` / span-grow-v1 (historical)
+
+Production `HeuristicContentSegmenter` was **precision-first span-grow**:
 high-precision opener anchors → grow through ad copy → snap to silence gaps →
-merge pods (plus a URL-density path for DAI cold opens). The sliding-window
-cue lexicon from the original spike (`heuristic-cue-v1`) is retired.
+merge pods (plus a URL-density path for DAI cold opens). Superseded by v6 above.
 
-**Pinned `approach` string (AC4 / artifact):** `heuristic-cue-v5`
+**Pinned `approach` string (historical):** `heuristic-cue-v5`
 
 Offline laptop eval (`tmp/ad-eval/`, Whisper `tiny.en`) macro P/R ≈ 0.90 / 0.95
-across TAL, Darknet Diaries, AI Daily Brief, and Cougar Sports. Fixture
-goldens use two sponsor reads with real openers (`this episode is sponsored by`,
-`this message comes from`).
-
-Sections below retain the Slice 18 decision narrative; treat §3.1’s cue-window
-description as historical. Current algorithm lives in
-`HeuristicContentSegmenter.swift` and is mirrored by `scripts/ad_eval_detector.py`.
+across TAL, Darknet Diaries, AI Daily Brief, and Cougar Sports used a permissive
+segment IoU metric that under-penalized boundary bleed.
 
 ## Context
 
@@ -104,7 +116,7 @@ transparent cue lexicon + light topic-drift check is the smallest verifiable
 proof of Differentiator 2 feasibility. Quality iteration (embeddings, better
 discourse models) is deferred — not deleted — see Rejected alternatives.
 
-**Pinned `approach` string (AC4 / artifact):** `heuristic-cue-v5` (was `heuristic-cue-v1` at spike acceptance; see Amendment above)
+**Pinned `approach` string (AC4 / artifact):** `heuristic-cue-v6` (was `heuristic-cue-v5` / `heuristic-cue-v1` earlier; see Amendments above)
 
 ### 3.2 Module layout / file boundaries
 
@@ -296,7 +308,7 @@ Filled from the committed
 
 | Field | Value |
 |-------|-------|
-| **approach** | `heuristic-cue-v5` |
+| **approach** | `heuristic-cue-v6` |
 | **precision** | 1.000 |
 | **recall** | 1.000 |
 | **segmentCount** | 2 |

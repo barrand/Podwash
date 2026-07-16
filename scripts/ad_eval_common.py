@@ -15,12 +15,36 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_WORKDIR = REPO_ROOT / "tmp" / "ad-eval"
 
-SHOWS = [
-    ("this-american-life", "This American Life"),
-    ("darknet-diaries", "Dark Net Diaries"),
+# Primary listening corpus + local-radio diversity (Cougar Sports).
+# TAL 891 is dogfood-only (see DOGFOOD_PINS); still in SHOWS for fetch convenience.
+SHOWS: list[tuple[str, str]] = [
+    ("economics-of-everyday-things", "The Economics of Everyday Things"),
     ("ai-daily-brief", "AI Daily Brief"),
+    ("ai-news-strategy-daily", "AI News Strategy Daily"),
+    ("unexplainable", "Unexplainable"),
+    ("planet-money", "Planet Money"),
+    ("99-percent-invisible", "99% Invisible"),
+    ("dr-death", "Dr. Death"),
+    ("version-history", "Version History"),
+    ("radiolab", "Radiolab"),
+    ("search-engine", "Search Engine podcast PJ Vogt"),
     ("cougar-sports", "Cougar Sports Ben Criddle"),
+    ("this-american-life", "This American Life"),
 ]
+
+# Optional hold-out (not primary gate).
+OPTIONAL_SHOWS: list[tuple[str, str]] = [
+    ("darknet-diaries", "Dark Net Diaries"),
+]
+
+# Pin by title/guid substring when present; otherwise latest episode.
+# TAL 891 is required standing dogfood.
+EPISODE_PINS: dict[str, str] = {
+    "this-american-life": "891",
+}
+
+# Standing dogfood slug (always score; do not tune thresholds on it alone).
+DOGFOOD_SLUG = "this-american-life"
 
 ITUNES_SEARCH = "https://itunes.apple.com/search"
 
@@ -40,6 +64,7 @@ class EpisodeMeta:
     duration_sec: float | None
     pub_date: str | None
     tal_transcript_url: str | None = None
+    published_transcript_url: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -56,6 +81,7 @@ class EpisodeMeta:
             "durationSec": self.duration_sec,
             "pubDate": self.pub_date,
             "talTranscriptUrl": self.tal_transcript_url,
+            "publishedTranscriptUrl": self.published_transcript_url,
         }
 
     @classmethod
@@ -74,6 +100,7 @@ class EpisodeMeta:
             duration_sec=data.get("durationSec"),
             pub_date=data.get("pubDate"),
             tal_transcript_url=data.get("talTranscriptUrl"),
+            published_transcript_url=data.get("publishedTranscriptUrl"),
         )
 
 
@@ -117,7 +144,14 @@ def itunes_feed_url(search_term: str) -> tuple[str, str, str]:
     results = data.get("results") or []
     if not results:
         raise RuntimeError(f"No iTunes results for {search_term!r}")
+    # Prefer exact-ish collection name match when multiple hits.
     best = results[0]
+    term_l = search_term.lower()
+    for r in results:
+        name = (r.get("collectionName") or "").lower()
+        if term_l in name or name in term_l:
+            best = r
+            break
     feed = best.get("feedUrl")
     if not feed:
         raise RuntimeError(f"No feedUrl for {search_term!r}")
@@ -128,28 +162,7 @@ def _local(tag: str) -> str:
     return tag.split("}")[-1] if "}" in tag else tag
 
 
-def parse_rss_latest(feed_xml: bytes) -> dict[str, Any]:
-    root = ET.fromstring(feed_xml)
-    channel = root.find("channel")
-    if channel is None:
-        channel = root.find("{*}channel")
-    if channel is None:
-        raise RuntimeError("RSS missing channel")
-
-    show_description = ""
-    for child in channel:
-        if _local(child.tag) == "description" and child.text:
-            show_description = child.text.strip()
-            break
-
-    item = None
-    for child in channel:
-        if _local(child.tag) == "item":
-            item = child
-            break
-    if item is None:
-        raise RuntimeError("RSS missing item")
-
+def _parse_rss_item(item: ET.Element, show_description: str) -> dict[str, Any]:
     def item_text(name: str) -> str:
         for child in item:
             if _local(child.tag) == name and child.text:
@@ -167,16 +180,17 @@ def parse_rss_latest(feed_xml: bytes) -> dict[str, Any]:
         tag = _local(child.tag)
         if tag == "enclosure" and child.get("url"):
             audio_url = child.get("url", "")
-            try:
-                length = int(child.get("length", "0"))
-                if length > 0:
-                    # length is bytes not seconds; keep None unless itunes:duration present
-                    pass
-            except ValueError:
-                pass
         if tag == "duration" and child.text:
+            raw = child.text.strip()
             try:
-                duration_sec = float(child.text.strip())
+                if ":" in raw:
+                    parts = [float(p) for p in raw.split(":")]
+                    if len(parts) == 3:
+                        duration_sec = parts[0] * 3600 + parts[1] * 60 + parts[2]
+                    elif len(parts) == 2:
+                        duration_sec = parts[0] * 60 + parts[1]
+                else:
+                    duration_sec = float(raw)
             except ValueError:
                 pass
 
@@ -191,13 +205,66 @@ def parse_rss_latest(feed_xml: bytes) -> dict[str, Any]:
     }
 
 
+def parse_rss_items(feed_xml: bytes) -> list[dict[str, Any]]:
+    root = ET.fromstring(feed_xml)
+    channel = root.find("channel")
+    if channel is None:
+        channel = root.find("{*}channel")
+    if channel is None:
+        raise RuntimeError("RSS missing channel")
+
+    show_description = ""
+    for child in channel:
+        if _local(child.tag) == "description" and child.text:
+            show_description = child.text.strip()
+            break
+
+    items: list[dict[str, Any]] = []
+    for child in channel:
+        if _local(child.tag) == "item":
+            items.append(_parse_rss_item(child, show_description))
+    if not items:
+        raise RuntimeError("RSS missing item")
+    return items
+
+
+def parse_rss_latest(feed_xml: bytes) -> dict[str, Any]:
+    return parse_rss_items(feed_xml)[0]
+
+
+def parse_rss_pin(feed_xml: bytes, pin: str | None) -> dict[str, Any]:
+    """Return first item whose title/guid contains `pin` (case-insensitive), else latest."""
+    items = parse_rss_items(feed_xml)
+    if not pin:
+        return items[0]
+    needle = pin.lower()
+    for item in items:
+        hay = f"{item.get('episodeTitle', '')} {item.get('episodeGuid', '')}".lower()
+        if needle in hay:
+            return item
+    raise RuntimeError(f"No RSS item matching pin {pin!r} (scanned {len(items)} items)")
+
+
 def guess_tal_transcript_url(episode_title: str, feed_url: str) -> str | None:
     if "thisamericanlife.org" not in feed_url.lower():
         return None
-    m = re.search(r"\b(\d{3})\b", episode_title)
+    m = re.search(r"\b(\d{3,4})\b", episode_title)
     if not m:
         return None
     return f"https://www.thisamericanlife.org/{m.group(1)}/transcript"
+
+
+def guess_published_transcript_url(
+    slug: str, episode_title: str, feed_url: str, episode_guid: str
+) -> str | None:
+    """Best-effort published (often ad-free) transcript URL for diff labeling."""
+    tal = guess_tal_transcript_url(episode_title, feed_url)
+    if tal:
+        return tal
+    # NPR Planet Money episode pages sometimes expose transcripts; leave None
+    # and let ad_eval_diff_label try known patterns from meta.
+    _ = (slug, episode_guid, feed_url)
+    return None
 
 
 def fmt_time(seconds: float) -> str:
@@ -225,3 +292,14 @@ def parse_time_to_seconds(text: str) -> float | None:
     if len(nums) == 1:
         return nums[0]
     return None
+
+
+def select_shows(
+    wanted: set[str] | None = None, *, include_optional: bool = False
+) -> list[tuple[str, str]]:
+    rows = list(SHOWS)
+    if include_optional:
+        rows.extend(OPTIONAL_SHOWS)
+    if wanted:
+        rows = [(s, t) for s, t in rows if s in wanted]
+    return rows

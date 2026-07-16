@@ -14,7 +14,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-# Mirrors planned Swift heuristic-cue-v5 approach identifier.
+# Mirrors historical Swift heuristic-cue-v5 approach (span-grow).
+# Production path is heuristic-cue-v6 via scripts/build_segmenter_cli.sh.
 APPROACH_ID = "span-grow-v1"
 
 BLOCK_SECONDS = 5.0
@@ -518,3 +519,36 @@ def segment(tokens: list[Token]) -> list[Segment]:
 
 def segment_timed_words(words: list) -> list[Segment]:
     return segment(timed_words_to_tokens(words))
+
+
+def trace_segment(words: list) -> list[Segment]:
+    """Log anchors + grown ranges for offline root-cause."""
+    tokens = timed_words_to_tokens(words)
+    features = block_features(tokens)
+    anchors = find_anchors(tokens)
+    print(f"anchors={len(anchors)}")
+    for si, ei in anchors:
+        text = " ".join(t.word for t in tokens[si : ei + 1])
+        grown = grow_from_anchor(tokens, features, si, ei)
+        print(f"  anchor[{si}:{ei}] {text!r} -> [{grown.start:.2f},{grown.end:.2f}]")
+    segs = segment(tokens)
+    print(f"segments={len(segs)}")
+    for s in segs:
+        print(f"  [{s.start:.2f},{s.end:.2f}]")
+    return segs
+
+
+if __name__ == "__main__":
+    import argparse
+    import json
+    from pathlib import Path as P
+    ap = argparse.ArgumentParser()
+    ap.add_argument("transcript_json")
+    ap.add_argument("--trace", action="store_true")
+    args = ap.parse_args()
+    words = json.loads(P(args.transcript_json).read_text())
+    if args.trace:
+        trace_segment(words)
+    else:
+        for s in segment_timed_words(words):
+            print(f"{s.start:.3f} {s.end:.3f}")
