@@ -904,6 +904,23 @@ class ControlHandlerTests(unittest.TestCase):
         self.assertIn("ci-older", html)
         self.assertIn("older", html)
 
+    def test_board_preserves_column_scroll_across_rerender(self):
+        """Poll/SSE rebuild must not reset Done (or other) column scrollTop."""
+        import factory_floor.server as floor
+
+        html = floor.INDEX_HTML
+        self.assertIn("savedColScroll", html)
+        self.assertIn("savedFeedScroll", html)
+        self.assertIn("col.dataset.col = name", html)
+        self.assertIn("cards.scrollTop = savedColScroll[name]", html)
+        self.assertIn("feed.scrollTop = savedFeedScroll", html)
+        self.assertIn(
+            "do not jump back to the top",
+            html,
+            msg="comment should document why scroll is preserved",
+        )
+
+
 def _task_ticket_body(
     n: int,
     *,

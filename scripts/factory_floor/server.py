@@ -2391,6 +2391,16 @@ function render() {
   }
 
   const board = document.getElementById("board");
+  // Poll + SSE rebuild the board every few seconds; keep column/feed scroll
+  // so Done (and other tall lanes) do not jump back to the top while reading.
+  const savedColScroll = {};
+  board.querySelectorAll(".col[data-col] .cards").forEach(el => {
+    const colNode = el.closest(".col");
+    const key = colNode && colNode.getAttribute("data-col");
+    if (key) savedColScroll[key] = el.scrollTop;
+  });
+  const feedEl = document.getElementById("feed");
+  const savedFeedScroll = feedEl ? feedEl.scrollTop : 0;
   board.innerHTML = "";
   const items = [...(snap.tasks||[]), ...(snap.slices||[])];
   const idle = document.getElementById("idle");
@@ -2424,6 +2434,7 @@ function render() {
   for (const name of cols) {
     const col = document.createElement("div");
     col.className = "col";
+    col.dataset.col = name;
     let colItems = items.filter(i => colFor(i)===name);
     const doneSlices = name === "Done" ? colItems.filter(i => i.type === "slice") : [];
     const doneTasks = name === "Done" ? colItems.filter(i => i.type === "task") : [];
@@ -2472,6 +2483,7 @@ function render() {
       }
     }
     col.appendChild(cards);
+    if (savedColScroll[name] != null) cards.scrollTop = savedColScroll[name];
     board.appendChild(col);
   }
 
@@ -2628,6 +2640,7 @@ function render() {
     d.innerHTML = (ts ? `<span class="ts">${esc(ts)}</span>` : "") + esc(text);
     feed.appendChild(d);
   }
+  feed.scrollTop = savedFeedScroll;
 
   const stationEl = document.getElementById("station");
   stationEl.className = "station" + (
