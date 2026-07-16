@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 31 |
 | **Title** | Restore now-playing session on relaunch |
-| **Status** | Ready |
+| **Status** | In Progress |
 | **Priority** | P3 |
 | **Crux** | After a simulated process relaunch with a durable active episode, saved position, and up-next queue, cold start shows `miniPlayer` for that episode **paused** at the saved timestamp (± **1.0** s) without re-tapping an episode row — and does **not** auto-play. |
 
@@ -95,14 +95,14 @@ scripts/verify.sh
 ## Verification record (QA fills at Verify)
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=6 passed=6 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260715-231655.xcresult tier=2 class=tests
 ```
 
 ## Plan review record (coordinator fills before downstream roles)
 
 ```
-ADR review: (pending)
-Test spec review: (pending)
+ADR review (2026-07-15): (pending) QA cleared — pipeline worker finished PM cleared — pipeline worker finished
+Test spec review (2026-07-15): Architect cleared — pipeline worker finished
 ```
 
 ## Done gate

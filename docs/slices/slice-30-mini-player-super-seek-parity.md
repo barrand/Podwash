@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 30 |
 | **Title** | Mini-player super seek bar parity (shared chrome) |
-| **Status** | In Progress |
+| **Status** | Implemented |
 | **Priority** | P3 |
 | **Crux** | Mini and full player host the **same** `SuperSeekBarView` (one paint + seek + mute-marker implementation): with analysis complete and ≥ **1** profanity mute, both expose matching segment + `muteMarkers:N` AX, and mini supports playhead + frontier-clamped tap-to-seek without a second bar implementation. |
 

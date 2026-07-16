@@ -43,3 +43,4 @@ from the relevant slice file's Role artifacts table.
 | [024](024-device-whisper-base-en.md) | Device Whisper base.en: lean dual-SDK pin, stable bundle folder + pin file, compute split, cache fingerprint + wipe | Accepted |
 | [025](025-episode-cleaning-summary.md) | Episode cleaning summary: aggregation + channel-row cache binding | Accepted |
 | [026](026-mini-player-super-seek-parity.md) | Mini-player super seek bar parity: shared `SuperSeekBarView` host | Accepted |
+| [027](027-restore-now-playing-session.md) | Restore now-playing session: durable active id, paused cold-start bootstrap, clear-on-finish+empty-queue | Accepted |

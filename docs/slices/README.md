@@ -61,6 +61,7 @@ The dependency graph and parallel groups live in [`multitask-workflow.md`](../mu
 | 29 | `slice-29-episode-cleaning-summary.md` | **UX** — channel-screen episode row cleaning summary (profanity + ad section counts, `X.X min` ads; needs 19/20/24) |
 | 30 | `slice-30-mini-player-super-seek-parity.md` | **UX** — mini player hosts shared `SuperSeekBarView` (mute markers + playhead + seek; needs 25, 27) |
 | 31 | `slice-31-restore-now-playing-session.md` | **UX** — cold relaunch restores mini player + episode + position + queue (paused; needs 11, 23) |
+| 32 | `slice-32-timestamp-seek-bar-ads-progress.md` | **UX** — in-flight analysis progress only; complete bar = timestamp yellow ads + green (needs 25, 27) |
 | 32 | `slice-32-transcript-follow-along.md` | **UX** — per-word karaoke highlight + follow auto-scroll + break + snap-back (needs 26; mini under transcript = task-027) |
 
 **MVP app shell (Slices 22–23):** Inserted after lock-screen polish (14) and **before CarPlay (15)**.
