@@ -380,7 +380,7 @@ final class TranscriptUITests: XCTestCase {
         var resolved = ""
         var saw = false
         let timer = Timer(timeInterval: 0.05, repeats: true) { timer in
-            guard let value = accessibilityValue(for: "playback.analysisProgress", in: app) else {
+            guard let value = Self.accessibilityValue(for: "playback.analysisProgress", in: app) else {
                 return
             }
             saw = true

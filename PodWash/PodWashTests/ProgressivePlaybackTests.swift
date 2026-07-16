@@ -313,7 +313,10 @@ final class ProgressivePlaybackTests: XCTestCase {
     }
 
     private func makeProgressiveAnalyzer(
-        terminalHold: Duration = .seconds(3)
+        terminalHold: Duration = .seconds(3),
+        /// Hold between chunk snapshots so shell tests can observe mid-flight
+        /// `processedEnd` (ADR-030 AC5) before the terminal 120.0 s snapshot.
+        betweenSnapshotDelay: Duration = .milliseconds(50)
     ) throws -> ProgressiveSteppedTestAnalyzer {
         let partials = try [
             firstChunkPartialIntervals(),
@@ -323,6 +326,7 @@ final class ProgressivePlaybackTests: XCTestCase {
         return ProgressiveSteppedTestAnalyzer(
             snapshots: pinnedSnapshots(),
             partialIntervalsBySnapshot: partials,
+            betweenSnapshotDelay: betweenSnapshotDelay,
             terminalHold: terminalHold
         )
     }
@@ -477,7 +481,12 @@ final class ProgressivePlaybackTests: XCTestCase {
     // MARK: - Slice 33 AC5: progressive start without in-flight segment-color gate
 
     func testPlaybackStartsAfterFirstChunkWithoutSegmentColorGate() async throws {
-        let analyzer = try makeProgressiveAnalyzer(terminalHold: .seconds(5))
+        // Hold first-chunk frontier long enough that play + snapshot asserts land
+        // while processedEnd is still 30 (not yet 60/120).
+        let analyzer = try makeProgressiveAnalyzer(
+            terminalHold: .seconds(5),
+            betweenSnapshotDelay: .seconds(2)
+        )
         let model = makeShell(analyzer: analyzer, injectedTranscript: try loadTranscript())
         let episode = fixtureEpisode()
         try installLocalDownload(for: episode.id)

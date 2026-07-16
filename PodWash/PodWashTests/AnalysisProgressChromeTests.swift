@@ -190,7 +190,9 @@ final class AnalysisProgressChromeTests: XCTestCase {
     }
 
     private func makeProgressiveAnalyzer(
-        terminalHold: Duration = .seconds(3)
+        terminalHold: Duration = .seconds(3),
+        /// Keep first-chunk frontier (30/120) visible for AC4 progress asserts.
+        betweenSnapshotDelay: Duration = .seconds(2)
     ) throws -> ProgressiveSteppedTestAnalyzer {
         let partials = try [
             loadFirstChunkGolden().map {
@@ -202,6 +204,7 @@ final class AnalysisProgressChromeTests: XCTestCase {
         return ProgressiveSteppedTestAnalyzer(
             snapshots: FixtureProgressivePlayback.pinnedSnapshots,
             partialIntervalsBySnapshot: partials,
+            betweenSnapshotDelay: betweenSnapshotDelay,
             terminalHold: terminalHold
         )
     }
