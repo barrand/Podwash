@@ -1,8 +1,8 @@
-# Slice 32 — Timestamp seek-bar ads + analysis progress chrome
+# Slice 33 — Timestamp seek-bar ads + analysis progress chrome
 
 | Field | Value |
 |-------|-------|
-| **ID** | 32 |
+| **ID** | 33 |
 | **Title** | Timestamp seek-bar ads + analysis progress chrome |
 | **Status** | Ready |
 | **Priority** | P3 |
@@ -39,7 +39,7 @@ Make the super seek bar match what users already trust: transcript ad yellow and
 ## Deliverables
 
 - ADR — `docs/adr/028-timestamp-seek-bar-ads-progress.md` (supersedes ADR-018 **player** yellow-bucket rule; revises ADR-021 in-flight chrome; yellow overlay model parallel to ADR-023 mute markers; AX contract)
-- UX spec `docs/slices/slice-32-ux.md` — in-flight progress UI, complete yellow/green layout, identifiers, fixture scenarios
+- UX spec `docs/slices/slice-33-ux.md` — in-flight progress UI, complete yellow/green layout, identifiers, fixture scenarios
 - Retire publishing/consuming in-flight `segmentColors` (ready/processing/pending dance) on player chrome
 - `SuperSeekBarModel` (+ view): timestamp-normalized **ad bands** from unrelated skips; paint yellow by fraction of duration
 - Wire yellow bands from **applied/cached playback** unrelated skips (parity with `TranscriptViewModel` skip set)
@@ -121,7 +121,7 @@ Test spec review: (pending)
 - [ ] Every AC mapped to a test; all rows in the mapping table filled
 - [ ] **Full suite green:** unfiltered `scripts/verify.sh` exit 0, failed 0, skipped 0
 - [ ] Verification record pasted above
-- [ ] Auto-commit on green: `slice-32: timestamp seek-bar ads + analysis progress`
+- [ ] Auto-commit on green: `slice-33: timestamp seek-bar ads + analysis progress`
 
 ## Tickets (optional)
 
@@ -135,7 +135,7 @@ Test spec review: (pending)
 |------|-----------|----------|
 | PM | **Required** | This story |
 | Architect | **Required** | `docs/adr/028-timestamp-seek-bar-ads-progress.md` |
-| UX | **Required** | `docs/slices/slice-32-ux.md` |
+| UX | **Required** | `docs/slices/slice-33-ux.md` |
 | QA | **Required** | Ad-band + progress chrome tests; migrate Slice 25/27 player AX |
 | Engineer | **Required** | Progress chrome + timestamp yellow overlays; retire in-flight segment paint |
 

@@ -40,6 +40,9 @@ jobs:
             scripts/check-test-isolation.sh HEAD
           fi
 
+      - name: Check slice ID uniqueness
+        run: scripts/check-slice-ids.sh
+
       # ADR-020: app build copies openai_whisper-tiny.en from gitignored Models/.
       - name: Setup ASR models
         run: scripts/setup-asr-models.sh

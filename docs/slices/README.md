@@ -14,6 +14,8 @@ If you have never worked this way before, read this page once, skim [`_template.
 | **[`../specs/matching-spec.md`](../specs/matching-spec.md)** | **Exact algorithm behavior** — constants, normalization, merge semantics, golden examples | Only via a superseding spec change |
 | **`docs/slices/slice-NN-*.md`** | **HOW/WHEN** — crux, acceptance criteria, verification, status for one increment | Every active slice session |
 
+**Slice numbering:** exactly **one** story file per slice number — `slice-NN-<slug>.md` where `NN` matches `| **ID** | NN |` in the file. UX addenda use `slice-NN-ux.md` (same `NN`, not a second story). Before filing a new slice, check `docs/slices/README.md` and run `scripts/check-slice-ids.sh`. CI fails on duplicate IDs or filename/metadata mismatches.
+
 **Conflict rule:**
 
 - **PRD wins** on product intent; **spec wins** on algorithm behavior.
@@ -61,8 +63,8 @@ The dependency graph and parallel groups live in [`multitask-workflow.md`](../mu
 | 29 | `slice-29-episode-cleaning-summary.md` | **UX** — channel-screen episode row cleaning summary (profanity + ad section counts, `X.X min` ads; needs 19/20/24) |
 | 30 | `slice-30-mini-player-super-seek-parity.md` | **UX** — mini player hosts shared `SuperSeekBarView` (mute markers + playhead + seek; needs 25, 27) |
 | 31 | `slice-31-restore-now-playing-session.md` | **UX** — cold relaunch restores mini player + episode + position + queue (paused; needs 11, 23) |
-| 32 | `slice-32-timestamp-seek-bar-ads-progress.md` | **UX** — in-flight analysis progress only; complete bar = timestamp yellow ads + green (needs 25, 27) |
 | 32 | `slice-32-transcript-follow-along.md` | **UX** — per-word karaoke highlight + follow auto-scroll + break + snap-back (needs 26; mini under transcript = task-027) |
+| 33 | `slice-33-timestamp-seek-bar-ads-progress.md` | **UX** — in-flight analysis progress only; complete bar = timestamp yellow ads + green (needs 25, 27) |
 
 **MVP app shell (Slices 22–23):** Inserted after lock-screen polish (14) and **before CarPlay (15)**.
 The factory built cleaning/playback engines but production `ContentView` was still a placeholder;
