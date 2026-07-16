@@ -6,8 +6,9 @@
 >
 > Deeper references (read only when needed):
 > - [`multitask-workflow.md`](multitask-workflow.md) — full process, roles, gates
-> - [`slice-runner.md`](slice-runner.md) — `next-slice.sh` / `slice-loop.sh` mechanics
-> - [`slice-pipeline.md`](slice-pipeline.md) — loop-as-orchestrator / `--orchestrator=pipeline`
+> - [`forge-floor.md`](forge-floor.md) — Floor **Start Forge** / unified `forge.sh`
+> - [`slice-runner.md`](slice-runner.md) — queue brain + legacy slice-loop notes
+> - [`slice-pipeline.md`](slice-pipeline.md) — gate FSM / Mechanic / Medic
 > - [`.cursor/rules/podwash-coordinator.mdc`](../.cursor/rules/podwash-coordinator.mdc) — standing coordinator rules (also always-on in Cursor)
 
 ## What “dark factory” means
@@ -26,7 +27,7 @@ Backlog → In Progress → Verify (full scripts/verify.sh green) → Done (+ au
 2. Unfiltered `scripts/verify.sh` exits **0**, **failed 0**, **skipped 0**.
 3. The slice file’s verification record contains the `VERIFY RESULT:` line from that run.
 4. Slice `Status` is **Done**.
-5. Auto-commit: `slice-NN: <short description>`. Interactive sessions: push when the user asks. Unattended `slice-loop.sh`: auto-push on green (disable with `--no-push`).
+5. Auto-commit: `slice-NN: <short description>`. Interactive sessions: push when the user asks. Unattended Forge (`forge.sh` / Floor): auto-push on green (disable with `--no-push`).
 
 Humans review strategy and PRs; **no slice completion gate** depends on manual QA.
 
@@ -47,16 +48,18 @@ the full PRD or all 19 slices into context.
 
 | Script | Role | When to use |
 |--------|------|-------------|
-| [`scripts/verify.sh`](../scripts/verify.sh) | **Done gate** — full iOS test suite on Simulator | Every slice completion; filtered runs are inner-loop only |
-| [`scripts/next-slice.sh`](../scripts/next-slice.sh) | **Queue brain** — which slice is next, deps, halt gates | Between sessions; prints a copy-paste coordinator prompt |
-| [`scripts/slice-loop.sh`](../scripts/slice-loop.sh) | **Auto driver** — runs slices sequentially via local Cursor SDK | Hands-off: `export CURSOR_API_KEY=…` then `scripts/slice-loop.sh` |
+| [`scripts/verify.sh`](../scripts/verify.sh) | **Done / ship gate** — full iOS test suite on Simulator | Every ship; filtered runs are inner-loop only |
+| [`scripts/next-work.sh`](../scripts/next-work.sh) | **Unified queue brain** — next task or slice | Between sessions; Floor / `forge_loop` |
+| [`scripts/forge.sh`](../scripts/forge.sh) | **Auto driver** — unified tasks + slices via local Cursor SDK | Hands-off: Floor **Start Forge**, or `export CURSOR_API_KEY=…` then `scripts/forge.sh` |
 
-### `next-slice.sh` (manual coordinator)
+`scripts/slice-loop.sh` is a **deprecated** alias → `forge.sh`. Prefer Floor or `forge.sh`.
+
+### `next-slice.sh` (manual coordinator / per-kind brain)
 
 ```bash
 scripts/next-slice.sh            # human output + paste-ready prompt
 scripts/next-slice.sh --status   # full kanban: ID, Status, DepsMet, BlockedBy
-scripts/next-slice.sh --json     # machine output (used by slice-loop)
+scripts/next-slice.sh --json     # machine output (used by next-work / forge_loop)
 ```
 
 A slice counts as **Done** for the runner only when **both** are true:
@@ -68,21 +71,21 @@ Sequential policy: **lowest eligible slice number** whose dependencies are all D
 
 **Halt-and-ask gates** (loop stops; user must decide): slices **11, 13, 15, 17**.
 
-### `slice-loop.sh` (automated coordinator)
+### `forge.sh` (automated factory)
 
 Runs on **your Mac** (local SDK agent) because `verify.sh` needs Xcode + Simulator.
+Primary UI: [`scripts/forge-floor.sh`](../scripts/forge-floor.sh) → **Start Forge**.
 
 ```bash
 export CURSOR_API_KEY=cursor_...   # Dashboard → Integrations
 
-scripts/slice-loop.sh --dry-run    # next decision only; no agent, no key
-scripts/slice-loop.sh --max 1      # one slice then stop (good first try)
-scripts/slice-loop.sh              # coordinator mode (default): authoring LLM + loop-owned verify
-scripts/slice-loop.sh --orchestrator pipeline   # Python gate FSM (see slice-pipeline.md)
+scripts/forge.sh --dry-run    # next decision only; no agent, no key
+scripts/forge.sh --max 1      # one item then stop (good first try)
+scripts/forge.sh              # drain unified queue (Medic on by default)
 ```
 
-The loop owns `scripts/verify.sh` as truth and routes red results to visible
-Engineer|QA fix workers (`--max-fix-attempts`, default 2 → exit 5). See
+The loop owns `scripts/verify.sh` as truth and routes red results to Mechanic
+fix workers. See [`forge-floor.md`](forge-floor.md) and
 [`slice-pipeline.md`](slice-pipeline.md).
 
 Options: `--verbose` (full coordinator text), `--heartbeat 60` (idle ping every N seconds),
@@ -103,7 +106,7 @@ is preserved — fix with Engineer/QA, then re-run. Do not spawn UX to fix app/t
 
 **Known failure:** `Bridge request timed out: ReadTimeout` — the SDK lost contact
 during a long subagent stretch; slice is usually still **In Progress**. Re-run
-`scripts/slice-loop.sh --max 1` or resume manually (below). `retryable=True` means
+`scripts/forge.sh --max 1` or resume manually (below). `retryable=True` means
 safe to retry. On re-run the loop injects a **RESUME** block when status is not
 Ready/Draft: audit `git status` + slice artifacts, skip completed gates, continue
 from the first incomplete step (usually Engineer/verify).
@@ -138,11 +141,12 @@ Done = scripts/verify.sh full suite green + VERIFY RESULT in slice file + Status
 If halt-and-ask or PRD §11 is open, STOP and ask the user — never guess.
 ```
 
-### Option C — unattended loop
+### Option C — unattended Forge
 
 ```bash
 export CURSOR_API_KEY=cursor_...
-scripts/slice-loop.sh --max 1
+scripts/forge.sh --max 1
+# or: scripts/forge-floor.sh → Start Forge
 ```
 
 Do **not** put shell comments on the same line (`# …`) — they get passed as arguments.

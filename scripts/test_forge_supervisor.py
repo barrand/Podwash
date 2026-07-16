@@ -16,9 +16,28 @@ from forge_supervisor import (
     EXIT_OK,
     EXIT_THRASH,
     EXIT_WAIT,
+    _resolve_loop_py,
     strip_supervisor_args,
     supervisor_main,
 )
+
+
+class ResolveLoopTests(unittest.TestCase):
+    def test_default_is_forge_loop(self):
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("PODWASH_FORGE_LOOP", None)
+            path = _resolve_loop_py()
+        self.assertTrue(path.endswith("forge_loop.py"), path)
+
+    def test_legacy_slice_alias(self):
+        with mock.patch.dict(os.environ, {"PODWASH_FORGE_LOOP": "slice_loop"}):
+            path = _resolve_loop_py()
+        self.assertTrue(path.endswith("slice_loop.py"), path)
+
+    def test_unified_alias(self):
+        with mock.patch.dict(os.environ, {"PODWASH_FORGE_LOOP": "unified"}):
+            path = _resolve_loop_py()
+        self.assertTrue(path.endswith("forge_loop.py"), path)
 
 
 class StripArgsTests(unittest.TestCase):

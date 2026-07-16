@@ -1,28 +1,35 @@
 ---
 name: podwash-factory
-description: Forge — unattended slice pipeline (slice-loop). Gate FSM, tiered verify, Mechanic fix cycles, progress-based anti-thrash. Read before any slice-loop or pipeline worker session.
+description: Forge — unattended factory (forge_loop via Floor / forge.sh). Gate FSM, tiered verify, Mechanic fix cycles, progress-based anti-thrash. Read before any forge or pipeline worker session.
 model: composer-2.5
 ---
 
-You are operating inside **Forge** — PodWash's unattended slice factory
-(`scripts/slice-loop.sh`, default orchestrator `pipeline`).
+You are operating inside **Forge** — PodWash's unattended factory
+(Forge Floor → **Start Forge**, or `scripts/forge.sh` → `forge_loop.py`).
 
-Source of truth: [`docs/slice-pipeline.md`](../../docs/slice-pipeline.md),
+Source of truth: [`docs/forge-floor.md`](../../docs/forge-floor.md),
+[`docs/slice-pipeline.md`](../../docs/slice-pipeline.md),
 [`docs/plans/factory-v3-mechanic.md`](../../docs/plans/factory-v3-mechanic.md),
 [`docs/multitask-workflow.md`](../../docs/multitask-workflow.md).
 
 ## What Forge does
 
-Python owns gate order, `scripts/verify.sh`, **Mechanic** fix cycles, Done-artifact
-writing, and commits. LLM workers are **one visible SDK agent per gate or fix
-cycle**.
+Python owns gate order, `scripts/verify.sh`, **Mechanic** fix cycles, status
+updates, and commits. LLM workers are **one visible SDK agent per gate or fix
+cycle**. Tasks and feature slices share one serial queue.
 
 ```text
+# Feature slices
 story → architect/ux → adr reviews → test_spec → test_review → implement
-  → tier-2 slice verify → full-suite verify → record Done → commit
+  → tier-2 surgical verify → Status Implemented
+# Punch-list tasks
+rapid pipeline → tier-2 surgical verify → Status Implemented
+# Ship (manual)
+Floor Full verify & ship → tier-3a then tier-3 → Implemented → Done
 ```
 
-Entry: `scripts/slice-loop.sh` (or `scripts/slice-loop.sh --max 1` for one slice).
+Entry: Forge Floor **Start Forge**, or `scripts/forge.sh` (e.g. `--max 1`).
+`scripts/slice-loop.sh` is a deprecated alias — do not recommend it.
 
 ## Verify tiers (`scripts/verify.sh`)
 
@@ -30,8 +37,8 @@ Entry: `scripts/slice-loop.sh` (or `scripts/slice-loop.sh --max 1` for one slice
 |------|------|--------|
 | 0 | warm derived data | `build-for-testing` |
 | 1 | after each Mechanic cycle | failed tests only |
-| 2 | implement exit gate | slice-mapped tests |
-| 3 | Done | full unfiltered suite |
+| 2 | implement exit gate | surgical / slice-mapped tests → **Implemented** |
+| 3a / 3 | ship gate | units then full suite → **Done** |
 
 `VERIFY RESULT: … class=build|tests` — `build` when exit≠0 and zero tests ran.
 
@@ -65,9 +72,10 @@ Typical pattern: `slice-NN: test spec` → `slice-NN: implement` → Mechanic
 ## Artifacts on halt
 
 - `build/test-results/stuck-slice-NN.txt`
-- `build/test-results/session-slice-NN/`
+- `build/test-results/session-slice-NN/` (or `session-task-batch/`)
 - `build/test-results/ledger-slice-NN.jsonl`
 - `build/test-results/events-slice-NN.jsonl`
+- Floor: `build/factory/station.json`, `batch-failure.json`
 
 ## Role agents in Forge
 

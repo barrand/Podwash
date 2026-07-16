@@ -9,18 +9,18 @@ Mission control for PodWash Factory. **One process:** `forge-intake` + unified b
 3. In Cursor: invoke **forge-intake** (bugs/tweaks → `docs/tasks/`; features → `docs/slices/`)
 4. Watch **Now**, **Your move**, and the **N items since last green full verify** counter
 5. Each item exits at tier-2 green → Status **Implemented** (pushed per item)
-6. When you're ready, press **Full verify & ship** (tier-3a then tier-3). On green, all Implemented → **Done**
+6. When you're ready, press **Full verify → Done** in the Ship gate panel (tier-3a then tier-3). On green, all Implemented → **Done**
 7. Halted / halt-and-ask → **Your move** (Requeue, answer, Don't push, Retry)
-8. **Pause** before hand-editing app code (`factory-hot` owns the tree). Soft pause parks at gate boundaries.
+8. **Pause** before hand-editing app code (`factory-hot` owns the tree). Default click pauses now (interrupts in-flight work); menu **After this ticket** finishes the current item first. Soft pause parks the loop — use **Kill Forge** (⋯) only to hard-kill the process.
 
 ## Commands
 
 | Command | Role |
 |---------|------|
 | `scripts/forge-floor.sh` | Mission control UI (primary) |
-| `scripts/forge.sh` | Unified serial runner (default) |
+| `scripts/forge.sh` | Unified serial runner (venv + Medic → `forge_loop`) |
 | `scripts/task-loop.sh` | Thin alias → `forge.sh` |
-| `scripts/slice-loop.sh` | Medic wrapper; set `PODWASH_FORGE_LOOP` for the loop module |
+| `scripts/slice-loop.sh` | **Deprecated** thin alias → `forge.sh` |
 | `scripts/next-work.sh` | Unified queue brain (`--json`) |
 | `scripts/next-task.sh` / `next-slice.sh` | Per-kind queue brains (used by next-work) |
 
@@ -34,7 +34,7 @@ See [`docs/tasks/README.md`](tasks/README.md). Intake skill: [`.cursor/skills/fo
 
 ## Controls
 
-Floor writes `build/factory/controls.json` (pause, ship_now, requeue, cancel, answer_halt, `runner_lane=forge`).  
+Floor writes `build/factory/controls.json` (pause, pause_after_current, ship_now, requeue, cancel, answer_halt, `runner_lane=forge`).  
 `build/factory/factory-hot` is present while the loop owns the tree — **local-dev defers**.
 
 | File | Role |
@@ -44,7 +44,19 @@ Floor writes `build/factory/controls.json` (pause, ship_now, requeue, cancel, an
 | `build/factory/heartbeat.json` | Loop liveness |
 | `build/factory/batch-failure.json` | Open ship-gate incident (+ optional bisect) |
 
-**Full verify & ship** (`ship_now`) = force ship gate (3a then 3), promote Implemented→Done, then `git push` if green.
+### Header toolbar
+
+| Control | Role |
+|---------|------|
+| **Start Forge** | Spawn the unified runner (morphs to Running / Paused status while live) |
+| **Pause** ▾ | Soft pause now (interrupt). Menu: **After this ticket** arms a boundary pause |
+| **Cancel pause** | Clears an armed “after this ticket” without parking yet |
+| **Resume** | Unpark after a soft pause (only shown while paused) |
+| **⋯ → Kill Forge** | Hard-kill the runner process group (not a pause). Surfaced in the header for orphan / starting escape |
+
+### Ship gate panel
+
+**Full verify → Done** (`ship_now`) = force ship gate (3a then 3), promote Implemented→Done, then `git push` if green. Lives next to **CI safety net**, not in the header.
 
 ## Verify policy
 

@@ -118,7 +118,11 @@ def find_halt_bundle(repo_root: str, slice_id: int | None = None) -> str | None:
             return cand
     newest: tuple[float, str] | None = None
     for name in os.listdir(tr):
-        if not name.startswith("session-slice"):
+        if not (
+            name.startswith("session-slice")
+            or name == "session-task-batch"
+            or name.startswith("session-task")
+        ):
             continue
         path = os.path.join(tr, name)
         halt = os.path.join(path, "halt.json")

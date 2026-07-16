@@ -6,13 +6,16 @@ this file is the evidence map and worked examples.
 **Factory v3:** one **Mechanic** worker; progress-based stop. See
 [`docs/plans/factory-v3-mechanic.md`](../../../docs/plans/factory-v3-mechanic.md).
 
+**Entry today:** Forge Floor → **Start Forge**, or `scripts/forge.sh` →
+`forge_loop.py`. `scripts/slice-loop.sh` is a deprecated alias.
+
 ## Artifact inventory
 
-All under `build/test-results/` (gitignored).
+All under `build/test-results/` (gitignored) unless noted.
 
 ### Session bundle (first stop)
 
-`build/test-results/session-slice-NN/` — written on thrash/infra halt:
+**Slices** — `build/test-results/session-slice-NN/` (thrash/infra halt):
 
 | File | Contents |
 |------|----------|
@@ -24,6 +27,9 @@ All under `build/test-results/` (gitignored).
 | `verify-output.txt` | Latest verify stdout/stderr |
 | `verify-result.json` | Machine-readable VERIFY RESULT |
 | `xcresult-path.txt` | Path to relevant `.xcresult` |
+
+**Tasks** — `build/test-results/session-task-batch/` (same shape when task thrash
+writes a bundle).
 
 ### Persistent artifacts
 
@@ -37,14 +43,25 @@ All under `build/test-results/` (gitignored).
 | `verify-*.xcresult` | Test runs (tiers 1–3) |
 | `tier2-slice-NN.ok` | Tier-2 gate went green |
 
+### Floor / controls (`build/factory/`)
+
+| Path | When |
+|------|------|
+| `station.json` | Current phase (QA / Engineer / SLICE gate / FULL-VERIFY) |
+| `controls.json` | pause, ship_now, requeue, runner_lane |
+| `heartbeat.json` | Loop liveness |
+| `batch-failure.json` | Open ship-gate incident |
+| `factory-hot` | Present while the loop owns the tree |
+| `forge-loop.log` | Runner stdout captured by Floor |
+
 ### Console prefixes
 
-- `[slice-loop]` — harness
+- `[forge-loop]` / `[forge-supervisor]` — unified harness
+- `[slice-loop]` — legacy slice-only driver (deprecated)
 - `[slice NN][Mechanic Name]` — fix worker progress
 - `LANE HINT: …` — optional recipe (not a role route)
 - `PROGRESS:` / `NO PROGRESS:` / `THRASH HALT:` — progress rule
-- `Forge · slice NN · …` — heartbeats
-- `Forge recap · …` — end-of-slice summary
+- `Forge · …` — heartbeats / recap
 
 ## Loop exit codes
 
@@ -52,7 +69,7 @@ All under `build/test-results/` (gitignored).
 |------|---------|
 | 0 | Queue complete / `--max` clean |
 | 1 | Agent never started (auth/config/network) |
-| 2 | Slice ran but not Done |
+| 2 | Item ran but not Implemented/Done |
 | 3 | `wait` — blocked on dependency |
 | 4 | `halt` — halt-and-ask gate |
 | **5** | **ThrashHalt** — no progress / hard cap / review blocked ×2 |
@@ -72,8 +89,8 @@ Hard-cap reasons start with `HARD CAP:` — never `no progress 0/2`.
 |------|--------|------|
 | 0 | `build-for-testing` | Warm / post-edit compile check |
 | 1 | Failed tests only | After each Mechanic cycle |
-| 2 | Slice-mapped tests | Implement exit gate |
-| 3 | Full unfiltered suite | Done gate |
+| 2 | Surgical / slice-mapped tests | Item exit → **Implemented** |
+| 3a / 3 | Units then full suite | Ship gate (**Full verify & ship**) → **Done** |
 
 **Green contract:** `exit == 0` and `failed == 0` and `skipped == 0`.
 

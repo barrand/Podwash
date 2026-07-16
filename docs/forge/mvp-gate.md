@@ -16,4 +16,4 @@
 1. `scripts/forge.sh` → `PODWASH_FORGE_LOOP=forge_loop` (tasks + slices, serial)
 2. Floor **Start Forge** starts the unified runner
 3. Item exit = tier-2 → **Implemented**; ship gate = **Full verify & ship** (tier-3a then tier-3)
-4. `task-loop.sh` is a thin alias to `forge.sh`; `slice-loop.sh` remains the Medic wrapper (set `PODWASH_FORGE_LOOP` to choose the loop module)
+4. `task-loop.sh` and `slice-loop.sh` are thin aliases → `forge.sh` (`slice-loop.sh` is deprecated)

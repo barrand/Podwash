@@ -152,11 +152,20 @@ simulator and can run in CI.
 scripts/test-next-slice.sh
 ```
 
-## Phase 2 — the auto-run loop (built)
+## Phase 2 — the auto-run loop (built; superseded as product entry)
 
-[`scripts/slice-loop.sh`](../scripts/slice-loop.sh) (driver:
-[`scripts/slice_loop.py`](../scripts/slice_loop.py)) closes the loop: it runs
-eligible slices to Done, one after another, unattended, on your Mac.
+**Prefer today:** [`docs/forge-floor.md`](forge-floor.md) — Floor **Start Forge** or
+[`scripts/forge.sh`](../scripts/forge.sh) → unified [`forge_loop.py`](../scripts/forge_loop.py).
+
+[`scripts/slice-loop.sh`](../scripts/slice-loop.sh) is a **deprecated alias** →
+`forge.sh`. The legacy slice-only driver [`scripts/slice_loop.py`](../scripts/slice_loop.py)
+remains for emergency `PODWASH_FORGE_LOOP=slice_loop` only. Slice gate FSM logic
+lives in [`slice_pipeline.py`](../scripts/slice_pipeline.py) and is still used by
+the unified loop.
+
+Historical note: Phase 2 originally closed the loop by running eligible slices
+to Done via `next-slice.sh` + a local Cursor SDK agent (Xcode + Simulator must
+be on your Mac — cloud Automations cannot verify iOS).
 
 ### Why local (and not a Cursor Automation)
 

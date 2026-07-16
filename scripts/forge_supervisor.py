@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Forge supervisor — self-heal wrapper around slice_loop.py (default on).
+"""Forge supervisor — self-heal wrapper around forge_loop.py (default on).
 
-Runs ``slice_loop.py`` as a subprocess so medic patches reload on resume.
+Runs the selected loop as a subprocess so medic patches reload on resume.
 Thin by design: exit dispatch, budgets, invoke ``forge_medic.run_medic_heal``.
 
 Usage:
-  scripts/slice-loop.sh …                 # Medic on by default
-  scripts/slice-loop.sh --no-self-heal …  # plain slice_loop, no Medic
-  scripts/slice-loop.sh --medic-no-push   # heal + commit, skip push
+  scripts/forge.sh …                 # Medic on by default (unified loop)
+  scripts/forge.sh --no-self-heal …  # plain forge_loop, no Medic
+  scripts/forge.sh --medic-no-push   # heal + commit, skip push
+
+Legacy ``scripts/slice-loop.sh`` is a thin alias → forge.sh.
 """
 
 from __future__ import annotations
@@ -18,7 +20,7 @@ import subprocess
 import sys
 from typing import Sequence
 
-# Exit codes — mirror slice_loop.py (do not import the pipeline).
+# Exit codes — mirror forge_loop / task_loop (do not import the pipeline).
 EXIT_OK = 0
 EXIT_STARTUP = 1
 EXIT_RUN_FAILED = 2
@@ -31,16 +33,17 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _resolve_loop_py() -> str:
-    raw = os.environ.get("PODWASH_FORGE_LOOP", "slice_loop").strip()
+    raw = os.environ.get("PODWASH_FORGE_LOOP", "forge_loop").strip()
     aliases = {
+        "forge": "forge_loop.py",
+        "forge_loop": "forge_loop.py",
+        "unified": "forge_loop.py",
+        # Legacy selectors (prefer forge_loop)
         "slice": "slice_loop.py",
         "slice_loop": "slice_loop.py",
         "task": "task_loop.py",
         "tasks": "task_loop.py",
         "task_loop": "task_loop.py",
-        "forge": "forge_loop.py",
-        "forge_loop": "forge_loop.py",
-        "unified": "forge_loop.py",
     }
     name = aliases.get(raw, raw)
     if not name.endswith(".py"):
@@ -87,9 +90,11 @@ def strip_supervisor_args(argv: Sequence[str]) -> tuple[list[str], dict[str, boo
 
 
 def run_slice_loop(loop_argv: list[str], *, python: str | None = None) -> int:
+    """Spawn the configured loop subprocess (name kept for test patches)."""
     py = python or sys.executable
     cmd = [py, LOOP_PY, *loop_argv]
-    log(f"spawn slice_loop: {' '.join(cmd[1:])}")
+    loop_name = os.path.basename(LOOP_PY)
+    log(f"spawn {loop_name}: {' '.join(cmd[1:])}")
     proc = subprocess.run(cmd, cwd=REPO_ROOT)
     return int(proc.returncode)
 
@@ -169,7 +174,7 @@ def run_medic(
         new_count = session_heal_count
 
     if result.ok:
-        log(f"medic healed sig={result.signature} — resuming slice_loop")
+        log(f"medic healed sig={result.signature} — resuming forge loop")
         return True, new_count
 
     log(f"medic stopped ({result.outcome}) — human needed")
@@ -242,7 +247,7 @@ def supervisor_main(argv: Sequence[str] | None = None) -> int:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Forge supervisor — slice_loop with Medic self-heal (default on)",
+        description="Forge supervisor — forge_loop with Medic self-heal (default on)",
     )
     p.add_argument(
         "--self-heal",
@@ -252,7 +257,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--no-self-heal",
         action="store_true",
-        help="disable Medic — plain slice_loop only",
+        help="disable Medic — plain forge_loop only",
     )
     p.add_argument(
         "--medic-no-push",
@@ -272,8 +277,8 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
         build_arg_parser().print_help()
         print(
-            "\nAll other flags are forwarded to scripts/slice_loop.py "
-            "(e.g. --max, --orchestrator, --no-push)."
+            "\nAll other flags are forwarded to the configured loop "
+            f"(default {os.path.basename(LOOP_PY)}; e.g. --max, --no-push)."
         )
         sys.exit(0)
     sys.exit(supervisor_main())

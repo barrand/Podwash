@@ -46,7 +46,7 @@ Current designed behavior vs desired delta. Killer question: **which existing te
 
 ### Feature
 
-Grill for story/AC enough to start the slice pipeline. Create/update `docs/slices/slice-NN-*.md` from the slice template (Status Ready or Queued-equivalent per slices README). MVP: execution may still use `slice-loop`; still file it so Forge Floor shows it.
+Grill for story/AC enough to start the slice pipeline. Create/update `docs/slices/slice-NN-*.md` from the slice template (Status Ready or Queued-equivalent per slices README). Execution is Forge Floor **Start Forge** / `scripts/forge.sh` (unified queue with tasks).
 
 ### Needs-human
 

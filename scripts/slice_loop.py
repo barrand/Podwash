@@ -1,43 +1,15 @@
 #!/usr/bin/env python3
-"""PodWash slice loop — Phase 2 of the slice runner.
+"""DEPRECATED — legacy slice-only Forge loop.
 
-Runs eligible slices to Done, one after another, on the LOCAL machine (so
-`scripts/verify.sh` has real Xcode + the iOS Simulator). It is a thin driver
-around:
+**Do not use for new runs.** Prefer Forge Floor → **Start Forge** or
+``scripts/forge.sh`` (unified ``forge_loop.py`` for tasks + slices).
 
-  1. `scripts/next-slice.sh --json`  — the dependency-aware "what's next?" brain.
-  2. Orchestrator modes:
-       - coordinator (legacy): one SDK coordinator for authoring; loop owns verify
-         + bounded Engineer|QA fix workers (Phase 1).
-       - pipeline: Python gate FSM + one visible SDK worker per gate (Phase 2+).
+Kept for emergency ``PODWASH_FORGE_LOOP=slice_loop`` only. Slice gate FSM
+logic lives in ``slice_pipeline.py`` and is still used by the unified loop.
 
-Verification honesty: the loop only advances when `next-slice.sh` confirms the
-slice's status actually flipped to Done (with a green VERIFY RESULT). It never
-trusts the agent's self-report, so a half-finished slice cannot advance the queue.
-
-Stop conditions (never guessed around):
-  - halt : the next slice is a halt-and-ask gate → a human must decide first.
-  - wait : every remaining slice is blocked on an unfinished dependency.
-  - done : the queue is complete.
-  - a slice failed to reach Done (agent error or verify red) → stop, no spin.
-  - thrash: fix/verify budget exhausted → exit 5 with explanation.
-  - infra: bridge/DNS/sim death with no code change → exit 6 (retry-safe).
-
-Usage:
-  scripts/slice-loop.sh                 # run the queue until it stops (pipeline mode)
-  scripts/slice-loop.sh --dry-run       # show what WOULD run; spawns no agents
-  scripts/slice-loop.sh --max 3         # run at most 3 slices this session
-  scripts/slice-loop.sh --model auto    # let the server pick the coordinator model
-  scripts/slice-loop.sh --orchestrator coordinator  # legacy attended authoring LLM
-  scripts/slice-loop.sh --orchestrator pipeline     # default — Python gate FSM
-  scripts/slice-loop.sh --stream-timeout 0   # disable bridge stream idle cap (default)
-
-Auth (non-dry-run): export CURSOR_API_KEY=cursor_...
-
-Bridge timeouts: the Cursor SDK defaults to a 600s stream read timeout. Quiet
-Engineer/verify stretches exceed that and surface as
-`Bridge request timed out: ReadTimeout` even while work continues. This driver
-disables that cap by default and retries retryable bridge errors.
+Historical behavior (slice-only queue via ``next-slice.sh``):
+  - coordinator (legacy) or pipeline gate FSM
+  - exit codes 0–6 (same contract as forge_loop)
 """
 
 from __future__ import annotations
@@ -695,4 +667,10 @@ def main():
 
 
 if __name__ == "__main__":
+    print(
+        "slice_loop.py: DEPRECATED — prefer scripts/forge.sh or Forge Floor → Start Forge "
+        "(unified forge_loop). Emergency only: PODWASH_FORGE_LOOP=slice_loop",
+        file=sys.stderr,
+        flush=True,
+    )
     sys.exit(main())

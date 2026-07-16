@@ -27,14 +27,19 @@
 
 ## Orchestrator modes
 
+**Product entry today:** Forge Floor → **Start Forge**, or `scripts/forge.sh`
+(unified `forge_loop` — tasks + slices). Deprecated: `scripts/slice-loop.sh`
+(alias → `forge.sh`). Legacy slice-only driver: `PODWASH_FORGE_LOOP=slice_loop`.
+
 ```bash
-scripts/slice-loop.sh                              # default — pipeline (unattended)
-scripts/slice-loop.sh --orchestrator pipeline       # explicit gate FSM
-scripts/slice-loop.sh --orchestrator coordinator   # legacy attended authoring LLM
-scripts/slice-loop.sh --orchestrator pipeline --dry-run
+scripts/forge.sh                                    # unified queue (Medic on)
+scripts/forge.sh --dry-run                          # next decision only
+scripts/forge.sh --max 1                            # one item then stop
+# Emergency legacy slice-only queue (not recommended):
+PODWASH_FORGE_LOOP=slice_loop scripts/forge.sh --orchestrator pipeline
 ```
 
-**Pipeline (default):** Python drives `story → … → implement → verify → record → commit`
+**Pipeline (default for slices):** Python drives `story → … → implement → verify → record → commit`
 with `run_worker()` per gate. Reviewers use SDK `mode=plan`. There is no LLM
 “QA verify” gate — the loop owns the suite. Authoring gates must **not** run
 `verify.sh` (TDD compile-red is expected until Engineer implements).
@@ -293,17 +298,17 @@ bridge-close crashes). Architect may run spike-scoped
 ## Medic (self-heal)
 
 Supervisor around the loop — **on by default**. Opt out with `--no-self-heal`.
-Heals reload in a fresh `slice_loop` process (not in-process).
+Heals reload in a fresh loop process (not in-process).
 
 ```bash
-scripts/slice-loop.sh --max 1                 # Medic on (default)
-scripts/slice-loop.sh --medic-no-push --max 1 # heal + commit, skip push
-scripts/slice-loop.sh --no-self-heal --max 1  # plain loop, no Medic
+scripts/forge.sh --max 1                 # Medic on (default)
+scripts/forge.sh --medic-no-push --max 1 # heal + commit, skip push
+scripts/forge.sh --no-self-heal --max 1  # plain forge_loop, no Medic
 ```
 
 | Concern | Owner |
 |---------|--------|
-| Subprocess `slice_loop` + exit dispatch | `forge_supervisor.py` |
+| Subprocess `forge_loop` + exit dispatch | `forge_supervisor.py` |
 | Diagnose / critic / implement prompts + quality gates | `forge_medic.py` |
 | Halt signature dedup | `build/test-results/medic-ledger.jsonl` |
 | Post-mortems | `docs/forge/medic-reports/` |
@@ -337,8 +342,8 @@ python3 -m unittest scripts.test_factory_v3 scripts.test_factory_p1 \
   scripts.test_slice_loop_progress scripts.test_failure_packet \
   scripts.test_forge_medic scripts.test_forge_supervisor -q
 ./scripts/test-verify-tiers.sh
-scripts/slice-loop.sh --orchestrator pipeline --max 1   # unattended (Medic on)
-scripts/slice-loop.sh --no-self-heal --max 1            # plain loop, no Medic
+scripts/forge.sh --max 1                            # unattended (Medic on)
+scripts/forge.sh --no-self-heal --max 1             # plain forge_loop, no Medic
 ```
 
 **Factory v3 landed:** Mechanic (no role routing), unified `run_fix_cycle`,

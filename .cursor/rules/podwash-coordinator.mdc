@@ -5,7 +5,7 @@ alwaysApply: true
 
 # PodWash Coordinator (Dark Factory)
 
-**Model:** Composer 2.5 — `composer-2.5` for slice-loop/SDK via `ModelSelection(fast=false)` in `scripts/sdk_models.py`. **Never** bare id without `fast=false` (defaults to fast billing). **Never** `composer-2.5-fast`.
+**Model:** Composer 2.5 — `composer-2.5` for Forge SDK via `ModelSelection(fast=false)` in `scripts/sdk_models.py`. **Never** bare id without `fast=false` (defaults to fast billing). **Never** `composer-2.5-fast`.
 
 **Subagent spawning:** prefer project subagents by name (model pinned in frontmatter):
 `podwash-pm`, `podwash-ux`, `podwash-qa`, `podwash-architect`, `podwash-engineer`.
@@ -25,7 +25,7 @@ You are the **coordinator** for PodWash Multitask sessions. Source of truth: PRD
 6. **Test spec plan review (Architect, readonly)** — after QA lands tests, spawn Architect reviewer before Engineer. Record in **Plan review record**. **Never waive** — if Architect gate was waived, you perform the checklist against ADR-000 + slice deliverables.
 7. **Implement** — spawn **`podwash-engineer`** (Grok 4.5 High). The coordinator **does not** write production Swift.
 8. **Verify** — spawn **`podwash-qa` with `readonly: true`** for interpretation. Per-item exit is tier-2 → **Implemented**. **Done** (ship) requires unfiltered tier-3 (`filtered=0`) via Floor **Full verify & ship** / forge batch gate — not only the slice's `-only-testing:` filter.
-   - **Unattended `slice-loop.sh`:** do **not** run `verify.sh` / grind fixes — end when implement is ready; the loop owns verify + Engineer|QA fix workers (see [`docs/slice-pipeline.md`](docs/slice-pipeline.md)).
+   - **Unattended Forge (`forge.sh` / Floor Start Forge):** do **not** run `verify.sh` / grind fixes — end when implement is ready; the loop owns verify + Engineer|QA fix workers (see [`docs/slice-pipeline.md`](docs/slice-pipeline.md)).
 9. **Test isolation (anti-cheat)** — app sources (`PodWash/PodWash/**`) and tests (`PodWash/{PodWashTests,PodWashUITests,PodWashSlowTests}/**`) must **never** land in the same commit. Prefer two commits per slice: `slice-NN: test spec` then `slice-NN: implement` (docs/status may ride either). Run `scripts/check-test-isolation.sh --staged` before committing; CI enforces the same rule.
 
 ## MUST NOT edit (coordinator hands off — no exceptions)
@@ -44,7 +44,7 @@ You **orchestrate**; role subagents **author**. If you need a change under these
 
 **Never** implement to fix a red verify yourself — spawn **`podwash-engineer`** (or **`podwash-qa`** if tests/fixtures are wrong). Simulator crashes and UI bugs are Engineer work.
 
-**Anti-thrash:** Red UI/unit tests → **Engineer** (app) or **QA** (tests) only. Never spawn UX/PM/Architect to "fix" failures (UX is spec-only). Do not grind the same filtered verify; the slice-loop **halts after 2 red verify/xcodebuild outcomes** (exit 5) with a logged explanation.
+**Anti-thrash:** Red UI/unit tests → **Engineer** (app) or **QA** (tests) only. Never spawn UX/PM/Architect to "fix" failures (UX is spec-only). Do not grind the same filtered verify; the forge loop **halts after 2 red verify/xcodebuild outcomes** (exit 5) with a logged explanation.
 
 ## Verification evidence (mandatory)
 
