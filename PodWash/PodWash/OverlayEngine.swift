@@ -23,6 +23,8 @@ final class OverlayEngine {
     private nonisolated(unsafe) var boundaryObserverToken: Any?
     /// `nonisolated(unsafe)`: stopped/released from `nonisolated deinit`.
     private nonisolated(unsafe) var audioPlayer: AVAudioPlayer?
+    /// `nonisolated(unsafe)`: invalidated from `nonisolated deinit`.
+    private nonisolated(unsafe) var silencePollTimer: Timer?
     private var muteIntervals: [(start: TimeInterval, end: TimeInterval)] = []
     private var mode: MuteOverlayMode = .off
     private var assetID: String = "beep"
@@ -30,6 +32,8 @@ final class OverlayEngine {
     /// Suppresses boundary handling while seek resync runs (avoids double stop/start).
     private var isSeekResyncing = false
     private let matchEpsilon: TimeInterval = 0.05
+    /// Interval whose start event was last emitted (silence-poll stop pairing).
+    private var activeSilenceInterval: (start: TimeInterval, end: TimeInterval)?
 
     /// Under XCTest / UITest / `PODWASH_SILENCE_HOST_AUDIO`, overlay volume is 0
     /// so verify emits no host-audible beeps (task-004 / task-018).
@@ -50,6 +54,8 @@ final class OverlayEngine {
             player.removeTimeObserver(token)
             boundaryObserverToken = nil
         }
+        silencePollTimer?.invalidate()
+        silencePollTimer = nil
         audioPlayer?.stop()
         audioPlayer = nil
     }
@@ -71,11 +77,12 @@ final class OverlayEngine {
 
         guard prepareAudioPlayer(resourceName: resourceName) else { return }
         armBoundaryObservers()
+        armSilencePollingIfNeeded()
 
         // If already inside a mute window (e.g. apply mid-playback), start immediately.
         let now = player.currentTime().seconds
-        if let _ = containingInterval(at: now) {
-            startOverlay(at: now)
+        if let interval = containingInterval(at: now) {
+            startOverlay(at: interval.start, interval: interval)
         }
     }
 
@@ -91,6 +98,7 @@ final class OverlayEngine {
 
         // Disarm while we reconcile so residual boundary fires cannot race.
         removeBoundaryObserver()
+        stopSilencePolling()
 
         let landedInside = mode != .off && containingInterval(at: currentTime) != nil
 
@@ -100,14 +108,15 @@ final class OverlayEngine {
             } else {
                 stopOverlay(at: currentTime, recordEvent: true)
             }
-        } else if landedInside {
-            startOverlay(at: currentTime)
+        } else if landedInside, let interval = containingInterval(at: currentTime) {
+            startOverlay(at: interval.start, interval: interval)
         } else {
             audioPlayer?.pause()
         }
 
         if mode != .off, !muteIntervals.isEmpty {
             armBoundaryObservers()
+            armSilencePollingIfNeeded()
         }
     }
 
@@ -119,6 +128,7 @@ final class OverlayEngine {
     /// Tear down observers + stop playback.
     func reset() {
         removeBoundaryObserver()
+        stopSilencePolling()
         stopOverlay(at: player.currentTime().seconds, recordEvent: true)
         muteIntervals = []
         mode = .off
@@ -126,6 +136,7 @@ final class OverlayEngine {
         audioPlayer = nil
         isOverlayActive = false
         isSeekResyncing = false
+        activeSilenceInterval = nil
     }
 
     // MARK: - Private
@@ -165,7 +176,8 @@ final class OverlayEngine {
             forTimes: times,
             queue: .main
         ) { [weak self] in
-            MainActor.assumeIsolated {
+            // Hop via Task — assumeIsolated can SIGABRT under XCTest host pressure.
+            Task { @MainActor [weak self] in
                 self?.handleBoundaryFire()
             }
         }
@@ -178,22 +190,63 @@ final class OverlayEngine {
         }
     }
 
+    /// Silence-host playhead pumps seek across mute edges without firing boundary
+    /// observers — poll so overlay start/stop events still land on schedule times.
+    private func armSilencePollingIfNeeded() {
+        stopSilencePolling()
+        guard Self.silenceOverlayForTests else { return }
+        let timer = Timer(timeInterval: 0.02, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.pollSilenceOverlayState()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        silencePollTimer = timer
+    }
+
+    private func stopSilencePolling() {
+        silencePollTimer?.invalidate()
+        silencePollTimer = nil
+    }
+
+    private func pollSilenceOverlayState() {
+        guard !isSeekResyncing, mode != .off else { return }
+        let t = player.currentTime().seconds
+        guard t.isFinite else { return }
+
+        if let interval = containingInterval(at: t) {
+            if !isOverlayActive {
+                startOverlay(at: interval.start, interval: interval)
+            }
+            return
+        }
+
+        if isOverlayActive {
+            let stopAt = activeSilenceInterval?.end ?? t
+            stopOverlay(at: stopAt, recordEvent: true)
+        }
+    }
+
     private func handleBoundaryFire() {
         guard !isSeekResyncing, mode != .off else { return }
 
         let t = player.currentTime().seconds
 
         if let start = matchingStart(at: t), !isOverlayActive {
-            startOverlay(at: start)
+            let interval = muteIntervals.first { abs($0.start - start) <= matchEpsilon }
+            startOverlay(at: start, interval: interval)
             return
         }
 
-        if matchingEnd(at: t) != nil, isOverlayActive {
-            stopOverlay(at: t, recordEvent: true)
+        if let end = matchingEnd(at: t), isOverlayActive {
+            stopOverlay(at: end, recordEvent: true)
         }
     }
 
-    private func startOverlay(at time: TimeInterval) {
+    private func startOverlay(
+        at time: TimeInterval,
+        interval: (start: TimeInterval, end: TimeInterval)? = nil
+    ) {
         guard !isOverlayActive else { return }
         guard let audioPlayer else { return }
 
@@ -207,9 +260,13 @@ final class OverlayEngine {
         audioPlayer.currentTime = 0
         if Self.silenceOverlayForTests {
             audioPlayer.volume = 0
+            // Do not call play() under host silence — secondary AVAudioPlayer
+            // steals the session and freezes the muted episode clock.
+        } else {
+            audioPlayer.play()
         }
-        audioPlayer.play()
         isOverlayActive = true
+        activeSilenceInterval = interval
         eventRecorder?.overlayStart(at: time, assetID: assetID)
         reassertEpisodePlaybackIfNeeded(wasPlaying: episodeWasPlaying, rate: resumeRate)
     }
@@ -225,6 +282,7 @@ final class OverlayEngine {
         }
         audioPlayer?.pause()
         isOverlayActive = false
+        activeSilenceInterval = nil
         if recordEvent {
             eventRecorder?.overlayStop(at: time)
         }
@@ -236,6 +294,9 @@ final class OverlayEngine {
         guard wasPlaying else { return }
         guard player.timeControlStatus != .playing || abs(player.rate) < 0.0001 else { return }
         player.playImmediately(atRate: rate > 0.0001 ? rate : 1.0)
+        if abs(player.rate) < 0.0001 {
+            player.rate = rate > 0.0001 ? rate : 1.0
+        }
     }
 
     private func containingInterval(at time: TimeInterval) -> (start: TimeInterval, end: TimeInterval)? {

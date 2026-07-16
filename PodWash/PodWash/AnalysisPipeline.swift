@@ -324,6 +324,8 @@ final class AnalysisPipeline: @unchecked Sendable {
         // UITest NoCache: store off the prepare critical path so AC7 can expand the
         // full player and assert `playback.viewTranscript` absent. Task 020 still
         // observes the affordance once the deferred write lands (≤ backfill wait).
+        // 8 s keeps AC7's full-player expand window clear of the write; task-020
+        // waits 10 s and polls generation after prepare (see AppShellModel).
         if FixtureTranscript.isNoCacheEnabled {
             let episodeID = episode.id
             let cache = transcriptCache

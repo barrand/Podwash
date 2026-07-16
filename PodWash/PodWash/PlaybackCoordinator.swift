@@ -133,12 +133,22 @@ final class PlaybackCoordinator {
         let chunkReadyGate = OnceFlag()
         partialApplyChain = nil
         let installation = installPartialIntervalsHandler { [weak self] intervals, snapshot in
-            MainActor.assumeIsolated {
-                guard let self else { return }
-                let previous = self.partialApplyChain
-                self.partialApplyChain = Task { @MainActor in
-                    await previous?.value
-                    await self.handleProgressivePartial(
+            // Callers emit from `MainActor.run` — enqueue the chain Task synchronously so
+            // `partialApplyChain` is visible before the next yield/sleep (task-022 intro skip).
+            // Off-main (defensive): hop without assumeIsolated SIGABRT.
+            guard let self else { return }
+            if Thread.isMainThread {
+                MainActor.assumeIsolated {
+                    self.enqueueProgressivePartial(
+                        intervals: intervals,
+                        snapshot: snapshot,
+                        chunkReadyGate: chunkReadyGate,
+                        onChunkReady: onChunkReady
+                    )
+                }
+            } else {
+                Task { @MainActor [weak self] in
+                    self?.enqueueProgressivePartial(
                         intervals: intervals,
                         snapshot: snapshot,
                         chunkReadyGate: chunkReadyGate,
@@ -224,6 +234,24 @@ final class PlaybackCoordinator {
         }
         return PartialHandlerInstallation { [weak self] in
             self?.pipeline.onPartialIntervals = previous
+        }
+    }
+
+    private func enqueueProgressivePartial(
+        intervals: [CensorInterval],
+        snapshot: AnalysisProgressSnapshot,
+        chunkReadyGate: OnceFlag,
+        onChunkReady: (@MainActor () -> Void)?
+    ) {
+        let previous = partialApplyChain
+        partialApplyChain = Task { @MainActor in
+            await previous?.value
+            await self.handleProgressivePartial(
+                intervals: intervals,
+                snapshot: snapshot,
+                chunkReadyGate: chunkReadyGate,
+                onChunkReady: onChunkReady
+            )
         }
     }
 
