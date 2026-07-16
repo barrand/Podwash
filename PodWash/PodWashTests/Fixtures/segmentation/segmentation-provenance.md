@@ -33,6 +33,17 @@ Positive-class ranges only (`[{ "start", "end" }]`). Bounds snap to the first/la
 - Golden ranges were **not** tuned to segmenter output.
 - `segmentation-benchmark-results.json` is **execution evidence** produced later by `PodWashSlowTests/SegmentationBenchmarkTests` running production `HeuristicContentSegmenter` on `spike_transcript.json`; fast tests recompute IoU precision/recall from that artifact vs this golden file. (Distinct filename avoids colliding with `Fixtures/asr/benchmark-results.json` in the flat test bundle.)
 
+## Slice 34 failure-mode fixtures (2026-07-16)
+
+Hand-scripted midroll edge cases for `heuristic-cue-v6` (labels **before** v6 tuning):
+
+| Fixture base | Provenance | AC |
+|--------------|------------|-----|
+| `midroll_closer_resume` | `midroll_closer_resume_provenance.md` | End-bleed / host resume at 19.0 s |
+| `question_hook_continuity` | `question_hook_continuity_provenance.md` | Question hook must not truncate ad body |
+| `missed_opener_recovery` | `missed_opener_recovery_provenance.md` | Late `"This message comes from"` anchor |
+| `single_sentence_read` | `single_sentence_read_provenance.md` | ≥ 5.0 s single-sentence underwriting |
+
 ## Regenerating `segmentation-benchmark-results.json`
 
 ```bash

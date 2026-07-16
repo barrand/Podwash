@@ -42,7 +42,7 @@ final class IntervalCacheTests: XCTestCase {
             + "\n"
             + "interval-format:v2"
             + "\n"
-            + "segmenter:heuristic-cue-v5"
+            + "segmenter:heuristic-cue-v6"
     }
 
     private func fingerprintMaterial(for targetWords: Set<String>, asrModelPin: String) -> String {
@@ -118,5 +118,29 @@ final class IntervalCacheTests: XCTestCase {
         let loaded = try XCTUnwrap(cache.load(episodeID: episodeID, targetWords: targetWords))
         XCTAssertEqual(loaded.count, 1)
         XCTAssertEqual(loaded[0].start, 1.0, accuracy: 0.0001)
+    }
+
+    // MARK: - Slice 34 AC8: segmenter fingerprint invalidation
+
+    func testSegmenterFingerprintIncludesHeuristicCueV6() throws {
+        try FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+        let preV6Material = IntervalCache.fingerprint(for: targetWords)
+            + "\n"
+            + "interval-format:v2"
+            + "\n"
+            + "segmenter:heuristic-cue-v5"
+            + "\n"
+            + "asr-model:\(tinyPin)"
+        let digest = SHA256.hash(data: Data(preV6Material.utf8))
+        let hash = digest.map { String(format: "%02x", $0) }.joined()
+        let safeStem = DownloadPaths.fileNameStem(for: episodeID)
+        let legacyURL = cacheDir.appendingPathComponent("\(safeStem)__\(hash).json", isDirectory: false)
+        try JSONEncoder().encode(sampleIntervals()).write(to: legacyURL, options: .atomic)
+
+        let cache = IntervalCache(baseDirectory: cacheDir, asrModelPin: tinyPin)
+        XCTAssertNil(
+            cache.load(episodeID: episodeID, targetWords: targetWords),
+            "Cache written under segmenter:heuristic-cue-v5 must miss after v6 fingerprint bump"
+        )
     }
 }

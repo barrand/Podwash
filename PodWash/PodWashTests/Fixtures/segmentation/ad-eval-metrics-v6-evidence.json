@@ -1,0 +1,47 @@
+{
+  "approach": "heuristic-cue-v6",
+  "recordedAt": "2026-07-16",
+  "fixtureGate": {
+    "verifyResult": "exit=0 total=15 passed=15 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260716-144855.xcresult",
+    "tests": [
+      "PodWashTests/SegmentationSpikeTests/testMidrollClosesBeforeHostResume",
+      "PodWashTests/SegmentationSpikeTests/testQuestionHookContinuityKeepsAdBody",
+      "PodWashTests/SegmentationSpikeTests/testMissedOpenerRecoveryStartsAtMessageComesFrom",
+      "PodWashTests/SegmentationSpikeTests/testSingleSentenceUnderwritingReadDetected",
+      "PodWashTests/SegmentationSpikeTests/testOpeningWithoutSponsorAnchorProducesNoEarlySegment",
+      "PodWashTests/SegmentationSpikeTests/testThreeSponsorClustersMatchGoldenIoU",
+      "PodWashTests/SegmentationSpikeTests/testPrecisionRecallAgainstGolden"
+    ],
+    "spikePrecision": 1.0,
+    "spikeRecall": 1.0
+  },
+  "tal891Provisional": {
+    "asr": "faster_whisper:base.en",
+    "goldenSource": "diff_golden.json (provisional)",
+    "v5": {
+      "timeWeightedPrecision": 0.798,
+      "timeWeightedRecall": 0.454,
+      "medianAbsDeltaEnd": 6.96
+    },
+    "v6": {
+      "timeWeightedPrecision": 0.822,
+      "timeWeightedRecall": 0.366,
+      "medianAbsDeltaEnd": 3.69
+    },
+    "note": "Corpus worst-episode 0.98/0.95 gate requires human-reviewed goldens; fixtures are Done for algorithm ship."
+  },
+  "corpusShows": [
+    "economics-of-everyday-things",
+    "ai-daily-brief",
+    "ai-news-strategy-daily",
+    "unexplainable",
+    "planet-money",
+    "99-percent-invisible",
+    "dr-death",
+    "version-history",
+    "radiolab",
+    "search-engine",
+    "cougar-sports",
+    "this-american-life"
+  ]
+}
