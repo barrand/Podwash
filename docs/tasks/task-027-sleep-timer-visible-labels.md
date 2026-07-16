@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 027 |
 | **Title** | Sleep timer visible duration labels |
-| **Status** | Queued |
+| **Status** | In Progress |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/PlaybackControlsView.swift`, `PodWash/PodWashUITests/PlaybackControlsUITests.swift` |
@@ -55,5 +55,5 @@
 > Loop writes `VERIFY RESULT:` here. For tasks, `tier=2` and `filtered=1` are valid for Done.
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=4 passed=4 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260715-214122.xcresult tier=2 class=tests
 ```

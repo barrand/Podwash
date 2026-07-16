@@ -153,14 +153,19 @@ struct PlaybackControlsView: View {
                     .accessibilityValue(engine.rateAccessibilityValue)
 
                     Button(action: cycleSleepTimer) {
-                        Image(systemName: sleepAccessibilityValue == "off"
-                              ? "moon.zzz"
-                              : "moon.zzz.fill")
-                            .font(.title2)
+                        Text(sleepTimerVisibleLabel)
+                            .font(.system(.body, design: .rounded))
+                            .frame(minWidth: 56)
                     }
                     .accessibilityIdentifier("sleepTimerButton")
                     .accessibilityLabel("Sleep timer")
                     .accessibilityValue(sleepAccessibilityValue)
+                    // Keep Off/15m/30m/60m queryable as StaticText under the button
+                    // (Button + accessibilityLabel otherwise collapses Text out of AX).
+                    .accessibilityChildren {
+                        Text(sleepTimerVisibleLabel)
+                            .accessibilityIdentifier(sleepTimerVisibleLabel)
+                    }
                 }
             }
             .padding()
@@ -187,6 +192,15 @@ struct PlaybackControlsView: View {
         ensureSleepTimer()
         sleepTimer?.cyclePreset()
         sleepAccessibilityValue = sleepTimer?.accessibilityValue ?? "off"
+    }
+
+    private var sleepTimerVisibleLabel: String {
+        switch sleepAccessibilityValue {
+        case "900": return "15m"
+        case "1800": return "30m"
+        case "3600": return "60m"
+        default: return "Off"
+        }
     }
 
     private func togglePlayPause() {

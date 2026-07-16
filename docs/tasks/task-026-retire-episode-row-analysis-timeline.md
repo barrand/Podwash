@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 026 |
 | **Title** | Retire episode-row analysis timeline |
-| **Status** | In Progress |
+| **Status** | Implemented |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/EpisodeListView.swift`, `PodWash/PodWash/AnalysisTimelineView.swift` (row host only), `PodWash/PodWashUITests/AnalysisTimelineUITests.swift`, `PodWash/PodWashUITests/AnalysisProgressUITests.swift`, `PodWash/PodWashUITests/CleaningSummaryUITests.swift`, `docs/adr/018-analysis-timeline.md`, `docs/slices/slice-20-ux.md`, `docs/slices/slice-29-*.md` (AC6 / mutual-exclusion amend) |
