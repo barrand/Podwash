@@ -91,6 +91,9 @@ final class NowPlayingSessionTests: XCTestCase {
 
     let current = model.engine?.currentTime ?? 0
     XCTAssertLessThanOrEqual(abs(current - pinnedPosition), positionTolerance)
+
+    // Tear down session before AppShellModel leaves scope (MainActor deinit hygiene).
+    model.stopAndDismissPlayer()
   }
 
   // MARK: - AC3: finish + empty queue clears durable session
@@ -132,6 +135,8 @@ final class NowPlayingSessionTests: XCTestCase {
     XCTAssertFalse(model.isMiniPlayerVisible)
     XCTAssertNil(model.nowPlayingEpisodeID)
     XCTAssertNil(model.nowPlayingSessionStore.activeEpisodeID())
+
+    model.stopAndDismissPlayer()
   }
 
   // MARK: - AC4: finish + non-empty queue advances durable active id

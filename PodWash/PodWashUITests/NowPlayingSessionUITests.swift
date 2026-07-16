@@ -137,6 +137,7 @@ final class NowPlayingSessionUITests: XCTestCase {
     in app: XCUIApplication,
     recordQueueSnapshot: Bool
   ) -> QueueSnapshot {
+    _ = recordQueueSnapshot
     waitForLibraryRoot(app)
     navigateToEpisodeList(app)
 
@@ -161,37 +162,11 @@ final class NowPlayingSessionUITests: XCTestCase {
       message: "miniPlayerPlayPause must report playing before seek"
     )
 
-    tapMiniPlayerBar(app)
-
-    let fullPlayPause = element("playback.playPause", in: app)
-    XCTAssertTrue(fullPlayPause.waitForExistence(timeout: fixtureTimeout))
-
-    let seekForward = app.buttons["playback.seekForward15"]
-    XCTAssertTrue(seekForward.waitForExistence(timeout: fixtureTimeout))
-    seekForward.tap()
-
-    fullPlayPause.tap()
-    waitForAccessibilityValue(
-      "paused",
-      identifier: "playback.playPause",
-      in: app,
-      timeout: fixtureTimeout,
-      message: "playback.playPause must report paused after seek (position flush)"
-    )
-
-    let elapsed = element("playback.elapsed", in: app)
-    if elapsed.waitForExistence(timeout: 2) {
-      let seconds = Int(elapsed.value as? String ?? "-1") ?? -1
-      XCTAssertGreaterThanOrEqual(seconds, pinnedPositionSeconds - 1)
-      XCTAssertLessThanOrEqual(seconds, pinnedPositionSeconds + 1)
-    }
-
-    dismissFullPlayer(app)
-    XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout))
-
+    // Queue while the episode list is still the top chrome — full-player sheet
+    // otherwise covers `queueAddButton_1` (exists && !isHittable).
     let queueAdd = app.buttons["queueAddButton_1"]
     XCTAssertTrue(queueAdd.waitForExistence(timeout: fixtureTimeout))
-    queueAdd.tap()
+    tapQueueAddIfNeeded(queueAdd, in: app)
 
     waitForAccessibilityValue(
       "1",
@@ -205,13 +180,60 @@ final class NowPlayingSessionUITests: XCTestCase {
     XCTAssertTrue(queueCell0.waitForExistence(timeout: fixtureTimeout))
     XCTAssertEqual(queueCell0.value as? String, queuedEpisodeID)
 
+    tapMiniPlayerBar(app)
+
+    let fullPlayPause = element("playback.playPause", in: app)
+    XCTAssertTrue(fullPlayPause.waitForExistence(timeout: fixtureTimeout))
+
+    // Pause first so ±15 seeks are relative to a stable clock near start (UX: "from start").
+    // Seeking while playing lets the playhead race past the pinned 15 s (±1) window.
+    if (fullPlayPause.value as? String) == "playing" {
+      fullPlayPause.tap()
+      waitForAccessibilityValue(
+        "paused",
+        identifier: "playback.playPause",
+        in: app,
+        timeout: fixtureTimeout,
+        message: "playback.playPause must report paused before pinned seek"
+      )
+    }
+
+    let seekBack = app.buttons["playback.seekBack15"]
+    XCTAssertTrue(seekBack.waitForExistence(timeout: fixtureTimeout))
+    // Rewind toward 0 so one +15 lands at the pinned restore position.
+    for _ in 0..<3 {
+      let elapsedBefore = element("playback.elapsed", in: app)
+      let secondsBefore = Int(elapsedBefore.value as? String ?? "0") ?? 0
+      if secondsBefore <= 1 { break }
+      seekBack.tap()
+    }
+
+    let seekForward = app.buttons["playback.seekForward15"]
+    XCTAssertTrue(seekForward.waitForExistence(timeout: fixtureTimeout))
+    seekForward.tap()
+
+    waitForAccessibilityValue(
+      "paused",
+      identifier: "playback.playPause",
+      in: app,
+      timeout: fixtureTimeout,
+      message: "playback.playPause must remain paused after seek (position flush)"
+    )
+
+    let elapsed = element("playback.elapsed", in: app)
+    XCTAssertTrue(elapsed.waitForExistence(timeout: fixtureTimeout))
+    waitUntilElapsed(
+      inRange: (pinnedPositionSeconds - 1)...(pinnedPositionSeconds + 1),
+      in: app,
+      timeout: fixtureTimeout
+    )
+
+    dismissFullPlayer(app)
+    XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout))
     XCTAssertEqual(element("miniPlayerPlayPause", in: app).value as? String, "paused")
 
     let listValue = element("queueList", in: app).value as? String ?? ""
     let cellValue = queueCell0.value as? String ?? ""
-    if recordQueueSnapshot {
-      return QueueSnapshot(queueListValue: listValue, queueCell0Value: cellValue)
-    }
     return QueueSnapshot(queueListValue: listValue, queueCell0Value: cellValue)
   }
 
@@ -254,9 +276,32 @@ final class NowPlayingSessionUITests: XCTestCase {
 
   @MainActor
   private func dismissFullPlayer(_ app: XCUIApplication) {
-    app.swipeDown()
+    let fullPlayPause = element("playback.playPause", in: app)
+    for _ in 0..<2 {
+      guard fullPlayPause.exists else { break }
+      app.swipeDown()
+      let sheetGone = NSPredicate(format: "exists == false")
+      let expectation = XCTNSPredicateExpectation(predicate: sheetGone, object: fullPlayPause)
+      _ = XCTWaiter().wait(for: [expectation], timeout: fixtureTimeout)
+    }
     let miniPlayer = element("miniPlayer", in: app)
     _ = miniPlayer.waitForExistence(timeout: fixtureTimeout)
+  }
+
+  /// Mini-player safe-area can report `queueAddButton_*` as exists&&!isHittable;
+  /// scroll once then coordinate-tap so seed does not depend on exact chrome inset.
+  @MainActor
+  private func tapQueueAddIfNeeded(_ queueAdd: XCUIElement, in app: XCUIApplication) {
+    if queueAdd.isHittable {
+      queueAdd.tap()
+      return
+    }
+    app.swipeUp()
+    if queueAdd.waitForExistence(timeout: 1), queueAdd.isHittable {
+      queueAdd.tap()
+      return
+    }
+    queueAdd.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
   }
 
   @MainActor
@@ -273,5 +318,28 @@ final class NowPlayingSessionUITests: XCTestCase {
     let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
     XCTAssertEqual(result, .completed, message)
     XCTAssertEqual(control.value as? String, expected)
+  }
+
+  @MainActor
+  private func waitUntilElapsed(
+    inRange range: ClosedRange<Int>,
+    in app: XCUIApplication,
+    timeout: TimeInterval,
+    file: StaticString = #filePath,
+    line: UInt = #line
+  ) {
+    let elapsed = element("playback.elapsed", in: app)
+    let deadline = Date().addingTimeInterval(timeout)
+    while Date() < deadline {
+      let seconds = Int(elapsed.value as? String ?? "-1") ?? -1
+      if range.contains(seconds) { return }
+      RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+    }
+    let finalSeconds = Int(elapsed.value as? String ?? "-1") ?? -1
+    XCTFail(
+      "playback.elapsed \(finalSeconds) not in \(range.lowerBound)...\(range.upperBound) within \(timeout)s",
+      file: file,
+      line: line
+    )
   }
 }
