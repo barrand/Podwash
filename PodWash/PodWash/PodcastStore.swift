@@ -181,7 +181,12 @@ nonisolated final class PodcastStore: @unchecked Sendable {
             // these IDs — including this podcast's prior set and collisions left by other
             // fixture subscriptions — before inserting replacements.
             let incomingIDs = feed.episodes.map(\.id).filter { !$0.isEmpty }
-            var preservedEpisodeState: [String: (downloadStateRaw: String?, playbackPosition: Double, isPlayed: Bool)] = [:]
+            var preservedEpisodeState: [String: (
+                downloadStateRaw: String?,
+                playbackPosition: Double,
+                isPlayed: Bool,
+                dismissedFromAutoplay: Bool
+            )] = [:]
             if !incomingIDs.isEmpty {
                 let conflictRequest = CDEpisode.fetchRequest()
                 conflictRequest.predicate = NSPredicate(format: "id IN %@", incomingIDs)
@@ -190,7 +195,8 @@ nonisolated final class PodcastStore: @unchecked Sendable {
                         preservedEpisodeState[id] = (
                             downloadStateRaw: row.downloadStateRaw,
                             playbackPosition: row.playbackPosition,
-                            isPlayed: row.isPlayed
+                            isPlayed: row.isPlayed,
+                            dismissedFromAutoplay: row.dismissedFromAutoplay
                         )
                     }
                     self.context.delete(row)
@@ -214,10 +220,12 @@ nonisolated final class PodcastStore: @unchecked Sendable {
                     row.downloadStateRaw = preserved.downloadStateRaw ?? "notDownloaded"
                     row.playbackPosition = preserved.playbackPosition
                     row.isPlayed = preserved.isPlayed
+                    row.dismissedFromAutoplay = preserved.dismissedFromAutoplay
                 } else {
                     row.playbackPosition = 0
                     row.isPlayed = false
                     row.downloadStateRaw = "notDownloaded"
+                    row.dismissedFromAutoplay = false
                 }
                 row.episodeCleaningEnabled = false
                 row.podcast = podcast
@@ -226,6 +234,85 @@ nonisolated final class PodcastStore: @unchecked Sendable {
             podcast.episodes = ordered
 
             try self.context.save()
+        }
+    }
+
+    // MARK: - Smart autoplay (ADR-029)
+
+    func isBinge(feedURL: URL) -> Bool {
+        context.performAndWait {
+            self.fetchPodcast(feedURLString: feedURL.absoluteString)?.isBinge ?? false
+        }
+    }
+
+    func setBinge(_ enabled: Bool, feedURL: URL) throws {
+        try context.performAndWait {
+            guard let podcast = self.fetchPodcast(feedURLString: feedURL.absoluteString) else { return }
+            podcast.isBinge = enabled
+            try self.context.save()
+        }
+    }
+
+    func touchLastHeard(feedURL: URL, at date: Date = Date()) throws {
+        try context.performAndWait {
+            guard let podcast = self.fetchPodcast(feedURLString: feedURL.absoluteString) else { return }
+            podcast.lastHeardAt = date
+            try self.context.save()
+        }
+    }
+
+    func setDismissedFromAutoplay(_ dismissed: Bool, episodeID: String) throws {
+        try context.performAndWait {
+            let request = CDEpisode.fetchRequest()
+            request.predicate = NSPredicate(format: "id == %@", episodeID)
+            request.fetchLimit = 1
+            guard let row = try self.context.fetch(request).first else { return }
+            row.dismissedFromAutoplay = dismissed
+            try self.context.save()
+        }
+    }
+
+    func isDismissedFromAutoplay(episodeID: String) -> Bool {
+        context.performAndWait {
+            let request = CDEpisode.fetchRequest()
+            request.predicate = NSPredicate(format: "id == %@", episodeID)
+            request.fetchLimit = 1
+            return (try? self.context.fetch(request).first)?.dismissedFromAutoplay ?? false
+        }
+    }
+
+    /// Catalog for `SmartOrderEngine` (includes played/dismissed flags).
+    func smartOrderShows() -> [SmartOrderShow] {
+        context.performAndWait {
+            let request = CDPodcast.fetchRequest()
+            request.sortDescriptors = [
+                NSSortDescriptor(key: "subscribedAt", ascending: true),
+                NSSortDescriptor(key: "feedURLString", ascending: true),
+            ]
+            let rows = (try? self.context.fetch(request)) ?? []
+            return rows.compactMap { podcast -> SmartOrderShow? in
+                guard let feedURLString = podcast.feedURLString,
+                      let feedURL = URL(string: feedURLString),
+                      !feedURLString.isEmpty
+                else { return nil }
+                let episodes = (podcast.episodes?.array as? [CDEpisode] ?? []).map { row in
+                    SmartOrderEpisode(
+                        id: row.id ?? "",
+                        title: row.title ?? "",
+                        pubDate: row.pubDate ?? Date(timeIntervalSince1970: 0),
+                        isPlayed: row.isPlayed,
+                        playbackPosition: row.playbackPosition,
+                        dismissedFromAutoplay: row.dismissedFromAutoplay
+                    )
+                }
+                return SmartOrderShow(
+                    feedURL: feedURL,
+                    title: podcast.title ?? "",
+                    isBinge: podcast.isBinge,
+                    lastHeardAt: podcast.lastHeardAt,
+                    episodes: episodes
+                )
+            }
         }
     }
 

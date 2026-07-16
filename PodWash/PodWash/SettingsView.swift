@@ -275,6 +275,14 @@ struct SettingsView: View {
             Text("Episode behavior")
                 .font(.headline)
 
+            Toggle(isOn: $store.smartAutoplayEnabled) {
+                Text("Smart autoplay")
+            }
+            .accessibilityIdentifier("smartAutoplayToggle")
+            .accessibilityLabel("Smart autoplay")
+            .accessibilityHint("When Up Next is empty, continues across subscriptions.")
+            .accessibilityValue(store.smartAutoplayEnabled ? "1" : "0")
+
             Toggle(isOn: $store.autoDownloadEnabled) {
                 Text("Auto-download new episodes")
             }

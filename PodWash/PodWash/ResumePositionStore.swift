@@ -87,6 +87,7 @@ final class ResumePositionStore {
         episode.playbackPosition = 0
         episode.isPlayed = false
         episode.episodeCleaningEnabled = false
+        episode.dismissedFromAutoplay = false
         episode.downloadStateRaw = "notDownloaded"
         return episode
     }

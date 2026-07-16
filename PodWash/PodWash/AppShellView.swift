@@ -99,13 +99,22 @@ struct AppShellView: View {
                         podcastTitle: model.nowPlayingPodcastTitle,
                         timelineColors: model.miniPlayerTimelineColors,
                         isPreparingPlayback: model.isPreparingPlayback,
+                        isPreparingNextEpisode: model.isPreparingNextEpisode,
+                        preparingNextAnnouncement: model.preparingNextAnnouncement,
+                        comingUpItems: model.comingUpItems,
                         episodeDuration: model.superSeekDuration,
                         processedEnd: model.superSeekProcessedEnd,
                         muteIntervals: model.nowPlayingMuteIntervals,
                         onExpand: { model.expandFullPlayer() },
                         onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
-                        onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) }
+                        onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) },
+                        onSkipToNextShow: { model.skipToNextShow() }
                     )
+                    .onChange(of: model.preparingAnnouncementGeneration) { _, _ in
+                        if let text = model.preparingNextAnnouncement {
+                            PreparingSpeech.announce(text)
+                        }
+                    }
                     // iOS 26 TabView bottom inset overlaps the tab bar unless we reserve its height.
                     Color.clear
                         .frame(height: tabBarHeight)
@@ -330,23 +339,38 @@ private struct LibraryPodcastDetailView: View {
     }
 
     var body: some View {
-        PodcastDetailView(
-            viewModel: feedViewModel,
-            analysisViewModel: analysisViewModel,
-            downloadManager: model.downloadManager,
-            queueStore: model.queueStore,
-            onPlayEpisode: { episode in
-                model.playEpisode(
-                    episode,
-                    podcastTitle: summary.title,
-                    feedURL: summary.feedURL
-                )
-            },
-            transcriptExists: { model.transcriptExists(for: $0) },
-            onViewTranscript: { model.presentTranscript(for: $0) },
-            transcriptAffordanceGeneration: model.transcriptAffordanceGeneration,
-            cleaningSummary: { model.cleaningSummary(for: $0) }
-        )
+        VStack(spacing: 0) {
+            Toggle(isOn: Binding(
+                get: { model.isBinge(feedURL: summary.feedURL) },
+                set: { model.setBinge($0, feedURL: summary.feedURL) }
+            )) {
+                Text("Binge")
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .accessibilityIdentifier("bingeToggle")
+            .accessibilityLabel("Binge")
+            .accessibilityHint("Play oldest unplayed episodes first and stay in this show.")
+            .accessibilityValue(model.isBinge(feedURL: summary.feedURL) ? "1" : "0")
+
+            PodcastDetailView(
+                viewModel: feedViewModel,
+                analysisViewModel: analysisViewModel,
+                downloadManager: model.downloadManager,
+                queueStore: model.queueStore,
+                onPlayEpisode: { episode in
+                    model.playEpisode(
+                        episode,
+                        podcastTitle: summary.title,
+                        feedURL: summary.feedURL
+                    )
+                },
+                transcriptExists: { model.transcriptExists(for: $0) },
+                onViewTranscript: { model.presentTranscript(for: $0) },
+                transcriptAffordanceGeneration: model.transcriptAffordanceGeneration,
+                cleaningSummary: { model.cleaningSummary(for: $0) }
+            )
+        }
         .navigationTitle(summary.title)
         .navigationBarTitleDisplayMode(.inline)
     }

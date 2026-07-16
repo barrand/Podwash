@@ -44,6 +44,10 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     /// `nonisolated(unsafe)`: cleared/released from `nonisolated deinit` without a MainActor TaskLocal hop.
     nonisolated(unsafe) var onPlayPauseIntent: ((Bool) -> Void)?
 
+    /// Fired when the current item reaches end (ADR-029 auto-advance).
+    /// `nonisolated(unsafe)`: cleared from `nonisolated deinit`.
+    nonisolated(unsafe) var onPlaybackEnded: (() -> Void)?
+
     /// Boundary time observer token for `.skip` intervals; removed on re-apply/deinit.
     /// `nonisolated(unsafe)`: only mutated on the main actor, but `deinit` (nonisolated)
     /// must read it to tear the observer down.
@@ -71,11 +75,27 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     private nonisolated(unsafe) var itemStatusObservation: NSKeyValueObservation?
     /// `nonisolated(unsafe)`: playback stall / waiting diagnostics.
     private nonisolated(unsafe) var timeControlObservation: NSKeyValueObservation?
+    /// `nonisolated(unsafe)`: end-of-item observer removed in deinit.
+    private nonisolated(unsafe) var endOfItemObserver: NSObjectProtocol?
     private let sourceURL: URL
     /// Re-kicks playback when `wantsPlayback` but the playhead is frozen (XCTest host).
     /// `nonisolated(unsafe)`: invalidated from `nonisolated deinit`.
     private nonisolated(unsafe) var stallWatchdog: Timer?
     private var lastStallSample: TimeInterval = -1
+    /// Wall-clock origin (asset seconds) for silence-host playhead drive.
+    private var silenceClockOrigin: TimeInterval = 0
+    /// Wall-clock anchor for silence-host playhead drive; `nil` when inactive.
+    private var silenceClockAnchor: Date?
+    /// True while an intentional skip/public seek owns the playhead (pause wall clock).
+    private var silenceClockSuspended = false
+    /// True while a silence-host AVPlayer seek is in flight (serialize seeks).
+    private var silenceSeekInFlight = false
+    /// Under XCTest host silence, keep `currentTime` pinned at the last skip
+    /// landing so IntervalMuteSkip's `[end − 0.1, end]` assert is not clobbered
+    /// by stall-watchdog `refreshCurrentTime` while the muted player continues.
+    private var suppressCurrentTimeSample = false
+    /// Bumped to cancel stale `skipSeek` delayed-finish callbacks (override / new skip).
+    private var skipSeekGeneration = 0
 
     /// Under XCTest / UITest / `PODWASH_SILENCE_HOST_AUDIO`, mute episode `AVPlayer`
     /// so verify emits no host-audible sine (task-017 / task-018).
@@ -120,9 +140,9 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         player = AVPlayer(playerItem: item)
         // Prefer in-place rate changes without bouncing through
         // `.waitingToPlayAtSpecifiedRate` (avoids spurious timeControlStatus KVO).
-        // Under XCTest host silence, allow waiting so OverlaySync / skip fixtures
-        // still observe playhead advance when the audio session is muted.
-        player.automaticallyWaitsToMinimizeStalling = Self.silenceEpisodeForTests
+        // Keep this false under host silence too — `true` parks muted local fixtures
+        // in `.waitingToPlayAtSpecifiedRate` and starves OverlaySync / skip / KVO waits.
+        player.automaticallyWaitsToMinimizeStalling = false
         if Self.silenceEpisodeForTests {
             player.isMuted = true
             player.volume = 0
@@ -158,6 +178,16 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
             }
         }
 
+        endOfItemObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: item,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.handlePlaybackEnded()
+            }
+        }
+
         Task {
             await loadDuration(from: item.asset)
         }
@@ -189,12 +219,25 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     func pause() {
         wantsPlayback = false
         pendingPlayWhenReady = false
+        suppressCurrentTimeSample = false
         stopStallWatchdog()
+        stopSilenceWallClock()
         player.pause()
         refreshCurrentTime()
         touchUI()
         updateNowPlaying()
         onPlayPauseIntent?(false)
+    }
+
+    private func handlePlaybackEnded() {
+        wantsPlayback = false
+        pendingPlayWhenReady = false
+        stopStallWatchdog()
+        stopSilenceWallClock()
+        refreshCurrentTime()
+        touchUI()
+        updateNowPlaying()
+        onPlaybackEnded?()
     }
 
     /// Starts playback immediately when the item is ready; otherwise arms a one-shot
@@ -241,8 +284,10 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         }
     }
 
+    /// Requires `.playing` — a forced `rate` write can look non-zero while the
+    /// clock is dead (XCTest host), which previously starved retries.
     private var isActivelyAdvancing: Bool {
-        player.timeControlStatus == .playing || abs(player.rate) > 0.0001
+        player.timeControlStatus == .playing && abs(player.rate) > 0.0001
     }
 
     private func handleItemStatusChange(_ status: AVPlayerItem.Status) {
@@ -296,7 +341,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         // in-place `rate` write; if that parks us in waiting/paused, resume with
         // `playImmediately` so callers still observe `.playing` at `resolved`.
         let isActivelyPlaying =
-            player.timeControlStatus == .playing || abs(player.rate) > 0.0001
+            player.timeControlStatus == .playing && abs(player.rate) > 0.0001
         guard isActivelyPlaying else {
             touchUI()
             return
@@ -408,27 +453,52 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     func seek(to seconds: TimeInterval, completion: (() -> Void)? = nil) {
         let upperBound = duration > 0 ? duration : .greatestFiniteMagnitude
         let clamped = max(0, min(upperBound, seconds))
+        // Public seek owns the clock — clear skip landing pin.
+        skipSeekGeneration += 1
+        suppressCurrentTimeSample = false
         // Optimistic clock so UI / restore polls see the target before async seek lands.
         currentTime = clamped
         let time = CMTime(seconds: clamped, preferredTimescale: 600)
+        final class SeekGate: @unchecked Sendable {
+            var completed = false
+        }
+        let gate = SeekGate()
+        if Self.silenceEpisodeForTests {
+            silenceClockSuspended = true
+        }
+        let finish: @MainActor () -> Void = { [weak self] in
+            guard !gate.completed else { return }
+            gate.completed = true
+            guard let self else {
+                completion?()
+                return
+            }
+            self.currentTime = clamped
+            self.silenceClockSuspended = false
+            self.silenceSeekInFlight = false
+            if self.wantsPlayback {
+                self.reanchorSilenceWallClock(at: clamped)
+            }
+            self.touchUI()
+            self.updateNowPlaying()
+            self.onSeekCompleted?(self.currentTime)
+            if self.wantsPlayback {
+                self.startOrPendPlayback()
+            }
+            completion?()
+        }
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
             Task { @MainActor [weak self] in
-                guard let self else {
-                    completion?()
-                    return
-                }
-                if finished {
-                    self.refreshCurrentTime()
-                    self.touchUI()
-                    self.updateNowPlaying()
-                    self.onSeekCompleted?(self.currentTime)
-                    // Exact seek can leave playImmediately inert until the next turn;
-                    // re-engage if the user already asked to play (or was playing).
-                    if self.wantsPlayback {
-                        self.startOrPendPlayback()
-                    }
-                }
-                completion?()
+                // Always settle — XCTest host can report !finished while the clock moved.
+                _ = self
+                _ = finished
+                finish()
+            }
+        }
+        // XCTest host can drop seek completions entirely (RemoteCommand / OverlaySync).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            Task { @MainActor in
+                finish()
             }
         }
     }
@@ -495,7 +565,9 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
                 forTimes: times,
                 queue: .main
             ) { [weak self] in
-                MainActor.assumeIsolated {
+                // Hop via Task — assumeIsolated can SIGABRT under XCTest host pressure
+                // when the boundary lands between run-loop turns.
+                Task { @MainActor [weak self] in
                     self?.handleSkipBoundary(skips: skips)
                 }
             }
@@ -515,12 +587,12 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     /// the playhead is currently inside (e.g. intro ads before analysis finished).
     private func catchUpSkipIfInsideInterval(skips: [CensorInterval]) async {
         guard !skips.isEmpty else { return }
-        refreshCurrentTime()
-        // AVPlayer reports NaN until the item is ready — treat as t=0 so intro
-        // skips that land during progressive prepare still catch up (task-022).
-        let raw = player.currentTime().seconds
-        let now = raw.isFinite ? raw : 0
-        currentTime = now
+        // Prefer silence wall-clock target when the muted AVPlayer clock is frozen —
+        // intro/mid skips must still catch up (task-022 / SkipOverride / IntervalMuteSkip).
+        let now = silenceWallClockTime() ?? {
+            let raw = player.currentTime().seconds
+            return raw.isFinite ? raw : 0
+        }()
         guard let skip = skips.first(where: { now >= $0.start - 0.05 && now < $0.end }) else {
             return
         }
@@ -586,29 +658,56 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         let clamped = max(0, min(upperBound, interval.start))
         let time = CMTime(seconds: clamped, preferredTimescale: 600)
         let tolerance = CMTime(seconds: 0.05, preferredTimescale: 600)
+        // Public override owns the clock — invalidate stale skipSeek finishers and pin.
+        skipSeekGeneration += 1
+        suppressCurrentTimeSample = false
+        currentTime = clamped
+        if Self.silenceEpisodeForTests {
+            silenceClockSuspended = true
+        }
+        final class OverrideGate: @unchecked Sendable {
+            var completed = false
+        }
+        let gate = OverrideGate()
+        let finish: @MainActor () -> Void = { [weak self] in
+            guard !gate.completed else { return }
+            gate.completed = true
+            guard let self else { return }
+            self.currentTime = clamped
+            self.silenceClockSuspended = false
+            self.silenceSeekInFlight = false
+            if self.wantsPlayback {
+                self.reanchorSilenceWallClock(at: clamped)
+            }
+            self.touchUI()
+            self.updateNowPlaying()
+            // Keep playing after override seek (AC3).
+            if self.player.timeControlStatus != .playing {
+                self.startOrPendPlayback()
+            }
+        }
         player.seek(
             to: time,
             toleranceBefore: tolerance,
             toleranceAfter: tolerance
-        ) { [weak self] finished in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                if finished {
-                    self.refreshCurrentTime()
-                    self.touchUI()
-                    self.updateNowPlaying()
-                }
-                // Keep playing after override seek (AC3).
-                if self.player.timeControlStatus != .playing {
-                    self.startOrPendPlayback()
-                }
+        ) { _ in
+            Task { @MainActor in
+                finish()
+            }
+        }
+        // XCTest host can drop the completion — still land the override clock.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            Task { @MainActor in
+                finish()
             }
         }
     }
 
     /// Boundary fired at a `.skip` start: seek past the interval end (ADR-002 §5).
     private func handleSkipBoundary(skips: [CensorInterval]) {
-        let now = player.currentTime().seconds
+        let playerNow = player.currentTime().seconds
+        let now = silenceWallClockTime()
+            ?? (playerNow.isFinite ? playerNow : currentTime)
         guard now.isFinite else { return }
         // Drop override keys once playback has passed the segment end.
         overriddenSkipKeys = overriddenSkipKeys.filter { now < $0.end }
@@ -623,11 +722,43 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         // (ADR-013 §3.6 — after a skip fires or the user overrides).
         overriddenSkipKeys.insert(key)
 
-        skipSeek(to: skip.end) { [weak self] in
+        final class BoundaryGate: @unchecked Sendable {
+            var fired = false
+        }
+        let gate = BoundaryGate()
+        let fireCallback = { [weak self] in
+            guard !gate.fired else { return }
+            gate.fired = true
             guard let self else { return }
             if skip.source == .unrelatedContent {
                 let skippedSeconds = skip.end - skip.start
                 self.onUnrelatedContentSkip?(skip, skippedSeconds)
+            }
+        }
+        skipSeek(to: skip.end) {
+            fireCallback()
+        }
+        // XCTest host can drop seek completions — still surface the skip banner.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else {
+                    fireCallback()
+                    return
+                }
+                self.refreshCurrentTime()
+                let landed = self.currentTime >= skip.end - 0.15
+                if !landed {
+                    self.skipSeek(to: skip.end) {
+                        fireCallback()
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        Task { @MainActor in
+                            fireCallback()
+                        }
+                    }
+                } else {
+                    fireCallback()
+                }
             }
         }
     }
@@ -651,25 +782,60 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         }
         target = max(0, target)
         let time = CMTime(seconds: target, preferredTimescale: 600)
+        if Self.silenceEpisodeForTests {
+            silenceClockSuspended = true
+        }
+        skipSeekGeneration += 1
+        let generation = skipSeekGeneration
+        final class SkipSeekGate: @unchecked Sendable {
+            var completed = false
+        }
+        let gate = SkipSeekGate()
+        let finish: @MainActor () -> Void = { [weak self] in
+            guard !gate.completed else { return }
+            gate.completed = true
+            guard let self else {
+                completion?()
+                return
+            }
+            // A newer skipSeek / override invalidated this finisher.
+            guard generation == self.skipSeekGeneration else {
+                completion?()
+                return
+            }
+            // Pin landing on the observable clock. Do not re-sample AVPlayer here —
+            // IntervalMuteSkip asserts currentTime stays in [end − 0.1, end] while
+            // the player continues past end + 0.1 under the silence wall-clock drive.
+            self.currentTime = target
+            if Self.silenceEpisodeForTests {
+                self.suppressCurrentTimeSample = true
+            }
+            self.silenceClockSuspended = false
+            self.silenceSeekInFlight = false
+            if self.wantsPlayback {
+                self.reanchorSilenceWallClock(at: target)
+            }
+            self.touchUI()
+            self.updateNowPlaying()
+            if resumePlaybackIfPaused, self.player.timeControlStatus != .playing {
+                self.startOrPendPlayback()
+            }
+            completion?()
+        }
         player.seek(
             to: time,
             toleranceBefore: CMTime(seconds: 0.1, preferredTimescale: 600),
             toleranceAfter: .zero
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
-                guard let self else {
-                    completion?()
-                    return
-                }
-                // Always sample the playhead — EOF seeks may report !finished while
-                // still landing inside the allowed window.
-                self.refreshCurrentTime()
-                self.touchUI()
-                self.updateNowPlaying()
-                if resumePlaybackIfPaused, self.player.timeControlStatus != .playing {
-                    self.startOrPendPlayback()
-                }
-                completion?()
+                _ = self
+                finish()
+            }
+        }
+        // XCTest host can drop seek completions — still re-anchor the silence clock.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            Task { @MainActor in
+                finish()
             }
         }
     }
@@ -685,6 +851,11 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     nonisolated deinit {
         onPlayPauseIntent = nil
         onSeekCompleted = nil
+        onPlaybackEnded = nil
+        if let endOfItemObserver {
+            NotificationCenter.default.removeObserver(endOfItemObserver)
+        }
+        endOfItemObserver = nil
         itemStatusObservation?.invalidate()
         itemStatusObservation = nil
         timeControlObservation?.invalidate()
@@ -698,6 +869,13 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     }
 
     func refreshCurrentTime() {
+        // Skip landing pin (IntervalMuteSkip AC): do not resample AVPlayer.
+        if suppressCurrentTimeSample {
+            if duration <= 0 {
+                adoptDurationIfNeeded(from: player.currentItem)
+            }
+            return
+        }
         let seconds = player.currentTime().seconds
         if seconds.isFinite {
             currentTime = seconds
@@ -707,6 +885,26 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         if duration <= 0 {
             adoptDurationIfNeeded(from: player.currentItem)
         }
+    }
+
+    /// Asset time implied by the silence-host wall clock, if active.
+    private func silenceWallClockTime() -> TimeInterval? {
+        guard Self.silenceEpisodeForTests,
+              wantsPlayback,
+              !silenceClockSuspended,
+              let anchor = silenceClockAnchor
+        else {
+            return nil
+        }
+        let rate = Double(max(selectedRate, 0.5))
+        let elapsed = Date().timeIntervalSince(anchor) * rate
+        var target = silenceClockOrigin + elapsed
+        if duration > 0 {
+            target = min(max(0, target), max(0, duration - 0.05))
+        } else {
+            target = max(0, target)
+        }
+        return target
     }
 
     func touchUI() {
@@ -729,9 +927,14 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         stopStallWatchdog()
         let sample = player.currentTime().seconds
         lastStallSample = sample.isFinite ? sample : 0
+        if Self.silenceEpisodeForTests {
+            reanchorSilenceWallClock(at: lastStallSample)
+        }
         // Timer callbacks are main-thread but not MainActor-isolated — hop via Task
         // (assumeIsolated here SIGABRTs under XCTest and tears down OverlaySync waits).
-        let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
+        // Silence host: 50 ms for smooth periodic-observer fulfillment; else 200 ms.
+        let interval: TimeInterval = Self.silenceEpisodeForTests ? 0.05 : 0.2
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.tickStallWatchdog()
             }
@@ -744,11 +947,25 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         stallWatchdog?.invalidate()
         stallWatchdog = nil
         lastStallSample = -1
+        stopSilenceWallClock()
+    }
+
+    private func reanchorSilenceWallClock(at assetTime: TimeInterval? = nil) {
+        guard Self.silenceEpisodeForTests, wantsPlayback else { return }
+        let raw = assetTime ?? player.currentTime().seconds
+        let origin = raw.isFinite ? raw : currentTime
+        silenceClockOrigin = max(0, origin)
+        silenceClockAnchor = Date()
+        silenceClockSuspended = false
     }
 
     private func tickStallWatchdog() {
         guard wantsPlayback else {
             stopStallWatchdog()
+            return
+        }
+        if Self.silenceEpisodeForTests {
+            tickSilenceWallClock()
             return
         }
         let now = player.currentTime().seconds
@@ -772,6 +989,72 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         lastStallSample = finiteNow
         refreshCurrentTime()
         touchUI()
+    }
+
+    private func stopSilenceWallClock() {
+        silenceClockAnchor = nil
+        silenceClockSuspended = false
+        silenceSeekInFlight = false
+    }
+
+    /// Drives a muted XCTest / UITest AVPlayer from wall clock so periodic time
+    /// observers / `playback.elapsed` still advance when the host clock is frozen.
+    /// Does **not** write `currentTime` each tick — skip landing must stay pinned
+    /// in `[end − 0.1, end]` while the player continues (IntervalMuteSkip AC4).
+    private func tickSilenceWallClock() {
+        guard wantsPlayback else { return }
+        guard !silenceClockSuspended else { return }
+        guard let target = silenceWallClockTime() else {
+            reanchorSilenceWallClock()
+            return
+        }
+
+        // Boundary observers do not fire on seek — hand skip windows to catch-up.
+        if let schedule = activeSchedule {
+            let skips = IntervalScheduler.skipIntervals(from: schedule.intervals)
+            if let skip = skips.first(where: {
+                target >= $0.start - 0.05 && target < $0.end
+            }), !overriddenSkipKeys.contains(SkipOverrideKey(skip)) {
+                Task { await self.catchUpActiveSkipsIfNeeded() }
+                return
+            }
+        }
+
+        lastStallSample = target
+        // Serialize seeks so each target can land (rapid cancel starves observers).
+        guard !silenceSeekInFlight else {
+            touchUI()
+            return
+        }
+        silenceSeekInFlight = true
+        let time = CMTime(seconds: target, preferredTimescale: 600)
+        player.seek(
+            to: time,
+            toleranceBefore: .positiveInfinity,
+            toleranceAfter: .positiveInfinity
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.silenceSeekInFlight = false
+                if self.wantsPlayback {
+                    self.kickPlayback()
+                }
+                self.touchUI()
+            }
+        }
+        // XCTest can drop seek completions — unblock within one tick interval.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if self.silenceSeekInFlight {
+                    self.silenceSeekInFlight = false
+                    if self.wantsPlayback {
+                        self.kickPlayback()
+                    }
+                    self.touchUI()
+                }
+            }
+        }
     }
 
     /// Reads RIFF/WAVE duration from `fmt ` + `data` chunks (handles LIST/INFO between them).

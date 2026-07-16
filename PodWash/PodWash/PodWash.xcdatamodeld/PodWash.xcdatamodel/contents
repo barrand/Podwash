@@ -7,6 +7,8 @@
         <attribute name="collectionId" optional="YES" attributeType="Integer 64" usesScalarValueType="NO"/>
         <attribute name="feedDescription" optional="YES" attributeType="String"/>
         <attribute name="feedURLString" attributeType="String" defaultValueString=""/>
+        <attribute name="isBinge" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="lastHeardAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="subscribedAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
         <attribute name="title" attributeType="String" defaultValueString=""/>
         <relationship name="episodes" optional="YES" toMany="YES" deletionRule="Cascade" ordered="YES" destinationEntity="CDEpisode" inverseName="podcast" inverseEntity="CDEpisode"/>
@@ -19,6 +21,7 @@
     <entity name="CDEpisode" representedClassName="CDEpisode" syncable="YES" codeGenerationType="class">
         <attribute name="artworkURLString" optional="YES" attributeType="String"/>
         <attribute name="audioURLString" optional="YES" attributeType="String"/>
+        <attribute name="dismissedFromAutoplay" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="downloadStateRaw" attributeType="String" defaultValueString="notDownloaded"/>
         <attribute name="episodeCleaningEnabled" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="id" attributeType="String" defaultValueString=""/>

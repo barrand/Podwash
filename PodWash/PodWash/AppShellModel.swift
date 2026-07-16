@@ -116,6 +116,23 @@ final class AppShellModel {
 
     private(set) var nowPlayingEpisodeTitle: String = "Now playing"
     private(set) var nowPlayingPodcastTitle: String = ""
+    /// Feed URL for the active now-playing episode (smart order / binge).
+    private(set) var nowPlayingFeedURL: URL?
+
+    /// Active binge context for smart autoplay (ADR-029).
+    private var activeBingeFeedURL: URL?
+
+    /// Coming up peek for UI (next 2–3 smart predictions when Up Next is empty).
+    private(set) var comingUpItems: [ComingUpItem] = []
+
+    /// True while waiting on analysis before auto-advancing (rare miss path).
+    private(set) var isPreparingNextEpisode = false
+    private(set) var preparingNextAnnouncement: String?
+
+    @ObservationIgnored private var warmPlanner: WarmPlanner?
+
+    /// Spoken / AX announcement generation for Preparing fallback.
+    private(set) var preparingAnnouncementGeneration = 0
 
     init(
         persistence: PersistenceController,
@@ -155,6 +172,15 @@ final class AppShellModel {
             )
         }
         CarPlayDependencies.register(self)
+
+        warmPlanner = WarmPlanner(
+            downloadManager: self.downloadManager,
+            analyzer: resolvedAnalyzer,
+            settingsStore: self.settingsStore,
+            intervalCache: intervalCache,
+            cleaningStore: cleaningStore,
+            podcastStore: podcastStore
+        )
 
         playbackProgressHandlerID = analysisProgressRelay.addHandler { [weak self] snapshot in
             guard let self, self.acceptingPlaybackProgress else { return }
@@ -362,6 +388,20 @@ final class AppShellModel {
 
         clearPlaybackAnalysisProgress()
 
+        // Tear down the prior session before installing a new engine. LibraryEpisodePlayer
+        // holds PlaybackEngine strongly; releasing it from nonisolated deinit while the
+        // @Observable engine property is still being replaced SIGABRTs (NowPlayingSession).
+        flushPlaybackPosition()
+        engine?.onPlaybackEnded = nil
+        engine?.pause()
+        engine?.onUnrelatedContentSkip = nil
+        engine?.onSeekCompleted = nil
+        remoteCommands.bind(nil)
+        playbackCoordinator = nil
+        queueCoordinator = nil
+        episodePlayer = nil
+        engine = nil
+
         let newEngine = PlaybackEngine(
             url: audioURL,
             title: episode.title,
@@ -374,13 +414,24 @@ final class AppShellModel {
         )
 
         let player = LibraryEpisodePlayer(engine: newEngine)
+        // Use AppShellModel as EpisodePlaying so auto-advance loads a full cleaned session.
         let queue = QueueCoordinator(
             queue: queueStore,
-            player: player,
+            player: self,
             resume: resumeStore,
             sessionStore: nowPlayingSessionStore
         )
         queue.bindCurrentEpisode(episode.id)
+        queue.resolveSmartNext = { [weak self] endedID, skipToNextShow in
+            self?.resolveSmartNextEpisodeID(
+                endedEpisodeID: endedID,
+                skipToNextShow: skipToNextShow
+            )
+        }
+
+        newEngine.onPlaybackEnded = { [weak self] in
+            self?.handleEnginePlaybackEnded()
+        }
 
         engine = newEngine
         playbackCoordinator = coordinator
@@ -391,12 +442,28 @@ final class AppShellModel {
         nowPlayingEpisodeID = episode.id
         nowPlayingEpisodeTitle = episode.title
         nowPlayingPodcastTitle = podcastTitle
+        nowPlayingFeedURL = feedURL
         isMiniPlayerVisible = true
         try? nowPlayingSessionStore.setActiveEpisodeID(episode.id)
+        if let feedURL {
+            try? podcastStore.touchLastHeard(feedURL: feedURL)
+            if podcastStore.isBinge(feedURL: feedURL) {
+                activeBingeFeedURL = feedURL
+            } else if activeBingeFeedURL == feedURL {
+                activeBingeFeedURL = nil
+            }
+        }
+        refreshComingUp()
+        scheduleWarmForComingUp()
         PlaybackDiagnostics.info(
             "playEpisode session ready episodeID=\(episode.id) miniPlayer=visible paused=true"
         )
         // Leave paused so AC4's play-button tap yields "playing".
+
+        let resumePosition = resumeStore.position(for: episode.id)
+        if resumePosition > 0, startAnalysis {
+            engine?.restorePausedPosition(resumePosition)
+        }
 
         // Cold-start restore must stay paused without kicking prepare → play races (ADR-027).
         if !startAnalysis {
@@ -451,8 +518,25 @@ final class AppShellModel {
             defer {
                 acceptingPlaybackProgress = false
                 isPreparingPlayback = false
+                isPreparingNextEpisode = false
+                preparingNextAnnouncement = nil
                 if transcriptExists(for: episode.id) {
                     transcriptAffordanceGeneration += 1
+                } else if FixtureTranscript.isNoCacheEnabled {
+                    // Deferred NoCache backfill stores off the prepare path (AC7).
+                    // Poll so task-020's episode.viewTranscript refresh does not
+                    // depend solely on NotificationCenter delivery under UITest.
+                    let episodeID = episode.id
+                    Task { @MainActor [weak self] in
+                        for _ in 0..<24 {
+                            try? await Task.sleep(for: .milliseconds(500))
+                            guard let self else { return }
+                            if self.transcriptExists(for: episodeID) {
+                                self.transcriptAffordanceGeneration += 1
+                                return
+                            }
+                        }
+                    }
                 }
                 let shouldPlay = pendingPlayAfterPrepare
                 pendingPlayAfterPrepare = false
@@ -633,6 +717,8 @@ final class AppShellModel {
     func stopAndDismissPlayer() {
         flushPlaybackPosition()
         engine?.pause()
+        engine?.onUnrelatedContentSkip = nil
+        engine?.onSeekCompleted = nil
         remoteCommands.bind(nil)
         isFullPlayerPresented = false
         isMiniPlayerVisible = false
@@ -640,13 +726,115 @@ final class AppShellModel {
         // (QueueCoordinator holds EpisodePlaying; LibraryEpisodePlayer holds engine).
         playbackCoordinator = nil
         queueCoordinator = nil
+        // Clear the ObservationIgnored player first, then the @Observable engine, so
+        // LibraryEpisodePlayer's nonisolated deinit does not race an Observable setter.
         episodePlayer = nil
         engine = nil
         nowPlayingEpisodeID = nil
         nowPlayingEpisodeTitle = "Now playing"
         nowPlayingPodcastTitle = ""
+        nowPlayingFeedURL = nil
+        comingUpItems = []
+        warmPlanner?.cancel()
         clearPlaybackAnalysisProgress()
         // Durable session id is intentionally retained (ADR-027 intake).
+    }
+
+    /// Next Show control — dismiss current from autoplay and advance (ADR-029).
+    func skipToNextShow() {
+        guard let episodeID = nowPlayingEpisodeID else { return }
+        let position = engine?.currentTime
+        queueCoordinator?.handleSkipToNextShow(
+            episodeID: episodeID,
+            currentPosition: position
+        )
+    }
+
+    func setBinge(_ enabled: Bool, feedURL: URL) {
+        try? podcastStore.setBinge(enabled, feedURL: feedURL)
+        if !enabled, activeBingeFeedURL == feedURL {
+            activeBingeFeedURL = nil
+        }
+        if enabled, nowPlayingFeedURL == feedURL {
+            activeBingeFeedURL = feedURL
+        }
+        refreshComingUp()
+        scheduleWarmForComingUp()
+    }
+
+    func isBinge(feedURL: URL) -> Bool {
+        podcastStore.isBinge(feedURL: feedURL)
+    }
+
+    private func handleEnginePlaybackEnded() {
+        guard let episodeID = nowPlayingEpisodeID else { return }
+        let duration = engine?.duration
+        queueCoordinator?.handlePlaybackEnded(episodeID: episodeID, duration: duration)
+    }
+
+    private func resolveSmartNextEpisodeID(
+        endedEpisodeID: String,
+        skipToNextShow: Bool
+    ) -> String? {
+        guard settingsStore.smartAutoplayEnabled else { return nil }
+
+        if skipToNextShow {
+            try? podcastStore.setDismissedFromAutoplay(true, episodeID: endedEpisodeID)
+            activeBingeFeedURL = nil
+        }
+
+        var engine = SmartOrderEngine(activeBingeFeedURL: activeBingeFeedURL)
+        let shows = podcastStore.smartOrderShows()
+        guard let next = engine.nextEpisode(
+            shows: shows,
+            currentEpisodeID: endedEpisodeID,
+            currentFeedURL: nowPlayingFeedURL,
+            skipToNextShow: skipToNextShow
+        ) else {
+            return nil
+        }
+
+        activeBingeFeedURL = SmartOrderEngine.activeBingeURL(afterPlaying: next)
+
+        let ready = warmPlanner?.isReadyForSeamlessPlay(
+            episodeID: next.episodeID,
+            feedURL: next.feedURL
+        ) ?? false
+        if !ready {
+            isPreparingNextEpisode = true
+            preparingNextAnnouncement =
+                "Preparing \(next.podcastTitle)"
+            preparingAnnouncementGeneration += 1
+        } else {
+            isPreparingNextEpisode = false
+            preparingNextAnnouncement = nil
+        }
+
+        return next.episodeID
+    }
+
+    func refreshComingUp() {
+        guard settingsStore.smartAutoplayEnabled else {
+            comingUpItems = []
+            return
+        }
+        if !queueStore.queueEpisodeIDs().isEmpty {
+            // Manual Up Next wins — Coming up shows smart peek after the queue empties.
+            comingUpItems = []
+            return
+        }
+        let engine = SmartOrderEngine(activeBingeFeedURL: activeBingeFeedURL)
+        comingUpItems = engine.peek(
+            count: WarmPlanner.peekCount,
+            shows: podcastStore.smartOrderShows(),
+            currentEpisodeID: nowPlayingEpisodeID,
+            currentFeedURL: nowPlayingFeedURL
+        )
+    }
+
+    private func scheduleWarmForComingUp() {
+        refreshComingUp()
+        warmPlanner?.reaim(at: comingUpItems)
     }
 
     /// Cold-start / post-relaunch: rebuild paused mini session from durable stores.

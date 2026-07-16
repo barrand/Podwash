@@ -29,6 +29,7 @@ nonisolated final class SettingsStore: @unchecked Sendable {
         static let unrelatedContentEnabled = "podwash.settings.unrelatedContentEnabled"
         static let unrelatedContentAction = "podwash.settings.unrelatedContentAction"
         static let muteOverlayMode = "podwash.settings.muteOverlayMode"
+        static let smartAutoplayEnabled = "podwash.settings.smartAutoplayEnabled"
 
         static let all: [String] = [
             enabledCategories,
@@ -40,6 +41,7 @@ nonisolated final class SettingsStore: @unchecked Sendable {
             unrelatedContentEnabled,
             unrelatedContentAction,
             muteOverlayMode,
+            smartAutoplayEnabled,
         ]
     }
 
@@ -79,6 +81,10 @@ nonisolated final class SettingsStore: @unchecked Sendable {
     /// Sound during mute intervals. Fresh default: off (silent-first, ADR-017).
     var muteOverlayMode: MuteOverlayMode {
         didSet { persistMuteOverlayMode() }
+    }
+    /// Smart autoplay when Up Next is empty (ADR-029). Fresh default: on.
+    var smartAutoplayEnabled: Bool {
+        didSet { userDefaults.set(smartAutoplayEnabled, forKey: Keys.smartAutoplayEnabled) }
     }
 
     init(userDefaults: UserDefaults = .standard) {
@@ -141,6 +147,12 @@ nonisolated final class SettingsStore: @unchecked Sendable {
             muteOverlayMode = mode
         } else {
             muteOverlayMode = .off
+        }
+
+        if userDefaults.object(forKey: Keys.smartAutoplayEnabled) != nil {
+            smartAutoplayEnabled = userDefaults.bool(forKey: Keys.smartAutoplayEnabled)
+        } else {
+            smartAutoplayEnabled = true
         }
     }
 
