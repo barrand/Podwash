@@ -474,6 +474,50 @@ final class ProgressivePlaybackTests: XCTestCase {
         _ = try await prepareTask.value
     }
 
+    // MARK: - Slice 33 AC5: progressive start without in-flight segment-color gate
+
+    func testPlaybackStartsAfterFirstChunkWithoutSegmentColorGate() async throws {
+        let analyzer = try makeProgressiveAnalyzer(terminalHold: .seconds(5))
+        let model = makeShell(analyzer: analyzer, injectedTranscript: try loadTranscript())
+        let episode = fixtureEpisode()
+        try installLocalDownload(for: episode.id)
+        try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
+
+        model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+        model.toggleMiniPlayerPlayPause()
+
+        let playDeadline = Date().addingTimeInterval(chunkReadyTolerance)
+        var startedPlaying = false
+        while Date() < playDeadline {
+            if model.playbackCoordinator?.canStartPlayback == true,
+               model.engine?.isPlaying == true {
+                startedPlaying = true
+                break
+            }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+
+        XCTAssertTrue(
+            startedPlaying,
+            "engine.isPlaying must become true within \(chunkReadyTolerance)s of first-chunk readiness"
+        )
+        XCTAssertFalse(
+            analyzer.analyzeReturned,
+            "Playback must start before analyze() returns — segment-color AX is not a gate"
+        )
+        XCTAssertNil(
+            model.fullPlayerTimelineColors,
+            "In-flight player chrome must not require segment colors for progressive start"
+        )
+
+        guard let snapshot = model.playbackAnalysisSnapshot else {
+            XCTFail("playbackAnalysisSnapshot must exist while analysis is in flight")
+            return
+        }
+        XCTAssertGreaterThanOrEqual(snapshot.processedEnd, chunkSize)
+        XCTAssertLessThan(snapshot.processedEnd, episodeDuration)
+    }
+
     // MARK: - AC2: shell starts play before analyze returns
 
     func testAppShellStartsPlayBeforeFullAnalysisCompletes() async throws {

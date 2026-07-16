@@ -3,11 +3,12 @@
 //  PodWashUITests
 //
 //  Slice 30 — Mini-player super seek bar parity (slice-30-ux.md). AC1–AC5.
+//  Slice 33 — Migrated segment triple → adBands grammar (slice-33-ux.md).
 //  Launch fixtures: -UITestFixtureMuteMarkers, -UITestFixtureMuteMarkersAdsOnly,
 //  -UITestFixtureProgressivePlayback.
 //
-//  Until MiniPlayerBar hosts SuperSeekBarView with miniPlayer.superSeekBar (Engineer),
-//  these tests fail at compile or launch — intended TDD red state.
+//  Until adBands terminal AX and miniPlayer.analysisProgress exist (Engineer), migrated
+//  tests fail at launch — intended TDD red state.
 //
 
 import XCTest
@@ -17,13 +18,12 @@ final class MiniPlayerSuperSeekBarUITests: XCTestCase {
     private let fixtureTimeout: TimeInterval = 5
     private let libraryRootTimeout: TimeInterval = 10
     private let elapsedClampTimeout: TimeInterval = 2
-    /// Mid-run sync under FreezeAt — must cover pacing past the first chunk (not the
-    /// 7 s firstSnapshotHold used by non-freeze progressive tests).
     private let progressiveMidRunTimeout: TimeInterval = 10
+    private let progressTolerance = 0.02
 
-    private static let muteMarkersPinnedValue = "ready:12,processing:0,pending:0,muteMarkers:2"
-    private static let adsOnlyTerminalValue = "ready:12,processing:0,pending:0,muteMarkers:0"
-    private static let progressiveMidRunValue = "ready:6,processing:1,pending:5"
+    private static let muteMarkersPinnedValue = "adBands:0,muteMarkers:2"
+    private static let adsOnlyTerminalValue = "adBands:1,0.2917-0.3542,muteMarkers:0"
+    private static let progressiveFirstChunkProgress = 0.25
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -43,15 +43,11 @@ final class MiniPlayerSuperSeekBarUITests: XCTestCase {
         startMiniPlaybackIfNeeded(app)
 
         let barValue = waitForMiniSuperSeekBarValue(matching: { value in
-            (Self.muteMarkerCount(from: value) ?? -1) >= 1
+            (SuperSeekBarAXParsing.muteMarkerCount(from: value) ?? -1) >= 1
         }, in: app, timeout: fixtureTimeout)
 
-        let segments = Self.segmentCounts(from: barValue)
-        XCTAssertEqual(segments?.ready, 12, "Complete fixture ready count; got \(barValue)")
-        XCTAssertEqual(segments?.processing, 0, "Complete fixture processing count; got \(barValue)")
-        XCTAssertEqual(segments?.pending, 0, "Complete fixture pending count; got \(barValue)")
         XCTAssertGreaterThanOrEqual(
-            Self.muteMarkerCount(from: barValue) ?? -1,
+            SuperSeekBarAXParsing.muteMarkerCount(from: barValue) ?? -1,
             1,
             "muteMarkers count must be ≥ 1 when profanity mute intervals are cached"
         )
@@ -60,6 +56,7 @@ final class MiniPlayerSuperSeekBarUITests: XCTestCase {
             Self.muteMarkersPinnedValue,
             "Pinned mute-markers fixture must expose exact terminal AX string on mini host"
         )
+        XCTAssertTrue(SuperSeekBarAXParsing.lacksSegmentTriple(barValue))
         XCTAssertFalse(
             element("miniPlayerAnalysisTimeline", in: app).exists,
             "Retired miniPlayerAnalysisTimeline must not appear after slice-30 migration"
@@ -75,37 +72,21 @@ final class MiniPlayerSuperSeekBarUITests: XCTestCase {
         startMiniPlaybackIfNeeded(app)
 
         let miniValue = waitForMiniSuperSeekBarValue(matching: { value in
-            (Self.muteMarkerCount(from: value) ?? -1) >= 1
+            (SuperSeekBarAXParsing.muteMarkerCount(from: value) ?? -1) >= 1
         }, in: app, timeout: fixtureTimeout)
 
         tapMiniPlayerExpandTarget(app)
 
         let fullValue = waitForFullSuperSeekBarValue(matching: { value in
-            (Self.muteMarkerCount(from: value) ?? -1) >= 1
+            (SuperSeekBarAXParsing.muteMarkerCount(from: value) ?? -1) >= 1
         }, in: app, timeout: fixtureTimeout)
 
         XCTAssertEqual(
-            Self.muteMarkerCount(from: miniValue),
-            Self.muteMarkerCount(from: fullValue),
+            SuperSeekBarAXParsing.muteMarkerCount(from: miniValue),
+            SuperSeekBarAXParsing.muteMarkerCount(from: fullValue),
             "Mini and full muteMarkers counts must match for the same episode"
         )
-        let miniSegments = Self.segmentCounts(from: miniValue)
-        let fullSegments = Self.segmentCounts(from: fullValue)
-        XCTAssertEqual(
-            miniSegments?.ready,
-            fullSegments?.ready,
-            "Mini and full ready counts must match; mini=\(miniValue) full=\(fullValue)"
-        )
-        XCTAssertEqual(
-            miniSegments?.processing,
-            fullSegments?.processing,
-            "Mini and full processing counts must match; mini=\(miniValue) full=\(fullValue)"
-        )
-        XCTAssertEqual(
-            miniSegments?.pending,
-            fullSegments?.pending,
-            "Mini and full pending counts must match; mini=\(miniValue) full=\(fullValue)"
-        )
+        XCTAssertEqual(miniValue, fullValue, "Mini and full terminal adBands strings must match")
     }
 
     // MARK: - AC3
@@ -122,15 +103,15 @@ final class MiniPlayerSuperSeekBarUITests: XCTestCase {
             timeout: fixtureTimeout
         )
 
-        let segments = Self.segmentCounts(from: barValue)
-        XCTAssertEqual(segments?.ready, 12, "Ad-only fixture ready count; got \(barValue)")
-        XCTAssertEqual(segments?.processing, 0, "Ad-only fixture processing count; got \(barValue)")
-        XCTAssertEqual(segments?.pending, 0, "Ad-only fixture pending count; got \(barValue)")
-        XCTAssertEqual(Self.muteMarkerCount(from: barValue), 0)
-        XCTAssertEqual(segments!.ready + segments!.processing + segments!.pending, 12)
+        XCTAssertEqual(SuperSeekBarAXParsing.muteMarkerCount(from: barValue), 0)
+        guard let summary = SuperSeekBarAXParsing.adBandSummary(from: barValue) else {
+            XCTFail("Ads-only mini bar must parse adBands grammar; got \(barValue)")
+            return
+        }
+        XCTAssertEqual(summary.count, 1)
     }
 
-    // MARK: - AC4
+    // MARK: - AC4 (slice-33 migration — progress at freeze, no segment triple setup)
 
     @MainActor
     func testMiniPlayerSeekClampsToProcessedFrontier() throws {
@@ -138,11 +119,12 @@ final class MiniPlayerSuperSeekBarUITests: XCTestCase {
         navigateToMiniPlayer(app)
         startMiniPlaybackIfNeeded(app)
 
-        waitForMiniSuperSeekBarValue(
-            equalTo: Self.progressiveMidRunValue,
-            in: app,
-            timeout: progressiveMidRunTimeout
-        )
+        let progress = waitForMiniAnalysisProgress(in: app, timeout: progressiveMidRunTimeout)
+        guard let fraction = Double(progress) else {
+            XCTFail("miniPlayer.analysisProgress must parse as Double; got \(progress)")
+            return
+        }
+        XCTAssertEqual(fraction, 0.5, accuracy: progressTolerance)
 
         let bar = element("miniPlayer.superSeekBar", in: app)
         XCTAssertTrue(bar.waitForExistence(timeout: fixtureTimeout))
@@ -200,6 +182,25 @@ final class MiniPlayerSuperSeekBarUITests: XCTestCase {
             opened,
             "Tap miniPlayer expand target must present full player within \(fixtureTimeout)s"
         )
+    }
+
+    // MARK: - Slice 33 UX regression
+
+    @MainActor
+    func testMiniPlayerInFlightShowsAnalysisProgress() throws {
+        let app = launchProgressiveFixtureApp(freezeAtProcessedEnd: 30)
+        navigateToMiniPlayer(app)
+        startMiniPlaybackIfNeeded(app)
+
+        let progress = waitForMiniAnalysisProgress(in: app, timeout: fixtureTimeout)
+        guard let fraction = Double(progress) else {
+            XCTFail("miniPlayer.analysisProgress must parse as Double; got \(progress)")
+            return
+        }
+        XCTAssertEqual(fraction, Self.progressiveFirstChunkProgress, accuracy: progressTolerance)
+
+        let barValue = Self.accessibilityValue(for: "miniPlayer.superSeekBar", in: app)
+        XCTAssertTrue(SuperSeekBarAXParsing.lacksSegmentTriple(barValue))
     }
 
     // MARK: - Launch + navigation (slice-30-ux.md)
@@ -291,6 +292,20 @@ final class MiniPlayerSuperSeekBarUITests: XCTestCase {
 
     @MainActor
     @discardableResult
+    private func waitForMiniAnalysisProgress(
+        in app: XCUIApplication,
+        timeout: TimeInterval
+    ) -> String {
+        waitForSuperSeekBarValue(
+            identifier: "miniPlayer.analysisProgress",
+            matching: { _ in true },
+            in: app,
+            timeout: timeout
+        )
+    }
+
+    @MainActor
+    @discardableResult
     private func waitForMiniSuperSeekBarValue(
         matching predicate: @escaping (String) -> Bool,
         in app: XCUIApplication,
@@ -363,28 +378,5 @@ final class MiniPlayerSuperSeekBarUITests: XCTestCase {
     private static func elapsedSeconds(in app: XCUIApplication) -> Int? {
         guard let raw = accessibilityValue(for: "playback.elapsed", in: app) else { return nil }
         return Int(raw)
-    }
-
-    /// Parses muteMarkers suffix; returns nil when key absent (in-flight).
-    static func muteMarkerCount(from barValue: String) -> Int? {
-        guard let range = barValue.range(of: "muteMarkers:") else { return nil }
-        let tail = barValue[range.upperBound...]
-        let digits = tail.prefix(while: { $0.isNumber })
-        return Int(digits)
-    }
-
-    /// Segment triple without mute suffix (complete bars).
-    static func segmentCounts(from barValue: String) -> (ready: Int, processing: Int, pending: Int)? {
-        let segmentPart = barValue.split(separator: ",").filter { !$0.hasPrefix("muteMarkers:") }
-        guard segmentPart.count == 3 else { return nil }
-        func parse(_ s: Substring, prefix: String) -> Int? {
-            guard s.hasPrefix(prefix), let v = Int(s.dropFirst(prefix.count)) else { return nil }
-            return v
-        }
-        guard let r = parse(segmentPart[0], prefix: "ready:"),
-              let p = parse(segmentPart[1], prefix: "processing:"),
-              let n = parse(segmentPart[2], prefix: "pending:")
-        else { return nil }
-        return (r, p, n)
     }
 }

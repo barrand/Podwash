@@ -22,7 +22,8 @@ final class TranscriptUITests: XCTestCase {
     private static let transcriptFixtureArg = "-UITestFixtureTranscript"
     private static let transcriptNoCacheArg = "-UITestFixtureTranscriptNoCache"
     private static let progressiveFixtureArg = "-UITestFixtureProgressivePlayback"
-    private static let firstChunkTimelineValue = "ready:3,processing:1,pending:8"
+    private static let firstChunkProgressValue = 0.25
+    private static let progressTolerance = 0.02
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -234,7 +235,15 @@ final class TranscriptUITests: XCTestCase {
             playPause.tap()
         }
 
-        waitForSuperSeekBarValue(Self.firstChunkTimelineValue, in: app, timeout: progressiveTimelineTimeout)
+        let progress = waitForAnalysisProgress(in: app, timeout: progressiveTimelineTimeout)
+        guard let fraction = Double(progress) else {
+            XCTFail("playback.analysisProgress must parse as Double; got \(progress)")
+            return
+        }
+        XCTAssertEqual(fraction, Self.firstChunkProgressValue, accuracy: Self.progressTolerance)
+
+        let barValue = accessibilityValue(for: "playback.superSeekBar", in: app)
+        XCTAssertTrue(SuperSeekBarAXParsing.lacksSegmentTriple(barValue))
 
         assertTranscriptAffordanceAbsent("episode.viewTranscript", scopedToRow: 0, in: app)
     }
@@ -360,26 +369,30 @@ final class TranscriptUITests: XCTestCase {
     }
 
     @MainActor
-    private func waitForSuperSeekBarValue(
-        _ expected: String,
+    @discardableResult
+    private func waitForAnalysisProgress(
         in app: XCUIApplication,
         timeout: TimeInterval
-    ) {
-        let match = expectation(description: "superSeekBar \(expected)")
+    ) -> String {
+        let match = expectation(description: "playback.analysisProgress")
         match.assertForOverFulfill = false
 
+        var resolved = ""
         var saw = false
         let timer = Timer(timeInterval: 0.05, repeats: true) { timer in
-            guard !saw,
-                  Self.accessibilityValue(for: "playback.superSeekBar", in: app) == expected
-            else { return }
+            guard let value = accessibilityValue(for: "playback.analysisProgress", in: app) else {
+                return
+            }
             saw = true
+            resolved = value
             timer.invalidate()
             match.fulfill()
         }
         RunLoop.current.add(timer, forMode: .common)
         defer { timer.invalidate() }
         wait(for: [match], timeout: timeout)
+        XCTAssertTrue(saw, "playback.analysisProgress must appear within \(timeout)s")
+        return resolved
     }
 
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {

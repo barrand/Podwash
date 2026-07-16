@@ -21,17 +21,14 @@ final class LibraryUITests: XCTestCase {
     private let fixtureTimeout: TimeInterval = 5
 
     /// Play-time analysis in Library shell — stepped analyzer pinned to terminal
-    /// `ready:12,processing:0,pending:0` (parallel to `-UITestFixtureAnalysisTimeline`).
+    /// `adBands:0,muteMarkers:0` (parallel to `-UITestFixtureAnalysisTimeline`).
     private let libraryPlayerAnalysisTimelineArgs = [
         "-UITestFixtureDownload",
         "-UITestFixtureLibraryAnalysisTimeline",
     ]
 
     /// Mini + full super seek bar terminal for library analysis fixture (0 profanity mutes).
-    private static let terminalSuperSeekBarValue = "ready:12,processing:0,pending:0,muteMarkers:0"
-    private static let timelineValuePattern = try! NSRegularExpression(
-        pattern: #"^ready:(\d+),processing:(\d+),pending:(\d+)(,muteMarkers:\d+)?$"#
-    )
+    private static let terminalSuperSeekBarValue = "adBands:0,muteMarkers:0"
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -131,7 +128,7 @@ final class LibraryUITests: XCTestCase {
         var sawTerminal = false
         let timer = Timer(timeInterval: 0.05, repeats: true) { timer in
             guard control.exists, let value = control.value as? String else { return }
-            guard Self.isValidTimelineAccessibilityValue(value) else { return }
+            guard SuperSeekBarAXParsing.adBandSummary(from: value) != nil else { return }
             guard value == Self.terminalSuperSeekBarValue else { return }
             sawTerminal = true
             resolved = value
@@ -151,19 +148,7 @@ final class LibraryUITests: XCTestCase {
     }
 
     private static func isValidTimelineAccessibilityValue(_ value: String) -> Bool {
-        let range = NSRange(value.startIndex..., in: value)
-        guard let match = timelineValuePattern.firstMatch(in: value, range: range),
-              match.numberOfRanges >= 4,
-              let readyRange = Range(match.range(at: 1), in: value),
-              let processingRange = Range(match.range(at: 2), in: value),
-              let pendingRange = Range(match.range(at: 3), in: value),
-              let ready = Int(value[readyRange]),
-              let processing = Int(value[processingRange]),
-              let pending = Int(value[pendingRange])
-        else {
-            return false
-        }
-        return ready + processing + pending == 12
+        SuperSeekBarAXParsing.adBandSummary(from: value) != nil
     }
 
     private func waitForAccessibilityValue(
@@ -308,7 +293,7 @@ final class LibraryUITests: XCTestCase {
         let value = waitForMiniSuperSeekBarTerminal(in: app, timeout: fixtureTimeout)
         XCTAssertTrue(
             Self.isValidTimelineAccessibilityValue(value),
-            "miniPlayer.superSeekBar accessibilityValue must match ready/processing/pending with segment sum 12; got: \(value)"
+            "miniPlayer.superSeekBar accessibilityValue must match adBands grammar; got: \(value)"
         )
         XCTAssertEqual(
             value,
