@@ -51,4 +51,33 @@ final class SmartAutoplayUITests: XCTestCase {
             XCTAssertTrue(smart.exists)
         }
     }
+
+    func testNextShowControlExistsOnMiniPlayer() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "-UITestFixtureLibrary",
+        ]
+        app.launch()
+
+        let libraryRoot = app.descendants(matching: .any)["libraryRoot"]
+        XCTAssertTrue(libraryRoot.waitForExistence(timeout: 10))
+
+        let showCell = app.descendants(matching: .any)["libraryCell_0"]
+        XCTAssertTrue(showCell.waitForExistence(timeout: 10))
+        showCell.tap()
+
+        let episodeList = app.descendants(matching: .any)["episodeList"]
+        XCTAssertTrue(episodeList.waitForExistence(timeout: 10))
+
+        let episodeCell = app.descendants(matching: .any)["episodeCell_0"]
+        XCTAssertTrue(episodeCell.waitForExistence(timeout: 10))
+        episodeCell.tap()
+
+        let mini = app.descendants(matching: .any)["miniPlayer"]
+        XCTAssertTrue(mini.waitForExistence(timeout: 15))
+
+        let nextShow = app.buttons["miniPlayerNextShow"]
+        XCTAssertTrue(nextShow.waitForExistence(timeout: 8))
+        XCTAssertEqual(nextShow.label, "Next show")
+    }
 }
