@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 027 |
 | **Title** | Sleep timer visible duration labels |
-| **Status** | In Progress |
+| **Status** | Implemented |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/PlaybackControlsView.swift`, `PodWash/PodWashUITests/PlaybackControlsUITests.swift` |
