@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 31 |
 | **Title** | Restore now-playing session on relaunch |
-| **Status** | In Progress |
+| **Status** | Implemented |
 | **Priority** | P3 |
 | **Crux** | After a simulated process relaunch with a durable active episode, saved position, and up-next queue, cold start shows `miniPlayer` for that episode **paused** at the saved timestamp (± **1.0** s) without re-tapping an episode row — and does **not** auto-play. |
 

@@ -44,3 +44,4 @@ from the relevant slice file's Role artifacts table.
 | [025](025-episode-cleaning-summary.md) | Episode cleaning summary: aggregation + channel-row cache binding | Accepted |
 | [026](026-mini-player-super-seek-parity.md) | Mini-player super seek bar parity: shared `SuperSeekBarView` host | Accepted |
 | [027](027-restore-now-playing-session.md) | Restore now-playing session: durable active id, paused cold-start bootstrap, clear-on-finish+empty-queue | Accepted |
+| [028](028-transcript-follow-along.md) | Transcript follow-along: per-word active index, follow auto-scroll, user-scroll break, snap-back | Accepted |

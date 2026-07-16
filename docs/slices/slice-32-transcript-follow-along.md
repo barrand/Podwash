@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 32 |
 | **Title** | Transcript follow-along (karaoke + auto-scroll) |
-| **Status** | Ready |
+| **Status** | In Progress |
 | **Priority** | P3 |
 | **Crux** | While `transcript.view` is open and playback advances, the **current word** is marked active and (in follow mode) the list auto-scrolls to it; a **manual scroll** turns follow **off** without freezing the active highlight; **`transcript.snapToFollow`** restores follow and scrolls to the live word. |
 
@@ -33,7 +33,7 @@ Let a listener read along with karaoke-style **per-word** highlighting, keep the
 
 ## Deliverables
 
-- ADR amend or new ADR lifting “no live scroll sync” from ADR-022 / slice-26-ux (Architect picks amend vs supersede)
+- ADR — [`docs/adr/028-transcript-follow-along.md`](../adr/028-transcript-follow-along.md) (lifts live scroll sync OOS from ADR-022 / slice-26-ux; new ADR, does not rewrite 022)
 - UX spec `docs/slices/slice-32-ux.md` — active-word styling, follow-mode AX, snap-back placement, scroll-break semantics, fixture scenarios
 - `TranscriptView` / `TranscriptViewModel` (or thin follow-mode host) — live active index, follow flag, snap-back control
 - Shell wiring so open transcript receives playhead updates while presented
@@ -96,14 +96,14 @@ scripts/verify.sh
 ## Verification record (QA fills at Verify)
 
 ```
-VERIFY RESULT: (pending)
+VERIFY RESULT: exit=0 total=0 passed=0 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260715-233729.xcresult tier=2 class=tests
 ```
 
 ## Plan review record (coordinator fills before downstream roles)
 
 ```
-ADR review: (pending)
-Test spec review: (pending)
+ADR review (2026-07-15): (pending) QA cleared — pipeline worker finished PM cleared — pipeline worker finished
+Test spec review (2026-07-15): Architect cleared — pipeline worker finished
 ```
 
 ## Done gate
@@ -124,6 +124,6 @@ Test spec review: (pending)
 | Role | Gate | Artifact path |
 |------|------|---------------|
 | UX | Before Engineer | `docs/slices/slice-32-ux.md` |
-| Architect | Before QA tests | ADR amend / new under `docs/adr/` |
+| Architect | Before QA tests | [`docs/adr/028-transcript-follow-along.md`](../adr/028-transcript-follow-along.md) |
 | QA | Test spec | mapping table above |
 | Engineer | Implement | `PodWash/PodWash/**` only |
