@@ -14,9 +14,11 @@ final class SmartAutoplayUITests: XCTestCase {
 
     func testSmartAutoplayToggleAndBingeControlExist() throws {
         let app = XCUIApplication()
+        // Library shell only — `-UITestFixtureSettings` alone routes RootView to a
+        // bare Settings stack (no settingsButton / binge chrome). AppShell settings
+        // exposes `smartAutoplayToggle`; podcast detail exposes `bingeToggle`.
         app.launchArguments += [
             "-UITestFixtureLibrary",
-            "-UITestFixtureSettings",
         ]
         app.launch()
 
