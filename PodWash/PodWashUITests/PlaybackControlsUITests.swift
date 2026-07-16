@@ -77,16 +77,58 @@ final class PlaybackControlsUITests: XCTestCase {
 
         let sleepTimerButton = app.buttons["sleepTimerButton"]
         XCTAssertTrue(sleepTimerButton.waitForExistence(timeout: 10))
-        XCTAssertEqual(sleepTimerButton.value as? String, "off", "Sleep timer must start off")
+        assertSleepTimerPreset(
+            sleepTimerButton,
+            accessibilityValue: "off",
+            visibleLabel: "Off",
+            context: "at launch"
+        )
 
-        let expectedSequence = ["900", "1800", "3600"]
-        for expected in expectedSequence {
+        let armedSequence: [(accessibilityValue: String, visibleLabel: String)] = [
+            ("900", "15m"),
+            ("1800", "30m"),
+            ("3600", "60m"),
+        ]
+        for expected in armedSequence {
             sleepTimerButton.tap()
-            XCTAssertEqual(
-                sleepTimerButton.value as? String,
-                expected,
-                "sleepTimerButton must cycle to \(expected)"
+            assertSleepTimerPreset(
+                sleepTimerButton,
+                accessibilityValue: expected.accessibilityValue,
+                visibleLabel: expected.visibleLabel,
+                context: "after tap to \(expected.accessibilityValue)"
             )
         }
+
+        sleepTimerButton.tap()
+        assertSleepTimerPreset(
+            sleepTimerButton,
+            accessibilityValue: "off",
+            visibleLabel: "Off",
+            context: "after fourth tap from 60m"
+        )
+    }
+
+    private func assertSleepTimerPreset(
+        _ button: XCUIElement,
+        accessibilityValue: String,
+        visibleLabel: String,
+        context: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertEqual(
+            button.value as? String,
+            accessibilityValue,
+            "sleepTimerButton accessibilityValue must be \(accessibilityValue) \(context)",
+            file: file,
+            line: line
+        )
+        let labelText = button.staticTexts[visibleLabel]
+        XCTAssertTrue(
+            labelText.waitForExistence(timeout: 2),
+            "sleepTimerButton visible label must be \(visibleLabel) \(context)",
+            file: file,
+            line: line
+        )
     }
 }
