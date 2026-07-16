@@ -50,17 +50,25 @@ final class InstantEpisodeAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
         _ = profanityAction
         _ = unrelatedContent
 
-        let duration = FixtureAnalysisTimeline.episodeDuration
+        let duration: Double
+        let seededIntervals: [CensorInterval]
+        if FixturePrerollAdBands.isAnyEnabled {
+            duration = FixturePrerollAdBands.episodeDuration
+            seededIntervals = FixturePrerollAdBands.makeIntervals()
+        } else if FixtureMuteMarkers.isAnyEnabled {
+            duration = FixtureAnalysisTimeline.episodeDuration
+            seededIntervals = FixtureMuteMarkers.makeIntervals()
+        } else {
+            duration = FixtureAnalysisTimeline.episodeDuration
+            seededIntervals = []
+        }
         let start = AnalysisProgressSnapshot(
             episodeDuration: duration,
             processedEnd: 0,
             processingStart: 0,
-            processingEnd: FixtureAnalysisTimeline.bucketWidth,
+            processingEnd: min(FixtureAnalysisTimeline.bucketWidth, duration),
             adRanges: []
         )
-        let seededIntervals = FixtureMuteMarkers.isAnyEnabled
-            ? FixtureMuteMarkers.makeIntervals()
-            : []
         let adRanges = seededIntervals
             .filter { $0.source == .unrelatedContent }
             .map { AdTimeRange(start: $0.start, end: $0.end) }

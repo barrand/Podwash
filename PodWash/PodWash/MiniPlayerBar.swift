@@ -4,6 +4,7 @@
 //
 //  Slice 23 — Compact player chrome above the tab bar (ADR-015 §4, slice-23-ux.md).
 //  Slice 30 — Hosts shared SuperSeekBarView (ADR-026 / slice-30-ux.md).
+//  Slice 33 — Analysis progress + timestamp ad bands (ADR-030).
 //
 
 import AVFoundation
@@ -13,7 +14,8 @@ struct MiniPlayerBar: View {
     @Bindable var engine: PlaybackEngine
     let episodeTitle: String
     let podcastTitle: String
-    let timelineColors: [TimelineSegmentColor]?
+    let showsCompleteSeekBarPaint: Bool
+    let analysisProgress: Double?
     let isPreparingPlayback: Bool
     let isPreparingNextEpisode: Bool
     let preparingNextAnnouncement: String?
@@ -34,13 +36,14 @@ struct MiniPlayerBar: View {
             let elapsedSeconds = engine.avPlayer.currentTime().seconds
             let duration = episodeDuration > 0 ? episodeDuration : engine.duration
             let frontier = processedEnd > 0 ? processedEnd : duration
-            // Complete gate uses raw processedEnd (not seek frontier fallback).
-            let timelineComplete = duration > 0 && processedEnd >= duration
-            let showMuteMarkerAX = timelineColors != nil && timelineComplete
-            let muteMarkers = showMuteMarkerAX
+            let showCompletePaint = showsCompleteSeekBarPaint
+            let adBands = showCompletePaint
+                ? SuperSeekBarModel.adBands(from: muteIntervals, duration: duration)
+                : []
+            let muteMarkers = showCompletePaint
                 ? SuperSeekBarModel.muteMarkers(from: muteIntervals, duration: duration)
                 : []
-            let muteMarkerCountForAccessibility: Int? = showMuteMarkerAX
+            let muteMarkerCountForAccessibility: Int? = showCompletePaint
                 ? muteMarkers.count
                 : nil
 
@@ -113,17 +116,30 @@ struct MiniPlayerBar: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
 
-                SuperSeekBarView(
-                    colors: timelineColors,
-                    elapsed: elapsedSeconds,
-                    duration: duration,
-                    processedEnd: frontier,
-                    muteMarkers: muteMarkers,
-                    muteMarkerCountForAccessibility: muteMarkerCountForAccessibility,
-                    barHeight: AnalysisTimelineModel.miniPlayerTimelineHeight,
-                    accessibilityIdentifier: "miniPlayer.superSeekBar",
-                    onSeek: onSeekTo
-                )
+                VStack(spacing: 4) {
+                    if let analysisProgress {
+                        ProgressView(value: analysisProgress, total: 1.0)
+                            .tint(BrandTheme.primary)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityIdentifier("miniPlayer.analysisProgress")
+                            .accessibilityLabel("Analysis progress")
+                            .accessibilityValue(String(format: "%.4f", analysisProgress))
+                            .accessibilityHint("Overall progress of episode cleaning analysis.")
+                    }
+
+                    SuperSeekBarView(
+                        showsCompleteContentTrack: showCompletePaint,
+                        adBands: adBands,
+                        elapsed: elapsedSeconds,
+                        duration: duration,
+                        processedEnd: frontier,
+                        muteMarkers: muteMarkers,
+                        muteMarkerCountForAccessibility: muteMarkerCountForAccessibility,
+                        barHeight: AnalysisTimelineModel.miniPlayerTimelineHeight,
+                        accessibilityIdentifier: "miniPlayer.superSeekBar",
+                        onSeek: onSeekTo
+                    )
+                }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
             }

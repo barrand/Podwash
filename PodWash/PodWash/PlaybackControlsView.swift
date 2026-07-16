@@ -4,6 +4,7 @@
 //
 //  Slice 03 — Minimal play/pause/seek UI (see slice-03-ux.md).
 //  Slice 25 — Super seek bar + elapsed/remaining (slice-25-ux.md).
+//  Slice 33 — Analysis progress chrome + timestamp ad bands (ADR-030).
 //
 
 import AVFoundation
@@ -11,11 +12,14 @@ import SwiftUI
 
 struct PlaybackControlsView: View {
     @Bindable var engine: PlaybackEngine
-    let timelineColors: [TimelineSegmentColor]?
+    /// When true, paint complete green + ad/mute overlays (ADR-030).
+    let showsCompleteSeekBarPaint: Bool
+    /// In-flight overall analysis fraction; nil when progress chrome is hidden.
+    let analysisProgress: Double?
     let isPreparingPlayback: Bool
     let episodeDuration: Double
     let processedEnd: Double
-    /// Applied / cached intervals for mute-marker overlays (ADR-023).
+    /// Applied / cached intervals for mute-marker + ad-band overlays (ADR-023 / ADR-030).
     let muteIntervals: [CensorInterval]
     let onTogglePlayPause: (() -> Void)?
     let onSeekTo: ((Double) -> Void)?
@@ -25,7 +29,8 @@ struct PlaybackControlsView: View {
 
     init(
         engine: PlaybackEngine,
-        timelineColors: [TimelineSegmentColor]? = nil,
+        showsCompleteSeekBarPaint: Bool = false,
+        analysisProgress: Double? = nil,
         isPreparingPlayback: Bool = false,
         episodeDuration: Double = 0,
         processedEnd: Double = 0,
@@ -35,7 +40,8 @@ struct PlaybackControlsView: View {
         onSeekBy: ((Double) -> Void)? = nil
     ) {
         self.engine = engine
-        self.timelineColors = timelineColors
+        self.showsCompleteSeekBarPaint = showsCompleteSeekBarPaint
+        self.analysisProgress = analysisProgress
         self.isPreparingPlayback = isPreparingPlayback
         self.episodeDuration = episodeDuration
         self.processedEnd = processedEnd
@@ -61,35 +67,49 @@ struct PlaybackControlsView: View {
                 elapsed: elapsedSeconds,
                 duration: duration
             )
-            // Complete gate uses raw processedEnd (not seek frontier fallback).
-            let timelineComplete = duration > 0 && processedEnd >= duration
-            let showMuteMarkerAX = timelineColors != nil && timelineComplete
-            let muteMarkers = showMuteMarkerAX
+            let showCompletePaint = showsCompleteSeekBarPaint
+            let adBands = showCompletePaint
+                ? SuperSeekBarModel.adBands(from: muteIntervals, duration: duration)
+                : []
+            let muteMarkers = showCompletePaint
                 ? SuperSeekBarModel.muteMarkers(from: muteIntervals, duration: duration)
                 : []
-            let muteMarkerCountForAccessibility: Int? = showMuteMarkerAX
+            let muteMarkerCountForAccessibility: Int? = showCompletePaint
                 ? muteMarkers.count
                 : nil
 
             VStack(spacing: 24) {
-                SuperSeekBarView(
-                    colors: timelineColors,
-                    elapsed: elapsedSeconds,
-                    duration: duration,
-                    processedEnd: frontier,
-                    muteMarkers: muteMarkers,
-                    muteMarkerCountForAccessibility: muteMarkerCountForAccessibility,
-                    barHeight: AnalysisTimelineModel.fullPlayerTimelineHeight,
-                    accessibilityIdentifier: "playback.superSeekBar",
-                    onSeek: { seconds in
-                        if let onSeekTo {
-                            onSeekTo(seconds)
-                        } else {
-                            engine.seek(to: seconds)
-                        }
+                VStack(spacing: 4) {
+                    if let analysisProgress {
+                        ProgressView(value: analysisProgress, total: 1.0)
+                            .tint(BrandTheme.primary)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityIdentifier("playback.analysisProgress")
+                            .accessibilityLabel("Analysis progress")
+                            .accessibilityValue(String(format: "%.4f", analysisProgress))
+                            .accessibilityHint("Overall progress of episode cleaning analysis.")
                     }
-                )
-                .frame(maxWidth: .infinity)
+
+                    SuperSeekBarView(
+                        showsCompleteContentTrack: showCompletePaint,
+                        adBands: adBands,
+                        elapsed: elapsedSeconds,
+                        duration: duration,
+                        processedEnd: frontier,
+                        muteMarkers: muteMarkers,
+                        muteMarkerCountForAccessibility: muteMarkerCountForAccessibility,
+                        barHeight: AnalysisTimelineModel.fullPlayerTimelineHeight,
+                        accessibilityIdentifier: "playback.superSeekBar",
+                        onSeek: { seconds in
+                            if let onSeekTo {
+                                onSeekTo(seconds)
+                            } else {
+                                engine.seek(to: seconds)
+                            }
+                        }
+                    )
+                    .frame(maxWidth: .infinity)
+                }
 
                 HStack {
                     Text(formattedElapsed(elapsedSeconds))

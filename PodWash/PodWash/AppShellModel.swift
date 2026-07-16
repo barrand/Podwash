@@ -70,7 +70,8 @@ final class AppShellModel {
                 || FixtureLibrary.isEmptyEnabled
                 || FixtureProgressivePlayback.isEnabled
                 || FixtureTranscript.isAnyEnabled
-                || FixtureMuteMarkers.isAnyEnabled)
+                || FixtureMuteMarkers.isAnyEnabled
+                || FixturePrerollAdBands.isAnyEnabled)
     }
 
     /// Applied / cached intervals for mute-marker overlays on mini + full player (ADR-023 / ADR-026).
@@ -220,16 +221,27 @@ final class AppShellModel {
     var carPlayEpisodePlayer: (any EpisodePlaying)? { self }
     var carPlayPlaybackEngine: PlaybackEngine? { engine }
 
-    /// Segment colors for the mini-player timeline, or nil when none to show.
-    var miniPlayerTimelineColors: [TimelineSegmentColor]? {
-        guard let snapshot = playbackAnalysisSnapshot else { return nil }
-        let colors = AnalysisTimelineModel.segmentColors(snapshot: snapshot)
-        return colors.isEmpty ? nil : colors
+    /// Player chrome no longer publishes in-flight / bucket segment colors (ADR-030).
+    /// Always `nil` so AC4/AC5 can assert no `ready/processing/pending` paint path.
+    var miniPlayerTimelineColors: [TimelineSegmentColor]? { nil }
+
+    /// Full-player timeline colors — same nil contract as mini (ADR-030).
+    var fullPlayerTimelineColors: [TimelineSegmentColor]? { nil }
+
+    /// Complete seek-bar paint (green + timestamp yellow + mute red) when analysis finished.
+    var isPlayerSeekBarAnalysisComplete: Bool {
+        guard let snapshot = playbackAnalysisSnapshot else { return false }
+        return snapshot.processedEnd >= snapshot.episodeDuration
     }
 
-    /// Segment colors for the full-player timeline, matching the mini-player contract.
-    var fullPlayerTimelineColors: [TimelineSegmentColor]? {
-        miniPlayerTimelineColors
+    /// Overall analysis progress while in flight; `nil` when complete / no snapshot.
+    var analysisProgressFraction: Double? {
+        guard let snapshot = playbackAnalysisSnapshot else { return nil }
+        guard snapshot.processedEnd < snapshot.episodeDuration else { return nil }
+        return SuperSeekBarModel.analysisProgress(
+            processedEnd: snapshot.processedEnd,
+            duration: snapshot.episodeDuration
+        )
     }
 
     /// Seek frontier for the super seek bar (processedEnd while in flight; duration when complete / cleaning off).
@@ -477,7 +489,8 @@ final class AppShellModel {
            !FixtureLibraryAnalysisTimeline.isEnabled,
            !FixtureProgressivePlayback.isEnabled,
            !FixtureTranscript.isNoCacheEnabled,
-           !FixtureMuteMarkers.isAnyEnabled {
+           !FixtureMuteMarkers.isAnyEnabled,
+           !FixturePrerollAdBands.isAnyEnabled {
             PlaybackDiagnostics.info("playEpisode skip prepare — fixture library mode")
             return
         }
@@ -935,6 +948,9 @@ final class AppShellModel {
     }
 
     private func resolvedEpisodeDuration(audioURL: URL) async -> Double {
+        if FixturePrerollAdBands.isAnyEnabled {
+            return FixturePrerollAdBands.episodeDuration
+        }
         if let engine, engine.duration > 0 {
             return engine.duration
         }
@@ -959,6 +975,9 @@ final class AppShellModel {
     private func resolveAudioURL(for episode: Episode) -> URL? {
         if FixtureProgressivePlayback.isEnabled {
             return FixtureProgressivePlayback.bundledURL()
+        }
+        if FixturePrerollAdBands.isAnyEnabled {
+            return FixturePrerollAdBands.bundledURL()
         }
         if FixtureMuteMarkers.isAnyEnabled {
             return FixtureMuteMarkers.bundledURL()

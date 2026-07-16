@@ -5,18 +5,21 @@
 //  Slice 25 — Full-player combined timeline + playhead + tap-to-seek (ADR-021 §6).
 //  Slice 27 — Mute marker overlays + muteMarkers AX suffix (ADR-023 §5–§6).
 //  Slice 30 — Shared chrome for mini + full (ADR-026); height + AX id parameterized.
+//  Slice 33 — Timestamp yellow ad bands + colorless in-flight track (ADR-030).
 //
 
 import SwiftUI
 
 struct SuperSeekBarView: View {
-    let colors: [TimelineSegmentColor]?
+    /// When true, paint solid green content track + ad/mute overlays (complete only).
+    let showsCompleteContentTrack: Bool
+    let adBands: [AdBand]
     let elapsed: Double
     let duration: Double
     let processedEnd: Double
     /// Precomputed mute markers for paint; empty while in flight / cleaning off.
     let muteMarkers: [MuteMarker]
-    /// When non-nil, append `,muteMarkers:N` to timeline AX (complete colored bars only).
+    /// When non-nil, emit complete `adBands:…,muteMarkers:M` AX (complete bars only).
     let muteMarkerCountForAccessibility: Int?
     let barHeight: CGFloat
     let accessibilityIdentifier: String
@@ -25,7 +28,8 @@ struct SuperSeekBarView: View {
     private let minimumTickWidth: CGFloat = 2
 
     init(
-        colors: [TimelineSegmentColor]?,
+        showsCompleteContentTrack: Bool,
+        adBands: [AdBand] = [],
         elapsed: Double,
         duration: Double,
         processedEnd: Double,
@@ -35,7 +39,8 @@ struct SuperSeekBarView: View {
         accessibilityIdentifier: String = "playback.superSeekBar",
         onSeek: @escaping (Double) -> Void
     ) {
-        self.colors = colors
+        self.showsCompleteContentTrack = showsCompleteContentTrack
+        self.adBands = adBands
         self.elapsed = elapsed
         self.duration = duration
         self.processedEnd = processedEnd
@@ -55,18 +60,18 @@ struct SuperSeekBarView: View {
             ) * width
 
             ZStack(alignment: .leading) {
-                if let colors, !colors.isEmpty {
-                    HStack(spacing: 0) {
-                        ForEach(Array(colors.enumerated()), id: \.offset) { _, color in
-                            Rectangle()
-                                .fill(Self.swiftUIColor(color))
-                        }
-                    }
-                    .frame(height: barHeight)
+                if showsCompleteContentTrack {
+                    Rectangle()
+                        .fill(BrandTheme.primary.opacity(0.35))
+                        .frame(height: barHeight)
                 } else {
                     Rectangle()
                         .fill(Color(uiColor: .systemGray5))
                         .frame(height: barHeight)
+                }
+
+                ForEach(Array(adBands.enumerated()), id: \.offset) { _, band in
+                    adBandOverlay(band: band, barWidth: width)
                 }
 
                 ForEach(Array(muteMarkers.enumerated()), id: \.offset) { _, marker in
@@ -98,18 +103,33 @@ struct SuperSeekBarView: View {
         .accessibilityIdentifier(accessibilityIdentifier)
         .accessibilityLabel("Playback position")
         .accessibilityHint(
-            "Tap to seek within analyzed audio. Seeks past unscanned audio move to the analyzed frontier. When analysis is complete, profanity mute regions appear as red marks on the bar."
+            "Tap to seek within analyzed audio. Seeks past unscanned audio move to the analyzed frontier. When analysis is complete, skipped ad regions appear as yellow bands and profanity mute regions as red marks on the bar."
         )
         .modifier(SuperSeekBarAccessibilityValueModifier(value: accessibilityValueString))
     }
 
     private var accessibilityValueString: String? {
-        guard let colors, !colors.isEmpty else { return nil }
-        let timeline = AnalysisTimelineModel.accessibilityValue(from: colors)
+        guard let muteMarkerCountForAccessibility else { return nil }
         return SuperSeekBarModel.accessibilityValue(
-            timelineValue: timeline,
+            adBands: adBands,
             muteMarkerCount: muteMarkerCountForAccessibility
         )
+    }
+
+    private func adBandOverlay(band: AdBand, barWidth: CGFloat) -> some View {
+        let leadingX = band.startNormalized * barWidth
+        let trailingX = band.endNormalized * barWidth
+        let spanWidth = trailingX - leadingX
+        let bandWidth = max(spanWidth, minimumTickWidth)
+        let offsetX = spanWidth >= minimumTickWidth
+            ? leadingX
+            : max(0, leadingX - minimumTickWidth / 2)
+
+        return Rectangle()
+            .fill(BrandTheme.accent.opacity(0.85))
+            .frame(width: bandWidth, height: barHeight)
+            .offset(x: offsetX)
+            .allowsHitTesting(false)
     }
 
     private func muteMarkerOverlay(marker: MuteMarker, barWidth: CGFloat) -> some View {
@@ -134,18 +154,9 @@ struct SuperSeekBarView: View {
             .offset(x: offsetX)
             .allowsHitTesting(false)
     }
-
-    private static func swiftUIColor(_ color: TimelineSegmentColor) -> Color {
-        switch color {
-        case .green: return Color(uiColor: .systemGreen)
-        case .blue: return Color(uiColor: .systemBlue)
-        case .grey: return Color(uiColor: .systemGray4)
-        case .yellow: return Color(uiColor: .systemYellow)
-        }
-    }
 }
 
-/// Omits `accessibilityValue` when segment colors are hidden (cleaning-off / no snapshot).
+/// Omits `accessibilityValue` when complete paint is hidden (in-flight / cleaning-off).
 private struct SuperSeekBarAccessibilityValueModifier: ViewModifier {
     let value: String?
 

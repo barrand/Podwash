@@ -39,6 +39,7 @@ struct AppShellView: View {
             || FixtureTranscript.usesInMemoryPersistence
             || FixtureProgressivePlayback.isEnabled
             || FixtureMuteMarkers.isAnyEnabled
+            || FixturePrerollAdBands.isAnyEnabled
         let searchClient = useStubbedNetwork
             ? FixtureDiscover.makeSearchClient()
             : ITunesSearchClient()
@@ -97,7 +98,8 @@ struct AppShellView: View {
                         engine: engine,
                         episodeTitle: model.nowPlayingEpisodeTitle,
                         podcastTitle: model.nowPlayingPodcastTitle,
-                        timelineColors: model.miniPlayerTimelineColors,
+                        showsCompleteSeekBarPaint: model.isPlayerSeekBarAnalysisComplete,
+                        analysisProgress: model.analysisProgressFraction,
                         isPreparingPlayback: model.isPreparingPlayback,
                         isPreparingNextEpisode: model.isPreparingNextEpisode,
                         preparingNextAnnouncement: model.preparingNextAnnouncement,
@@ -149,7 +151,8 @@ struct AppShellView: View {
                 NavigationStack {
                     PlaybackControlsView(
                         engine: engine,
-                        timelineColors: model.fullPlayerTimelineColors,
+                        showsCompleteSeekBarPaint: model.isPlayerSeekBarAnalysisComplete,
+                        analysisProgress: model.analysisProgressFraction,
                         isPreparingPlayback: model.isPreparingPlayback,
                         episodeDuration: model.superSeekDuration,
                         processedEnd: model.superSeekProcessedEnd,

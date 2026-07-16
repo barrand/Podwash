@@ -4,12 +4,19 @@
 //
 //  Slice 25 — Pure playhead / remaining / frontier-clamp math (ADR-021 §2, §6).
 //  Slice 27 — Mute marker filter + normalize + AX suffix (ADR-023 §3, §5).
+//  Slice 33 — Timestamp ad bands + analysis progress (ADR-030 §3, §5).
 //
 
 import Foundation
 
 /// Normalized mute span on the seek bar ([0, 1] relative to episode duration).
 struct MuteMarker: Equatable, Sendable {
+    var startNormalized: Double
+    var endNormalized: Double
+}
+
+/// Normalized ad / unrelated-skip span on the seek bar ([0, 1] relative to duration).
+struct AdBand: Equatable, Sendable {
     var startNormalized: Double
     var endNormalized: Double
 }
@@ -49,12 +56,50 @@ nonisolated enum SuperSeekBarModel {
         }
     }
 
-    /// Append `,muteMarkers:N` when `muteMarkerCount != nil`; otherwise return `timelineValue` unchanged.
+    /// Intervals with `source == .unrelatedContent` && `action == .skip`, normalized by duration.
+    /// Empty when `duration <= 0`. Same predicate as `TranscriptViewModel.make` skip set.
+    static func adBands(
+        from intervals: [CensorInterval],
+        duration: Double
+    ) -> [AdBand] {
+        guard duration > 0 else { return [] }
+        let bands = intervals.compactMap { interval -> AdBand? in
+            guard interval.source == .unrelatedContent, interval.action == .skip else { return nil }
+            guard interval.end > interval.start else { return nil }
+            let start = min(1, max(0, interval.start / duration))
+            let end = min(1, max(0, interval.end / duration))
+            guard end > start else { return nil }
+            return AdBand(startNormalized: start, endNormalized: end)
+        }
+        return bands.sorted { $0.startNormalized < $1.startNormalized }
+    }
+
+    /// `processedEnd / duration` clamped to [0, 1]; `0` when `duration <= 0`.
+    static func analysisProgress(processedEnd: Double, duration: Double) -> Double {
+        guard duration > 0 else { return 0 }
+        return min(1, max(0, processedEnd / duration))
+    }
+
+    /// Complete-bar AX: `adBands:N,<start>-<end>…,muteMarkers:M` (ADR-030 §5).
     static func accessibilityValue(
-        timelineValue: String,
-        muteMarkerCount: Int?
+        adBands: [AdBand],
+        muteMarkerCount: Int
     ) -> String {
-        guard let muteMarkerCount else { return timelineValue }
-        return "\(timelineValue),muteMarkers:\(muteMarkerCount)"
+        var tokens: [String] = ["adBands:\(adBands.count)"]
+        for band in adBands {
+            tokens.append(
+                String(format: "%.4f-%.4f", band.startNormalized, band.endNormalized)
+            )
+        }
+        tokens.append("muteMarkers:\(muteMarkerCount)")
+        return tokens.joined(separator: ",")
+    }
+
+    /// Formats analysis progress for AX (`0.0000`–`1.0000`, 4 decimal places).
+    static func analysisProgressAccessibilityValue(
+        processedEnd: Double,
+        duration: Double
+    ) -> String {
+        String(format: "%.4f", analysisProgress(processedEnd: processedEnd, duration: duration))
     }
 }
