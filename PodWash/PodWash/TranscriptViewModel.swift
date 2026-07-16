@@ -76,6 +76,27 @@ struct TranscriptViewModel: Equatable, Sendable {
         )
     }
 
+    /// Index of the word that should be “current” for playhead `t` (ADR-028 §3).
+    /// Half-open contain first; else last word with `end <= t`; else `0`.
+    static func activeWordIndex(
+        transcript: [TimedWord],
+        playhead: TimeInterval
+    ) -> Int {
+        guard !transcript.isEmpty else { return 0 }
+
+        if let containing = transcript.enumerated().first(where: {
+            $0.element.start <= playhead && playhead < $0.element.end
+        }) {
+            return containing.offset
+        }
+
+        if let lastEnded = transcript.enumerated().last(where: { $0.element.end <= playhead }) {
+            return lastEnded.offset
+        }
+
+        return 0
+    }
+
     private static func scrollAnchor(
         transcript: [TimedWord],
         playbackPosition: TimeInterval
@@ -87,17 +108,8 @@ struct TranscriptViewModel: Equatable, Sendable {
             return (0, Int(round(playbackPosition)))
         }
 
-        if let containing = transcript.enumerated().first(where: {
-            $0.element.start <= playbackPosition && playbackPosition < $0.element.end
-        }) {
-            return (containing.offset, Int(round(containing.element.start)))
-        }
-
-        if let lastListened = transcript.enumerated().last(where: { $0.element.end <= playbackPosition }) {
-            return (lastListened.offset, Int(round(lastListened.element.start)))
-        }
-
-        return (0, Int(round(transcript[0].start)))
+        let index = activeWordIndex(transcript: transcript, playhead: playbackPosition)
+        return (index, Int(round(transcript[index].start)))
     }
 
     /// Groups words into paragraphs ending after `.`, `?`, or `!` (trimmed word text).

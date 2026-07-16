@@ -100,6 +100,16 @@ final class AppShellModel {
     var transcriptSheetEpisodeID: String? = nil
     /// View model for the open transcript sheet (built on present).
     private(set) var transcriptSheetViewModel: TranscriptViewModel?
+    /// Resume / open-time playhead frozen for the presentation (ADR-028 §4).
+    private(set) var transcriptSheetOpenPlaybackPosition: TimeInterval = 0
+
+    /// Live engine for follow-along when the open transcript is the now-playing episode.
+    var transcriptSheetPlaybackEngine: PlaybackEngine? {
+        guard let episodeID = transcriptSheetEpisodeID,
+              episodeID == nowPlayingEpisodeID
+        else { return nil }
+        return engine
+    }
 
     private let transcriptCache: TranscriptCache
     private let intervalCache: IntervalCache
@@ -605,6 +615,7 @@ final class AppShellModel {
             intervals: intervals,
             playbackPosition: position
         )
+        transcriptSheetOpenPlaybackPosition = position
         transcriptSheetEpisodeID = episodeID
     }
 
@@ -616,6 +627,7 @@ final class AppShellModel {
     func dismissTranscript() {
         transcriptSheetEpisodeID = nil
         transcriptSheetViewModel = nil
+        transcriptSheetOpenPlaybackPosition = 0
     }
 
     func stopAndDismissPlayer() {

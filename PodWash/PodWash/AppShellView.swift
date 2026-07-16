@@ -199,7 +199,11 @@ struct AppShellView: View {
     @ViewBuilder
     private var transcriptSheetContent: some View {
         if let viewModel = model.transcriptSheetViewModel {
-            TranscriptView(viewModel: viewModel) {
+            TranscriptView(
+                viewModel: viewModel,
+                playbackEngine: model.transcriptSheetPlaybackEngine,
+                openPlaybackPosition: model.transcriptSheetOpenPlaybackPosition
+            ) {
                 model.dismissTranscript()
             }
         }

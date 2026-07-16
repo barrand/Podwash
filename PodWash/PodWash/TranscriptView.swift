@@ -3,42 +3,61 @@
 //  PodWash
 //
 //  Slice 26 — Scrollable transcript sheet (slice-26-ux.md).
+//  Slice 32 — Live karaoke highlight + follow / snap-back (ADR-028, slice-32-ux.md).
 //
 
+import AVFoundation
 import SwiftUI
 
 struct TranscriptView: View {
     let viewModel: TranscriptViewModel
+    /// Live playhead while the sheet is open (now-playing engine). Nil → freeze at open-time resume.
+    var playbackEngine: PlaybackEngine? = nil
+    /// Open-time resume seconds used when no live engine is available.
+    var openPlaybackPosition: TimeInterval = 0
     var onClose: (() -> Void)? = nil
 
     @State private var didAutoScroll = false
+    @State private var isFollowModeOn = true
+    @State private var isProgrammaticScrollInFlight = false
+    @State private var lastFollowedActiveIndex: Int?
+    @State private var activeWordIndex: Int = 0
 
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        aggregateHosts
+                ZStack(alignment: .bottomTrailing) {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 12) {
+                            aggregateHosts
 
-                        TranscriptParagraphsView(
-                            words: viewModel.words,
-                            paragraphs: TranscriptViewModel.paragraphs(
-                                from: viewModel.words.map(\.word)
+                            TranscriptParagraphsView(
+                                words: viewModel.words,
+                                paragraphs: TranscriptViewModel.paragraphs(
+                                    from: viewModel.words.map(\.word)
+                                ),
+                                activeWordIndex: activeWordIndex
                             )
-                        )
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .background(BrandTheme.surface)
-                .onAppear {
-                    guard !didAutoScroll else { return }
-                    didAutoScroll = true
-                    guard viewModel.scrollAnchorSeconds > 0 || viewModel.scrollAnchorIndex > 0 else { return }
-                    DispatchQueue.main.async {
-                        withAnimation {
-                            proxy.scrollTo(viewModel.scrollAnchorIndex, anchor: .center)
                         }
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .background(BrandTheme.surface)
+                    .onScrollPhaseChange { _, newPhase in
+                        guard newPhase == .interacting else { return }
+                        guard !isProgrammaticScrollInFlight else { return }
+                        noteUserScrollInteraction()
+                    }
+                    .onAppear {
+                        refreshActiveWordIndex()
+                        performOpenTimeScrollIfNeeded(proxy: proxy)
+                    }
+                    .onChange(of: activeWordIndex) { _, newIndex in
+                        followScrollIfNeeded(to: newIndex, proxy: proxy)
+                    }
+
+                    if !isFollowModeOn {
+                        snapToFollowButton(activeIndex: activeWordIndex, proxy: proxy)
                     }
                 }
             }
@@ -55,6 +74,110 @@ struct TranscriptView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("transcript.view")
         .accessibilityLabel("Transcript")
+        .background {
+            TimelineView(.periodic(from: .now, by: 0.25)) { _ in
+                let _ = playbackEngine?.uiRefreshToken
+                let index = computedActiveWordIndex
+                Color.clear
+                    .accessibilityHidden(true)
+                    .onChange(of: index) { _, newIndex in
+                        activeWordIndex = newIndex
+                    }
+                    .onAppear {
+                        activeWordIndex = index
+                    }
+            }
+        }
+    }
+
+    private var computedActiveWordIndex: Int {
+        TranscriptViewModel.activeWordIndex(
+            transcript: viewModel.words.map(\.word),
+            playhead: livePlayheadSeconds
+        )
+    }
+
+    private var livePlayheadSeconds: TimeInterval {
+        if let engine = playbackEngine {
+            let seconds = engine.avPlayer.currentTime().seconds
+            if seconds.isFinite, !seconds.isNaN {
+                return seconds
+            }
+            return engine.currentTime
+        }
+        return openPlaybackPosition
+    }
+
+    private func refreshActiveWordIndex() {
+        activeWordIndex = computedActiveWordIndex
+    }
+
+    private func noteUserScrollInteraction() {
+        isFollowModeOn = false
+    }
+
+    private func performOpenTimeScrollIfNeeded(proxy: ScrollViewProxy) {
+        guard !didAutoScroll else { return }
+        didAutoScroll = true
+        guard viewModel.scrollAnchorSeconds > 0 || viewModel.scrollAnchorIndex > 0 else {
+            lastFollowedActiveIndex = viewModel.scrollAnchorIndex
+            return
+        }
+        scrollProgrammatically(to: viewModel.scrollAnchorIndex, proxy: proxy)
+        lastFollowedActiveIndex = viewModel.scrollAnchorIndex
+    }
+
+    private func followScrollIfNeeded(to activeIndex: Int, proxy: ScrollViewProxy) {
+        guard isFollowModeOn else { return }
+        guard didAutoScroll else { return }
+        guard lastFollowedActiveIndex != activeIndex else { return }
+        scrollProgrammatically(to: activeIndex, proxy: proxy)
+        lastFollowedActiveIndex = activeIndex
+    }
+
+    private func snapToFollow(activeIndex: Int, proxy: ScrollViewProxy) {
+        isFollowModeOn = true
+        scrollProgrammatically(to: activeIndex, proxy: proxy)
+        lastFollowedActiveIndex = activeIndex
+    }
+
+    private func scrollProgrammatically(to index: Int, proxy: ScrollViewProxy) {
+        isProgrammaticScrollInFlight = true
+        DispatchQueue.main.async {
+            withAnimation {
+                proxy.scrollTo(index, anchor: .center)
+            }
+            DispatchQueue.main.async {
+                isProgrammaticScrollInFlight = false
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func snapToFollowButton(activeIndex: Int, proxy: ScrollViewProxy) -> some View {
+        Button {
+            snapToFollow(activeIndex: activeIndex, proxy: proxy)
+        } label: {
+            Image(systemName: "arrow.down.to.line.compact")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(BrandTheme.onSurface)
+                .frame(width: 44, height: 44)
+                .background(
+                    Capsule()
+                        .fill(BrandTheme.surface.opacity(0.9))
+                        .overlay(
+                            Capsule()
+                                .stroke(BrandTheme.onSurface.opacity(0.2), lineWidth: 1)
+                        )
+                )
+                .contentShape(Rectangle())
+        }
+        .accessibilityIdentifier("transcript.snapToFollow")
+        .accessibilityLabel("Follow transcript")
+        .accessibilityHint("Scrolls to the current word and turns follow mode on.")
+        .padding(.trailing, 16)
+        .padding(.bottom, 16)
+        .safeAreaPadding(.bottom)
     }
 
     @ViewBuilder
@@ -88,6 +211,22 @@ struct TranscriptView: View {
                 .accessibilityLabel("Transcript scroll position")
                 .accessibilityValue("\(viewModel.scrollAnchorSeconds)")
                 .accessibilityHint("Seconds position scrolled to on open.")
+
+            Color.clear
+                .frame(width: 1, height: 1)
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier("transcript.followMode")
+                .accessibilityLabel("Transcript follow mode")
+                .accessibilityValue(isFollowModeOn ? "on" : "off")
+                .accessibilityHint("Whether the transcript scrolls with playback.")
+
+            Color.clear
+                .frame(width: 1, height: 1)
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier("transcript.activeWord")
+                .accessibilityLabel("Active transcript word")
+                .accessibilityValue("\(activeWordIndex)")
+                .accessibilityHint("Index of the word at the current playback position.")
         }
         .accessibilityElement(children: .contain)
         .frame(width: 1, height: 1)
@@ -100,6 +239,7 @@ struct TranscriptView: View {
 private struct TranscriptParagraphsView: View {
     let words: [TranscriptWordDisplay]
     let paragraphs: [TranscriptParagraph]
+    var activeWordIndex: Int = -1
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 12) {
@@ -115,14 +255,23 @@ private struct TranscriptParagraphsView: View {
 
                     WrappingTranscriptWordsLayout(horizontalSpacing: 4, verticalSpacing: 4) {
                         ForEach(wordsIn(paragraph), id: \.index) { display in
+                            let isActive = display.index == activeWordIndex
                             Text(display.word.word)
-                                .font(.body)
+                                .font(isActive ? .body.weight(.semibold) : .body)
                                 .foregroundStyle(foreground(for: display))
+                                .padding(.horizontal, isActive ? 4 : 0)
+                                .padding(.vertical, isActive ? 2 : 0)
+                                .background {
+                                    if isActive {
+                                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                            .fill(BrandTheme.primary.opacity(0.25))
+                                    }
+                                }
                                 .id(display.index)
                                 .accessibilityElement(children: .ignore)
                                 .accessibilityIdentifier("transcript.word_\(display.index)")
                                 .accessibilityLabel(display.word.word)
-                                .accessibilityValue(accessibilityValue(for: display))
+                                .accessibilityValue(accessibilityValue(for: display, isActive: isActive))
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -145,10 +294,17 @@ private struct TranscriptParagraphsView: View {
         return BrandTheme.onSurface
     }
 
-    private func accessibilityValue(for display: TranscriptWordDisplay) -> String {
-        if display.skippedAd { return "skippedAd" }
-        if display.listened { return "listened" }
-        return ""
+    private func accessibilityValue(for display: TranscriptWordDisplay, isActive: Bool) -> String {
+        var parts: [String] = []
+        if display.skippedAd {
+            parts.append("skippedAd")
+        } else if display.listened {
+            parts.append("listened")
+        }
+        if isActive {
+            parts.append("active")
+        }
+        return parts.joined(separator: ",")
     }
 }
 
