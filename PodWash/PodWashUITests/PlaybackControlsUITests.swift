@@ -123,7 +123,14 @@ final class PlaybackControlsUITests: XCTestCase {
             file: file,
             line: line
         )
-        let labelText = button.staticTexts[visibleLabel]
+        // Assert visible preset text under the button (label or identifier).
+        let labelText = button.staticTexts.matching(
+            NSPredicate(
+                format: "label == %@ OR identifier == %@",
+                visibleLabel,
+                visibleLabel
+            )
+        ).firstMatch
         XCTAssertTrue(
             labelText.waitForExistence(timeout: 2),
             "sleepTimerButton visible label must be \(visibleLabel) \(context)",
