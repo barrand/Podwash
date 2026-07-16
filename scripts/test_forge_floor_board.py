@@ -355,7 +355,7 @@ class ActivityCopyAndLivenessTests(unittest.TestCase):
         import factory_floor.server as floor
 
         plain = floor._batch_plain("HEAD moved", "idle")
-        self.assertIn("Full verify & ship", plain)
+        self.assertIn("Full verify → Done", plain)
         self.assertIn("Optional", plain)
         self.assertNotIn("idle drain", plain.lower())
         self.assertNotIn("waiting, then push", plain.lower())
@@ -830,14 +830,39 @@ class ControlHandlerTests(unittest.TestCase):
         self.assertEqual(t["status"], "Done")
         self.assertEqual(t["kind"], "needs-human")
         self.assertFalse(t["runnable"])
-        # Board JS: Done before kind — assert the HTML/JS contract is present.
-        self.assertIn('if (/^Done/i.test(s)) return "Done";', floor.INDEX_HTML)
+        # Board JS: Done/Implemented before kind — assert the HTML/JS contract is present.
+        self.assertIn(
+            'if (/^Done/i.test(s) || /^Implemented/i.test(s)) return "Done";',
+            floor.INDEX_HTML,
+        )
         self.assertIn("data-mark-done", floor.INDEX_HTML)
         self.assertRegex(
             floor.INDEX_HTML,
             r"Needs-human.*kind",
             msg="colFor must still route open Needs-human by status/kind",
         )
+
+    def test_toolbar_cleanup_controls_in_html(self):
+        """Header: Pause menu + Kill overflow; ship control lives under Ship gate."""
+        import factory_floor.server as floor
+
+        html = floor.INDEX_HTML
+        self.assertIn('id="pauseGroup"', html)
+        self.assertIn('id="menuPauseAfter"', html)
+        self.assertIn("After this ticket", html)
+        self.assertIn('id="btnCancelPause"', html)
+        self.assertIn('id="menuKill"', html)
+        self.assertIn("Kill Forge", html)
+        self.assertNotIn('id="btnStop"', html)
+        self.assertNotIn("Pause after current", html)
+        self.assertIn("Full verify → Done", html)
+        # Ship button sits in the station aside, after CI safety net label.
+        ci_idx = html.find("CI safety net")
+        ship_idx = html.find('id="btnShip"')
+        self.assertGreater(ci_idx, 0)
+        self.assertGreater(ship_idx, ci_idx)
+        self.assertIn("syncToolbar", html)
+        self.assertIn("pause_after_current", html)
 
 def _task_ticket_body(
     n: int,

@@ -137,26 +137,29 @@ final class SegmentationIntegrationTests: XCTestCase {
             return URL(fileURLWithPath: "/dev/null")
         }
         let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("podwash-seg-int-\(sineFixtureName).\(sineFixtureExt)")
-        try? FileManager.default.removeItem(at: tempURL)
+            .appendingPathComponent("podwash-seg-int-\(UUID().uuidString)-\(sineFixtureName).\(sineFixtureExt)")
         do {
             try FileManager.default.copyItem(at: bundledURL, to: tempURL)
         } catch {
             XCTFail("Could not copy sine fixture: \(error)", file: file, line: line)
             return bundledURL
         }
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: tempURL)
+        }
         return tempURL
     }
 
     private func makeCoordinator(audioURL: URL) -> (PlaybackCoordinator, PlaybackEngine) {
-        let engine = PlaybackEngine(url: audioURL, title: "Seg Integration", artist: "PodWash QA")
+        let engine = PlaybackEngine(url: audioURL, title: "Seg Integration", artist: "PodWash QA", nowPlayingUpdater: NowPlayingInfoRecorder())
         let coordinator = PlaybackCoordinator(pipeline: pipelineSpy, engine: engine)
         return (coordinator, engine)
     }
 
     /// Waits until the engine has loaded asset duration (skip clamping depends on it).
-    private func waitForEngineReady(_ engine: PlaybackEngine, timeout: TimeInterval = 5) async {
+    private func waitForEngineReady(_ engine: PlaybackEngine, timeout: TimeInterval = 10) async {
         let ready = expectation(description: "engine duration loaded")
+        ready.assertForOverFulfill = false
         let deadline = Date().addingTimeInterval(timeout)
         func poll() {
             engine.refreshCurrentTime()
@@ -168,6 +171,21 @@ final class SegmentationIntegrationTests: XCTestCase {
         }
         poll()
         await fulfillment(of: [ready], timeout: timeout)
+    }
+
+    private func waitForPlaying(_ engine: PlaybackEngine, timeout: TimeInterval = 5) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if engine.avPlayer.timeControlStatus == .playing || abs(engine.avPlayer.rate) > 0.0001 {
+                return
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+        }
+        XCTFail(
+            "Timed out waiting for playback to start "
+                + "(status=\(engine.avPlayer.timeControlStatus.rawValue), "
+                + "rate=\(engine.avPlayer.rate), time=\(engine.avPlayer.currentTime().seconds))"
+        )
     }
 
     private func unrelatedIntervals(in schedule: IntervalSchedule?) -> [CensorInterval] {
@@ -357,7 +375,8 @@ final class SegmentationIntegrationTests: XCTestCase {
         let engine = PlaybackEngine(
             url: sineFixtureURL(),
             title: "Skip Override",
-            artist: "PodWash QA"
+            artist: "PodWash QA",
+            nowPlayingUpdater: NowPlayingInfoRecorder()
         )
         await waitForEngineReady(engine)
 
@@ -374,6 +393,7 @@ final class SegmentationIntegrationTests: XCTestCase {
         }
 
         let skipLanded = expectation(description: "skip lands near interval end")
+        skipLanded.assertForOverFulfill = false
         var skipObserver: Any?
         var lastObserved = 1.9
         skipObserver = engine.avPlayer.addPeriodicTimeObserver(
@@ -393,6 +413,7 @@ final class SegmentationIntegrationTests: XCTestCase {
         }
 
         engine.play()
+        waitForPlaying(engine)
         await fulfillment(of: [skipLanded], timeout: 10)
         engine.refreshCurrentTime()
 

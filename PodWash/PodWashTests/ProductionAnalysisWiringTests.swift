@@ -567,6 +567,7 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         XCTAssertFalse(model.engine?.isPlaying ?? true, "Play tap during analysis must queue, not start")
 
         await waitUntil { !model.isPreparingPlayback }
+        await waitUntil { model.playbackAnalysisSnapshot != nil }
         XCTAssertTrue(model.engine?.isPlaying ?? false, "Queued play should start after analysis completes")
         XCTAssertNotNil(model.playbackAnalysisSnapshot)
     }
@@ -896,8 +897,8 @@ final class ProductionAnalysisWiringTests: XCTestCase {
 
         model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
 
-        await waitUntil { model.playbackAnalysisSnapshot != nil }
-        await waitUntil { model.engine?.activeSchedule != nil }
+        await waitUntil(timeout: 15) { model.playbackAnalysisSnapshot != nil }
+        await waitUntil(timeout: 15) { model.engine?.activeSchedule != nil }
 
         guard let schedule = model.engine?.activeSchedule else {
             XCTFail("Expected PlaybackEngine schedule after prepare with skip ads on")

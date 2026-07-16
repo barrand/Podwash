@@ -73,6 +73,7 @@ final class OverlaySyncTests: XCTestCase {
 
     private func waitForEngineReady(_ engine: PlaybackEngine, timeout: TimeInterval = 10) async {
         let ready = expectation(description: "engine duration loaded")
+        ready.assertForOverFulfill = false
         let deadline = Date().addingTimeInterval(timeout)
         func poll() {
             engine.refreshCurrentTime()
@@ -86,12 +87,29 @@ final class OverlaySyncTests: XCTestCase {
         await fulfillment(of: [ready], timeout: timeout)
     }
 
+    /// Pumps the run loop until AVPlayer is advancing (IntervalMuteSkip / PlaybackRate pattern).
+    private func waitForPlaying(_ engine: PlaybackEngine, timeout: TimeInterval = 5) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if engine.avPlayer.timeControlStatus == .playing || abs(engine.avPlayer.rate) > 0.0001 {
+                return
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+        }
+        XCTFail(
+            "Timed out waiting for playback to start "
+                + "(status=\(engine.avPlayer.timeControlStatus.rawValue), "
+                + "rate=\(engine.avPlayer.rate), time=\(engine.avPlayer.currentTime().seconds))"
+        )
+    }
+
     private func waitUntilPlayhead(
         _ target: TimeInterval,
         engine: PlaybackEngine,
         timeout: TimeInterval = 12
     ) async {
         let reached = expectation(description: "playhead >= \(target)")
+        reached.assertForOverFulfill = false
         // Guard once on the main queue — do NOT removeTimeObserver inside the
         // callback (that retained [engine] and triggered PlaybackEngine /
         // MPNowPlayingInfoCenterUpdater deinit SIGABRT mid-wait). Match
@@ -171,6 +189,7 @@ final class OverlaySyncTests: XCTestCase {
         }
 
         engine.play()
+        waitForPlaying(engine)
         let lastEnd = muteIntervals.map(\.end).max() ?? 0
         await waitUntilPastLastBoundary(engine: engine, lastEnd: lastEnd)
         engine.pause()
@@ -208,6 +227,7 @@ final class OverlaySyncTests: XCTestCase {
         }
 
         engine.play()
+        waitForPlaying(engine)
         await waitUntilPastLastBoundary(engine: engine, lastEnd: 3.4)
         engine.pause()
     }
@@ -240,6 +260,7 @@ final class OverlaySyncTests: XCTestCase {
         }
 
         engine.play()
+        waitForPlaying(engine)
         await waitUntilPlayhead(singleInterval[0].start + 0.05, engine: engine)
 
         XCTAssertGreaterThan(
@@ -442,6 +463,7 @@ final class OverlaySyncTests: XCTestCase {
         }
 
         engine.play()
+        waitForPlaying(engine)
         await waitUntilPlayhead(1.20, engine: engine)
 
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
@@ -471,6 +493,7 @@ final class OverlaySyncTests: XCTestCase {
         let eventsAfterResync = recorder.startEvents.count + recorder.stopEvents.count
 
         engine.play()
+        waitForPlaying(engine)
         // Advance past the seek land so any stale boundary would have a chance
         // to fire; fixture has no further mute intervals after 1.5.
         await waitUntilPlayhead(2.7, engine: engine)

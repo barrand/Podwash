@@ -15,6 +15,7 @@ final class SuperSeekBarUITests: XCTestCase {
 
     private let fixtureTimeout: TimeInterval = 5
     private let libraryRootTimeout: TimeInterval = 10
+    /// Covers 7 s firstSnapshotHold + mid pacing after full-player expand.
     private let progressiveTerminalTimeout: TimeInterval = 10
 
     private static let progressiveMidRunValue = "ready:3,processing:1,pending:8"
@@ -98,7 +99,12 @@ final class SuperSeekBarUITests: XCTestCase {
 
     @MainActor
     func testProgressiveMidRunOmitsMuteMarkersKey() throws {
-        let app = launchFixtureApp("-UITestFixtureProgressivePlayback")
+        // Freeze at first-chunk frontier so ready:3 stays visible through full-player
+        // expand + 5 s poll (non-freeze 7 s hold alone can still race on cold sims).
+        let app = launchFixtureApp(
+            "-UITestFixtureProgressivePlayback",
+            extraArguments: ["-UITestFixtureProgressivePlaybackFreezeAt30"]
+        )
         navigateToExpandedFullPlayer(app)
         startPlaybackIfNeeded(app)
 

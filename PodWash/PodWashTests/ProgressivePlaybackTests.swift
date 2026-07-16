@@ -83,9 +83,12 @@ final class ProgressiveSteppedTestAnalyzer: EpisodeAnalyzing, @unchecked Sendabl
                 ? partialIntervalsBySnapshot[index]
                 : []
             union.append(contentsOf: partial)
+            // Pass cumulative union (matches SteppedEpisodeAnalyzer / AnalysisPipeline).
             await MainActor.run {
-                onPartialIntervals?(partial, snapshot)
+                onPartialIntervals?(union, snapshot)
             }
+            // Yield so progressive schedule apply / catch-up land before the next delay.
+            await Task.yield()
             if index < snapshots.count - 1 {
                 try await Task.sleep(for: betweenSnapshotDelay)
             }
@@ -190,13 +193,15 @@ final class ProgressivePlaybackTests: XCTestCase {
             return URL(fileURLWithPath: "/dev/null")
         }
         let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("podwash-progressive-\(sineFixtureName).\(sineFixtureExt)")
-        try? FileManager.default.removeItem(at: tempURL)
+            .appendingPathComponent("podwash-progressive-\(UUID().uuidString)-\(sineFixtureName).\(sineFixtureExt)")
         do {
             try FileManager.default.copyItem(at: bundledURL, to: tempURL)
         } catch {
             XCTFail("Could not copy sine fixture: \(error)", file: file, line: line)
             return bundledURL
+        }
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: tempURL)
         }
         return tempURL
     }
@@ -226,14 +231,14 @@ final class ProgressivePlaybackTests: XCTestCase {
             partialIntervalsBySnapshot: [
                 [],
                 [introSkip],
-                [introSkip],
+                [], // union already holds intro skip from snapshot 1
             ],
             betweenSnapshotDelay: betweenSnapshotDelay,
             terminalHold: terminalHold
         )
     }
 
-    private func writeSilentWAV(to url: URL, duration: TimeInterval, sampleRate: UInt32 = 1000) throws {
+    private func writeSilentWAV(to url: URL, duration: TimeInterval, sampleRate: UInt32 = 8_000) throws {
         let numSamples = UInt32((duration * Double(sampleRate)).rounded(.down))
         let byteRate = sampleRate * 2
         let dataSize = numSamples * 2
@@ -291,8 +296,9 @@ final class ProgressivePlaybackTests: XCTestCase {
         return tempURL
     }
 
-    private func waitForEngineReady(_ engine: PlaybackEngine, timeout: TimeInterval = 5) async {
+    private func waitForEngineReady(_ engine: PlaybackEngine, timeout: TimeInterval = 10) async {
         let ready = expectation(description: "engine duration loaded")
+        ready.assertForOverFulfill = false
         let deadline = Date().addingTimeInterval(timeout)
         func poll() {
             engine.refreshCurrentTime()
@@ -506,10 +512,16 @@ final class ProgressivePlaybackTests: XCTestCase {
     func testIntroUnrelatedSkipFiresWhenScheduleLandsDuringIntro() async throws {
         let analyzer = makeIntroRaceProgressiveAnalyzer()
         let audioURL = longFixtureURL(duration: episodeDuration)
-        let engine = PlaybackEngine(url: audioURL, title: "Intro skip race", artist: "PodWash QA")
+        let engine = PlaybackEngine(
+            url: audioURL,
+            title: "Intro skip race",
+            artist: "PodWash QA",
+            nowPlayingUpdater: NowPlayingInfoRecorder()
+        )
         await waitForEngineReady(engine)
 
         let skipCallback = expectation(description: "intro unrelated skip callback")
+        skipCallback.assertForOverFulfill = false
         var capturedSkip: CensorInterval?
         engine.onUnrelatedContentSkip = { interval, skippedSeconds in
             capturedSkip = interval

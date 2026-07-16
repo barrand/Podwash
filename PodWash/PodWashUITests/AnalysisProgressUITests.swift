@@ -4,6 +4,7 @@
 //
 //  Slice 09 — Analysis progress + cleaning toggle UI tests (slice-09-ux.md). AC2, AC3.
 //  Slice 20 — migrated `analysisProgress` → `analysisTimeline` (ADR-018).
+//  Task 026 — row `analysisTimeline` retired; lifecycle asserts absence on episode rows.
 //
 
 import XCTest
@@ -83,29 +84,48 @@ final class AnalysisProgressUITests: XCTestCase {
         app.launchArguments.append(contentsOf: ["-UITestFixtureFeed", "-UITestFixtureAnalysis"])
         app.launch()
 
-        // Register immediately after launch so the auto-started analyzing window
-        // (task-023: no channel toggle) is observed during episodeList settle.
-        let timelineAppeared = expectation(
-            for: Self.analysisTimelineVisiblePredicate,
-            evaluatedWith: app,
-            handler: nil
-        )
-
         let episodeList = app.descendants(matching: .any)["episodeList"]
         XCTAssertTrue(episodeList.waitForExistence(timeout: 10))
 
         let episodeCell = app.cells["episodeCell_0"]
         XCTAssertTrue(episodeCell.waitForExistence(timeout: 5))
 
-        wait(for: [timelineAppeared], timeout: 5)
+        let badgeAppeared = expectation(description: "cleaning badge at terminal complete")
+        badgeAppeared.assertForOverFulfill = false
 
-        let timeline = Self.analysisTimelineElement(in: app, cell: episodeCell)
-        let timelineGone = NSPredicate(format: "exists == false")
-        let timelineExpectation = XCTNSPredicateExpectation(predicate: timelineGone, object: timeline)
-        XCTAssertEqual(XCTWaiter().wait(for: [timelineExpectation], timeout: 5), .completed)
+        var sawBadge = false
+        let timer = Timer(timeInterval: 0.05, repeats: true) { timer in
+            guard !sawBadge else { return }
+            let badge = Self.cleaningBadgeEpisodeOn(in: app)
+            guard badge.exists else { return }
+            sawBadge = true
+            timer.invalidate()
+            badgeAppeared.fulfill()
+        }
+        RunLoop.current.add(timer, forMode: .common)
 
+        defer { timer.invalidate() }
+
+        let analyzingDeadline = Date().addingTimeInterval(5)
+        while Date() < analyzingDeadline, !sawBadge {
+            XCTAssertFalse(
+                Self.analysisTimelineElement(in: app, cell: episodeCell).exists,
+                "analysisTimeline must stay absent on episode row 0 during analysis"
+            )
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+
+        wait(for: [badgeAppeared], timeout: 5)
+
+        XCTAssertFalse(
+            Self.analysisTimelineElement(in: app, cell: episodeCell).exists,
+            "analysisTimeline must not exist on episode row 0 after analysis completes"
+        )
         XCTAssertFalse(app.descendants(matching: .any)["analysisProgress"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["cleaningBadge_episodeOn"].exists)
+        XCTAssertTrue(
+            Self.cleaningBadgeEpisodeOn(in: app).exists,
+            "cleaningBadge_episodeOn must appear on row 0 after analysis completes"
+        )
     }
 
     @MainActor
@@ -121,12 +141,13 @@ final class AnalysisProgressUITests: XCTestCase {
         XCTAssertTrue(episodeList.waitForExistence(timeout: 5), "episodeList must appear within 5s")
     }
 
-    private static var analysisTimelineVisiblePredicate: NSPredicate {
-        NSPredicate { evaluatedObject, _ in
-            guard let app = evaluatedObject as? XCUIApplication else { return false }
-            let cell = app.cells["episodeCell_0"]
-            return analysisTimelineElement(in: app, cell: cell).exists
+    private static func cleaningBadgeEpisodeOn(in app: XCUIApplication) -> XCUIElement {
+        let cell = app.cells["episodeCell_0"]
+        let scoped = cell.descendants(matching: .any)["cleaningBadge_episodeOn"]
+        if scoped.exists {
+            return scoped
         }
+        return app.descendants(matching: .any)["cleaningBadge_episodeOn"]
     }
 
     /// Slice-20 UX: `analysisTimeline` identifier on row *i*; label `Analysis timeline`.

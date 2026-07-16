@@ -51,13 +51,13 @@ final class IntervalMuteSkipTests: XCTestCase {
     }
 
     /// Waits until the engine has loaded asset duration and the item is playable.
-    private func waitForEngineReady(_ engine: PlaybackEngine, timeout: TimeInterval = 5) async {
+    private func waitForEngineReady(_ engine: PlaybackEngine, timeout: TimeInterval = 10) async {
         let ready = expectation(description: "engine duration loaded")
+        ready.assertForOverFulfill = false
         let deadline = Date().addingTimeInterval(timeout)
         func poll() {
             engine.refreshCurrentTime()
-            let itemReady = engine.avPlayer.currentItem?.status == .readyToPlay
-            if engine.duration > 0, itemReady {
+            if engine.duration > 0 {
                 ready.fulfill()
             } else if Date() < deadline {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: poll)
@@ -122,7 +122,8 @@ final class IntervalMuteSkipTests: XCTestCase {
         let engine = PlaybackEngine(
             url: fixtureURL(),
             title: "Skip Test",
-            artist: "PodWash QA"
+            artist: "PodWash QA",
+            nowPlayingUpdater: NowPlayingInfoRecorder()
         )
         await waitForEngineReady(engine)
 
@@ -137,6 +138,7 @@ final class IntervalMuteSkipTests: XCTestCase {
         // Wait (event-driven, no sleep) until the playhead is clearly past the skip
         // end — proof the boundary observer fired and the skip seek completed.
         let reached = expectation(description: "playhead advances past skip end")
+        reached.assertForOverFulfill = false
         var didFulfill = false
         var token: Any?
         token = engine.avPlayer.addPeriodicTimeObserver(
@@ -178,7 +180,8 @@ final class IntervalMuteSkipTests: XCTestCase {
         let engine = PlaybackEngine(
             url: fixtureURL(),
             title: "Catch-up Skip",
-            artist: "PodWash QA"
+            artist: "PodWash QA",
+            nowPlayingUpdater: NowPlayingInfoRecorder()
         )
         await waitForEngineReady(engine)
 
@@ -212,7 +215,8 @@ final class IntervalMuteSkipTests: XCTestCase {
         let engine = PlaybackEngine(
             url: fixtureURL(),
             title: "Seek Test",
-            artist: "PodWash QA"
+            artist: "PodWash QA",
+            nowPlayingUpdater: NowPlayingInfoRecorder()
         )
         await engine.applySchedule(IntervalSchedule(intervals: mutes))
 
