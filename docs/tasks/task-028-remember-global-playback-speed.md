@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 028 |
 | **Title** | Remember global playback speed |
-| **Status** | In Progress |
+| **Status** | Implemented |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/PlaybackEngine.swift`, `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWash/PlaybackCoordinator.swift`, `PodWash/PodWash/PlaybackControlsView.swift`, `PodWash/PodWash/SettingsStore.swift` |

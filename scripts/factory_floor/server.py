@@ -1275,7 +1275,9 @@ def board_snapshot() -> dict[str, Any]:
         count_items_since_batch_gate,
         fetch_ci_status,
         find_open_halt_cards,
+        summarize_ci_safety_net,
     )
+    from task_loop import head_sha as _repo_head_sha
 
     since = count_items_since_batch_gate(repo_root=str(REPO_ROOT))
     # Attach items_since_green onto batch snapshot for the UI counter.
@@ -1291,6 +1293,16 @@ def board_snapshot() -> dict[str, Any]:
     ):
         batch["needed"] = True
         batch["reason"] = batch.get("reason") or "Implemented awaiting ship"
+    ci_runs: list[dict[str, Any]] = (
+        []
+        if os.environ.get("PODWASH_FLOOR_SKIP_CI") == "1"
+        else fetch_ci_status(repo_root=str(REPO_ROOT), limit=8)
+    )
+    head = ""
+    try:
+        head = str(_repo_head_sha(repo_root=str(REPO_ROOT)) or "")
+    except Exception:
+        head = str(batch.get("head_sha") or "")
     return {
         "tasks": tasks,
         "slices": slices,
@@ -1302,30 +1314,11 @@ def board_snapshot() -> dict[str, Any]:
         "activity": activity,
         "events": events[-40:],
         "items_since_green": since.get("items_since_green", 0),
-        "ci": (
-            []
-            if os.environ.get("PODWASH_FLOOR_SKIP_CI") == "1"
-            else fetch_ci_status(repo_root=str(REPO_ROOT), limit=8)
-        ),
-        "ci_summary": None,
+        "ci": ci_runs,
+        "ci_summary": summarize_ci_safety_net(ci_runs, head_sha=head),
         "halts": find_open_halt_cards(repo_root=str(REPO_ROOT)),
         "ts": time.time(),
     }
-    # Calm CI strip: HEAD badge + collapsed older counts (not a fail parade).
-    try:
-        from forge_work import summarize_ci_safety_net
-        from task_loop import head_sha as _head_sha
-
-        snap_ci = return_val.get("ci") if False else None  # placate linters — rebuilt below
-    except ImportError:
-        pass
-
-    # Attach summary after building the dict (ci list already fetched).
-    _ci_runs = (
-        []
-        if os.environ.get("PODWASH_FLOOR_SKIP_CI") == "1"
-        else None
-    )
 
 
 def _task_path_for_id(tid: int) -> Path | None:
@@ -1828,6 +1821,8 @@ main {
   margin-top: 0.35rem; font-size: 0.78rem; color: var(--muted); line-height: 1.4;
 }
 .station .batch-line strong { color: var(--accent); }
+.station .ci-head { color: var(--text, #e8eaed); }
+.station .ci-older { color: var(--muted); font-size: 0.72rem; margin-top: 0.2rem; }
 .station.running { border-color: var(--ok); }
 .station.pending { border-color: var(--accent); }
 .station.blocked, .station.orphan, .station.needs_decision, .station.starting { border-color: var(--warn); }
@@ -2632,15 +2627,32 @@ function render() {
   }
   const ciEl = document.getElementById("ciLine");
   if (ciEl) {
+    const summary = snap.ci_summary;
     const ci = snap.ci || [];
-    if (!ci.length) {
+    if (summary && summary.head) {
+      const h = summary.head;
+      const badge = h.badge || "unknown";
+      const color = badge === "pass" ? "var(--ok,#3c3)" : badge === "fail" ? "var(--warn,#c66)" : "var(--muted)";
+      const label = h.matches_head ? "HEAD" : "latest";
+      let html = `<span class="ci-head"><span style="color:${color}">●</span> ${esc(label)} ${esc(h.sha||"?")} ${esc(badge)}</span>`;
+      const olderN = summary.older_total || 0;
+      if (olderN > 0) {
+        const bits = [];
+        if (summary.older_fail) bits.push(summary.older_fail + " fail");
+        if (summary.older_pass) bits.push(summary.older_pass + " pass");
+        if (summary.older_pending) bits.push(summary.older_pending + " pending");
+        const detail = bits.length ? (": " + bits.join(" · ")) : "";
+        html += `<div class="ci-older">${olderN} older${detail}</div>`;
+      }
+      ciEl.innerHTML = html;
+    } else if (!ci.length) {
       ciEl.textContent = "CI status unavailable (gh)";
     } else {
-      ciEl.innerHTML = ci.slice(0, 5).map(r => {
-        const badge = r.badge || "unknown";
-        const color = badge === "pass" ? "var(--ok,#3c3)" : badge === "fail" ? "var(--warn,#c66)" : "var(--muted)";
-        return `<span style="color:${color}">●</span> ${esc(r.sha||"?")} ${esc(badge)}`;
-      }).join(" · ");
+      // Fallback if summary missing (older Floor clients / partial snap).
+      const r = ci[0];
+      const badge = r.badge || "unknown";
+      const color = badge === "pass" ? "var(--ok,#3c3)" : badge === "fail" ? "var(--warn,#c66)" : "var(--muted)";
+      ciEl.innerHTML = `<span style="color:${color}">●</span> latest ${esc(r.sha||"?")} ${esc(badge)}`;
     }
   }
   // Halt-and-ask control room
