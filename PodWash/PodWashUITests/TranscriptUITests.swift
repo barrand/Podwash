@@ -16,6 +16,7 @@ final class TranscriptUITests: XCTestCase {
     private let libraryRootTimeout: TimeInterval = 10
     private let fixtureTimeout: TimeInterval = 5
     private let transcriptOpenTimeout: TimeInterval = 3
+    private let miniPlayerExpandFromTranscriptTimeout: TimeInterval = 5
     private let progressiveTimelineTimeout: TimeInterval = 5
     private let backfillAffordanceTimeout: TimeInterval = 10
 
@@ -248,6 +249,104 @@ final class TranscriptUITests: XCTestCase {
         assertTranscriptAffordanceAbsent("episode.viewTranscript", scopedToRow: 0, in: app)
     }
 
+    // MARK: - Task 029
+
+    @MainActor
+    func testMiniPlayerVisibleWhileTranscriptOpen() throws {
+        let app = launchTranscriptFixtureApp()
+        startPlaybackAndOpenTranscript(app)
+
+        let transcriptView = element("transcript.view", in: app)
+        XCTAssertTrue(
+            transcriptView.waitForExistence(timeout: transcriptOpenTimeout),
+            "transcript.view must appear within \(transcriptOpenTimeout)s"
+        )
+
+        let miniPlayer = element("miniPlayer", in: app)
+        XCTAssertTrue(
+            miniPlayer.waitForExistence(timeout: transcriptOpenTimeout),
+            "miniPlayer must exist within \(transcriptOpenTimeout)s while transcript is open"
+        )
+        XCTAssertTrue(
+            waitForElementHittable(miniPlayer, timeout: transcriptOpenTimeout),
+            "miniPlayer must be hittable within \(transcriptOpenTimeout)s while transcript is open"
+        )
+    }
+
+    @MainActor
+    func testMiniPlayerPlayPauseHittableWhileTranscriptOpen() throws {
+        let app = launchTranscriptFixtureApp()
+        startPlaybackAndOpenTranscript(app)
+
+        let transcriptView = element("transcript.view", in: app)
+        XCTAssertTrue(
+            transcriptView.waitForExistence(timeout: transcriptOpenTimeout),
+            "transcript.view must appear within \(transcriptOpenTimeout)s"
+        )
+
+        let playPause = element("miniPlayerPlayPause", in: app)
+        XCTAssertTrue(
+            waitForElementHittable(playPause, timeout: transcriptOpenTimeout),
+            "miniPlayerPlayPause must be hittable within \(transcriptOpenTimeout)s while transcript is open"
+        )
+
+        startMiniPlaybackIfNeeded(app)
+        waitForAccessibilityValue(
+            "playing",
+            identifier: "miniPlayerPlayPause",
+            in: app,
+            timeout: transcriptOpenTimeout,
+            message: "miniPlayerPlayPause must report playing before toggle while transcript is open"
+        )
+
+        playPause.tap()
+        waitForAccessibilityValue(
+            "paused",
+            identifier: "miniPlayerPlayPause",
+            in: app,
+            timeout: transcriptOpenTimeout,
+            message: "miniPlayerPlayPause must report paused within \(transcriptOpenTimeout)s after toggle"
+        )
+
+        playPause.tap()
+        waitForAccessibilityValue(
+            "playing",
+            identifier: "miniPlayerPlayPause",
+            in: app,
+            timeout: transcriptOpenTimeout,
+            message: "miniPlayerPlayPause must report playing within \(transcriptOpenTimeout)s after second toggle"
+        )
+    }
+
+    @MainActor
+    func testMiniPlayerExpandFromTranscriptOpensFullPlayer() throws {
+        let app = launchTranscriptFixtureApp()
+        startPlaybackAndOpenTranscript(app)
+
+        let transcriptView = element("transcript.view", in: app)
+        XCTAssertTrue(
+            transcriptView.waitForExistence(timeout: transcriptOpenTimeout),
+            "transcript.view must appear within \(transcriptOpenTimeout)s"
+        )
+
+        let miniPlayer = element("miniPlayer", in: app)
+        XCTAssertTrue(
+            waitForElementHittable(miniPlayer, timeout: transcriptOpenTimeout),
+            "miniPlayer must be hittable before expand tap while transcript is open"
+        )
+
+        tapMiniPlayerExpandTarget(app)
+
+        let fullPlayPause = element("playback.playPause", in: app)
+        let fullSeekBar = element("playback.superSeekBar", in: app)
+        let opened = fullPlayPause.waitForExistence(timeout: miniPlayerExpandFromTranscriptTimeout)
+            || fullSeekBar.waitForExistence(timeout: miniPlayerExpandFromTranscriptTimeout)
+        XCTAssertTrue(
+            opened,
+            "Tap miniPlayer expand target must present full player within \(miniPlayerExpandFromTranscriptTimeout)s while transcript was open"
+        )
+    }
+
     // MARK: - Launch helpers
 
     @MainActor
@@ -356,6 +455,55 @@ final class TranscriptUITests: XCTestCase {
     @MainActor
     private func ensureChannelCleaningOn(in app: XCUIApplication) {
         // Task-023: channel cleaning defaults on; podcast detail no longer exposes the toggle.
+    }
+
+    @MainActor
+    private func startPlaybackAndOpenTranscript(_ app: XCUIApplication) {
+        navigateToEpisodeList(app)
+
+        let episodeCell = app.cells["episodeCell_0"]
+        XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
+        episodeCell.tap()
+
+        let miniPlayer = element("miniPlayer", in: app)
+        XCTAssertTrue(
+            miniPlayer.waitForExistence(timeout: fixtureTimeout),
+            "miniPlayer must appear after starting playback"
+        )
+        startMiniPlaybackIfNeeded(app)
+
+        tapEpisodeViewTranscript(onRow: 0, in: app)
+    }
+
+    @MainActor
+    private func startMiniPlaybackIfNeeded(_ app: XCUIApplication) {
+        let playPause = element("miniPlayerPlayPause", in: app)
+        if accessibilityValue(for: "miniPlayerPlayPause", in: app) != "playing" {
+            playPause.tap()
+        }
+    }
+
+    @MainActor
+    private func tapMiniPlayerExpandTarget(_ app: XCUIApplication) {
+        let bar = element("miniPlayer", in: app)
+        XCTAssertTrue(bar.waitForExistence(timeout: fixtureTimeout))
+        bar.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).tap()
+    }
+
+    @MainActor
+    private func waitForAccessibilityValue(
+        _ expected: String,
+        identifier: String,
+        in app: XCUIApplication,
+        timeout: TimeInterval,
+        message: String
+    ) {
+        let control = element(identifier, in: app)
+        let predicate = NSPredicate(format: "value == %@", expected)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: control)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(result, .completed, message)
+        XCTAssertEqual(control.value as? String, expected)
     }
 
     @MainActor

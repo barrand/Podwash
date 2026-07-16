@@ -402,6 +402,40 @@ class ActivityCopyAndLivenessTests(unittest.TestCase):
         self.assertIn("Halted", activity["headline"])
         self.assertIn("Requeue", activity["next"])
 
+    def test_idle_station_with_queued_work_is_picking(self):
+        """Loop park-waiting must not hide newly queued tickets behind quiet/ship."""
+        import factory_floor.server as floor
+
+        activity = floor._activity_snapshot(
+            ctrl={"running": True, "paused": False, "batch_running": False},
+            station={
+                "phase": "idle",
+                "role": "loop",
+                "detail": "No work — waiting for intake",
+            },
+            batch={
+                "state": "idle",
+                "reason": "manual ship gate",
+                "needed": True,
+                "verify_running": False,
+                "items_since_green": 12,
+            },
+            tasks=[
+                {
+                    "id": "029",
+                    "status": "Queued",
+                    "title": "Mini player",
+                    "type": "task",
+                    "kind": "tweak",
+                }
+            ],
+            events=[],
+            factory_hot=True,
+            runner_alive=True,
+        )
+        self.assertEqual(activity["mode"], "picking")
+        self.assertIn("Picking", activity["headline"])
+
     def test_starting_grace_then_orphan(self):
         import factory_floor.server as floor
         import time as time_mod
@@ -767,6 +801,9 @@ class ControlHandlerTests(unittest.TestCase):
         self.assertEqual(sl["lane"], "slice")
         self.assertTrue(sl["runnable"])
         self.assertIn("Start Forge", floor.INDEX_HTML)
+        self.assertIn('id="toast"', floor.INDEX_HTML)
+        self.assertIn("mode === \"quiet\"", floor.INDEX_HTML)
+        self.assertIn("already running", floor.INDEX_HTML)
         self.assertNotIn("Start slices", floor.INDEX_HTML)
         self.assertIn("lane-slice", floor.INDEX_HTML)
 
