@@ -80,8 +80,7 @@ enum FixtureProgressivePlayback {
         // Hold first chunk long enough for Library → full-player navigation + AC3 poll,
         // but short enough that mid (AC5, 5 s wait) and terminal (AC4, 10 s) still arrive.
         // When FreezeAt is set (seek-clamp tests), skip the long hold so mid-run is reachable
-        // within the 5 s AX poll — mini-player navigation is faster than full-player expand,
-        // so the wait often starts while the 7 s first-chunk hold is still active.
+        // within the AX poll — freeze itself holds the matched snapshot for 30 s.
         let firstHold: Duration? = freezeAtProcessedEnd == nil ? .seconds(7) : nil
         return SteppedEpisodeAnalyzer(
             snapshots: pinnedSnapshots,

@@ -3,7 +3,7 @@
 //  PodWash
 //
 //  Slice 20 — Segmented timeline bar (ADR-018 / slice-20-ux.md).
-//  List chrome uses `AnalysisTimelineBarView` (UIKit) for stable AX.
+//  Episode row host retired (Task 026); bar type remains for layout-test seams.
 //
 
 import SwiftUI
@@ -40,7 +40,7 @@ struct AnalysisTimelineView: View {
     }
 }
 
-/// UIKit segmented bar hosted in `EpisodeTableViewCell` for XCTest AX stability.
+/// UIKit segmented bar (layout-test seam; production row host retired Task 026).
 final class AnalysisTimelineBarView: UIView {
     private var segmentViews: [UIView] = []
     private let stack = UIStackView()

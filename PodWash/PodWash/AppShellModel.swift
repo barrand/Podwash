@@ -46,6 +46,10 @@ final class AppShellModel {
 
     private var playbackProgressHandlerID: UUID?
 
+    /// Observes deferred NoCache transcript backfill so episode/full-player affordances refresh.
+    /// `nonisolated(unsafe)`: removed from `nonisolated deinit` without a MainActor hop.
+    private nonisolated(unsafe) var transcriptBackfillObserver: NSObjectProtocol?
+
     /// Test-only: forwarded to `preparePlayback` so AC4/AC5 avoid live ASR.
     var injectedTranscriptForTesting: [TimedWord]? = nil
 
@@ -142,6 +146,16 @@ final class AppShellModel {
                 self.acceptingPlaybackProgress = false
             }
         }
+
+        transcriptBackfillObserver = NotificationCenter.default.addObserver(
+            forName: .podwashTranscriptBackfillDidStore,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.transcriptAffordanceGeneration += 1
+            }
+        }
     }
 
     /// Factory used when `episodeAnalyzer` init arg is nil (AC2 / production).
@@ -154,7 +168,11 @@ final class AppShellModel {
     }
 
     // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION.
-    nonisolated deinit {}
+    nonisolated deinit {
+        if let transcriptBackfillObserver {
+            NotificationCenter.default.removeObserver(transcriptBackfillObserver)
+        }
+    }
 
     var carPlayEpisodePlayer: (any EpisodePlaying)? { self }
     var carPlayPlaybackEngine: PlaybackEngine? { engine }
@@ -642,14 +660,21 @@ final class AppShellModel {
         if let engine, engine.duration > 0 {
             return engine.duration
         }
-        let asset = AVURLAsset(url: audioURL)
+        // Match PlaybackEngine remapping — downloads may be WAVE/MP3 bytes under `.m4a`.
+        let playableURL = PlaybackEngine.playableFileURL(for: audioURL)
+        if let headerDuration = PlaybackEngine.waveFileDuration(for: playableURL), headerDuration > 0 {
+            return headerDuration
+        }
+        let asset = AVURLAsset(url: playableURL)
         do {
             let loaded = try await asset.load(.duration)
             let seconds = loaded.seconds
-            guard seconds.isFinite, seconds > 0 else { return 0 }
+            guard seconds.isFinite, seconds > 0 else {
+                return engine?.duration ?? 0
+            }
             return seconds
         } catch {
-            return 0
+            return engine?.duration ?? 0
         }
     }
 

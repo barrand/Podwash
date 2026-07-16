@@ -93,6 +93,10 @@ enum FixtureTranscript {
     }
 
     /// No-cache UITest / backfill path — real cache pipeline with deterministic ASR.
+    /// Store is deferred ~8 s off the prepare path under NoCache (see
+    /// `AnalysisPipeline.backfillMissingTranscript`) so AC7 can observe absent
+    /// affordances after full-player expand; Task 020 still sees the button
+    /// within its 10 s wait via `transcriptAffordanceGeneration` bump.
     static func makeAnalyzer() -> AnalysisPipeline {
         AnalysisPipeline(
             transcriber: FixtureTranscriptASR(),

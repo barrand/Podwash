@@ -283,7 +283,8 @@ final class AnalysisUIViewModel {
         // Keep toggle→done under AC ≤5 s.
         if FixtureAnalysis.isEnabled && !FixtureAnalysisTimeline.isEnabled {
             // Slice 09 / task-023: hold long enough for launch→episodeList→appear
-            // waits without a toggle tap, but clear before the 5 s disappear budget.
+            // waits without a toggle tap (UITest appear budget is 8 s), but clear
+            // before the 5 s disappear budget after appear.
             try? await Task.sleep(for: .milliseconds(4_000))
         }
         if FixtureAnalysisTimeline.isEnabled {
@@ -355,15 +356,18 @@ final class AnalysisUIViewModel {
     }
 
     func episodeRowShowsOnBadge(episodeID: String) -> Bool {
-        false
+        analyzingEpisodeID != episodeID && store.isEpisodeCleaningEnabled(episodeID)
     }
 
     /// Updates store and surfaces analysis progress synchronously when a toggle turns on.
     func primeEpisodeCleaningToggle(episodeID: String) {
         guard shouldAutoAnalyzeOnEpisodeEnable else { return }
+        // Channel auto-analyze primes the same episode-on store flag the badge
+        // reads after terminal complete (Task 026 AC2 / slice-20-ux idle badge).
+        store.setEpisodeCleaning(episodeID, enabled: true)
         analyzingEpisodeID = episodeID
-        // Seed a snapshot before paint so `analysisTimeline` exists for XCTest
-        // appear windows (Slice 09 lifecycle + Slice 20 first snapshot).
+        // Seed a snapshot before paint so player timeline / in-flight gates see
+        // analyzing state (Slice 09 lifecycle + Slice 20 first snapshot).
         if FixtureAnalysisTimeline.isEnabled {
             progressSnapshot = FixtureAnalysisTimeline.pinnedSnapshots.first
         } else {

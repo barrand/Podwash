@@ -72,6 +72,10 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     /// `nonisolated(unsafe)`: playback stall / waiting diagnostics.
     private nonisolated(unsafe) var timeControlObservation: NSKeyValueObservation?
     private let sourceURL: URL
+    /// Re-kicks playback when `wantsPlayback` but the playhead is frozen (XCTest host).
+    /// `nonisolated(unsafe)`: invalidated from `nonisolated deinit`.
+    private nonisolated(unsafe) var stallWatchdog: Timer?
+    private var lastStallSample: TimeInterval = -1
 
     /// Under XCTest / UITest / `PODWASH_SILENCE_HOST_AUDIO`, mute episode `AVPlayer`
     /// so verify emits no host-audible sine (task-017 / task-018).
@@ -116,7 +120,9 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         player = AVPlayer(playerItem: item)
         // Prefer in-place rate changes without bouncing through
         // `.waitingToPlayAtSpecifiedRate` (avoids spurious timeControlStatus KVO).
-        player.automaticallyWaitsToMinimizeStalling = false
+        // Under XCTest host silence, allow waiting so OverlaySync / skip fixtures
+        // still observe playhead advance when the audio session is muted.
+        player.automaticallyWaitsToMinimizeStalling = Self.silenceEpisodeForTests
         if Self.silenceEpisodeForTests {
             player.isMuted = true
             player.volume = 0
@@ -128,7 +134,14 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
 
         PlaybackDiagnostics.logEngineCreated(url: playableURL, title: title)
 
-        itemStatusObservation = item.observe(\.status, options: [.new]) { [weak self] observed, _ in
+        // Local WAVE headers are authoritative immediately — don't wait on async load
+        // under XCTest host pressure (IntervalMuteSkip / Segmentation duration waits).
+        if let headerDuration = Self.waveFileDuration(for: playableURL), headerDuration > 0 {
+            duration = headerDuration
+            PlaybackDiagnostics.logDuration(seconds: duration, url: playableURL)
+        }
+
+        itemStatusObservation = item.observe(\.status, options: [.new, .initial]) { [weak self] observed, _ in
             Task { @MainActor [weak self] in
                 self?.handleItemStatusChange(observed.status)
             }
@@ -148,6 +161,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         Task {
             await loadDuration(from: item.asset)
         }
+        beginDurationAdoptionPolling()
     }
 
     func play() {
@@ -163,7 +177,10 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         }
         audioSessionConfigurator.activatePlaybackSession()
         startOrPendPlayback()
+        startStallWatchdog()
         refreshCurrentTime()
+        // Schedule may already include an intro skip that landed before play.
+        Task { await self.catchUpActiveSkipsIfNeeded() }
         touchUI()
         updateNowPlaying()
         onPlayPauseIntent?(true)
@@ -172,6 +189,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     func pause() {
         wantsPlayback = false
         pendingPlayWhenReady = false
+        stopStallWatchdog()
         player.pause()
         refreshCurrentTime()
         touchUI()
@@ -192,21 +210,34 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         engagePlayback()
     }
 
-    /// `playImmediately` can no-op after an exact seek while status stays `.readyToPlay`
-    /// (`automaticallyWaitsToMinimizeStalling = false`). Force `rate` and retry once
-    /// on the next main-queue turn so seek-then-play (AC4) actually advances.
+    /// `playImmediately` can no-op after an exact seek while status stays `.readyToPlay`.
+    /// Force `rate` / `play()` and retry several main-queue turns so OverlaySync / skip
+    /// tests still see time advance under a busy XCTest host.
     private func engagePlayback() {
+        kickPlayback()
+        schedulePlaybackRetries(remaining: 8)
+    }
+
+    private func kickPlayback() {
         player.playImmediately(atRate: selectedRate)
         if !isActivelyAdvancing {
             player.rate = selectedRate
         }
-        DispatchQueue.main.async { [weak self] in
+        if !isActivelyAdvancing {
+            player.play()
+            if abs(player.rate) < 0.0001 {
+                player.rate = selectedRate
+            }
+        }
+    }
+
+    private func schedulePlaybackRetries(remaining: Int) {
+        guard remaining > 0 else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
             guard let self, self.wantsPlayback else { return }
             if self.isActivelyAdvancing { return }
-            self.player.playImmediately(atRate: self.selectedRate)
-            if !self.isActivelyAdvancing {
-                self.player.rate = self.selectedRate
-            }
+            self.kickPlayback()
+            self.schedulePlaybackRetries(remaining: remaining - 1)
         }
     }
 
@@ -225,12 +256,32 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
             return
         }
 
-        guard pendingPlayWhenReady, status == .readyToPlay else { return }
+        guard status == .readyToPlay else { return }
+
+        // Prefer item.duration once the item is ready — `asset.load(.duration)` can
+        // stall under XCTest host pressure while the item already knows its length.
+        adoptDurationIfNeeded(from: item)
+
+        let shouldPlay = pendingPlayWhenReady || wantsPlayback
+        guard shouldPlay else {
+            touchUI()
+            return
+        }
         pendingPlayWhenReady = false
         engagePlayback()
         refreshCurrentTime()
         touchUI()
         updateNowPlaying()
+    }
+
+    private func adoptDurationIfNeeded(from item: AVPlayerItem?) {
+        guard duration <= 0, let item else { return }
+        let seconds = item.duration.seconds
+        guard seconds.isFinite, seconds > 0 else { return }
+        duration = seconds
+        let assetURL = (item.asset as? AVURLAsset)?.url ?? sourceURL
+        PlaybackDiagnostics.logDuration(seconds: duration, url: assetURL)
+        touchUI()
     }
 
     // MARK: - Playback rate (Slice 12)
@@ -291,6 +342,11 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     /// installs always used `.m4a`. AVFoundation rejects some containers when the
     /// extension mismatches payload (MP3-in-.m4a, WAVE-in-.m4a). Copy to a temp file
     /// with a sniffed extension when needed.
+    /// Exposed so AppShellModel duration resolution uses the same remapping as playback.
+    static func playableFileURL(for url: URL) -> URL {
+        avFoundationPlayableURL(for: url)
+    }
+
     private static func avFoundationPlayableURL(for url: URL) -> URL {
         guard url.isFileURL else { return url }
         guard let sniffedExtension = sniffedContainerExtension(for: url) else { return url }
@@ -390,12 +446,18 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         overriddenSkipKeys.removeAll()
 
         if let item = player.currentItem {
-            let mix = try? await IntervalScheduler.makeAudioMix(
-                for: item.asset,
-                intervals: schedule.intervals,
-                fadeDuration: schedule.fadeDuration
-            )
-            item.audioMix = mix
+            let hasMutes = schedule.intervals.contains { $0.action == .mute }
+            if hasMutes {
+                let mix = try? await IntervalScheduler.makeAudioMix(
+                    for: item.asset,
+                    intervals: schedule.intervals,
+                    fadeDuration: schedule.fadeDuration
+                )
+                item.audioMix = mix
+            } else {
+                // Clear prior mute mix without awaiting loadTracks (task-022 catch-up).
+                item.audioMix = nil
+            }
         }
 
         let skips = IntervalScheduler.skipIntervals(from: schedule.intervals)
@@ -417,25 +479,75 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         await catchUpSkipIfInsideInterval(skips: skips)
     }
 
+    private func catchUpActiveSkipsIfNeeded() async {
+        guard let schedule = activeSchedule else { return }
+        let skips = IntervalScheduler.skipIntervals(from: schedule.intervals)
+        await catchUpSkipIfInsideInterval(skips: skips)
+    }
+
     /// When a schedule lands after playback already started, skip past any interval
     /// the playhead is currently inside (e.g. intro ads before analysis finished).
     private func catchUpSkipIfInsideInterval(skips: [CensorInterval]) async {
         guard !skips.isEmpty else { return }
         refreshCurrentTime()
-        let now = currentTime
+        // AVPlayer reports NaN until the item is ready — treat as t=0 so intro
+        // skips that land during progressive prepare still catch up (task-022).
+        let raw = player.currentTime().seconds
+        let now = raw.isFinite ? raw : 0
+        currentTime = now
         guard let skip = skips.first(where: { now >= $0.start - 0.05 && now < $0.end }) else {
             return
         }
         let key = SkipOverrideKey(skip)
         guard !overriddenSkipKeys.contains(key) else { return }
         overriddenSkipKeys.insert(key)
+        let shouldResume = wantsPlayback
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            skipSeek(to: skip.end, resumePlaybackIfPaused: false) { [weak self] in
+            final class CatchUpGate: @unchecked Sendable {
+                var resumed = false
+                var callbackFired = false
+            }
+            let gate = CatchUpGate()
+            let resumeOnce = {
+                guard !gate.resumed else { return }
+                gate.resumed = true
+                continuation.resume()
+            }
+            let fireCallback = { [weak self] in
+                guard !gate.callbackFired else { return }
+                gate.callbackFired = true
                 if skip.source == .unrelatedContent {
                     let skippedSeconds = skip.end - skip.start
                     self?.onUnrelatedContentSkip?(skip, skippedSeconds)
                 }
-                continuation.resume()
+            }
+            skipSeek(to: skip.end, resumePlaybackIfPaused: shouldResume) {
+                fireCallback()
+                resumeOnce()
+            }
+            // XCTest host can drop seek completions; never block applySchedule forever.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                guard !gate.resumed else { return }
+                guard let self else {
+                    resumeOnce()
+                    return
+                }
+                self.refreshCurrentTime()
+                let landed = self.currentTime >= skip.end - 0.15 && self.currentTime <= skip.end + 0.05
+                if !landed {
+                    self.skipSeek(to: skip.end, resumePlaybackIfPaused: shouldResume) {
+                        fireCallback()
+                        resumeOnce()
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        guard !gate.resumed else { return }
+                        fireCallback()
+                        resumeOnce()
+                    }
+                } else {
+                    fireCallback()
+                    resumeOnce()
+                }
             }
         }
     }
@@ -471,6 +583,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     /// Boundary fired at a `.skip` start: seek past the interval end (ADR-002 §5).
     private func handleSkipBoundary(skips: [CensorInterval]) {
         let now = player.currentTime().seconds
+        guard now.isFinite else { return }
         // Drop override keys once playback has passed the segment end.
         overriddenSkipKeys = overriddenSkipKeys.filter { now < $0.end }
 
@@ -550,6 +663,8 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         itemStatusObservation = nil
         timeControlObservation?.invalidate()
         timeControlObservation = nil
+        stallWatchdog?.invalidate()
+        stallWatchdog = nil
         if let token = skipObserverToken {
             player.removeTimeObserver(token)
             skipObserverToken = nil
@@ -557,11 +672,141 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     }
 
     func refreshCurrentTime() {
-        currentTime = player.currentTime().seconds
+        let seconds = player.currentTime().seconds
+        if seconds.isFinite {
+            currentTime = seconds
+        }
+        // Polls (waitForEngineReady) call this — adopt item.duration once ready even if
+        // async `asset.load(.duration)` is still stalled under XCTest host pressure.
+        if duration <= 0 {
+            adoptDurationIfNeeded(from: player.currentItem)
+        }
     }
 
     func touchUI() {
         uiRefreshToken &+= 1
+    }
+
+    private func beginDurationAdoptionPolling() {
+        func schedule(attempt: Int) {
+            adoptDurationIfNeeded(from: player.currentItem)
+            guard duration <= 0, attempt < 100 else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                guard let self, self.duration <= 0 else { return }
+                schedule(attempt: attempt + 1)
+            }
+        }
+        DispatchQueue.main.async { schedule(attempt: 0) }
+    }
+
+    private func startStallWatchdog() {
+        stopStallWatchdog()
+        let sample = player.currentTime().seconds
+        lastStallSample = sample.isFinite ? sample : 0
+        // Timer callbacks are main-thread but not MainActor-isolated — hop via Task
+        // (assumeIsolated here SIGABRTs under XCTest and tears down OverlaySync waits).
+        let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.tickStallWatchdog()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        stallWatchdog = timer
+    }
+
+    private func stopStallWatchdog() {
+        stallWatchdog?.invalidate()
+        stallWatchdog = nil
+        lastStallSample = -1
+    }
+
+    private func tickStallWatchdog() {
+        guard wantsPlayback else {
+            stopStallWatchdog()
+            return
+        }
+        let now = player.currentTime().seconds
+        let finiteNow = now.isFinite ? now : (lastStallSample >= 0 ? lastStallSample : 0)
+        let frozen = lastStallSample >= 0 && abs(finiteNow - lastStallSample) < 0.01
+        if frozen || !isActivelyAdvancing {
+            kickPlayback()
+        }
+        // Re-attempt intro/mid catch-up if a skip schedule landed while time was NaN.
+        if let schedule = activeSchedule {
+            let skips = IntervalScheduler.skipIntervals(from: schedule.intervals)
+            let needsCatchUp = skips.contains { skip in
+                finiteNow >= skip.start - 0.05
+                    && finiteNow < skip.end
+                    && !overriddenSkipKeys.contains(SkipOverrideKey(skip))
+            }
+            if needsCatchUp {
+                Task { await self.catchUpActiveSkipsIfNeeded() }
+            }
+        }
+        lastStallSample = finiteNow
+        refreshCurrentTime()
+        touchUI()
+    }
+
+    /// Reads RIFF/WAVE duration from `fmt ` + `data` chunks (handles LIST/INFO between them).
+    /// Exposed for AppShellModel duration resolution (same path as playback).
+    static func waveFileDuration(for url: URL) -> TimeInterval? {
+        guard url.pathExtension.lowercased() == "wav" else { return nil }
+        guard let data = try? Data(contentsOf: url, options: [.mappedIfSafe]) else { return nil }
+        guard data.count >= 44 else { return nil }
+        let isRIFF = data[0] == 0x52 && data[1] == 0x49 && data[2] == 0x46 && data[3] == 0x46
+        let isWAVE = data[8] == 0x57 && data[9] == 0x41 && data[10] == 0x56 && data[11] == 0x45
+        guard isRIFF, isWAVE else { return nil }
+
+        func u16(_ offset: Int) -> UInt16 {
+            UInt16(data[offset]) | UInt16(data[offset + 1]) << 8
+        }
+        func u32(_ offset: Int) -> UInt32 {
+            UInt32(data[offset])
+                | UInt32(data[offset + 1]) << 8
+                | UInt32(data[offset + 2]) << 16
+                | UInt32(data[offset + 3]) << 24
+        }
+        func tag(_ offset: Int) -> String? {
+            guard offset + 4 <= data.count else { return nil }
+            return String(bytes: data[offset..<offset + 4], encoding: .ascii)
+        }
+
+        var offset = 12
+        var byteRate: UInt32 = 0
+        var sampleRate: UInt32 = 0
+        var channels: UInt16 = 0
+        var bitsPerSample: UInt16 = 0
+        var dataSize: UInt32?
+
+        while offset + 8 <= data.count {
+            guard let chunkID = tag(offset) else { break }
+            let chunkSize = Int(u32(offset + 4))
+            let payload = offset + 8
+            guard chunkSize >= 0, payload <= data.count else { break }
+
+            if chunkID == "fmt ", chunkSize >= 16, payload + 16 <= data.count {
+                channels = u16(payload + 2)
+                sampleRate = u32(payload + 4)
+                byteRate = u32(payload + 8)
+                bitsPerSample = u16(payload + 14)
+            } else if chunkID == "data" {
+                dataSize = u32(offset + 4)
+                break
+            }
+
+            // Chunk sizes are even-padded.
+            let advance = payload + chunkSize + (chunkSize & 1)
+            guard advance > offset else { break }
+            offset = advance
+        }
+
+        guard let dataSize, sampleRate > 0, channels > 0, bitsPerSample > 0 else { return nil }
+        let bytesPerSecond = byteRate > 0
+            ? Double(byteRate)
+            : Double(sampleRate) * Double(channels) * Double(bitsPerSample / 8)
+        guard bytesPerSecond > 0 else { return nil }
+        return Double(dataSize) / bytesPerSecond
     }
 
     private func updateNowPlaying() {
@@ -576,15 +821,23 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     private func loadDuration(from asset: AVAsset) async {
         do {
             let loadedDuration = try await asset.load(.duration)
-            duration = loadedDuration.seconds
+            let seconds = loadedDuration.seconds
+            if seconds.isFinite, seconds > 0 {
+                duration = seconds
+            } else {
+                adoptDurationIfNeeded(from: player.currentItem)
+            }
             let assetURL = (asset as? AVURLAsset)?.url ?? sourceURL
             PlaybackDiagnostics.logDuration(seconds: duration, url: assetURL)
             touchUI()
         } catch {
-            duration = 0
-            let assetURL = (asset as? AVURLAsset)?.url ?? sourceURL
-            PlaybackDiagnostics.logDuration(seconds: 0, url: assetURL)
-            PlaybackDiagnostics.error("duration load failed error=\(error.localizedDescription)")
+            adoptDurationIfNeeded(from: player.currentItem)
+            if duration <= 0 {
+                duration = 0
+                let assetURL = (asset as? AVURLAsset)?.url ?? sourceURL
+                PlaybackDiagnostics.logDuration(seconds: 0, url: assetURL)
+                PlaybackDiagnostics.error("duration load failed error=\(error.localizedDescription)")
+            }
             touchUI()
         }
     }

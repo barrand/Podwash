@@ -387,6 +387,7 @@ final class EpisodeTableViewCell: UITableViewCell {
 
     private let titleLabel = UILabel()
     private let dateLabel = UILabel()
+    private let badgeLabel = UILabel()
     private let timelineBar = AnalysisTimelineBarView()
     private let progressAccessibilityHost = UIView()
     private let cleaningSummaryLabel = UILabel()
@@ -413,6 +414,7 @@ final class EpisodeTableViewCell: UITableViewCell {
     private var textTrailingConstraint: NSLayoutConstraint!
     private var accessoryTrailingConstraint: NSLayoutConstraint!
     private var timelineTrailingConstraint: NSLayoutConstraint!
+    private var timelineHostHeightConstraint: NSLayoutConstraint!
 
     override var accessibilityValue: String? {
         get { cellAccessibilityValue }
@@ -443,6 +445,17 @@ final class EpisodeTableViewCell: UITableViewCell {
         dateLabel.font = .preferredFont(forTextStyle: .subheadline)
         dateLabel.textColor = .secondaryLabel
 
+        badgeLabel.font = .preferredFont(forTextStyle: .caption2)
+        badgeLabel.text = "Episode on"
+        badgeLabel.textAlignment = .center
+        badgeLabel.backgroundColor = UIColor.tintColor.withAlphaComponent(0.15)
+        badgeLabel.layer.cornerRadius = 8
+        badgeLabel.clipsToBounds = true
+        badgeLabel.isHidden = true
+        badgeLabel.accessibilityIdentifier = nil
+        badgeLabel.accessibilityLabel = "Episode cleaning on"
+        badgeLabel.isAccessibilityElement = false
+
         timelineBar.isAccessibilityElement = false
 
         progressAccessibilityHost.isHidden = true
@@ -455,12 +468,15 @@ final class EpisodeTableViewCell: UITableViewCell {
         let timelineTrailing = timelineBar.trailingAnchor.constraint(equalTo: progressAccessibilityHost.trailingAnchor)
         timelineTrailing.priority = Self.deferredHorizontalPriority
         timelineTrailingConstraint = timelineTrailing
+        // Task 026: production rows keep height 0. Layout-test seam raises this to 16.
+        let timelineHostHeight = progressAccessibilityHost.heightAnchor.constraint(equalToConstant: 0)
+        timelineHostHeightConstraint = timelineHostHeight
         NSLayoutConstraint.activate([
             timelineBar.leadingAnchor.constraint(equalTo: progressAccessibilityHost.leadingAnchor),
             timelineTrailing,
             timelineBar.topAnchor.constraint(equalTo: progressAccessibilityHost.topAnchor, constant: 4),
             timelineBar.bottomAnchor.constraint(equalTo: progressAccessibilityHost.bottomAnchor, constant: -4),
-            progressAccessibilityHost.heightAnchor.constraint(greaterThanOrEqualToConstant: 16),
+            timelineHostHeight,
         ])
 
         textStack.axis = .vertical
@@ -468,7 +484,9 @@ final class EpisodeTableViewCell: UITableViewCell {
         textStack.spacing = 4
         textStack.addArrangedSubview(titleLabel)
         textStack.addArrangedSubview(dateLabel)
-        textStack.addArrangedSubview(progressAccessibilityHost)
+        textStack.addArrangedSubview(badgeLabel)
+        // Task 026: row timeline host stays out of the production stack so height collapses.
+        // `layoutTesting_exposeTimelineBar` re-inserts it for Task 006 width-fill only.
         textStack.addArrangedSubview(cleaningSummaryLabel)
         textStack.addArrangedSubview(downloadProgressAccessibilityHost)
 
@@ -612,6 +630,8 @@ final class EpisodeTableViewCell: UITableViewCell {
             accessoryTrailing,
             accessoryStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
             accessoryStack.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+
+            badgeLabel.heightAnchor.constraint(equalToConstant: 22),
         ])
         contentView.bringSubviewToFront(accessoryStack)
 
@@ -619,11 +639,12 @@ final class EpisodeTableViewCell: UITableViewCell {
         playTap.cancelsTouchesInView = false
         textStack.isUserInteractionEnabled = true
         textStack.addGestureRecognizer(playTap)
-        // Baseline AX children so buttons stay queryable before any timeline host is published.
+        // Baseline AX children so buttons stay queryable before any badge host is published.
         updateAccessibilityElements(
             showsAnalysisTimeline: false,
             showsCleaningSummary: false,
-            showsDownloadProgress: false
+            showsDownloadProgress: false,
+            showsBadge: false
         )
     }
 
@@ -816,9 +837,10 @@ final class EpisodeTableViewCell: UITableViewCell {
         }
 
         updateAccessibilityElements(
-            showsAnalysisTimeline: !progressAccessibilityHost.isHidden,
+            showsAnalysisTimeline: false,
             showsCleaningSummary: !cleaningSummaryLabel.isHidden,
-            showsDownloadProgress: showsProgress
+            showsDownloadProgress: showsProgress,
+            showsBadge: !badgeLabel.isHidden
         )
 
         setNeedsLayout()
@@ -832,33 +854,25 @@ final class EpisodeTableViewCell: UITableViewCell {
         episodeID: String,
         cleaningSummary: ((String) -> EpisodeCleaningSummary?)?
     ) {
-        let showsTimeline = analysisViewModel.episodeRowShowsTimeline(episodeID: episodeID)
+        let isAnalysisInFlight = analysisViewModel.episodeRowShowsTimeline(episodeID: episodeID)
+        let showsBadge = analysisViewModel.episodeRowShowsOnBadge(episodeID: episodeID)
 
-        progressAccessibilityHost.isHidden = !showsTimeline
-        progressAccessibilityHost.isAccessibilityElement = showsTimeline
-        // Keep the identifier stable while visible so XCTest descendant queries
-        // (cell-scoped and app-global) can resolve `analysisTimeline` on the
-        // main-actor-published analyzing state before completion.
-        progressAccessibilityHost.accessibilityIdentifier = showsTimeline ? "analysisTimeline" : nil
-        if showsTimeline {
-            progressAccessibilityHost.accessibilityLabel = "Analysis timeline"
-            progressAccessibilityHost.accessibilityHint =
-                "Shows which parts of the episode are scanned, in progress, or waiting."
-            if let colors = analysisViewModel.episodeRowTimelineColors(episodeID: episodeID) {
-                timelineBar.apply(colors: colors)
-                progressAccessibilityHost.accessibilityValue =
-                    analysisViewModel.episodeRowTimelineAccessibilityValue(episodeID: episodeID)
-            } else {
-                progressAccessibilityHost.accessibilityValue = nil
-            }
-        } else {
-            progressAccessibilityHost.accessibilityLabel = nil
-            progressAccessibilityHost.accessibilityHint = nil
-            progressAccessibilityHost.accessibilityValue = nil
-        }
+        badgeLabel.isHidden = !showsBadge
+        badgeLabel.isAccessibilityElement = showsBadge
+        badgeLabel.accessibilityIdentifier = showsBadge ? "cleaningBadge_episodeOn" : nil
+        badgeLabel.accessibilityLabel = "Episode cleaning on"
+
+        // Task 026: row timeline retired — player super-seek bar owns in-flight chrome.
+        progressAccessibilityHost.isHidden = true
+        progressAccessibilityHost.isAccessibilityElement = false
+        progressAccessibilityHost.accessibilityIdentifier = nil
+        progressAccessibilityHost.accessibilityLabel = nil
+        progressAccessibilityHost.accessibilityHint = nil
+        progressAccessibilityHost.accessibilityValue = nil
+        timelineHostHeightConstraint.constant = 0
 
         // Complete gate: summary only when not in-flight and cache hit (ADR-025 §5).
-        let summary = showsTimeline ? nil : cleaningSummary?(episodeID)
+        let summary = isAnalysisInFlight ? nil : cleaningSummary?(episodeID)
         let showsSummary = summary != nil
         cleaningSummaryLabel.isHidden = !showsSummary
         cleaningSummaryLabel.isAccessibilityElement = showsSummary
@@ -874,12 +888,11 @@ final class EpisodeTableViewCell: UITableViewCell {
             cleaningSummaryLabel.accessibilityValue = nil
         }
 
-        // Explicit AX children so UITableViewCell exposes timeline alongside the
-        // accessory controls (grouped cell AX can otherwise omit nested hosts).
         updateAccessibilityElements(
-            showsAnalysisTimeline: showsTimeline,
+            showsAnalysisTimeline: false,
             showsCleaningSummary: showsSummary,
-            showsDownloadProgress: !downloadProgressAccessibilityHost.isHidden
+            showsDownloadProgress: !downloadProgressAccessibilityHost.isHidden,
+            showsBadge: showsBadge
         )
 
         setNeedsLayout()
@@ -889,7 +902,8 @@ final class EpisodeTableViewCell: UITableViewCell {
     private func updateAccessibilityElements(
         showsAnalysisTimeline: Bool,
         showsCleaningSummary: Bool,
-        showsDownloadProgress: Bool
+        showsDownloadProgress: Bool,
+        showsBadge: Bool
     ) {
         // Always keep accessories queryable/tappable. Library play uses `textStack`
         // as the dedicated activatable region (not a collapsed whole-cell AX element).
@@ -917,13 +931,16 @@ final class EpisodeTableViewCell: UITableViewCell {
         if showsAnalysisTimeline {
             axChildren.append(progressAccessibilityHost)
         }
+        if showsBadge {
+            axChildren.append(badgeLabel)
+        }
         if showsCleaningSummary {
             axChildren.append(cleaningSummaryLabel)
         }
         // Publish AX children on the *cell* (not contentView). After Slice 22 moved
         // accessories into contentView, assigning only timeline to
-        // `contentView.accessibilityElements` left `analysisTimeline` invisible to
-        // XCTest descendant queries even when the host was on-screen.
+        // `contentView.accessibilityElements` left nested hosts invisible to
+        // XCTest descendant queries even when on-screen.
         accessibilityElements = axChildren
         contentView.accessibilityElements = nil
     }
@@ -1002,6 +1019,20 @@ final class EpisodeTableViewCell: UITableViewCell {
     var layoutTesting_downloadButton: UIButton { downloadButton }
     var layoutTesting_timelineHost: UIView { progressAccessibilityHost }
     var layoutTesting_timelineBar: AnalysisTimelineBarView { timelineBar }
+
+    /// Task 006 width-fill layout test only — production configure paths keep the host collapsed.
+    func layoutTesting_exposeTimelineBar(colors: [TimelineSegmentColor]) {
+        timelineBar.apply(colors: colors)
+        if progressAccessibilityHost.superview == nil {
+            // Insert after badge (title, date, badge, timeline, …).
+            let insertIndex = min(3, textStack.arrangedSubviews.count)
+            textStack.insertArrangedSubview(progressAccessibilityHost, at: insertIndex)
+        }
+        timelineHostHeightConstraint.constant = 16
+        progressAccessibilityHost.isHidden = false
+        progressAccessibilityHost.isAccessibilityElement = false
+        progressAccessibilityHost.accessibilityIdentifier = nil
+    }
 }
 
 enum EpisodeTableViewCellLayoutTesting {
@@ -1025,6 +1056,11 @@ enum EpisodeTableViewCellLayoutTesting {
             onQueueAdd: {},
             onViewTranscript: nil
         )
+        // Task 006 layout pin: expose bar geometry for fixture-ep-001 only.
+        if episode.id == "fixture-ep-001",
+           let colors = analysisViewModel.episodeRowTimelineColors(episodeID: episode.id) {
+            cell.layoutTesting_exposeTimelineBar(colors: colors)
+        }
         return cell
     }
 

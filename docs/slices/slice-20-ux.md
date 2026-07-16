@@ -10,22 +10,28 @@
 
 ## Scope note
 
-**Episode row only.** The segmented timeline appears on the analyzing episode row inside `EpisodeListView`. Mini-player, expanded player, CarPlay, and lock-screen chrome are **out of scope** (no timeline identifiers there in this slice).
+**Episode row — timeline retired (Task 026).** The segmented `analysisTimeline`
+bar no longer appears on episode rows. `AnalysisTimelineModel` still drives
+mini-player and full-player super seek bar segment colors while analysis runs.
+This UX spec’s color contract and model pins remain authoritative for player
+chrome and unit tests; row identifiers below are **historical** unless noted.
 
-Slice 20 **replaces** the Slice 09 `ProgressView` + "Analyzing…" row indicator (`analysisProgress`) with a **12-segment** horizontal bar (`analysisTimeline`). Color math and yellow-on-complete rules are unit-tested (AC1–AC2); UI tests assert aggregate `accessibilityValue` strings only — no per-segment identifiers, no pixel/snapshot review, no Skipper comparison.
+Mini-player, expanded player, CarPlay, and lock-screen chrome use player
+timeline hosts (`SuperSeekBarView`); episode list rows expose cleaning badge /
+summary only after analysis completes.
+
+Slice 20 **replaced** the Slice 09 `ProgressView` + "Analyzing…" row indicator (`analysisProgress`) with a **12-segment** horizontal bar (`analysisTimeline`) on the episode row. **Task 026 retired** that row bar; color math and yellow-on-complete rules remain unit-tested (AC1–AC2) and feed player super-seek chrome. UI tests for row timeline assert **absence**; player timeline tests own in-flight AX.
 
 ## Layout
 
 Extends Slice 06 / 09 episode row layout. Each row keeps title, date, and trailing **episode cleaning toggle** (`episodeCleaningToggle_<index>`). The analysis region sits **inline below the title/date block**, in the same vertical band previously occupied by `analysisProgress` (and parallel to `downloadProgress_<index>` from Slice 10 when both could theoretically coexist — in fixture modes only one progress type is active).
 
-### Analysis timeline bar (`analysisTimeline`)
+### Analysis timeline bar (`analysisTimeline`) — retired on row (Task 026)
 
-- **Geometry:** exactly **12** equal-width segments spanning the row content width (pinned fixture: **120.0 s** episode → **10.0 s** per bucket).
-- **Visual:** contiguous horizontal bar; each segment is a solid fill (no gaps). Segment colors map to model output (see Color contract).
-- **Host:** UIKit accessibility host inside `EpisodeTableCell` (Slice 09 / 23 pattern) so XCTest can resolve the identifier as a descendant of `episodeCell_<index>` **or** globally.
-- **Single AX surface:** one element per analyzing row — **no** `analysisTimeline_segment_0` children. Tests read aggregate counts via `accessibilityValue`.
-
-**Placement relative to badges:** While analyzing, the timeline is visible and the episode **on** badge is **hidden** (Slice 09 precedence: `analyzing` > `episodeOn`). Channel header badge (`cleaningBadge_channelOn`) is unchanged and independent.
+Row-hosted timeline chrome is **removed**. In flight, episode rows show **no**
+`analysisTimeline` identifier; progress lives on mini/full player super seek bar.
+The geometry/color contract below still applies to `AnalysisTimelineModel` and
+player hosts.
 
 ## Color contract
 
@@ -52,10 +58,10 @@ Colors are assigned by `AnalysisTimelineModel` from `AnalysisProgressSnapshot`. 
 |-------|-------------------|---------------------------|----------------------|-------|
 | **Off** | Neither timeline nor episode badge | — | — | Channel and episode cleaning toggles off |
 | **Episode on (idle)** | Episode badge | `cleaningBadge_episodeOn` | — | Cleaning enabled, not analyzing |
-| **Analyzing** | Segmented timeline | `analysisTimeline` | `ready:N,processing:N,pending:N` | Badge hidden; **`analysisProgress` must not exist** |
-| **Analyzing → complete** | Timeline through terminal snapshot, then badge only | `analysisTimeline` then `cleaningBadge_episodeOn` | Terminal e.g. `ready:12,processing:0,pending:0`, then — | On completion: clear timeline, show badge if cleaning still on (AC4) |
+| **Analyzing** | *(none on row)* | — | — | Badge hidden; summary suppressed (Slice 29); player owns in-flight chrome |
+| **Analyzing → complete** | Badge and/or cleaning summary | `cleaningBadge_episodeOn` / `episode.cleaningSummary` | — | Row `analysisTimeline` must not exist |
 
-**Precedence on episode row:** `analyzing` (timeline) > `episodeOn` (badge) > `off`.
+**Precedence on episode row:** `analyzing` (suppress badge + summary) > `episodeOn` (badge) / complete summary > `off`.
 
 **Only one analyzing row** at a time (unchanged Slice 09 behavior). Timeline identifier is scoped to the row whose `analyzingEpisodeID` matches.
 

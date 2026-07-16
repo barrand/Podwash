@@ -5,7 +5,7 @@
 | **Slice** | 29 — Episode cleaning summary on channel screen |
 | **Screen** | `PodcastDetailView` → `EpisodeListView` episode rows (extends Slice 06 / 09 / 20 layout) |
 | **ADR** | [ADR-025](../adr/025-episode-cleaning-summary.md) (aggregation, cache gate, AX contract) |
-| **Builds on** | [slice-06-ux.md](slice-06-ux.md) (`episodeList`, `episodeCell_<index>`), [slice-09-ux.md](slice-09-ux.md) (cleaning toggles + badge), [slice-20-ux.md](slice-20-ux.md) (`analysisTimeline` band; mutual exclusion), [slice-26-ux.md](slice-26-ux.md) (cache-gated row affordance without playback) |
+| **Builds on** | [slice-06-ux.md](slice-06-ux.md) (`episodeList`, `episodeCell_<index>`), [slice-09-ux.md](slice-09-ux.md) (cleaning toggles + badge), [slice-20-ux.md](slice-20-ux.md) (analysis in-flight gate; row timeline retired Task 026), [slice-26-ux.md](slice-26-ux.md) (cache-gated row affordance without playback) |
 | **Slice story** | [slice-29-episode-cleaning-summary.md](slice-29-episode-cleaning-summary.md) |
 
 ## Scope note
@@ -55,7 +55,7 @@ Pipe three metrics left → right with a middle dot separator (` · `, U+00B7 wi
 | State | Analysis band | `accessibilityIdentifier` | `accessibilityValue` | Notes |
 |-------|---------------|---------------------------|----------------------|-------|
 | **Never analyzed** (cache miss) | Empty | — | — | No summary element in AX tree (AC4) |
-| **Analyzing** (in flight) | Segmented timeline | `analysisTimeline` | `ready:N,processing:N,pending:N` | Summary **must not exist** (AC6); Slice 20 unchanged |
+| **Analyzing** (in flight) | *(none on row)* | — | — | Summary **must not exist** (AC6); row `analysisTimeline` retired (Task 026) |
 | **Complete + cache hit** | Summary line | `episode.cleaningSummary` | `profanity:N,ads:N,adMinutes:X.X` | Timeline cleared; summary appears (AC5) |
 | **Complete + empty intervals** | Summary with zeros | `episode.cleaningSummary` | `profanity:0,ads:0,adMinutes:0.0` | “Processed” with no hits (AC2) |
 | **Complete + cache miss** (fingerprint drift) | Empty | — | — | Same as never analyzed until re-analyze |
@@ -90,7 +90,7 @@ profanity:<int>,ads:<int>,adMinutes:<one-decimal>
 | Control / region | `accessibilityIdentifier` | `accessibilityLabel` | `accessibilityValue` | `accessibilityHint` |
 |------------------|---------------------------|----------------------|----------------------|---------------------|
 | Cleaning summary (row *i*, complete + cache) | `episode.cleaningSummary` | `Cleaning summary` | `profanity:N,ads:N,adMinutes:X.X` | `Shows how many profanity and ad sections were cleaned and total ad time skipped.` |
-| Analysis timeline (row *i*, analyzing) | `analysisTimeline` | `Analysis timeline` | `ready:N,processing:N,pending:N` | Unchanged Slice 20 |
+| Analysis timeline (row *i*, analyzing) | — | — | — | **Retired** on row (Task 026); player super seek bar owns in-flight chrome |
 | Episode on badge (row *i*) | `cleaningBadge_episodeOn` | `Episode cleaning on` | — | Unchanged Slice 09 |
 | Episode cleaning toggle (row *i*) | `episodeCleaningToggle_<index>` | `Episode cleaning` | `on` / `off` | Unchanged Slice 09 |
 
@@ -136,11 +136,11 @@ Unchanged Slice 06 feed fixture — **no** `IntervalCache` seed for any episode.
 
 Do **not** combine `-UITestFixtureCleaningSummary` with feed-only negative tests.
 
-### In-flight timeline (AC6 — reuses Slice 20)
+### In-flight analysis (AC6 — reuses Slice 20 fixture)
 
 Launch argument: `-UITestFixtureAnalysisTimeline`
 
-Same stepped analyzer contract as [slice-20-ux.md](slice-20-ux.md): auto-analyze on row 0 cleaning toggle; `analysisTimeline` appears while in flight. **`episode.cleaningSummary` must not exist** on row 0 until terminal complete (timeline retires). After terminal + cache store, summary may appear — AC6 asserts only the **in-flight** negative.
+Same stepped analyzer contract as [slice-20-ux.md](slice-20-ux.md): auto-analyze on row 0 when channel cleaning is on. Row **`analysisTimeline` must not exist** while analysis is in flight (Task 026). **`episode.cleaningSummary` must not exist** on row 0 until terminal complete. AC6 asserts only the **in-flight** negatives (no row timeline, no summary).
 
 ## UI test scenarios
 
@@ -163,12 +163,10 @@ Mapped tests: `CleaningSummaryUITests.swift` (AC4–AC6). Unit scenarios AC1–A
 ### `testSummaryHiddenWhileTimelineInFlight` (AC#6)
 
 1. Launch with `-UITestFixtureAnalysisTimeline`; wait for `episodeList` (10 s).
-2. Tap `episodeCleaningToggle_0` switch to enable cleaning (auto-analyze starts).
-3. Within **2.0 s**, assert `analysisTimeline` exists on row 0.
-4. Assert `episode.cleaningSummary` does **not** exist (cell-scoped and global) while timeline is visible.
-5. *(Optional post-terminal check, not AC6:)* after timeline completes per Slice 20, summary may appear if cache was stored — AC6 does **not** require asserting post-complete summary in this test.
-
-**Implementation note:** For step 4, poll immediately after timeline appears; do not wait for analysis completion. Reuse `AnalysisTimelineUITests` launch/toggle helpers where practical.
+2. Start analysis if needed (`episodeCleaningToggle_0` when present; channel cleaning defaults on).
+3. Within **2.0 s**, assert `analysisTimeline` does **not** exist on row 0 (cell-scoped and global).
+4. Assert `episode.cleaningSummary` does **not** exist (cell-scoped and global) while analysis is in flight.
+5. *(Optional post-terminal check, not AC6:)* after analysis completes, summary may appear if cache was stored — AC6 does **not** require asserting post-complete summary in this test.
 
 ## Verification mapping
 

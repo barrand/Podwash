@@ -513,37 +513,37 @@ def _ladder_plain(machine_tried: list[Any]) -> str:
 
 
 def _batch_plain(reason: str, state: str) -> str:
-    """Human-readable ship-gate copy — manual Full verify & ship, not auto-drain."""
+    """Human-readable ship-gate copy — manual Full verify → Done, not auto-drain."""
     r = (reason or "").strip()
     mapping = {
         "never verified": (
-            "No full-suite stamp yet. Press Full verify & ship when you want one "
+            "No full-suite stamp yet. Press Full verify → Done when you want one "
             "(optional — the queue keeps draining without it)."
         ),
         "HEAD moved": (
-            "HEAD moved since the last green full suite. Optional: press Full verify & ship "
+            "HEAD moved since the last green full suite. Optional: press Full verify → Done "
             "to refresh the stamp (CI is the safety net between ships)."
         ),
         "dirty tree": (
-            "Uncommitted changes on the tree. Optional: press Full verify & ship after they land."
+            "Uncommitted changes on the tree. Optional: press Full verify → Done after they land."
         ),
-        "ship_now": "Full verify & ship queued — running the full suite next.",
+        "ship_now": "Full verify → Done queued — running the full suite next.",
         "Implemented awaiting ship": (
-            "Implemented item(s) waiting for Full verify & ship to promote to Done."
+            "Implemented item(s) waiting for Full verify → Done."
         ),
         "not needed": "Ship gate clean at this commit.",
         "skipped": "Ship gate skipped for this session.",
         "unavailable": "Ship-gate status unavailable (internal import failed).",
         "still_red": "Full suite still failing after Mechanic — decide in Your move.",
         "needs_decision": (
-            "Ship gate blocked — decide in Your move (Retry, Don't push, or Full verify & ship)."
+            "Ship gate blocked — decide in Your move (Retry, Don't push, or Full verify → Done)."
         ),
         "scope_miss": (
             "Full suite failed on a test outside recent surgical scope — decide in Your move."
         ),
         "verified": "Last full suite passed.",
         "mechanic_retry": "Re-running the full suite after Mechanic.",
-        "held": "You chose not to push. Full verify & ship or Retry when ready.",
+        "held": "You chose not to push. Full verify → Done or Retry when ready.",
         "verify aborted": "Full suite aborted (simulator/infra) — decide in Your move.",
     }
     if state == "verifying" or state == "running":
@@ -716,9 +716,9 @@ def _activity_snapshot(
                 headline="Full test suite still running",
                 detail=(
                     "The Forge loop exited, but xcodebuild is still finishing. "
-                    "Wait for it, or Stop then Restart Forge."
+                    "Wait for it, or Kill Forge then Restart Forge."
                 ),
-                next_line="Wait for the full suite to finish, or Stop then Restart Forge.",
+                next_line="Wait for the full suite to finish, or Kill Forge then Restart Forge.",
                 agents_out=agents
                 or [
                     {
@@ -772,7 +772,7 @@ def _activity_snapshot(
             mode="paused",
             headline="Paused",
             detail="Workers are idle until you Resume.",
-            next_line="Click Resume to continue, or Stop to shut Forge down.",
+            next_line="Click Resume to continue, or Kill Forge to shut Forge down.",
         )
 
     if not marked_running and not runner_alive:
@@ -817,7 +817,7 @@ def _activity_snapshot(
     ):
         return pack(
             mode="batch",
-            headline="Running Full verify & ship",
+            headline="Running Full verify → Done",
             detail=detail or batch_plain or "Running the full suite.",
             next_line="Wait — no action needed unless the suite fails.",
             agents_out=agents
@@ -854,7 +854,7 @@ def _activity_snapshot(
             mode="held",
             headline="Not pushing (held)",
             detail=f"You acknowledged the failure at {(batch.get('head_sha') or '')[:12] or 'HEAD'}.",
-            next_line="Full verify & ship or Retry when ready; or queue more work.",
+            next_line="Full verify → Done or Retry when ready; or queue more work.",
         )
 
     if agents:
@@ -889,15 +889,15 @@ def _activity_snapshot(
                 return pack(
                     mode="quiet",
                     headline="Queue idle — ship gate optional",
-                    detail=f"{items_since} Implemented item(s) ready for Full verify & ship.",
-                    next_line="Press Full verify & ship when you want Done + a new stamp.",
+                    detail=f"{items_since} Implemented item(s) ready for Full verify → Done.",
+                    next_line="Press Full verify → Done when you want Done + a new stamp.",
                     agents_out=agents,
                 )
             return pack(
                 mode="quiet",
                 headline="Waiting for intake",
                 detail=who.get("doing") or mission or detail or "Queue is empty.",
-                next_line="Queue work with forge-intake, or Full verify & ship if you want a new stamp.",
+                next_line="Queue work with forge-intake, or Full verify → Done if you want a new stamp.",
                 agents_out=agents,
             )
         return pack(
@@ -916,7 +916,7 @@ def _activity_snapshot(
             mode="working",
             headline=f"Working on {_fmt_work_id(t0) or t0.get('id')}",
             detail=(t0.get("title") or "") + ("." if hint else "") + hint,
-            next_line="Wait — a ticket is claimed. If this stalls for minutes, Stop then Start Forge.",
+            next_line="Wait — a ticket is claimed. If this stalls for minutes, Kill Forge then Start Forge.",
             agents_out=[
                 {
                     "role": ev_role or "pipeline",
@@ -965,8 +965,8 @@ def _activity_snapshot(
         return pack(
             mode="quiet",
             headline="Queue empty — ship gate optional",
-            detail=f"{items_since} Implemented item(s) awaiting Full verify & ship.",
-            next_line="Press Full verify & ship when you want Done + a new stamp. CI covers the gap.",
+            detail=f"{items_since} Implemented item(s) awaiting Full verify → Done.",
+            next_line="Press Full verify → Done when you want Done + a new stamp. CI covers the gap.",
             agents_out=[],
         )
 
@@ -974,7 +974,7 @@ def _activity_snapshot(
         mode="quiet",
         headline="Nothing to do right now",
         detail="Queue is empty.",
-        next_line="Queue work with forge-intake, or Full verify & ship if you want a new stamp.",
+        next_line="Queue work with forge-intake, or Full verify → Done if you want a new stamp.",
         agents_out=[],
     )
 
@@ -1621,7 +1621,7 @@ header {
 header h1 { margin: 0; font-size: 1.35rem; letter-spacing: 0.04em; }
 header .brand { color: var(--accent); font-weight: 700; }
 .hint { color: var(--muted); font-size: 0.85rem; }
-.toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-left: auto; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-left: auto; align-items: center; }
 button {
   background: var(--panel); color: var(--ink); border: 1px solid var(--line);
   border-radius: 6px; padding: 0.45rem 0.75rem; cursor: pointer; font: inherit;
@@ -1635,6 +1635,31 @@ button.primary:disabled {
 }
 button.danger { border-color: var(--warn); color: var(--warn); }
 button:hover { filter: brightness(1.08); }
+button[hidden], .btn-group[hidden] { display: none !important; }
+.btn-group {
+  position: relative; display: inline-flex; align-items: stretch;
+}
+.btn-group > button:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.btn-group > button.btn-chevron {
+  border-top-left-radius: 0; border-bottom-left-radius: 0;
+  border-left: none; padding: 0.45rem 0.5rem; min-width: 1.75rem;
+}
+.btn-group > .menu {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 30;
+  min-width: 12rem; padding: 0.25rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  display: flex; flex-direction: column; gap: 0.15rem;
+}
+.btn-group > .menu[hidden] { display: none !important; }
+.btn-group > .menu button {
+  text-align: left; width: 100%; border: none; border-radius: 4px;
+  padding: 0.45rem 0.6rem; background: transparent;
+}
+.btn-group > .menu button:hover { background: #333940; }
+.station #btnShip {
+  margin-top: 0.55rem; width: 100%;
+}
 main {
   display: grid; grid-template-columns: 1fr 340px; gap: 1rem; padding: 1rem;
   align-items: start;
@@ -1861,11 +1886,26 @@ main {
   <span id="hot" class="status-pill">stopped</span>
   <div class="toolbar">
     <button class="primary" id="btnStart">Start Forge</button>
-    <button id="btnPause">Pause</button>
-    <button id="btnPauseAfter">Pause after current</button>
-    <button id="btnResume">Resume</button>
-    <button id="btnShip" title="Run full suite, promote Implemented→Done, then push">Full verify &amp; ship</button>
-    <button id="btnStop">Stop</button>
+    <div class="btn-group" id="pauseGroup" hidden>
+      <button type="button" id="btnPause" title="Pause now — interrupt in-flight work">Pause</button>
+      <button type="button" class="btn-chevron" id="btnPauseMenu" aria-haspopup="menu"
+        aria-expanded="false" aria-label="More pause options">▾</button>
+      <div class="menu" id="pauseMenu" role="menu" hidden>
+        <button type="button" role="menuitem" id="menuPauseNow">Pause now — interrupt work</button>
+        <button type="button" role="menuitem" id="menuPauseAfter">After this ticket</button>
+      </div>
+    </div>
+    <button type="button" id="btnCancelPause" hidden>Cancel pause</button>
+    <button type="button" id="btnResume" hidden>Resume</button>
+    <button type="button" class="danger" id="btnKill" hidden
+      title="Hard-kill the Forge process (not a pause)">Kill Forge</button>
+    <div class="btn-group" id="moreGroup">
+      <button type="button" id="btnMore" aria-haspopup="menu" aria-expanded="false"
+        aria-label="More">⋯</button>
+      <div class="menu" id="moreMenu" role="menu" hidden>
+        <button type="button" role="menuitem" class="danger" id="menuKill">Kill Forge</button>
+      </div>
+    </div>
   </div>
 </header>
 <main>
@@ -1886,6 +1926,8 @@ main {
       <div class="batch-line" id="batchLine">—</div>
       <div class="label" style="margin-top:0.75rem">CI safety net</div>
       <div class="batch-line" id="ciLine">—</div>
+      <button type="button" id="btnShip"
+        title="Run full suite, promote Implemented→Done, then push">Full verify → Done</button>
     </div>
     <div class="your-move" id="yourMove">
       <h3 id="yourMoveTitle">Your move</h3>
@@ -2106,7 +2148,7 @@ function batchLabel(b, activity) {
     return `<strong>Ship gate · not pushing</strong><br/>${esc(b.plain || "held")}`;
   }
   if (b.state === "pending" || b.needed) {
-    return `<strong>Ship gate · ready</strong><br/>${esc(b.plain || "Full verify & ship when ready")}`;
+    return `<strong>Ship gate · ready</strong><br/>${esc(b.plain || "Full verify → Done when ready")}`;
   }
   return `<strong>Ship gate · idle</strong>`;
 }
@@ -2171,7 +2213,7 @@ function makeCard(item, st, activeTid, activity) {
   const closedMeta = (/^Done/i.test(item.status || "") && item.done_at)
     ? `<div class="meta">${esc(formatDoneClosedMeta(item.done_at))}</div>`
     : (/^Implemented/i.test(item.status || "")
-      ? `<div class="meta">Awaiting Full verify &amp; ship</div>`
+      ? `<div class="meta">Awaiting Full verify → Done</div>`
       : "");
   const statusChip = (colFor(item) === "Done" || /In Progress|Halted|Needs-human/i.test(item.status || ""))
     ? `<div><span class="lane-chip ${statusChipClass(item.status)}">${esc(item.status || "")}</span></div>`
@@ -2260,7 +2302,7 @@ function render() {
     // Active queue / slice work — don't nag about empty punch-list or ship gate.
     idle.hidden = true;
   } else if (looksLive && mode === "batch") {
-    idleMsg = "Running Full verify & ship";
+    idleMsg = "Running Full verify → Done";
     idle.hidden = false;
     idle.textContent = idleMsg;
   } else if (!looksLive && queuedSlices.length && queuedAuto.length===0) {
@@ -2504,7 +2546,7 @@ function render() {
   const sinceEl = document.getElementById("sinceGreen");
   if (sinceEl) {
     sinceEl.textContent = sinceN
-      ? (sinceN + " Implemented since last green full verify — Full verify & ship when ready")
+      ? (sinceN + " Implemented since last green full verify — Full verify → Done under Ship gate when ready")
       : "";
     sinceEl.hidden = !sinceN;
   }
@@ -2575,30 +2617,46 @@ function render() {
   syncToolbar(snap, activity);
 }
 
-/** Primary action + enable/disable follow server activity.mode only. */
+/** Primary action + visibility follow server activity.mode only. */
 function syncToolbar(snap, activity) {
   const mode = (activity && activity.mode) || "";
   const btnStart = document.getElementById("btnStart");
+  const pauseGroup = document.getElementById("pauseGroup");
   const btnPause = document.getElementById("btnPause");
-  const btnPauseAfter = document.getElementById("btnPauseAfter");
+  const btnPauseMenu = document.getElementById("btnPauseMenu");
+  const btnCancelPause = document.getElementById("btnCancelPause");
   const btnResume = document.getElementById("btnResume");
-  const btnStop = document.getElementById("btnStop");
+  const btnKill = document.getElementById("btnKill");
+  const moreGroup = document.getElementById("moreGroup");
   const btnShip = document.getElementById("btnShip");
   const pauseAfterArmed = !!(snap.controls && snap.controls.pause_after_current && !snap.controls.paused);
 
-  [btnStart, btnPause, btnPauseAfter, btnResume, btnStop, btnShip].forEach((b) => {
+  closeMenus();
+
+  [btnStart, btnPause, btnCancelPause, btnResume, btnKill, btnShip].forEach((b) => {
     if (b) b.classList.remove("primary");
   });
+
+  function show(el, on) {
+    if (el) el.hidden = !on;
+  }
+
+  // Defaults: hide run controls; show Start + overflow.
+  show(pauseGroup, false);
+  show(btnCancelPause, false);
+  show(btnResume, false);
+  show(btnKill, false);
+  show(moreGroup, true);
+  show(btnStart, true);
+  if (btnShip) btnShip.disabled = false;
 
   if (mode === "orphan") {
     btnStart.textContent = "Restart Forge";
     btnStart.disabled = false;
     btnStart.classList.add("primary");
-    btnPause.disabled = true;
-    btnPauseAfter.disabled = true;
-    btnResume.disabled = true;
-    btnStop.disabled = false;
-    btnShip.disabled = true;
+    show(btnKill, true);
+    show(moreGroup, false);
+    if (btnShip) btnShip.disabled = true;
     return;
   }
 
@@ -2606,36 +2664,31 @@ function syncToolbar(snap, activity) {
     const age = activity.started_age_s != null ? Math.floor(activity.started_age_s) : null;
     btnStart.textContent = age != null ? `Starting… (${age}s)` : "Starting…";
     btnStart.disabled = true;
-    btnPause.disabled = true;
-    btnPauseAfter.disabled = true;
-    btnResume.disabled = true;
-    btnStop.disabled = false;
-    btnShip.disabled = true;
+    show(btnKill, true);
+    show(moreGroup, false);
+    if (btnShip) btnShip.disabled = true;
     return;
   }
 
   if (mode === "paused") {
     btnStart.textContent = "Paused";
     btnStart.disabled = true;
-    btnPause.disabled = true;
-    btnPauseAfter.disabled = true;
-    btnResume.disabled = false;
+    show(btnResume, true);
     btnResume.classList.add("primary");
-    btnStop.disabled = false;
-    btnShip.disabled = false;
     return;
   }
 
   if (["working","batch","picking","batch_pending","needs_decision","held"].includes(mode)) {
     btnStart.textContent = "Running";
     btnStart.disabled = true;
-    btnPauseAfter.disabled = pauseAfterArmed;
-    btnShip.disabled = false;
-    btnPause.disabled = false;
-    btnPause.classList.add("primary");
-    btnResume.disabled = !pauseAfterArmed;
-    if (pauseAfterArmed) btnResume.classList.add("primary");
-    btnStop.disabled = false;
+    if (pauseAfterArmed) {
+      show(btnCancelPause, true);
+      btnCancelPause.classList.add("primary");
+    } else {
+      show(pauseGroup, true);
+      btnPause.classList.add("primary");
+      if (btnPauseMenu) btnPauseMenu.disabled = false;
+    }
     return;
   }
 
@@ -2643,11 +2696,35 @@ function syncToolbar(snap, activity) {
   btnStart.textContent = "Start Forge";
   btnStart.disabled = false;
   btnStart.classList.add("primary");
-  btnPause.disabled = true;
-  btnPauseAfter.disabled = true;
-  btnResume.disabled = true;
-  btnStop.disabled = true;
-  btnShip.disabled = false;
+}
+
+function closeMenus() {
+  const pauseMenu = document.getElementById("pauseMenu");
+  const moreMenu = document.getElementById("moreMenu");
+  const btnPauseMenu = document.getElementById("btnPauseMenu");
+  const btnMore = document.getElementById("btnMore");
+  if (pauseMenu) pauseMenu.hidden = true;
+  if (moreMenu) moreMenu.hidden = true;
+  if (btnPauseMenu) btnPauseMenu.setAttribute("aria-expanded", "false");
+  if (btnMore) btnMore.setAttribute("aria-expanded", "false");
+}
+
+function toggleMenu(menuId, buttonId) {
+  const menu = document.getElementById(menuId);
+  const btn = document.getElementById(buttonId);
+  if (!menu || !btn) return;
+  const open = menu.hidden;
+  closeMenus();
+  if (open) {
+    menu.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+  }
+}
+
+function killForge() {
+  if (confirm("Kill Forge process? This is not a pause — you will need Start Forge again.")) {
+    post("/api/control", {action:"stop"});
+  }
 }
 
 async function openDrawer(item) {
@@ -2688,13 +2765,39 @@ async function refresh() {
 
 document.getElementById("btnClose").onclick = () => document.getElementById("drawer").classList.remove("open");
 document.getElementById("btnStart").onclick = () => post("/api/control", {action:"start"});
-document.getElementById("btnStop").onclick = () => post("/api/control", {action:"stop"});
 document.getElementById("btnPause").onclick = () => post("/api/control", {action:"pause"});
-document.getElementById("btnPauseAfter").onclick = () => post("/api/control", {action:"pause_after_current"});
+document.getElementById("btnPauseMenu").onclick = (e) => {
+  e.stopPropagation();
+  toggleMenu("pauseMenu", "btnPauseMenu");
+};
+document.getElementById("menuPauseNow").onclick = () => {
+  closeMenus();
+  post("/api/control", {action:"pause"});
+};
+document.getElementById("menuPauseAfter").onclick = () => {
+  closeMenus();
+  post("/api/control", {action:"pause_after_current"});
+};
+document.getElementById("btnCancelPause").onclick = () => post("/api/control", {action:"resume"});
 document.getElementById("btnResume").onclick = () => post("/api/control", {action:"resume"});
+document.getElementById("btnKill").onclick = () => killForge();
+document.getElementById("btnMore").onclick = (e) => {
+  e.stopPropagation();
+  toggleMenu("moreMenu", "btnMore");
+};
+document.getElementById("menuKill").onclick = () => {
+  closeMenus();
+  killForge();
+};
 document.getElementById("btnShip").onclick = () => post("/api/control", {action:"ship_now"});
+document.addEventListener("click", (e) => {
+  if (!e.target.closest || !e.target.closest(".btn-group")) closeMenus();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeMenus();
+});
 document.getElementById("btnHold").onclick = () => {
-  if (confirm("Don't push — leave commits local and idle until new work or Full verify & ship?")) {
+  if (confirm("Don't push — leave commits local and idle until new work or Full verify → Done?")) {
     post("/api/control", {action:"batch_hold"});
   }
 };

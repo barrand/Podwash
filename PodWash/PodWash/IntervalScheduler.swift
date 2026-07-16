@@ -54,15 +54,17 @@ enum IntervalScheduler {
         intervals: [CensorInterval],
         fadeDuration: Double = defaultFadeDuration
     ) async throws -> AVMutableAudioMix? {
-        let tracks = try await asset.loadTracks(withMediaType: .audio)
-        guard let track = tracks.first else {
-            throw IntervalSchedulerError.noAudioTrack
-        }
-
+        // Skip-only / empty schedules must not `loadTracks` — progressive catch-up
+        // (task-022) serializes on this await, and long fixtures stall under XCTest.
         let mutes = intervals
             .filter { $0.action == .mute }
             .sorted { $0.start < $1.start }
         guard !mutes.isEmpty else { return nil }
+
+        let tracks = try await asset.loadTracks(withMediaType: .audio)
+        guard let track = tracks.first else {
+            throw IntervalSchedulerError.noAudioTrack
+        }
 
         let params = AVMutableAudioMixInputParameters(track: track)
         params.setVolume(1.0, at: .zero)

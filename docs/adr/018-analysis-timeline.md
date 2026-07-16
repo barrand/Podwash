@@ -230,21 +230,24 @@ complete — do not reintroduce `analysisProgress`.
 
 ### 5. Episode row binding (`EpisodeListView`)
 
+> **Task 026 amendment:** Episode rows no longer host `analysisTimeline` chrome.
+> `AnalysisTimelineModel` + player `SuperSeekBarView` remain the in-flight progress
+> surface. Row `applyAnalysisDisplay` suppresses `episode.cleaningSummary` while
+> `episodeRowShowsTimeline` is true; on complete, Slice 29 summary or
+> `cleaningBadge_episodeOn` applies per existing contracts.
+
 `EpisodeTableCell.applyAnalysisDisplay` (or equivalent):
 
 | State | UI | Identifier | Notes |
 |-------|-----|------------|-------|
-| Analyzing + snapshot | Segmented timeline bar | `analysisTimeline` | `accessibilityValue` = model string; label e.g. `Analysis timeline` (UX owns final copy) |
-| Analyzing without snapshot | Hide timeline (or show all-grey only if VM always seeds a snapshot before paint) | — | Prefer VM seeds snapshot synchronously in `primeEpisodeCleaningToggle` / first `onProgress` before yield |
-| Done + cleaning on | Badge only | `cleaningBadge_episodeOn` | Timeline hidden; **`analysisProgress` must not exist** (AC4) |
+| Analyzing + snapshot | *(none on row)* | — | Progress on mini/full player super seek bar |
+| Analyzing without snapshot | *(none on row)* | — | VM still seeds snapshot for player chrome |
+| Done + cleaning on | Badge and/or cleaning summary | `cleaningBadge_episodeOn` / `episode.cleaningSummary` | **`analysisProgress` and `analysisTimeline` must not exist on row** |
 | Off | Neither | — | Unchanged toggles |
 
-**Implementation preference:** Keep the existing UIKit accessibility host in the
-cell (Slice 09/23 learned that cell-scoped AX children are required for XCTest).
-Replace spinner content with a segmented bar `UIView` driven by
-`[TimelineSegmentColor]`. A SwiftUI `AnalysisTimelineView` may wrap the same
-model for previews; the **list chrome source of truth** is the UIKit host so
-identifier/`accessibilityValue` stay stable.
+**Implementation:** Keep the UIKit `progressAccessibilityHost` in the cell hierarchy
+but **always hidden** on production configure paths (height **0**, identifier **nil**).
+`AnalysisTimelineBarView` may remain for layout-test seams; list chrome is retired.
 
 **Serialize with Slice 23:** Edits land only in `EpisodeListView` analysis display
 path + fixture routing — do not redesign Library navigation (ADR-015).

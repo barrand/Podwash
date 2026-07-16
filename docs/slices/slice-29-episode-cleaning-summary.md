@@ -30,7 +30,7 @@ After an episode has been analyzed, the channel screen shows at a glance that it
 | Ad sections | Count of **all** `.unrelatedContent` intervals |
 | Ad duration | Sum of `(end − start)` for `.unrelatedContent`, ÷ **60**, displayed as **`X.X min`** (one decimal) |
 | Zeros | Analyzed with no hits still shows summary with **0** / **0** / **0.0 min** |
-| In flight | Slice 20 timeline remains while analyzing; summary appears only when analysis is **complete** (cache available / terminal) |
+| In flight | No row timeline (Task 026); summary appears only when analysis is **complete** (cache available / terminal) |
 
 ## Deliverables
 
@@ -75,7 +75,7 @@ Expected: **profanitySections = 2**, **adSections = 2**, ad duration **90.0 s** 
 - [ ] 3. Unit test: `adDurationSeconds = 45.0` → formatted string **`0.8 min`** (45/60 = 0.75 → one-decimal **round half up** to **0.8**). Pin rounding in ADR.
 - [ ] 4. UI test (channel/podcast detail fixture): episode with **no** interval cache → cleaning summary identifier **does not exist** within **2 s** of list appearing.
 - [ ] 5. UI test (same surface, fixture seeds IntervalCache with the pinned intervals for row **0**, analysis complete / not in-flight): within **5 s**, summary element exists; `accessibilityValue` (or documented child values) encodes **profanity=2**, **ads=2**, and minutes **`1.5`** (exact format pinned in UX — e.g. `profanity:2,ads:2,adMinutes:1.5`).
-- [ ] 6. UI test (Slice 20 stepped timeline still in flight on row 0): `analysisTimeline` exists; cleaning summary for that row **does not exist** until terminal/complete (summary must not replace in-flight timeline).
+- [ ] 6. UI test (Slice 20 stepped analysis still in flight on row 0): `analysisTimeline` **does not exist** on the row; cleaning summary for that row **does not exist** until terminal/complete (summary must not appear while analyzing).
 
 ## Verification mapping
 
