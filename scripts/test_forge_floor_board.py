@@ -992,5 +992,39 @@ class SessionBundleNameTests(unittest.TestCase):
             self.assertEqual(meta["extra"]["kind"], "task-batch")
 
 
+class FloorTimestampTests(unittest.TestCase):
+    def test_format_event_ts_mt_from_utc_iso(self):
+        import factory_floor.server as floor
+
+        # 2026-07-16T05:37:12Z → 23:37:12 MDT (UTC-6 in July)
+        out = floor.format_event_ts_mt("2026-07-16T05:37:12Z")
+        self.assertEqual(out, "23:37:12 MT")
+
+    def test_live_verify_started_at_uses_newest_bundle(self):
+        import factory_floor.server as floor
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            results = root / "build" / "test-results"
+            results.mkdir(parents=True)
+            old = results / "verify-20260716-010000.xcresult"
+            new = results / "verify-20260716-080234.xcresult"
+            old.mkdir()
+            new.mkdir()
+            t_old = time.time() - 7200
+            t_new = time.time() - 3600
+            os.utime(old, (t_old, t_old))
+            os.utime(new, (t_new, t_new))
+
+            orig = floor.REPO_ROOT
+            try:
+                floor.REPO_ROOT = root
+                started = floor._live_verify_started_at()
+            finally:
+                floor.REPO_ROOT = orig
+            self.assertIsNotNone(started)
+            self.assertAlmostEqual(started, t_new, delta=2.0)
+
+
 if __name__ == "__main__":
     unittest.main()

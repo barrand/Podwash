@@ -29,6 +29,7 @@ from forge_work import (
     query_next_work,
     verify_is_ship_green,
 )
+from slice_loop_progress import ThrashHalt
 from rapid_task_pipeline import run_task_pipeline
 from slice_pipeline import InfraHalt, run_pipeline_slice
 
@@ -151,6 +152,7 @@ def run_batch_gate_unified(
     pre = tl.build_batch_incident(reason="mechanic_pending", machine_tried=list(machine_tried))
     tl.write_batch_failure(pre)
     tl.notify_cant_ship(pre)
+    mechanic_thrashed = False
     try:
         from cursor_bridge import launch_bridge
         from factory_progress import ProgressTracker
@@ -174,31 +176,38 @@ def run_batch_gate_unified(
                 client.close()
             except Exception:
                 pass
+    except ThrashHalt as thrash:
+        # Do not burn another full tier-3 after Mechanic already thrashed.
+        mechanic_thrashed = True
+        log(f"batch Mechanic thrash — skipping post-Mechanic full verify: {thrash}")
     except Exception as exc:
         log(f"batch Mechanic failed: {exc}")
 
     if tl.read_controls().get("paused"):
         return EXIT_WAIT
 
-    ctrl = tl.read_controls()
-    ctrl["batch_running"] = True
-    tl.write_controls(ctrl)
-    try:
-        outcome2 = run_verify(REPO_ROOT, log=log, tier=3)
-    finally:
+    if not mechanic_thrashed:
         ctrl = tl.read_controls()
-        ctrl["batch_running"] = False
+        ctrl["batch_running"] = True
         tl.write_controls(ctrl)
+        try:
+            outcome2 = run_verify(REPO_ROOT, log=log, tier=3)
+        finally:
+            ctrl = tl.read_controls()
+            ctrl["batch_running"] = False
+            tl.write_controls(ctrl)
 
-    if outcome2 and outcome2.green and outcome2.result and verify_is_ship_green(outcome2.result):
-        return _finish_batch_green(
-            outcome2.result,
-            events=events,
-            no_commit=no_commit,
-            no_push=no_push,
-        )
+        if outcome2 and outcome2.green and outcome2.result and verify_is_ship_green(
+            outcome2.result
+        ):
+            return _finish_batch_green(
+                outcome2.result,
+                events=events,
+                no_commit=no_commit,
+                no_push=no_push,
+            )
 
-    # Still red — bisect then Your-move
+    # Still red (or Mechanic thrash) — cheap bisect then Your-move / Medic
     machine_tried.append("bisect")
     bisect_info: dict[str, Any] = {}
     if last_green:
@@ -214,6 +223,8 @@ def run_batch_gate_unified(
     )
     if bisect_info:
         incident["bisect"] = bisect_info
+    if mechanic_thrashed:
+        incident["mechanic_thrashed"] = True
     tl.write_batch_failure(incident)
     tl.write_batch_halt_bundle(incident, reason="still_red")
     tl.set_station(
@@ -488,11 +499,10 @@ def main(argv: list[str] | None = None) -> int:
                     skip=args.skip_batch_gate,
                     force=True,
                 )
+                # Thrash/infra must exit to forge_supervisor (Medic / stop),
+                # not idle-continue into another overnight ship gate.
                 if code != EXIT_OK:
-                    if args.once:
-                        return code
-                    tl.wait_while_queue_idle()
-                    continue
+                    return code
                 if tl.park_pause_after_current():
                     continue
 

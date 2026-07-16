@@ -23,6 +23,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, "scripts"))
 
 from rapid_task_pipeline import run_task_pipeline
+from slice_loop_progress import ThrashHalt
 from task_ticket import (
     batch_failures_are_scope_miss,
     collect_done_surgical_tests,
@@ -929,6 +930,7 @@ def run_batch_gate(
     )
 
     # One Mechanic tier-3 pass
+    mechanic_thrashed = False
     try:
         from cursor_bridge import launch_bridge
         from factory_progress import ProgressTracker
@@ -953,8 +955,29 @@ def run_batch_gate(
                 client.close()
             except Exception:
                 pass
+    except ThrashHalt as thrash:
+        mechanic_thrashed = True
+        log(f"batch Mechanic thrash — skipping post-Mechanic full verify: {thrash}")
     except Exception as exc:
         log(f"batch Mechanic failed: {exc}")
+
+    if mechanic_thrashed:
+        incident = build_batch_incident(
+            reason="still_red",
+            machine_tried=machine_tried,
+        )
+        incident["mechanic_thrashed"] = True
+        write_batch_failure(incident)
+        write_batch_halt_bundle(incident, reason="still_red")
+        log("BATCH BLOCKED — Mechanic thrash; Medic (supervisor) or Needs you")
+        set_station(
+            phase="batch",
+            role="loop",
+            detail="Can't ship — Needs you (Mechanic thrash)",
+            batch={"state": "needs_decision", "needed": True, "reason": "still_red"},
+        )
+        notify_cant_ship(incident)
+        return EXIT_THRASH
 
     ctrl = read_controls()
     ctrl["batch_running"] = True
@@ -1193,11 +1216,8 @@ def main(argv: list[str] | None = None) -> int:
                     force=True,
                 )
                 if code != EXIT_OK:
-                    # Stay alive for Floor Your move (Retry / Don't push).
-                    if args.once:
-                        return code
-                    wait_while_queue_idle()
-                    continue
+                    # Thrash/infra must exit to forge_supervisor (Medic / stop).
+                    return code
                 if park_pause_after_current():
                     continue
 
@@ -1240,7 +1260,8 @@ def main(argv: list[str] | None = None) -> int:
                     )
                     if park_pause_after_current():
                         continue
-                    if code != EXIT_OK and args.once:
+                    if code != EXIT_OK:
+                        # Thrash/infra → supervisor; do not idle-spin another verify.
                         return code
                 # Stay alive: empty punch-list must not shut the Floor down.
                 wait_while_queue_idle()

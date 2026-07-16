@@ -29,7 +29,9 @@ BATCH_GATE = REPO_ROOT / "build" / "factory" / "batch-gate.json"
 BATCH_FAILURE = REPO_ROOT / "build" / "factory" / "batch-failure.json"
 STATION = REPO_ROOT / "build" / "factory" / "station.json"
 HEARTBEAT = REPO_ROOT / "build" / "factory" / "heartbeat.json"
+FORGE_LOOP_LOG = REPO_ROOT / "build" / "factory" / "forge-loop.log"
 EVENTS_DIR = REPO_ROOT / "build" / "test-results"
+FLOOR_TZ = "America/Denver"  # Mountain Time (MDT/MST) for event feed display
 
 STARTING_GRACE_S = 30.0
 ORPHAN_RESTART_COOLDOWN_S = 45.0
@@ -356,6 +358,38 @@ def _file_age_s(path: Path) -> float | None:
         return None
 
 
+def _live_verify_started_at() -> float | None:
+    """Birth time of the newest verify-*.xcresult bundle (in-flight full suite)."""
+    results = REPO_ROOT / "build" / "test-results"
+    if not results.is_dir():
+        return None
+    newest: float | None = None
+    for path in results.glob("verify-*.xcresult"):
+        try:
+            st = path.stat()
+            born = float(getattr(st, "st_birthtime", st.st_ctime))
+            if newest is None or born > newest:
+                newest = born
+        except OSError:
+            continue
+    return newest
+
+
+def format_event_ts_mt(raw: Any) -> str:
+    """Format event timestamp for the Floor feed in Mountain Time."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    epoch = _parse_event_ts(raw)
+    if epoch is None:
+        return ""
+    try:
+        dt = datetime.fromtimestamp(epoch, tz=ZoneInfo(FLOOR_TZ))
+        return dt.strftime("%H:%M:%S MT")
+    except Exception:
+        return ""
+
+
 def _parse_event_ts(raw: Any) -> float | None:
     """Parse event timestamp (unix float or ISO-ish string) to epoch seconds."""
     if raw is None:
@@ -582,6 +616,8 @@ def _fmt_task_id(task_id: Any) -> str:
 
 def _activity_ages(
     events: list[dict[str, Any]],
+    *,
+    runner_alive: bool = False,
 ) -> dict[str, float | None]:
     station_age_s = _file_age_s(STATION)
     hb = _read_json_file(HEARTBEAT)
@@ -594,6 +630,10 @@ def _activity_ages(
         hb_age_s = None
     last_event_age_s = _last_event_age_s(events)
     ages = [a for a in (station_age_s, hb_age_s, last_event_age_s) if a is not None]
+    if runner_alive:
+        loop_log_age = _file_age_s(FORGE_LOOP_LOG)
+        if loop_log_age is not None:
+            ages.append(loop_log_age)
     activity_age_s = min(ages) if ages else None
     return {
         "station_age_s": station_age_s,
@@ -661,7 +701,7 @@ def _activity_snapshot(
     ev_event = str(last_ev.get("event") or "").strip()
 
     batch_plain = _batch_plain(str(batch.get("reason") or ""), str(batch.get("state") or ""))
-    ages = _activity_ages(events)
+    ages = _activity_ages(events, runner_alive=runner_alive)
     verify_running = bool(batch.get("verify_running"))
     batch_flag = bool(ctrl.get("batch_running")) or bool(batch.get("batch_running"))
     started_at = ctrl.get("started_at")
@@ -1194,6 +1234,10 @@ def board_snapshot() -> dict[str, Any]:
             str(merged.get("reason") or ""), str(merged.get("state") or "")
         )
         batch = merged
+    if batch.get("verify_running") or batch.get("state") in ("verifying", "running"):
+        live_start = _live_verify_started_at()
+        if live_start is not None:
+            batch["verify_started_at"] = live_start
     factory_hot = HOT.is_file()
     activity = _activity_snapshot(
         ctrl=ctrl,
@@ -2154,8 +2198,28 @@ function batchLabel(b, activity) {
 }
 
 
+function formatEventTs(raw) {
+  if (raw == null || raw === "") return "";
+  let ms;
+  const s = String(raw).trim();
+  if (/^\\d+(\\.\\d+)?$/.test(s)) {
+    const n = Number(s);
+    ms = n > 1e12 ? n : n * 1000;
+  } else {
+    ms = Date.parse(s);
+  }
+  if (!Number.isFinite(ms)) return "";
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Denver",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date(ms)) + " MT";
+}
+
 function formatEvent(ev) {
-  const ts = (ev.ts || "").replace("T", " ").replace("Z", "").slice(11, 19) || "";
+  const ts = formatEventTs(ev.ts);
   const slice = ev.slice != null ? `task/slice ${ev.slice}` : "";
   const parts = [ev.phase, ev.role || ev.agent_name, ev.event, slice]
     .filter(Boolean).map(String);

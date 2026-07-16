@@ -63,7 +63,10 @@ Floor writes `build/factory/controls.json` (pause, pause_after_current, ship_now
 - Per item (task or slice): tier-2 surgical tests → **Implemented** (`filtered=1` OK)
 - Ship gate: tier-3a (units) then tier-3 (full); requires `tier=3 filtered=0` to promote to **Done**
 - Tier-3 full suite does **not** retry flakes (avoids doubling wall time); tier-3a / unit-filtered runs still retry once
-- On batch red: Mechanic once, then lightweight commit-range bisect (tier-3a), then **Your move**
+- On batch red: Mechanic once; if Mechanic **thrashes**, skip a second full tier-3 (bisect only) and **exit the loop** (`EXIT_THRASH`) so the Medic supervisor can run
+- Ship thrash/infra **returns to `forge_supervisor`** — do not idle-continue into another overnight Full verify
+- Medic heals **factory scripts only** (`scripts/**`); product XCTest failures are `lane=test` → Medic declines → Floor **Your move** (Mechanic/Engineer own app fixes)
+- Event feed timestamps display in **Mountain Time** (`MT`); live verify elapsed tracks the current `verify-*.xcresult` bundle
 - CI status is surfaced on the Floor as a safety net between manual ship gates (push-per-item)
 - **Don't push** acknowledges the incident; **Retry** reopens + `ship_now`
 

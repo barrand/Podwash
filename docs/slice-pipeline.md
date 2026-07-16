@@ -314,11 +314,18 @@ scripts/forge.sh --no-self-heal --max 1  # plain forge_loop, no Medic
 | Post-mortems | `docs/forge/medic-reports/` |
 
 **When Medic runs:** exit **5** (thrash), or exit **6** after one free plain retry.
+Ship-gate thrash must **exit the loop** (not idle-continue) so the supervisor
+sees exit 5. After Mechanic thrash on a red ship gate, the loop skips a second
+full tier-3 verify (cheap bisect only) and returns `EXIT_THRASH`.
 
 **Pipeline:** structured diagnose JSON → lane gate (`test` → human) → one-shot
 critic rubric → implement (`scripts/**` only) → diff denylist (hard reject) →
 regression canary (new test **fails** on pre-fix tree, **passes** after) →
 full factory unit suite → commit `forge: harden …` → resume.
+
+**Lane=test:** real product XCTest failures are **not** Medic work — diagnose
+writes a report and declines. Mechanic (app) / Engineer fix the suite; Medic
+only hardens the factory when the *pipeline* misbehaved.
 
 **Models:** Medic diagnose + implement = `grok-4.5` (`fast=false`, `effort=high`);
 critic = `composer-2.5` (`fast=false`). Never fast variants.
@@ -340,7 +347,8 @@ python3 -m unittest scripts.test_factory_v3 scripts.test_factory_p1 \
   scripts.test_fix_lanes scripts.test_factory_hardening \
   scripts.test_hypothesis_ledger scripts.test_slice_pipeline \
   scripts.test_slice_loop_progress scripts.test_failure_packet \
-  scripts.test_forge_medic scripts.test_forge_supervisor -q
+  scripts.test_forge_medic scripts.test_forge_supervisor \
+  scripts.test_forge_ship_gate_thrash -q
 ./scripts/test-verify-tiers.sh
 scripts/forge.sh --max 1                            # unattended (Medic on)
 scripts/forge.sh --no-self-heal --max 1             # plain forge_loop, no Medic
