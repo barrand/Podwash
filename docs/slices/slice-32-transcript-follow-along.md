@@ -29,7 +29,7 @@ Let a listener read along with karaoke-style **per-word** highlighting, keep the
 | Break trigger | User-initiated vertical scroll / drag on the transcript `ScrollView` (not programmatic follow scrolls) |
 | Snap-back | Button `transcript.snapToFollow` — **visible and hittable only when follow mode is off**; tap sets follow **on** and scrolls to the active word |
 | Live position source | Engine / shell playhead while sheet is open (not a one-shot resume snapshot) |
-| Mini player on transcript | **Out of scope** — filed as Task 027 (same shell `miniPlayer`) |
+| Mini player on transcript | **Out of scope** — filed as Task 029 (same shell `miniPlayer`) |
 
 ## Deliverables
 
@@ -43,11 +43,11 @@ Let a listener read along with karaoke-style **per-word** highlighting, keep the
 
 - Slice 26 (Done) — transcript viewer + paragraph layout (Task 021)
 
-**Parallelizable:** Yes vs Task 027 (mini player under transcript) if workers do not both edit `AppShellView` / transcript presentation at once — serialize those files if both are In Progress.
+**Parallelizable:** Yes vs Task 029 (mini player under transcript) if workers do not both edit `AppShellView` / transcript presentation at once — serialize those files if both are In Progress.
 
 ## Out-of-scope
 
-- Mini player visibility under / beside the transcript sheet (**Task 027**)
+- Mini player visibility under / beside the transcript sheet (**Task 029**)
 - Tap word / paragraph → seek
 - Sentence-only highlight (intake chose per-word)
 - Profanity highlighting, search, copy/share, speaker diarization

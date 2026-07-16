@@ -917,6 +917,24 @@ def _activity_snapshot(
                 agents_out=agents,
             )
         if phase.lower() in ("idle",):
+            # New Queued work while the loop is park-waiting — prefer picking over quiet.
+            if queued:
+                return pack(
+                    mode="picking",
+                    headline="Picking next work item",
+                    detail=f"{len(queued)} item(s) ready in the unified queue.",
+                    next_line=(
+                        "Nothing needed from you — the next card will move to In Progress shortly."
+                    ),
+                    agents_out=[
+                        {
+                            "role": "loop",
+                            "task": "",
+                            "phase": "queue",
+                            "doing": "selecting next task or slice",
+                        }
+                    ],
+                )
             if halted:
                 return pack(
                     mode="quiet",
@@ -1930,6 +1948,15 @@ main {
   border: 1px solid var(--border, #444); color: var(--muted); opacity: 0.85;
 }
 .gate-chip.done { border-color: var(--ok, #3a3); color: var(--ok, #3a3); opacity: 1; }
+#toast {
+  position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%);
+  z-index: 100; max-width: min(28rem, 90vw); padding: 0.65rem 1rem;
+  border-radius: 8px; background: #2a3038; color: var(--ink);
+  border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  font-size: 0.88rem; line-height: 1.35; display: none;
+}
+#toast.show { display: block; }
+#toast.err { border-color: #6a4538; color: var(--warn); }
 </style>
 </head>
 <body>
@@ -2011,6 +2038,7 @@ main {
   <h2 id="drawerTitle"></h2>
   <div id="drawerBody"></div>
 </div>
+<div id="toast" role="status" aria-live="polite"></div>
 <script>
 const cols = ["Queued","In Progress","Needs-human","Halted","Done"];
 let snap = null;
@@ -2353,6 +2381,10 @@ function render() {
   } else if (["working","batch","picking","batch_pending","needs_decision","held"].includes(mode)) {
     hot.textContent = "forge";
     hot.className = "status-pill hot";
+  } else if (mode === "quiet") {
+    // Loop alive, waiting for intake / ship — not stopped.
+    hot.textContent = "idle";
+    hot.className = "status-pill hot";
   } else {
     hot.textContent = "stopped";
     hot.className = "status-pill";
@@ -2457,7 +2489,8 @@ function render() {
   const held = batch.state === "held" || mode === "held";
   const fail = batch.failure || null;
   const halted = items.filter(i => /Halted/i.test(i.status||""));
-  const factoryStopped = mode === "stopped" || mode === "idle" || mode === "quiet";
+  const factoryStopped = mode === "stopped" || mode === "idle";
+  // quiet = runner alive waiting — do not pitch Start Forge as the lead story.
 
   function cantShipHtml() {
     const reason = (fail && fail.reason) || batch.reason || "still_red";
@@ -2784,7 +2817,17 @@ function syncToolbar(snap, activity) {
     return;
   }
 
-  // stopped / idle / quiet
+  if (mode === "quiet") {
+    // Alive but idle — Start would no-op with "already running".
+    btnStart.textContent = "Idle";
+    btnStart.disabled = true;
+    show(pauseGroup, true);
+    btnPause.classList.add("primary");
+    if (btnPauseMenu) btnPauseMenu.disabled = false;
+    return;
+  }
+
+  // stopped / idle
   btnStart.textContent = "Start Forge";
   btnStart.disabled = false;
   btnStart.classList.add("primary");
@@ -2845,8 +2888,41 @@ async function openDrawer(item) {
 }
 
 async function post(path, body) {
-  await fetch(path, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body||{}) });
+  try {
+    const r = await fetch(path, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(body || {}),
+    });
+    let data = {};
+    try { data = await r.json(); } catch (_) {}
+    const msg = data.message || data.error || "";
+    if (!r.ok) {
+      console.warn("Forge Floor control failed", path, body, data);
+      flash(msg || `Request failed (${r.status})`, true);
+    } else if (msg) {
+      console.info("Forge Floor control", msg);
+      // Always surface start/stop outcomes — silent "already running" looked broken.
+      if (body && (body.action === "start" || body.action === "start_slices" || body.action === "stop"
+          || /already running|started|stopped|paused|resumed|queued|orphan/i.test(msg))) {
+        flash(msg);
+      }
+    }
+  } catch (e) {
+    console.error("Forge Floor control error", e);
+    flash(String((e && e.message) || e), true);
+  }
   await refresh();
+}
+
+function flash(text, isErr) {
+  const el = document.getElementById("toast");
+  if (!el || !text) return;
+  el.textContent = text;
+  el.classList.toggle("err", !!isErr);
+  el.classList.add("show");
+  clearTimeout(flash._t);
+  flash._t = setTimeout(() => el.classList.remove("show"), 4000);
 }
 
 async function refresh() {

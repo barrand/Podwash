@@ -122,6 +122,18 @@ if [ ! -s "$TMP" ]; then
     exit 1
 fi
 
+# Duplicate IDs: DECIDE_AWK keeps the last file per id — a Queued ticket can vanish
+# behind an Implemented twin (Floor shows both; next-task starts neither).
+awk -F'\t' '
+{
+  id = $1 + 0
+  if (id in seen) {
+    printf "next-task.sh: duplicate task id %03d — last file wins; renumber the other ticket\n", id > "/dev/stderr"
+  }
+  seen[id] = 1
+}
+' "$TMP"
+
 # Fields after id: status vg deps title prio kind area file
 # $1=id $2=status $3=vg $4=deps $5=title $6=prio $7=kind $8=area $9=file
 DECIDE_AWK='
