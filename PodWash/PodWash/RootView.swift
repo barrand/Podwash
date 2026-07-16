@@ -150,6 +150,7 @@ struct RootView: View {
 
     private func loadFixtureAudioIfNeeded() async {
         guard FixtureAudio.isEnabled, fixtureEngine == nil else { return }
+        FixtureAudio.prepareFreshPlaybackRate()
         guard let url = FixtureAudio.bundledURL() else { return }
         let engine = PlaybackEngine(
             url: url,

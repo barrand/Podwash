@@ -381,6 +381,60 @@ def _ci_badge(status: Any, conclusion: Any) -> str:
     return "unknown"
 
 
+def summarize_ci_safety_net(
+    runs: list[dict[str, Any]],
+    *,
+    head_sha: str | None = None,
+) -> dict[str, Any]:
+    """Collapse CI history to HEAD status + older counts (Floor calm display).
+
+    ``runs`` should be newest-first (as from ``fetch_ci_status`` / ``gh run list``).
+    """
+    head_norm = (head_sha or "").strip().lower()
+    head_run: dict[str, Any] | None = None
+    if head_norm:
+        for row in runs:
+            row_sha = str(row.get("head_sha") or row.get("sha") or "").strip().lower()
+            if row_sha.startswith(head_norm[:12]) or head_norm.startswith(row_sha[:12]):
+                head_run = row
+                break
+    if head_run is None and runs:
+        # No HEAD match yet (push in flight) — show newest run as "latest".
+        head_run = runs[0]
+
+    older = [r for r in runs if r is not head_run]
+    counts = {"fail": 0, "pass": 0, "pending": 0, "unknown": 0}
+    for row in older:
+        badge = str(row.get("badge") or "unknown")
+        if badge not in counts:
+            badge = "unknown"
+        counts[badge] += 1
+
+    head_out: dict[str, Any] | None = None
+    if head_run is not None:
+        head_out = {
+            "sha": head_run.get("sha") or (str(head_run.get("head_sha") or "")[:12]),
+            "badge": head_run.get("badge") or "unknown",
+            "url": head_run.get("url"),
+            "title": head_run.get("title"),
+            "matches_head": bool(
+                head_norm
+                and str(head_run.get("head_sha") or head_run.get("sha") or "")
+                .lower()
+                .startswith(head_norm[:12])
+            ),
+        }
+
+    return {
+        "head": head_out,
+        "older_total": len(older),
+        "older_fail": counts["fail"],
+        "older_pass": counts["pass"],
+        "older_pending": counts["pending"],
+        "older_unknown": counts["unknown"],
+    }
+
+
 def task_gate_chips() -> list[dict[str, Any]]:
     """Short gate strip for punch-list tasks."""
     return [

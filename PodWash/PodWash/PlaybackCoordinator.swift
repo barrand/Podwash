@@ -49,6 +49,10 @@ final class PlaybackCoordinator {
         self.pipeline = pipeline
         self.engine = engine
         self.settingsStore = settingsStore
+        if let settingsStore {
+            engine.bind(settingsStore: settingsStore)
+            engine.seedSelectedRate(from: settingsStore)
+        }
         self.overlayEngine = OverlayEngine(
             player: engine.avPlayer,
             eventRecorder: eventRecorder,

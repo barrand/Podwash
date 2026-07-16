@@ -168,6 +168,11 @@ nonisolated final class SettingsStore: @unchecked Sendable {
         }
     }
 
+    /// Resets only default playback rate so UI fixture launches at 1.0× (task-028).
+    static func resetDefaultPlaybackRate(in userDefaults: UserDefaults = .standard) {
+        userDefaults.set(Float(1.0), forKey: Keys.defaultPlaybackRate)
+    }
+
     func isCategoryEnabled(_ categoryID: String) -> Bool {
         enabledCategoryIDs.contains(categoryID)
     }

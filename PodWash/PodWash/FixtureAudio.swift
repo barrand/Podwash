@@ -20,4 +20,10 @@ enum FixtureAudio {
 
     static let fixtureTitle = "Fixture Clip"
     static let fixtureArtist = "PodWash Tests"
+
+    /// Keeps `-UITestFixtureAudio` starting at 1.0× when global rate is persisted (task-028).
+    nonisolated static func prepareFreshPlaybackRate(in defaults: UserDefaults = .standard) {
+        guard isEnabled else { return }
+        SettingsStore.resetDefaultPlaybackRate(in: defaults)
+    }
 }

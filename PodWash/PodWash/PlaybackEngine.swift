@@ -20,8 +20,12 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     private(set) var duration: TimeInterval = 0
     private(set) var uiRefreshToken = 0
 
-    /// Session-selected playback rate; re-applied on `play()` (not persisted across launches).
+    /// Session-selected playback rate; re-applied on `play()`. Seeded from
+    /// `SettingsStore.defaultPlaybackRate` when bound; `setRate` writes back (task-028).
     private(set) var selectedRate: Float = 1.0
+
+    /// When set, `setRate` / `cycleRate` persist to `defaultPlaybackRate`.
+    @ObservationIgnored private var settingsStore: SettingsStore?
 
     /// The currently attached censor schedule, or `nil` if none (ADR-002 §3).
     private(set) var activeSchedule: IntervalSchedule?
@@ -331,11 +335,22 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
 
     // MARK: - Playback rate (Slice 12)
 
+    /// Wires the global default-rate store so player speed changes persist (task-028).
+    func bind(settingsStore: SettingsStore) {
+        self.settingsStore = settingsStore
+    }
+
+    /// Seeds `selectedRate` from persisted defaults without writing back to the store.
+    func seedSelectedRate(from settingsStore: SettingsStore) {
+        selectedRate = Self.nearestSupportedRate(to: settingsStore.defaultPlaybackRate)
+    }
+
     /// Sets a discrete supported rate. While playing, applies to `AVPlayer.rate`
     /// immediately; while paused, stores for the next `play()`.
     func setRate(_ rate: Float) {
         let resolved = Self.nearestSupportedRate(to: rate)
         selectedRate = resolved
+        settingsStore?.defaultPlaybackRate = resolved
 
         // Only touch AVPlayer while actively playing (or mid-rate). Prefer an
         // in-place `rate` write; if that parks us in waiting/paused, resume with

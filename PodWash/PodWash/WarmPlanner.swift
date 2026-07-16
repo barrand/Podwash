@@ -115,17 +115,24 @@ final class WarmPlanner {
                 episodeID: item.episodeID,
                 targetWords: settingsStore.activeNormalizedTargetSet()
             ) == nil {
-                _ = try await analyzer.analyze(
-                    episode: EpisodeIdentity(id: item.episodeID),
+                let targets = settingsStore.activeNormalizedTargetSet()
+                let unrelated = UnrelatedContentOptions(
+                    enabled: settingsStore.unrelatedContentEnabled
+                        && cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: item.feedURL),
+                    action: settingsStore.unrelatedCensorAction()
+                )
+                let intervals = try await Self.analyzeWithOneRetry(
+                    analyzer: analyzer,
+                    episodeID: item.episodeID,
                     audioURL: localURL,
-                    targetWords: settingsStore.activeNormalizedTargetSet(),
-                    injectedTranscript: nil,
+                    targetWords: targets,
                     profanityAction: settingsStore.censorAction(),
-                    unrelatedContent: UnrelatedContentOptions(
-                        enabled: settingsStore.unrelatedContentEnabled
-                            && cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: item.feedURL),
-                        action: settingsStore.unrelatedCensorAction()
-                    )
+                    unrelatedContent: unrelated
+                )
+                try intervalCache.store(
+                    intervals,
+                    episodeID: item.episodeID,
+                    targetWords: targets
                 )
             }
             guard generation == warmGeneration else { return }
@@ -143,6 +150,36 @@ final class WarmPlanner {
         } catch {
             PlaybackDiagnostics.error(
                 "WarmPlanner failed episodeID=\(item.episodeID) error=\(error.localizedDescription)"
+            )
+        }
+    }
+
+    /// ADR-029: retry analysis once, then surface failure to caller.
+    private static func analyzeWithOneRetry(
+        analyzer: any EpisodeAnalyzing,
+        episodeID: String,
+        audioURL: URL,
+        targetWords: Set<String>,
+        profanityAction: CensorAction,
+        unrelatedContent: UnrelatedContentOptions
+    ) async throws -> [CensorInterval] {
+        do {
+            return try await analyzer.analyze(
+                episode: EpisodeIdentity(id: episodeID),
+                audioURL: audioURL,
+                targetWords: targetWords,
+                injectedTranscript: nil,
+                profanityAction: profanityAction,
+                unrelatedContent: unrelatedContent
+            )
+        } catch {
+            return try await analyzer.analyze(
+                episode: EpisodeIdentity(id: episodeID),
+                audioURL: audioURL,
+                targetWords: targetWords,
+                injectedTranscript: nil,
+                profanityAction: profanityAction,
+                unrelatedContent: unrelatedContent
             )
         }
     }
