@@ -2,40 +2,60 @@
 //  HeuristicContentSegmenter.swift
 //  PodWash
 //
-//  span-grow-v1 / heuristic-cue-v5 — precision-first ad detection:
-//  anchor openers → grow through ad copy → snap to silence gaps → merge pods.
+//  heuristic-cue-v6 — sentence-scored ad detection with brand carry + hysteresis.
+//  Replaces span-grow / density / gap-snap machinery from v5.
 //
 
 import Foundation
 
-/// Precision-first ad segmenter (span-grow-v1). Deterministic over `[TimedWord]`.
+/// Sentence-first ad segmenter (heuristic-cue-v6). Deterministic over `[TimedWord]`.
 struct HeuristicContentSegmenter: ContentSegmenting {
 
-    var approachIdentifier: String { "heuristic-cue-v5" }
+    var approachIdentifier: String { "heuristic-cue-v6" }
 
     func segments(in transcript: [TimedWord]) -> [ContentSegment] {
         let tokens = Self.normalizedTokens(from: transcript)
         guard tokens.count >= 3 else { return [] }
 
-        let features = Self.blockFeatures(tokens)
-        let anchors = Self.findAnchors(in: tokens)
-        var grown: [TimeRange] = anchors.map { Self.growFromAnchor($0, tokens: tokens, features: features) }
+        let sentences = Self.groupSentences(tokens)
+        guard !sentences.isEmpty else { return [] }
 
-        for dens in Self.densityWindows(tokens: tokens, features: features) {
-            let nearAnchor = grown.contains {
-                abs(dens.start - $0.start) < 30
-                    || abs(dens.end - $0.end) < 30
-                    || dens.start <= $0.end + 5 && dens.end >= $0.start - 5
+        var brandCarry: Set<String> = []
+        var scores: [Double] = []
+        var openerHits: [Bool] = []
+        var closerHits: [Bool] = []
+        var resumeHits: [Bool] = []
+
+        for sentence in sentences {
+            let text = Self.joinedBare(sentence)
+            let opener = Self.containsFuzzyOpener(text)
+            let closer = Self.containsFuzzyCloser(text)
+            if opener {
+                for name in Self.extractBrandAfterOpener(sentence) {
+                    brandCarry.insert(name)
+                }
             }
-            if nearAnchor {
-                grown.append(dens)
-            }
+            let score = Self.scoreSentence(
+                sentence,
+                text: text,
+                brandCarry: brandCarry,
+                hasOpener: opener,
+                hasCloser: closer
+            )
+            scores.append(score)
+            openerHits.append(opener)
+            closerHits.append(closer)
+            let firstBare = sentence.tokens.first.map(\.bare) ?? ""
+            resumeHits.append(Self.resumeStarters.contains(firstBare) && !opener)
         }
 
-        let gaps = Self.silenceGaps(tokens)
-        let snapped = Self.applyGapSnapping(grown, gaps: gaps)
-        let merged = Self.mergeTimeRanges(snapped, gapSeconds: Constants.mergeGapSeconds)
-        return merged
+        let states = Self.smoothStates(
+            scores: scores,
+            openers: openerHits,
+            closers: closerHits,
+            resumes: resumeHits
+        )
+        return Self.podsFromStates(sentences: sentences, states: states)
             .filter { $0.end - $0.start >= Constants.minDurationSeconds }
             .map { ContentSegment(start: $0.start, end: $0.end) }
     }
@@ -43,29 +63,26 @@ struct HeuristicContentSegmenter: ContentSegmenting {
     // MARK: - Constants
 
     private enum Constants {
-        static let blockSeconds: Double = 5.0
-        static let growForwardMaxSeconds: Double = 120.0
-        static let growBackwardMaxSeconds: Double = 20.0
-        static let closerBackwardMaxSeconds: Double = 55.0
-        static let gapSnapSeconds: Double = 1.0
-        static let gapSnapWindow: Double = 4.0
-        static let mergeGapSeconds: Double = 4.0
+        static let gapBoundarySeconds: Double = 0.60
+        static let maxSentenceSeconds: Double = 18.0
+        static let enterScore: Double = 4.0
+        static let stayScore: Double = 1.5
+        static let exitRun: Int = 2
         static let minDurationSeconds: Double = 5.0
-        static let anchorlessMinSeconds: Double = 12.0
-        static let densityMaxSeconds: Double = 90.0
-        static let padInsideGap: Double = 0.25
-        static let minAnchorGrowSeconds: Double = 8.0
-        static let stopGapSeconds: Double = 1.2
-        static let softStopGapSeconds: Double = 0.75
-        static let postCloserGapSeconds: Double = 0.55
+        static let brandBoost: Double = 3.0
+        static let openerBoost: Double = 6.0
+        static let closerBoost: Double = 4.0
     }
 
-    /// Precision-first openers only — no weak single-word cues.
-    private static let anchorPhrases: [String] = [
+    /// Precision-first openers (fuzzy: come/comes, optional leading dash noise).
+    private static let openerPhrases: [String] = [
         "this episode is sponsored by",
         "this message comes from",
-        "following message come from",
+        "this message come from",
         "following message comes from",
+        "following message come from",
+        "the following message comes from",
+        "the following message come from",
         "segment was brought to you by",
         "this episode is brought to you by",
         "brought to you by",
@@ -83,53 +100,63 @@ struct HeuristicContentSegmenter: ContentSegmenting {
         "apply in minutes at",
         "built to back small businesses",
         "play spinquest",
-        "support for", // handled with "comes from" scan below
+        "support for this podcast",
+        "support for this american life",
     ].sorted { $0.count > $1.count }
 
-    private static let closerAnchorSubstrings: [String] = [
+    private static let closerPhrases: [String] = [
         "learn more at",
         "discover how at",
         "start building at",
         "apply in minutes",
         "apply today",
+        "member fdic",
+        "equal housing",
+        "terms apply",
+        "see details",
+        "for details",
+        "whats in your wallet",
+        "what's in your wallet",
     ]
 
-    private static let adForwardCues: [String] = [
-        ".com", ".org", ".edu", ".ai", "discount", "promo", "use code",
-        "learn more", "sign up", "free shipping", "percent", "sponsor",
-        "sponsored", "brought to you", "offer", "coupon", "subscribe",
-        "visit", "apply",
+    private static let ctaWords: Set<String> = [
+        "visit", "go", "learn", "check", "sign", "try", "book",
+        "apply", "play", "start", "claim", "discover", "save", "shop",
+    ]
+
+    private static let priceNeedles: [String] = [
+        "free", "percent", "discount", "off", "promo", "coupon", "code",
     ]
 
     private static let resumeStarters: Set<String> = [
         "back", "anyway", "meanwhile", "okay", "ok", "alright", "now",
     ]
 
+    private static let brandStop: Set<String> = [
+        "the", "a", "an", "our", "your", "this", "that", "and", "or",
+        "for", "from", "with", "by", "to", "of", "in", "on", "at",
+        "message", "comes", "come", "sponsored", "sponsor", "podcast",
+        "episode", "show", "following", "support",
+    ]
+
     // MARK: - Models
 
     private struct Token {
         let word: String
+        let bare: String
         let start: Double
         let end: Double
     }
 
-    private struct TokenSpan {
-        var startIndex: Int
-        var endIndex: Int
+    private struct Sentence {
+        let tokens: [Token]
+        var start: Double { tokens.first!.start }
+        var end: Double { tokens.last!.end }
     }
 
     private struct TimeRange {
         var start: Double
         var end: Double
-    }
-
-    private struct BlockFeat {
-        var url: Double
-        var you: Double
-        var cta: Double
-        var price: Double
-        var score: Double
-        var n: Double
     }
 
     // MARK: - Normalize
@@ -138,7 +165,12 @@ struct HeuristicContentSegmenter: ContentSegmenting {
         transcript.compactMap { word in
             let normalized = normalize(word.word)
             guard !normalized.isEmpty else { return nil }
-            return Token(word: normalized, start: word.start, end: word.end)
+            return Token(
+                word: normalized,
+                bare: bareWord(normalized),
+                start: word.start,
+                end: word.end
+            )
         }
     }
 
@@ -155,7 +187,6 @@ struct HeuristicContentSegmenter: ContentSegmenting {
             if CharacterSet.alphanumerics.contains(scalars[prev]) { break }
             end = prev
         }
-        // Keep punctuation that marks sentence ends / URLs for gap logic.
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.hasSuffix(".") || trimmed.hasSuffix("?") || trimmed.hasSuffix("!") {
             return String(scalars[start..<end]) + String(trimmed.last!)
@@ -167,367 +198,231 @@ struct HeuristicContentSegmenter: ContentSegmenting {
         word.lowercased().trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
     }
 
-    // MARK: - Anchors
-
-    private static func findAnchors(in tokens: [Token]) -> [TokenSpan] {
-        let words = tokens.map { bareWord($0.word) }
-        var occupied = Array(repeating: false, count: tokens.count)
-        var hits: [TokenSpan] = []
-
-        // Special: "support for … comes from" with up to 6 tokens between.
-        for i in 0..<words.count {
-            guard words[i] == "support", i + 1 < words.count, words[i + 1] == "for" else { continue }
-            for j in (i + 2)..<min(i + 9, words.count - 1) {
-                if words[j] == "comes", j + 1 < words.count, words[j + 1] == "from" {
-                    let range = i...(j + 1)
-                    if range.contains(where: { occupied[$0] }) { break }
-                    for k in range { occupied[k] = true }
-                    hits.append(TokenSpan(startIndex: i, endIndex: j + 1))
-                    break
-                }
-            }
-        }
-
-        for phrase in anchorPhrases where phrase != "support for" {
-            let parts = phrase.split(separator: " ").map(String.init)
-            let n = parts.count
-            guard n > 0, words.count >= n else { continue }
-            for i in 0...(words.count - n) {
-                if occupied[i..<(i + n)].contains(true) { continue }
-                if Array(words[i..<(i + n)]) == parts {
-                    for k in i..<(i + n) { occupied[k] = true }
-                    hits.append(TokenSpan(startIndex: i, endIndex: i + n - 1))
-                }
-            }
-        }
-        let sorted = hits.sorted { $0.startIndex < $1.startIndex }
-
-        // Drop closer-only seeds inside an opener's forward window — they
-        // otherwise grow backward through story and merge pods.
-        var filtered: [TokenSpan] = []
-        var lastOpenerStart = -1e9
-        for span in sorted {
-            let text = tokens[span.startIndex...span.endIndex]
-                .map { bareWord($0.word) }
-                .joined(separator: " ")
-            let closerOnly = closerAnchorSubstrings.contains { text.contains($0) }
-            if closerOnly {
-                if tokens[span.startIndex].start - lastOpenerStart < 90.0 {
-                    continue
-                }
-            } else {
-                lastOpenerStart = tokens[span.startIndex].start
-            }
-            filtered.append(span)
-        }
-        return filtered
-    }
-
-    // MARK: - Block features
-
-    private static func blockId(_ t: Double) -> Int {
-        Int(t / Constants.blockSeconds)
-    }
-
-    private static func blockFeatures(_ tokens: [Token]) -> [Int: BlockFeat] {
-        var buckets: [Int: [String]] = [:]
-        for t in tokens {
-            buckets[blockId(t.start), default: []].append(t.word.lowercased())
-        }
-        var out: [Int: BlockFeat] = [:]
-        for (bid, words) in buckets {
-            let n = max(Double(words.count), 1)
-            let text = words.joined(separator: " ")
-            let url = Double(countMatches(text, [
-                ".com", ".org", ".edu", ".ai", "slash", "dot com",
-            ]))
-            let you = Double(countWholeWords(text, ["you", "your"]))
-            let cta = Double(countWholeWords(text, [
-                "visit", "go", "learn", "check", "sign", "try", "book",
-                "apply", "play", "start", "claim", "discover",
-            ]))
-            let price = Double(countMatches(text, ["$", "free", "percent", "%", "discount", "bucks"]))
-            out[bid] = BlockFeat(
-                url: url / n * 100,
-                you: you / n * 100,
-                cta: cta / n * 100,
-                price: price / n * 100,
-                score: (url * 4 + cta * 3 + price * 2 + you * 0.5) / n * 100,
-                n: n
-            )
-        }
-        return out
-    }
-
-    private static func countMatches(_ text: String, _ needles: [String]) -> Int {
-        needles.reduce(0) { $0 + text.components(separatedBy: $1).count - 1 }
-    }
-
-    private static func countWholeWords(_ text: String, _ words: [String]) -> Int {
-        let parts = text.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
-        let set = Set(words)
-        return parts.filter { set.contains($0) }.count
-    }
-
-    private static func isAdLike(_ feat: BlockFeat, strict: Bool = false) -> Bool {
-        if feat.url >= 1.0 || feat.cta >= 1.5 { return true }
-        if feat.score >= (strict ? 8.0 : 4.0) { return true }
-        if feat.you >= 5.0 && feat.score >= 3.0 { return true }
-        return false
-    }
-
-    private static func hasCloser(_ feat: BlockFeat?) -> Bool {
-        guard let feat else { return false }
-        return feat.url > 0 || feat.cta > 0
-    }
-
-    private static func tokenLooksLikeURL(_ word: String) -> Bool {
-        let w = word.lowercased()
-        return w.contains(".com") || w.contains(".org") || w.contains(".edu")
-            || w.contains(".ai") || bareWord(w) == "slash"
-    }
-
     private static func endsSentence(_ word: String) -> Bool {
         word.hasSuffix(".") || word.hasSuffix("?") || word.hasSuffix("!")
     }
 
-    private static func forwardLooksLikeAd(_ tokens: [Token], startIndex: Int, window: Int = 14) -> Bool {
-        let end = min(tokens.count, startIndex + window)
-        guard startIndex < end else { return false }
-        let text = tokens[startIndex..<end].map { $0.word.lowercased() }.joined(separator: " ")
-        return adForwardCues.contains { text.contains($0) }
+    private static func joinedBare(_ sentence: Sentence) -> String {
+        sentence.tokens.map(\.bare).filter { !$0.isEmpty }.joined(separator: " ")
     }
 
-    // MARK: - Grow
+    // MARK: - Sentences
 
-    private static func growFromAnchor(
-        _ span: TokenSpan,
-        tokens: [Token],
-        features: [Int: BlockFeat]
-    ) -> TimeRange {
-        var hi = span.endIndex
-        var seenCloser = false
-        var closerIdx = span.endIndex
-        let anchorText = tokens[span.startIndex...span.endIndex]
-            .map { bareWord($0.word) }
-            .joined(separator: " ")
-        let isCloserAnchor = closerAnchorSubstrings.contains { anchorText.contains($0) }
-
-        while hi < tokens.count - 1 {
-            let nxt = hi + 1
-            let duration = tokens[nxt].end - tokens[span.startIndex].start
-            if duration > Constants.growForwardMaxSeconds { break }
-            let gap = tokens[nxt].start - tokens[hi].end
-            let feat = features[blockId(tokens[nxt].start)]
-
-            if gap >= Constants.stopGapSeconds && duration >= Constants.minAnchorGrowSeconds {
-                break
-            }
-            if gap >= Constants.softStopGapSeconds
-                && duration >= Constants.minAnchorGrowSeconds
-                && endsSentence(tokens[hi].word)
-            {
-                let nextFeat = features[blockId(tokens[nxt].start)]
-                let resume = nextFeat == nil
-                    || (!isAdLike(nextFeat!) && !hasCloser(nextFeat) && nextFeat!.you < 3.0)
-                if seenCloser || (resume && !isCloserAnchor) {
-                    break
-                }
-            }
-            if gap >= Constants.softStopGapSeconds
-                && duration >= 40.0
-                && endsSentence(tokens[hi].word)
-            {
-                break
-            }
-            if duration >= Constants.minAnchorGrowSeconds
-                && endsSentence(tokens[hi].word)
-                && gap >= Constants.softStopGapSeconds
-                && !isCloserAnchor
-                && !seenCloser
-                && resumeStarters.contains(bareWord(tokens[nxt].word))
-                && !forwardLooksLikeAd(tokens, startIndex: nxt)
-            {
-                break
-            }
-
-            if tokenLooksLikeURL(tokens[nxt].word)
-                && tokens[nxt].start >= tokens[span.endIndex].end
-            {
-                seenCloser = true
-                closerIdx = nxt
-                hi = nxt
-                continue
-            }
-
-            if seenCloser {
-                if gap >= Constants.postCloserGapSeconds { break }
-                if feat == nil || !(isAdLike(feat!) || tokenLooksLikeURL(tokens[nxt].word)) {
-                    break
-                }
-                if tokens[nxt].end - tokens[closerIdx].end > 10.0 { break }
-                hi = nxt
-                continue
-            }
-            hi = nxt
-        }
-
-        var lo = span.startIndex
-        let backLimit = isCloserAnchor
-            ? Constants.closerBackwardMaxSeconds
-            : Constants.growBackwardMaxSeconds
-        let minStart = max(0.0, tokens[span.startIndex].start - backLimit)
-        while lo > 0 {
-            let prev = lo - 1
-            if tokens[prev].start < minStart { break }
-            let gap = tokens[lo].start - tokens[prev].end
-            if gap >= Constants.stopGapSeconds { break }
-            let feat = features[blockId(tokens[prev].start)]
-            if isCloserAnchor {
-                guard let feat else { break }
-                if isAdLike(feat) || feat.you >= 3.5 || hasCloser(feat) {
-                    lo = prev
-                    continue
-                }
-                // Dense continuous speech inside a DAI / native read.
-                if feat.n >= 8 && gap < Constants.softStopGapSeconds {
-                    lo = prev
-                    continue
-                }
-                break
-            }
-            if gap >= Constants.softStopGapSeconds && endsSentence(tokens[prev].word) {
-                break
-            }
-            guard let feat, isAdLike(feat) || hasCloser(feat) else { break }
-            lo = prev
-        }
-        return TimeRange(start: tokens[lo].start, end: tokens[hi].end)
-    }
-
-    // MARK: - Density
-
-    private static func densityWindows(
-        tokens: [Token],
-        features: [Int: BlockFeat]
-    ) -> [TimeRange] {
-        let bids = features.keys.sorted()
-        guard !bids.isEmpty else { return [] }
-        var spans: [TimeRange] = []
-        var i = 0
-        while i < bids.count {
-            let f = features[bids[i]]!
-            if f.url < 1.5 {
-                i += 1
-                continue
-            }
-            var j = i
-            while j + 1 < bids.count && bids[j + 1] == bids[j] + 1 {
-                let nf = features[bids[j + 1]]!
-                if isAdLike(nf) || hasCloser(nf) || nf.url > 0 {
-                    j += 1
-                } else {
-                    break
-                }
-            }
-            var back = i
-            while back > 0 && bids[back - 1] == bids[back] - 1 {
-                let pf = features[bids[back - 1]]!
-                if isAdLike(pf) || pf.you >= 5.0 || hasCloser(pf) {
-                    back -= 1
-                } else {
-                    break
-                }
-            }
-            while Double(bids[i] - bids[back]) * Constants.blockSeconds > 60 {
-                back += 1
-            }
-            var start = Double(bids[back]) * Constants.blockSeconds
-            var end = Double(bids[j] + 1) * Constants.blockSeconds
-            if end - start > Constants.densityMaxSeconds {
-                end = start + Constants.densityMaxSeconds
-            }
-            if end - start >= Constants.anchorlessMinSeconds {
-                let tokStart = tokens.first(where: { $0.end > start })?.start ?? start
-                let tokEnd = tokens.last(where: { $0.start < end })?.end ?? end
-                spans.append(TimeRange(start: tokStart, end: tokEnd))
-            }
-            i = j + 1
-        }
-        return spans
-    }
-
-    // MARK: - Gaps / merge
-
-    private static func silenceGaps(_ tokens: [Token]) -> [(Double, Double)] {
-        var gaps: [(Double, Double)] = []
-        for i in 1..<tokens.count {
-            let gap = tokens[i].start - tokens[i - 1].end
-            if gap >= Constants.gapSnapSeconds {
-                gaps.append((tokens[i - 1].end, tokens[i].start))
-            }
-        }
-        return gaps
-    }
-
-    private static func snapToGap(
-        _ t: Double,
-        gaps: [(Double, Double)],
-        window: Double = Constants.gapSnapWindow
-    ) -> Double {
-        var best = t
-        var bestDist = window + 1
-        for (gs, ge) in gaps {
-            let mid = (gs + ge) / 2
-            let edges = [
-                gs + Constants.padInsideGap,
-                ge - Constants.padInsideGap,
-                mid,
-            ]
-            for edge in edges {
-                let d = abs(edge - t)
-                if d < bestDist && d <= window {
-                    bestDist = d
-                    best = edge
-                }
-            }
-        }
-        return best
-    }
-
-    private static func applyGapSnapping(
-        _ segs: [TimeRange],
-        gaps: [(Double, Double)]
-    ) -> [TimeRange] {
-        segs.map { s in
-            var start = snapToGap(s.start, gaps: gaps)
-            var end = snapToGap(s.end, gaps: gaps)
-            if end <= start {
-                start = s.start
-                end = s.end
-            }
-            if abs(start - s.start) > Constants.gapSnapWindow { start = s.start }
-            if abs(end - s.end) > Constants.gapSnapWindow { end = s.end }
-            return TimeRange(start: start, end: end)
-        }
-    }
-
-    private static func mergeTimeRanges(
-        _ ranges: [TimeRange],
-        gapSeconds: Double
-    ) -> [TimeRange] {
-        let sorted = ranges.sorted { $0.start < $1.start }
-        guard var current = sorted.first else { return [] }
-        var merged: [TimeRange] = []
-        for range in sorted.dropFirst() {
-            if range.start > current.end + gapSeconds {
-                merged.append(current)
-                current = range
+    private static func groupSentences(_ tokens: [Token]) -> [Sentence] {
+        var sentences: [Sentence] = []
+        var current: [Token] = []
+        for i in 0..<tokens.count {
+            current.append(tokens[i])
+            let gap: Double
+            if i + 1 < tokens.count {
+                gap = tokens[i + 1].start - tokens[i].end
             } else {
-                current.end = max(current.end, range.end)
+                gap = Constants.gapBoundarySeconds
+            }
+            let duration = (current.last!.end - current.first!.start)
+            let cut =
+                endsSentence(tokens[i].word)
+                || gap >= Constants.gapBoundarySeconds
+                || duration >= Constants.maxSentenceSeconds
+                || i == tokens.count - 1
+            if cut, !current.isEmpty {
+                sentences.append(Sentence(tokens: current))
+                current = []
             }
         }
-        merged.append(current)
-        return merged
+        return sentences
+    }
+
+    // MARK: - Openers / closers / brand
+
+    private static func containsFuzzyOpener(_ text: String) -> Bool {
+        if openerPhrases.contains(where: { text.contains($0) }) { return true }
+        // "support for … comes from" with up to 6 tokens between.
+        if text.range(of: #"support for (?:[\w']+\s+){0,6}comes? from"#, options: .regularExpression) != nil {
+            return true
+        }
+        return false
+    }
+
+    private static func containsFuzzyCloser(_ text: String) -> Bool {
+        if closerPhrases.contains(where: { text.contains($0) }) { return true }
+        if text.contains(".com") || text.contains(".org") || text.contains(".edu")
+            || text.contains(".ai") || text.contains("dot com") || text.contains(" slash ")
+        {
+            return true
+        }
+        return false
+    }
+
+    private static func extractBrandAfterOpener(_ sentence: Sentence) -> [String] {
+        let bares = sentence.tokens.map(\.bare).filter { !$0.isEmpty }
+        let joined = bares.joined(separator: " ")
+        var brands: [String] = []
+
+        let markers = ["comes from", "come from", "sponsored by", "brought to you by"]
+        for marker in markers {
+            guard let range = joined.range(of: marker) else { continue }
+            let after = String(joined[range.upperBound...])
+                .trimmingCharacters(in: .whitespaces)
+            let parts = after.split(separator: " ").prefix(4).map(String.init)
+            var collected: [String] = []
+            for p in parts {
+                if brandStop.contains(p) { break }
+                if p.count < 2 { continue }
+                collected.append(p)
+                if collected.count >= 3 { break }
+            }
+            if let first = collected.first {
+                brands.append(first)
+            }
+            if collected.count >= 2 {
+                brands.append(collected.prefix(2).joined(separator: " "))
+            }
+        }
+
+        // Domains: strawberry .me / capitalone.com
+        for t in sentence.tokens {
+            let w = t.word.lowercased()
+            if w.contains(".com") || w.contains(".org") || w.contains(".me") || w.contains(".ai") {
+                let host = bareWord(w.replacingOccurrences(of: ".", with: " "))
+                if host.count >= 3 { brands.append(host) }
+            }
+            if t.bare == "slash", let prev = sentence.tokens.last(where: { $0.end <= t.start }) {
+                _ = prev
+            }
+        }
+        return brands
+    }
+
+    private static func scoreSentence(
+        _ sentence: Sentence,
+        text: String,
+        brandCarry: Set<String>,
+        hasOpener: Bool,
+        hasCloser: Bool
+    ) -> Double {
+        var score = 0.0
+        if hasOpener { score += Constants.openerBoost }
+
+        let words = sentence.tokens.map(\.bare).filter { !$0.isEmpty }
+        let n = max(Double(words.count), 1)
+
+        let you = Double(words.filter { $0 == "you" || $0 == "your" }.count)
+        score += min(3.0, you / n * 20)
+
+        let cta = Double(words.filter { ctaWords.contains($0) }.count)
+        score += min(3.0, cta * 1.2)
+
+        for needle in priceNeedles where text.contains(needle) {
+            score += 1.0
+        }
+
+        // URL / closer cues are stay/exit features — they must not alone enter ad.
+        var stayBoost = 0.0
+        if hasCloser { stayBoost += Constants.closerBoost }
+        if text.contains(".com") || text.contains("dot com") || text.contains("slash") {
+            stayBoost += 2.5
+        }
+        for brand in brandCarry {
+            if text.contains(brand) {
+                stayBoost += Constants.brandBoost
+                break
+            }
+        }
+        if text.contains("?") && you >= 1 {
+            stayBoost += 1.5
+        }
+
+        // Only apply stayBoost once we already have opener/brand context or a strong enter score.
+        if hasOpener || !brandCarry.isEmpty || score >= Constants.enterScore * 0.6 {
+            score += stayBoost
+        }
+
+        return score
+    }
+
+    // MARK: - Hysteresis
+
+    private static func smoothStates(
+        scores: [Double],
+        openers: [Bool],
+        closers: [Bool],
+        resumes: [Bool]
+    ) -> [Bool] {
+        var inAd = false
+        var lowRun = 0
+        var sawCloser = false
+        var states = Array(repeating: false, count: scores.count)
+
+        for i in 0..<scores.count {
+            if !inAd {
+                if openers[i] || scores[i] >= Constants.enterScore {
+                    inAd = true
+                    lowRun = 0
+                    sawCloser = closers[i]
+                    states[i] = true
+                }
+                continue
+            }
+
+            // In ad.
+            if resumes[i] && scores[i] < Constants.enterScore && !openers[i] {
+                inAd = false
+                lowRun = 0
+                sawCloser = false
+                states[i] = false
+                continue
+            }
+
+            if closers[i] {
+                sawCloser = true
+                states[i] = true
+                lowRun = 0
+                continue
+            }
+
+            if scores[i] >= Constants.stayScore || openers[i] {
+                lowRun = 0
+                states[i] = true
+                continue
+            }
+
+            lowRun += 1
+            let exitThreshold = sawCloser ? 1 : Constants.exitRun
+            if lowRun >= exitThreshold {
+                inAd = false
+                lowRun = 0
+                sawCloser = false
+                states[i] = false
+            } else {
+                states[i] = true
+            }
+        }
+        return states
+    }
+
+    private static func podsFromStates(
+        sentences: [Sentence],
+        states: [Bool]
+    ) -> [TimeRange] {
+        var pods: [TimeRange] = []
+        var current: TimeRange?
+        for i in 0..<sentences.count {
+            if states[i] {
+                if var cur = current {
+                    cur.end = sentences[i].end
+                    current = cur
+                } else {
+                    current = TimeRange(start: sentences[i].start, end: sentences[i].end)
+                }
+            } else if let cur = current {
+                pods.append(cur)
+                current = nil
+            }
+        }
+        if let cur = current {
+            pods.append(cur)
+        }
+        return pods
     }
 }

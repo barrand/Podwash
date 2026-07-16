@@ -81,7 +81,7 @@ struct IntervalCache: Sendable {
             + "\n"
             + "interval-format:v2"
             + "\n"
-            + "segmenter:heuristic-cue-v5"
+            + "segmenter:heuristic-cue-v6"
             + "\n"
             + "asr-model:\(asrModelPin)"
         let digest = SHA256.hash(data: Data(fp.utf8))
