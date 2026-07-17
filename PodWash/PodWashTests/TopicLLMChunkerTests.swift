@@ -78,6 +78,15 @@ final class TopicLLMChunkerTests: XCTestCase {
         XCTAssertEqual(resolved, .ad)
     }
 
+    func testStrongSponsorCueDetected() {
+        XCTAssertTrue(AdSpanStitcher.looksLikeStrongSponsor(
+            "that segment was brought to you by atrium hotel and sweets"
+        ))
+        XCTAssertFalse(AdSpanStitcher.looksLikeStrongSponsor(
+            "we're talking about recruiting and the tcu athletic director"
+        ))
+    }
+
     func testShowResumeForcesContentInMerge() {
         let w1 = TranscriptWindow(
             id: 1, start: 0, end: 20,
