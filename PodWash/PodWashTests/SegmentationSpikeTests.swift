@@ -4,8 +4,8 @@
 //
 //  Slice 18 + 34 — Content segmentation spike (FAST / Done gate).
 //  Slice 18: validates committed segmentation-benchmark-results.json vs hand-golden (IoU P/R).
-//  Slice 34: heuristic-cue-v6 failure-mode fixtures (midroll end-bleed, question hook,
-//  missed opener, single-sentence read) + opening / three-sponsor regression floors.
+//  Slice 34 / v6.1: failure-mode fixtures (midroll end-bleed, question hook,
+//  missed opener, single-sentence read, contiguous midroll, show-open) + regressions.
 //  Benchmark artifact path is deterministic + CI-safe; slice-34 unit tests run HeuristicContentSegmenter.
 //  See docs/adr/012-content-segmentation-approach.md and docs/slices/slice-34-ad-detection-v6.md.
 //
@@ -116,8 +116,8 @@ final class SegmentationSpikeTests: XCTestCase {
 
         XCTAssertEqual(
             benchmark.approach,
-            "heuristic-cue-v6",
-            "benchmark.approach must pin heuristic-cue-v6 (slice 34)"
+            "heuristic-cue-v6.1",
+            "benchmark.approach must pin heuristic-cue-v6.1"
         )
         XCTAssertGreaterThanOrEqual(benchmark.segments.count, 1, "benchmark.segments must have ≥ 1 entry")
 
@@ -266,13 +266,15 @@ final class SegmentationSpikeTests: XCTestCase {
         }
     }
 
-    // MARK: - Slice 34 / heuristic-cue-v6 failure-mode fixtures (AC1–AC4)
+    // MARK: - Slice 34 / heuristic-cue-v6.1 failure-mode fixtures (AC1–AC4)
 
     private let slice34FixtureBases = [
         "midroll_closer_resume",
         "question_hook_continuity",
         "missed_opener_recovery",
         "single_sentence_read",
+        "contiguous_midroll_soft_interior",
+        "show_open_after_preroll",
     ]
 
     /// Structural integrity for hand-goldens (independent of segmenter output).
@@ -416,6 +418,48 @@ final class SegmentationSpikeTests: XCTestCase {
             (golden[0].start, golden[0].end)
         )
         XCTAssertGreaterThanOrEqual(iou, iouThreshold)
+    }
+
+    func testContiguousMidrollSoftInteriorStaysOnePod() throws {
+        let transcript = try loadTranscript(named: "contiguous_midroll_soft_interior_transcript")
+        let golden = try loadGoldenNamed("contiguous_midroll_soft_interior_golden")
+        let segments = HeuristicContentSegmenter().segments(in: transcript)
+        XCTAssertEqual(segments.count, 1, "Soft interior must not swiss-cheese the midroll")
+        let iou = SegmentationMetrics.iou(
+            (segments[0].start, segments[0].end),
+            (golden[0].start, golden[0].end)
+        )
+        XCTAssertGreaterThanOrEqual(iou, iouThreshold)
+        let hostResumeStart = try XCTUnwrap(
+            phraseStart(in: transcript, phrase: ["Okay"]),
+            "Fixture must include host resume Okay"
+        )
+        XCTAssertLessThanOrEqual(
+            segments[0].end,
+            hostResumeStart,
+            "Segment must not extend past host resume"
+        )
+    }
+
+    func testShowOpenAfterPrerollIsNotAd() throws {
+        let transcript = try loadTranscript(named: "show_open_after_preroll_transcript")
+        let golden = try loadGoldenNamed("show_open_after_preroll_golden")
+        let segments = HeuristicContentSegmenter().segments(in: transcript)
+        XCTAssertEqual(segments.count, 1, "Expected preroll only")
+        let iou = SegmentationMetrics.iou(
+            (segments[0].start, segments[0].end),
+            (golden[0].start, golden[0].end)
+        )
+        XCTAssertGreaterThanOrEqual(iou, iouThreshold)
+        let showOpenStart = try XCTUnwrap(
+            phraseStart(in: transcript, phrase: ["From", "Public"]),
+            "Fixture must include station open From Public…"
+        )
+        XCTAssertLessThanOrEqual(
+            segments[0].end,
+            showOpenStart,
+            "Show-open must stay outside the ad segment"
+        )
     }
 
     private func loadGoldenNamed(_ name: String) throws -> [GoldenSegment] {

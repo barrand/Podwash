@@ -42,7 +42,7 @@ final class IntervalCacheTests: XCTestCase {
             + "\n"
             + "interval-format:v2"
             + "\n"
-            + "segmenter:heuristic-cue-v6"
+            + "segmenter:heuristic-cue-v6.1"
     }
 
     private func fingerprintMaterial(for targetWords: Set<String>, asrModelPin: String) -> String {
