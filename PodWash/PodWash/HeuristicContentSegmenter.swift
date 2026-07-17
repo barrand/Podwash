@@ -2,16 +2,17 @@
 //  HeuristicContentSegmenter.swift
 //  PodWash
 //
-//  heuristic-cue-v6 — sentence-scored ad detection with brand carry + hysteresis.
-//  Replaces span-grow / density / gap-snap machinery from v5.
+//  heuristic-cue-v6.1 — sentence-scored ad blocks with brand-carry veto +
+//  show-open hard exits. Soft interior sentences no longer punch holes in
+//  contiguous midrolls (30–120 s).
 //
 
 import Foundation
 
-/// Sentence-first ad segmenter (heuristic-cue-v6). Deterministic over `[TimedWord]`.
+/// Sentence-first ad segmenter (heuristic-cue-v6.1). Deterministic over `[TimedWord]`.
 struct HeuristicContentSegmenter: ContentSegmenting {
 
-    var approachIdentifier: String { "heuristic-cue-v6" }
+    var approachIdentifier: String { "heuristic-cue-v6.1" }
 
     func segments(in transcript: [TimedWord]) -> [ContentSegment] {
         let tokens = Self.normalizedTokens(from: transcript)
@@ -25,6 +26,9 @@ struct HeuristicContentSegmenter: ContentSegmenting {
         var openerHits: [Bool] = []
         var closerHits: [Bool] = []
         var resumeHits: [Bool] = []
+        var showOpenHits: [Bool] = []
+        var brandHits: [Bool] = []
+        var postCloserResumeHits: [Bool] = []
 
         for sentence in sentences {
             let text = Self.joinedBare(sentence)
@@ -35,27 +39,43 @@ struct HeuristicContentSegmenter: ContentSegmenting {
                     brandCarry.insert(name)
                 }
             }
+            let mentionsBrand = Self.sentenceMentionsBrand(text, brandCarry: brandCarry)
             let score = Self.scoreSentence(
                 sentence,
                 text: text,
                 brandCarry: brandCarry,
                 hasOpener: opener,
-                hasCloser: closer
+                hasCloser: closer,
+                mentionsBrand: mentionsBrand
             )
             scores.append(score)
             openerHits.append(opener)
             closerHits.append(closer)
+            brandHits.append(mentionsBrand)
+            showOpenHits.append(Self.containsShowOpen(text))
+            postCloserResumeHits.append(Self.isPostCloserShowResume(text) && !opener)
             let firstBare = sentence.tokens.first.map(\.bare) ?? ""
-            resumeHits.append(Self.resumeStarters.contains(firstBare) && !opener)
+            // "now" is common inside ads ("Now, this is your time…") — not a resume.
+            resumeHits.append(
+                (Self.resumeStarters.contains(firstBare) || text.contains("back to"))
+                    && !opener && !closer
+            )
         }
 
         let states = Self.smoothStates(
             scores: scores,
             openers: openerHits,
             closers: closerHits,
-            resumes: resumeHits
+            resumes: resumeHits,
+            showOpens: showOpenHits,
+            brandHits: brandHits,
+            postCloserResumes: postCloserResumeHits
         )
-        return Self.podsFromStates(sentences: sentences, states: states)
+        let pods = Self.mergeNearbyPods(
+            Self.podsFromStates(sentences: sentences, states: states),
+            gapSeconds: Constants.mergeGapSeconds
+        )
+        return pods
             .filter { $0.end - $0.start >= Constants.minDurationSeconds }
             .map { ContentSegment(start: $0.start, end: $0.end) }
     }
@@ -67,11 +87,15 @@ struct HeuristicContentSegmenter: ContentSegmenting {
         static let maxSentenceSeconds: Double = 18.0
         static let enterScore: Double = 4.0
         static let stayScore: Double = 1.5
-        static let exitRun: Int = 2
+        /// Soft sentences after last brand mention before forcing exit (pre-closer).
+        static let brandSilenceExit: Int = 4
+        /// After a closer, the next non-brand sentence ends the block (0 = exit on first soft).
+        static let postCloserExitRun: Int = 0
         static let minDurationSeconds: Double = 5.0
         static let brandBoost: Double = 3.0
         static let openerBoost: Double = 6.0
         static let closerBoost: Double = 4.0
+        static let mergeGapSeconds: Double = 3.0
     }
 
     /// Precision-first openers (fuzzy: come/comes, optional leading dash noise).
@@ -128,8 +152,9 @@ struct HeuristicContentSegmenter: ContentSegmenting {
         "free", "percent", "discount", "off", "promo", "coupon", "code",
     ]
 
+    /// Host handoff words — excludes "now" (ubiquitous inside ad copy).
     private static let resumeStarters: Set<String> = [
-        "back", "anyway", "meanwhile", "okay", "ok", "alright", "now",
+        "back", "anyway", "meanwhile", "okay", "ok", "alright",
     ]
 
     private static let brandStop: Set<String> = [
@@ -233,11 +258,10 @@ struct HeuristicContentSegmenter: ContentSegmenting {
         return sentences
     }
 
-    // MARK: - Openers / closers / brand
+    // MARK: - Openers / closers / brand / show-open
 
     private static func containsFuzzyOpener(_ text: String) -> Bool {
         if openerPhrases.contains(where: { text.contains($0) }) { return true }
-        // "support for … comes from" with up to 6 tokens between.
         if text.range(of: #"support for (?:[\w']+\s+){0,6}comes? from"#, options: .regularExpression) != nil {
             return true
         }
@@ -249,6 +273,47 @@ struct HeuristicContentSegmenter: ContentSegmenting {
         if text.contains(".com") || text.contains(".org") || text.contains(".edu")
             || text.contains(".ai") || text.contains("dot com") || text.contains(" slash ")
         {
+            return true
+        }
+        return false
+    }
+
+    /// Host / act / station open — hard exit from an ad block (general, not show-titled).
+    private static func containsShowOpen(_ text: String) -> Bool {
+        if text.range(of: #"\bact (one|two|three|four|1|2|3|4)\b"#, options: .regularExpression) != nil {
+            return true
+        }
+        if text.range(of: #"today'?s (program|show|episode)\b"#, options: .regularExpression) != nil {
+            return true
+        }
+        // "From WBEZ Chicago … I'm Ira Glass" / "From … I'm Host"
+        if text.hasPrefix("from ") || text.contains(" from ") {
+            if text.range(of: #"\bi'?m \w+"#, options: .regularExpression) != nil {
+                return true
+            }
+        }
+        if text.range(of: #"\bi'?m [a-z]+ [a-z]+\b"#, options: .regularExpression) != nil
+            && (text.contains("chicago") || text.contains("radio") || text.contains("public"))
+        {
+            return true
+        }
+        return false
+    }
+
+    /// Soft post-closer show resume ("It's [Show]…") — only applied after a closer.
+    private static func isPostCloserShowResume(_ text: String) -> Bool {
+        let prefixes = ["its ", "it's ", "it s ", "it\u{2019}s "]
+        if prefixes.contains(where: { text.hasPrefix($0) }) {
+            return true
+        }
+        if text.contains("back to") {
+            return true
+        }
+        return false
+    }
+
+    private static func sentenceMentionsBrand(_ text: String, brandCarry: Set<String>) -> Bool {
+        for brand in brandCarry where brand.count >= 3 && text.contains(brand) {
             return true
         }
         return false
@@ -280,15 +345,13 @@ struct HeuristicContentSegmenter: ContentSegmenting {
             }
         }
 
-        // Domains: strawberry .me / capitalone.com
         for t in sentence.tokens {
             let w = t.word.lowercased()
-            if w.contains(".com") || w.contains(".org") || w.contains(".me") || w.contains(".ai") {
+            if w.contains(".com") || w.contains(".org") || w.contains(".me") || w.contains(".ai")
+                || w.contains(".edu")
+            {
                 let host = bareWord(w.replacingOccurrences(of: ".", with: " "))
                 if host.count >= 3 { brands.append(host) }
-            }
-            if t.bare == "slash", let prev = sentence.tokens.last(where: { $0.end <= t.start }) {
-                _ = prev
             }
         }
         return brands
@@ -299,7 +362,8 @@ struct HeuristicContentSegmenter: ContentSegmenting {
         text: String,
         brandCarry: Set<String>,
         hasOpener: Bool,
-        hasCloser: Bool
+        hasCloser: Bool,
+        mentionsBrand: Bool
     ) -> Double {
         var score = 0.0
         if hasOpener { score += Constants.openerBoost }
@@ -317,23 +381,16 @@ struct HeuristicContentSegmenter: ContentSegmenting {
             score += 1.0
         }
 
-        // URL / closer cues are stay/exit features — they must not alone enter ad.
         var stayBoost = 0.0
         if hasCloser { stayBoost += Constants.closerBoost }
         if text.contains(".com") || text.contains("dot com") || text.contains("slash") {
             stayBoost += 2.5
         }
-        for brand in brandCarry {
-            if text.contains(brand) {
-                stayBoost += Constants.brandBoost
-                break
-            }
-        }
+        if mentionsBrand { stayBoost += Constants.brandBoost }
         if text.contains("?") && you >= 1 {
             stayBoost += 1.5
         }
 
-        // Only apply stayBoost once we already have opener/brand context or a strong enter score.
         if hasOpener || !brandCarry.isEmpty || score >= Constants.enterScore * 0.6 {
             score += stayBoost
         }
@@ -341,58 +398,112 @@ struct HeuristicContentSegmenter: ContentSegmenting {
         return score
     }
 
-    // MARK: - Hysteresis
+    // MARK: - Hysteresis (block stay)
 
     private static func smoothStates(
         scores: [Double],
         openers: [Bool],
         closers: [Bool],
-        resumes: [Bool]
+        resumes: [Bool],
+        showOpens: [Bool],
+        brandHits: [Bool],
+        postCloserResumes: [Bool]
     ) -> [Bool] {
         var inAd = false
-        var lowRun = 0
         var sawCloser = false
+        var brandSilence = 0
         var states = Array(repeating: false, count: scores.count)
 
         for i in 0..<scores.count {
             if !inAd {
-                if openers[i] || scores[i] >= Constants.enterScore {
+                // Show-open lines are content — unless they are also sponsor openers
+                // ("Support for today's show comes from …").
+                if showOpens[i] && !openers[i] {
+                    continue
+                }
+                // Enter only on opener (or opener+score). Score-alone
+                // (second-person dens) caused story false positives.
+                if openers[i] {
                     inAd = true
-                    lowRun = 0
+                    brandSilence = brandHits[i] ? 0 : 1
                     sawCloser = closers[i]
                     states[i] = true
                 }
                 continue
             }
 
-            // In ad.
-            if resumes[i] && scores[i] < Constants.enterScore && !openers[i] {
+            // Hard exit: show / act / host open.
+            if showOpens[i] && !openers[i] {
                 inAd = false
-                lowRun = 0
                 sawCloser = false
+                brandSilence = 0
                 states[i] = false
                 continue
             }
 
+            if brandHits[i] {
+                brandSilence = 0
+            } else {
+                brandSilence += 1
+            }
+
             if closers[i] {
                 sawCloser = true
-                states[i] = true
-                lowRun = 0
-                continue
-            }
-
-            if scores[i] >= Constants.stayScore || openers[i] {
-                lowRun = 0
+                // Closer sentence is always part of the ad (URL / FDIC / CTA).
                 states[i] = true
                 continue
             }
 
-            lowRun += 1
-            let exitThreshold = sawCloser ? 1 : Constants.exitRun
-            if lowRun >= exitThreshold {
+            // Post-closer "It's [show]…" / "back to…" — hard content.
+            if sawCloser, postCloserResumes[i], !brandHits[i] {
                 inAd = false
-                lowRun = 0
                 sawCloser = false
+                brandSilence = 0
+                states[i] = false
+                continue
+            }
+
+            // Brand-carry: stay while sponsor name is recent.
+            if brandHits[i] || openers[i] {
+                states[i] = true
+                continue
+            }
+
+            // After a closer, do not let second-person / CTA scores pull story
+            // sentences back into the block — exit on first soft non-brand.
+            if sawCloser {
+                let silenceLimit = Constants.postCloserExitRun
+                if brandSilence > silenceLimit {
+                    inAd = false
+                    sawCloser = false
+                    brandSilence = 0
+                    states[i] = false
+                } else {
+                    states[i] = true
+                }
+                continue
+            }
+
+            // High score without brand only keeps the block briefly (pre-closer).
+            if scores[i] >= Constants.stayScore, brandSilence <= 1 {
+                states[i] = true
+                continue
+            }
+
+            // Resume handoff — exit once brand has gone quiet (closer optional).
+            if resumes[i], brandSilence >= 1, scores[i] < Constants.enterScore {
+                inAd = false
+                sawCloser = false
+                brandSilence = 0
+                states[i] = false
+                continue
+            }
+
+            // Soft interior: stay while brand was recent; else leave the block.
+            if brandSilence > Constants.brandSilenceExit {
+                inAd = false
+                sawCloser = false
+                brandSilence = 0
                 states[i] = false
             } else {
                 states[i] = true
@@ -424,5 +535,23 @@ struct HeuristicContentSegmenter: ContentSegmenting {
             pods.append(cur)
         }
         return pods
+    }
+
+    private static func mergeNearbyPods(
+        _ pods: [TimeRange],
+        gapSeconds: Double
+    ) -> [TimeRange] {
+        guard var current = pods.first else { return [] }
+        var out: [TimeRange] = []
+        for pod in pods.dropFirst() {
+            if pod.start <= current.end + gapSeconds {
+                current.end = max(current.end, pod.end)
+            } else {
+                out.append(current)
+                current = pod
+            }
+        }
+        out.append(current)
+        return out
     }
 }

@@ -1,16 +1,31 @@
-# ADR-012 — Content segmentation approach: sentence-scored (`heuristic-cue-v6`)
+# ADR-012 — Content segmentation approach: sentence-scored (`heuristic-cue-v6.1`)
 
 | Field | Value |
 |-------|-------|
-| **Status** | Accepted (amended 2026-07-16 — production approach `heuristic-cue-v6`) |
+| **Status** | Accepted (amended 2026-07-16 — production approach `heuristic-cue-v6.1`) |
 | **Date** | 2026-07-10 |
 | **Supersedes** | — |
 | **Builds on** | [ADR-000](000-foundations.md) §4 (`TimedWord` schema — segmenter **consumes** `[TimedWord]`), §6 (`scripts/verify.sh` full-suite gate); [ADR-003](003-asr-stack-choice.md) §3.4 (fast committed-artifact / slow regeneration pattern); [ADR-005](005-analysis-pipeline.md) (transcript-injection seam — Slice 19 wires the segmenter into the pipeline) |
 | **Resolves** | Slice 18 spike — pick an on-device, transcript-based segmenter that meets precision ≥ 0.7 / recall ≥ 0.5 on a hand-golden fixture before Slice 19 integration |
 
-## Amendment (2026-07-16) — `heuristic-cue-v6` / sentence-score + hysteresis
+## Amendment (2026-07-16) — `heuristic-cue-v6.1` / block stay + show-open exit
 
-Production `HeuristicContentSegmenter` **replaces** span-grow / density / gap-snap (`heuristic-cue-v5`) with:
+Production pin moves from `heuristic-cue-v6` to `heuristic-cue-v6.1`:
+
+1. **Enter only on opener** — score-alone enter caused story false positives
+2. **Brand-carry soft interiors** — keep contiguous midrolls through low-cue copy while the sponsor name is recent
+3. **Post-closer hard exit** — first non-brand sentence after a closer leaves the block; `"It's…"`, `"back to…"`, and show/act opens are content
+4. **Show-open does not block sponsor openers** — `"Support for today's show comes from …"` still enters
+
+**Pinned `approach` string (AC4 / artifact):** `heuristic-cue-v6.1`
+
+**Interval cache fingerprint** includes `segmenter:heuristic-cue-v6.1` (invalidates v6 caches).
+
+Committed spike artifact: precision **1.0** / recall **1.0** (IoU ≥ 0.5 vs `golden_segments.json`).
+
+## Amendment (2026-07-16) — `heuristic-cue-v6` / sentence-score + hysteresis (historical)
+
+Production `HeuristicContentSegmenter` **replaced** span-grow / density / gap-snap (`heuristic-cue-v5`) with:
 
 1. **Sentence grouping** (ASR punctuation + speech-gap ≥ 0.6 s fallback)
 2. **One scoring model** — fuzzy openers/closers, second-person, CTA, price, **brand-name carry** after openers
@@ -18,9 +33,7 @@ Production `HeuristicContentSegmenter` **replaces** span-grow / density / gap-sn
 
 URL/closer features are **stay/exit** only — they do not alone enter ad state (prevents educational `.edu` / `.gov` false positives).
 
-**Pinned `approach` string (AC4 / artifact):** `heuristic-cue-v6`
-
-**Interval cache fingerprint** includes `segmenter:heuristic-cue-v6` (invalidates v5 caches).
+**Pinned `approach` string (historical):** `heuristic-cue-v6`
 
 **Eval:** `scripts/build_segmenter_cli.sh` builds a CLI from the shipped Swift sources; `ad_eval_score.py --detector swift-cli` measures the same algorithm. The Python `ad_eval_detector.py` span-grow mirror is **historical** (v5), not the production path.
 
@@ -116,7 +129,7 @@ transparent cue lexicon + light topic-drift check is the smallest verifiable
 proof of Differentiator 2 feasibility. Quality iteration (embeddings, better
 discourse models) is deferred — not deleted — see Rejected alternatives.
 
-**Pinned `approach` string (AC4 / artifact):** `heuristic-cue-v6` (was `heuristic-cue-v5` / `heuristic-cue-v1` earlier; see Amendments above)
+**Pinned `approach` string (AC4 / artifact):** `heuristic-cue-v6.1` (was `heuristic-cue-v6` / `heuristic-cue-v5` / `heuristic-cue-v1` earlier; see Amendments above)
 
 ### 3.2 Module layout / file boundaries
 
@@ -308,7 +321,7 @@ Filled from the committed
 
 | Field | Value |
 |-------|-------|
-| **approach** | `heuristic-cue-v6` |
+| **approach** | `heuristic-cue-v6.1` |
 | **precision** | 1.000 |
 | **recall** | 1.000 |
 | **segmentCount** | 2 |
