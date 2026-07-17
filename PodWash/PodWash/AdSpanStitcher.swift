@@ -104,16 +104,33 @@ enum AdSpanStitcher {
         return needles.contains { lower.contains($0) }
     }
 
+    /// High-precision sponsor openers — override model "content" on short live-reads.
+    static func looksLikeStrongSponsor(_ lower: String) -> Bool {
+        if lower.contains("brought to you") { return true }
+        if lower.contains("sponsored by") { return true }
+        if lower.contains("this message comes from") { return true }
+        if lower.contains("support for") && lower.contains("comes from") { return true }
+        return false
+    }
+
     static func looksLikeShowResume(_ lower: String) -> Bool {
         if lower.contains("welcome back") { return true }
         if lower.contains("back to the") { return true }
+        if lower.contains("broadcasting from") { return true }
+        if lower.contains("i've been") && lower.contains("broadcast") { return true }
         if lower.range(of: #"\bact (one|two|three|1|2|3)\b"#, options: .regularExpression) != nil {
             return true
         }
         if lower.hasPrefix("okay so") || lower.hasPrefix("ok so") { return true }
-        if lower.hasPrefix("it's ") || lower.hasPrefix("its ") {
-            // Soft: often show reopen; sell copy also uses it's — require short / no URL
-            if !looksLikeSell(lower) { return true }
+        // "It's American life" / show reopen — require show-ish tokens (bare "it's" is too noisy).
+        if (lower.hasPrefix("it's ") || lower.hasPrefix("its ")),
+           !looksLikeSell(lower),
+           lower.range(
+            of: #"\b(american life|act one|act two|welcome|podcast|show|fan)\b"#,
+            options: .regularExpression
+           ) != nil
+        {
+            return true
         }
         return false
     }

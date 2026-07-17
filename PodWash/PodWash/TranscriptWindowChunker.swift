@@ -23,7 +23,7 @@ enum TranscriptWindowChunker {
     private static let targetWindowSeconds: Double = 20.0
     private static let minWindowSeconds: Double = 12.0
     private static let maxWindowSeconds: Double = 28.0
-    private static let maxWordsInText: Int = 100
+    private static let maxWordsInText: Int = 60
 
     static func windows(from transcript: [TimedWord]) -> [TranscriptWindow] {
         let sentences = groupSentences(transcript)

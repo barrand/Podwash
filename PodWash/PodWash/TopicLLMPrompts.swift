@@ -24,43 +24,19 @@ enum TopicLLMPrompts {
         Do not invent a single narrow plot if the episode is a roundup or open talk show.
         """
 
+    /// Compact runtime instructions (plan policy, fewer tokens for on-device context).
     static let chunkLabelInstructions = """
-        You label podcast transcript chunks as "ad", "content", "mixed", or "unsure" for a skip-ads feature.
-
-        You are given:
-        - TOPIC CARD: show domain + episode hooks (see card)
-        - CHUNKS: timed transcript excerpts (id, startSec, endSec, text) with neighbor context
-
-        Mark "ad" if the chunk is almost entirely:
-        - A commercial, sponsor read, underwriting credit, or network promo
-        - Marketing copy (offer, discount, visit/apply/shop, brand + URL)
-        - Host live-read for a sponsor, even if local to the audience
-
-        Mark "content" if the chunk is almost entirely:
-        - In-domain host talk, interview, news, or digressions
-        - Show open/close about the episode (not a paid spot)
-        - Welcome-back / act titles / station IDs without a sponsor pitch
-
-        Mark "mixed" if the chunk clearly contains BOTH a sponsor/commercial stretch AND real show content
-        (e.g. end of an ad then “welcome back”, or live-read then interview). Do not force a majority guess.
-
-        Mark "unsure" if you cannot tell. Do not guess.
-
-        Rules:
-        - Use SHOW DOMAIN as the main topic signal; EPISODE HOOKS are hints only.
-        - Off-domain + marketing → ad. In-domain + marketing (local live-read) → ad.
-        - In-domain conversation without a sell → content, even if not listed in hooks.
-        - Cold-open ads with no “sponsored by” are still ads.
-        - Do not label on URL alone.
-        - Use NEIGHBOR CONTEXT (prev label + short prev/next text) to stay consistent with an
-          ongoing ad or ongoing content — but do not override a clear opposite signal in this chunk.
-        - Output one label per chunk id. No explanations.
+        You classify one podcast transcript chunk for a skip-ads feature.
+        Output only the structured label field.
+        ad = commercial, sponsor read, promo, live-read, or marketing sell (offer/visit/apply/shop/brand+URL), including cold opens and local sponsors.
+        content = in-domain host talk, interview, news, digression, show open/close, welcome-back without a pitch.
+        mixed = both a clear ad stretch and clear show content in this chunk.
+        unsure = cannot tell.
+        Domain is the main topic signal. Energetic in-domain talk about games, recruiting, NIL, coaches, or schedules is content unless it is a sponsor pitch.
         """
 
     static let sentenceLabelInstructions = """
-        You label short podcast transcript sentences as "ad" or "content" only (no mixed/unsure).
-        Use the TOPIC CARD. Sponsor/commercial/marketing = ad. In-domain show talk = content.
-        If unsure, choose content. Output one label per id. No explanations.
+        Classify one short sentence: ad or content. Marketing/sponsor = ad. In-domain talk = content. If unsure → content.
         """
 
     static func topicCardUserPrompt(context: SegmentationContext) -> String {
@@ -89,28 +65,28 @@ enum TopicLLMPrompts {
         previousLabel: ChunkAdLabel?,
         previousSnippet: String?
     ) -> String {
-        var lines: [String] = ["TOPIC CARD:", topicCard, "", "CHUNKS:"]
+        let card = clip(topicCard, maxChars: 400)
+        var lines: [String] = ["CARD:", card, "", "CHUNKS:"]
         for (index, window) in windows.enumerated() {
             let prev: String
             if index == 0 {
                 let pl = previousLabel?.rawValue ?? "content"
-                let snip = previousSnippet ?? ""
-                prev = "prev: \(pl) | \"\(snip)\""
+                let snip = snippet(previousSnippet ?? "", max: 60)
+                prev = "prev:\(pl)|\"\(snip)\""
             } else {
                 let prior = windows[index - 1]
-                prev = "prev: (prior in batch) | \"\(snippet(prior.text))\""
+                prev = "prev:(batch)|\"\(snippet(prior.text, max: 60))\""
             }
             let nextText: String
             if index + 1 < windows.count {
-                nextText = snippet(windows[index + 1].text)
+                nextText = snippet(windows[index + 1].text, max: 60)
             } else {
-                nextText = "(end of batch)"
+                nextText = "(end)"
             }
             lines.append("[\(window.id)] \(fmt(window.start))-\(fmt(window.end))")
             lines.append("  \(prev)")
-            lines.append("  next_text: \"\(nextText)\"")
-            lines.append("  text: \(window.text)")
-            lines.append("")
+            lines.append("  next:\"\(nextText)\"")
+            lines.append("  text:\(clip(window.text, maxChars: 320))")
         }
         return lines.joined(separator: "\n")
     }
@@ -119,6 +95,12 @@ enum TopicLLMPrompts {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard t.count > max else { return t }
         return String(t.suffix(max))
+    }
+
+    private static func clip(_ text: String, maxChars: Int) -> String {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard t.count > maxChars else { return t }
+        return String(t.prefix(maxChars)) + "…"
     }
 
     private static func fmt(_ t: Double) -> String {
