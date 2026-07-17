@@ -42,7 +42,7 @@ final class IntervalCacheTests: XCTestCase {
             + "\n"
             + "interval-format:v2"
             + "\n"
-            + "segmenter:heuristic-cue-v6.1"
+            + "segmenter:topic-llm-v1"
     }
 
     private func fingerprintMaterial(for targetWords: Set<String>, asrModelPin: String) -> String {
@@ -140,7 +140,7 @@ final class IntervalCacheTests: XCTestCase {
         let cache = IntervalCache(baseDirectory: cacheDir, asrModelPin: tinyPin)
         XCTAssertNil(
             cache.load(episodeID: episodeID, targetWords: targetWords),
-            "Cache written under segmenter:heuristic-cue-v5 must miss after v6 fingerprint bump"
+            "Cache written under segmenter:heuristic-cue-v5 must miss after topic-llm-v1 fingerprint bump"
         )
     }
 }

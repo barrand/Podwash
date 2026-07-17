@@ -75,7 +75,7 @@ final class SegmentationIntegrationTests: XCTestCase {
         pipeline = AnalysisPipeline(
             transcriber: asrSpy,
             cache: IntervalCache(baseDirectory: cacheDir),
-            segmenter: HeuristicContentSegmenter()
+            topicSegmenter: HeuristicTopicSegmenter()
         )
         pipelineSpy = SegmentationPipelineAnalyzeSpy(inner: pipeline)
     }
