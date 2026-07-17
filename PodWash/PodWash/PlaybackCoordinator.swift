@@ -90,10 +90,14 @@ final class PlaybackCoordinator {
         targetWords: Set<String>,
         action: CensorAction = .mute,
         unrelatedContent: UnrelatedContentOptions = UnrelatedContentOptions(),
-        injectedTranscript: [TimedWord]? = nil
+        injectedTranscript: [TimedWord]? = nil,
+        segmentationContext: SegmentationContext = .empty
     ) async throws {
         canStartPlayback = false
         processedEnd = 0
+        if let analysisPipeline = pipeline as? AnalysisPipeline {
+            analysisPipeline.segmentationContext = segmentationContext
+        }
         let intervals = try await pipeline.analyze(
             episode: episode,
             audioURL: audioURL,
@@ -125,6 +129,7 @@ final class PlaybackCoordinator {
         action: CensorAction = .mute,
         unrelatedContent: UnrelatedContentOptions = UnrelatedContentOptions(),
         injectedTranscript: [TimedWord]? = nil,
+        segmentationContext: SegmentationContext = .empty,
         onChunkReady: (@MainActor () -> Void)? = nil
     ) async throws {
         canStartPlayback = false
@@ -133,6 +138,9 @@ final class PlaybackCoordinator {
         currentAction = action
         unrelatedContentEnabled = unrelatedContent.enabled
         unrelatedContentAction = unrelatedContent.action
+        if let analysisPipeline = pipeline as? AnalysisPipeline {
+            analysisPipeline.segmentationContext = segmentationContext
+        }
 
         let chunkReadyGate = OnceFlag()
         partialApplyChain = nil

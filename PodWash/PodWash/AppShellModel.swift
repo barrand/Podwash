@@ -565,6 +565,12 @@ final class AppShellModel {
                     action: action,
                     unrelatedContent: unrelated,
                     injectedTranscript: injected,
+                    segmentationContext: SegmentationContext(
+                        showTitle: podcastTitle,
+                        showDescription: feedURL.flatMap { podcastStore.feedDescription(feedURL: $0) } ?? "",
+                        episodeTitle: episode.title,
+                        episodeDescription: episode.showNotes ?? ""
+                    ),
                     onChunkReady: { [weak self] in
                         guard let self else { return }
                         guard self.pendingPlayAfterPrepare else { return }

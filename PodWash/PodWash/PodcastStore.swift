@@ -120,6 +120,13 @@ nonisolated final class PodcastStore: @unchecked Sendable {
         currentFeed?.episodes ?? []
     }
 
+    /// Feed description for TopicCard construction (topic-llm-v1).
+    func feedDescription(feedURL: URL) -> String? {
+        context.performAndWait {
+            self.fetchPodcast(feedURLString: feedURL.absoluteString)?.feedDescription
+        }
+    }
+
     /// First match across subscriptions (`CDEpisode.id` is globally unique). ADR-027 bootstrap.
     func episodeLookup(id: String) -> (episode: Episode, podcastTitle: String, feedURL: URL)? {
         context.performAndWait {

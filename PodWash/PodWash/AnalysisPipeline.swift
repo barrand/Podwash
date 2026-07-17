@@ -47,7 +47,11 @@ final class AnalysisPipeline: @unchecked Sendable {
     nonisolated(unsafe) private let transcriber: any ASRTranscribing
     private let cache: IntervalCache
     private let transcriptCache: TranscriptCache
-    private let segmenter: any ContentSegmenting
+    private let fallbackSegmenter: HeuristicContentSegmenter
+    private let topicSegmenter: any TopicSegmenting
+
+    /// Show/episode text for TopicCard (set by playback before analyze).
+    var segmentationContext: SegmentationContext = .empty
 
     var onProgress: AnalysisProgressHandler?
     /// `nonisolated(unsafe)`: cleared from `nonisolated deinit` without a MainActor TaskLocal hop.
@@ -61,12 +65,14 @@ final class AnalysisPipeline: @unchecked Sendable {
         transcriber: any ASRTranscribing,
         cache: IntervalCache,
         transcriptCache: TranscriptCache = .applicationSupport,
-        segmenter: any ContentSegmenting = HeuristicContentSegmenter()
+        topicSegmenter: any TopicSegmenting = TopicLLMSegmenter(),
+        fallbackSegmenter: HeuristicContentSegmenter = HeuristicContentSegmenter()
     ) {
         self.transcriber = transcriber
         self.cache = cache
         self.transcriptCache = transcriptCache
-        self.segmenter = segmenter
+        self.topicSegmenter = topicSegmenter
+        self.fallbackSegmenter = fallbackSegmenter
     }
 
     // Avoid MainActor/TaskLocal deinit crash when boxed as `any EpisodeAnalyzing`.
@@ -178,7 +184,10 @@ final class AnalysisPipeline: @unchecked Sendable {
             }
 
             // Always segment on cache miss; enablement is a return/playback filter.
-            let segmentIntervals = segmenter.segments(in: transcript).map { segment in
+            let segmentIntervals = await self.contentSegments(
+                in: transcript,
+                terminal: true
+            ).map { segment in
                 CensorInterval(
                     start: segment.start,
                     end: segment.end,
@@ -240,6 +249,7 @@ final class AnalysisPipeline: @unchecked Sendable {
         let ends = AnalysisChunking.chunkEnds(duration: max(duration, 0.001))
         for chunkEnd in ends {
             let accumulatedTranscript = fullTranscript.filter { $0.start < chunkEnd }
+            let isTerminal = chunkEnd >= duration - 0.000_1
 
             let profanity = IntervalBuilder.buildIntervals(
                 from: accumulatedTranscript,
@@ -253,7 +263,10 @@ final class AnalysisPipeline: @unchecked Sendable {
                     source: .profanity
                 )
             }
-            let segmentIntervals = segmenter.segments(in: accumulatedTranscript).map { segment in
+            let segmentIntervals = await self.contentSegments(
+                in: accumulatedTranscript,
+                terminal: isTerminal
+            ).map { segment in
                 CensorInterval(
                     start: segment.start,
                     end: segment.end,
@@ -271,7 +284,6 @@ final class AnalysisPipeline: @unchecked Sendable {
                 unrelatedContent: unrelatedContent
             )
 
-            let isTerminal = chunkEnd >= duration - 0.000_1
             let snapshot: AnalysisProgressSnapshot
             if isTerminal {
                 let terminalProjected = Self.projectPlaybackIntervals(
@@ -421,6 +433,17 @@ final class AnalysisPipeline: @unchecked Sendable {
                 )
             }
         }
+    }
+
+    /// Topic LLM on terminal / full pass; cheap heuristic for interim progressive chunks.
+    private func contentSegments(
+        in transcript: [TimedWord],
+        terminal: Bool
+    ) async -> [ContentSegment] {
+        if terminal {
+            return await topicSegmenter.segments(in: transcript, context: segmentationContext)
+        }
+        return fallbackSegmenter.segments(in: transcript)
     }
 
     private func emitProgress(_ snapshot: AnalysisProgressSnapshot) async {
