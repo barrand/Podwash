@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 029 |
 | **Title** | Mini player visible on transcript screen |
-| **Status** | In Progress |
+| **Status** | Implemented |
 | **Kind** | tweak |
 | **Priority** | P2 |
 | **Area** | `PodWash/PodWash/AppShellView.swift`, `PodWash/PodWash/MiniPlayerBar.swift`, `PodWash/PodWash/TranscriptView.swift` (presentation only if needed), `PodWash/PodWashUITests/TranscriptUITests.swift` |
