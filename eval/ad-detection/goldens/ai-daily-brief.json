@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "annotationPolicy": "ads-only-v1",
+  "status": "human-approved",
+  "showSlug": "ai-daily-brief",
+  "audioSha256": "",
+  "transcriptSha256": "2ec97b535d575b5b7263d350f6928ba4d1fcf5b608dd3b852fa823dfb5a2ef7b",
+  "asr": {
+    "engine": "",
+    "engineVersion": "",
+    "model": "",
+    "modelRevision": "",
+    "wordCount": 6234
+  },
+  "review": {
+    "reviewer": "Brian",
+    "reviewedAt": "2026-07-19T23:04:04.570024+00:00",
+    "reviewedThroughWord": 6234,
+    "proposalSha256": "04953d812182880ee6c12d9ce3f31e4d6f9162e9825207f7354a6c329dd52e7e",
+    "optionalModelNotesCount": 4
+  },
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 81,
+      "endWord": 135,
+      "start": 26.96,
+      "end": 41.02,
+      "label": "membership_cta",
+      "category": "membership_cta",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "host",
+      "origin": "ai-proposal",
+      "advertiser": "AI Daily Brief",
+      "note": "Opening sponsor thanks plus ad-free Patreon/Apple Podcasts and sponsor-contact CTA. Consider splitting or trimming if you only want paid reads skipped."
+    },
+    {
+      "id": "span-2",
+      "startWord": 1968,
+      "endWord": 2080,
+      "start": 644.64,
+      "end": 685.96,
+      "label": "paid_host_read",
+      "category": "paid_ad",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "host",
+      "origin": "ai-proposal",
+      "advertiser": "KPMG",
+      "note": "Midroll sponsor read after headlines; ends before Blitzy read."
+    },
+    {
+      "id": "span-3",
+      "startWord": 2080,
+      "endWord": 2226,
+      "start": 687.1,
+      "end": 731.44,
+      "label": "paid_host_read",
+      "category": "paid_ad",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "host",
+      "origin": "ai-proposal",
+      "advertiser": "Blitzy",
+      "note": "Midroll sponsor read; ends before Retool read."
+    },
+    {
+      "id": "span-4",
+      "startWord": 2226,
+      "endWord": 2371,
+      "start": 732.46,
+      "end": 774.8,
+      "label": "paid_host_read",
+      "category": "paid_ad",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "host",
+      "origin": "ai-proposal",
+      "advertiser": "Retool",
+      "note": "Midroll sponsor read; ends before Hyperagent read."
+    },
+    {
+      "id": "span-5",
+      "startWord": 2371,
+      "endWord": 2509,
+      "start": 776.24,
+      "end": 816.14,
+      "label": "paid_host_read",
+      "category": "paid_ad",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "host",
+      "origin": "ai-proposal",
+      "advertiser": "Hyperagent",
+      "note": "Midroll sponsor read; ASR includes Airtable as the builder. Keep 'Welcome back to the AI Daily Brief' as content."
+    }
+  ]
+}
