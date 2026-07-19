@@ -204,6 +204,10 @@ def load_goldens(out_dir: Path) -> tuple[list[dict[str, Any]], str]:
         path = out_dir / name
         if path.exists():
             data = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(data, dict) and name == "golden.json":
+                status = str(data.get("status") or "").strip().lower()
+                if status and status != "human-approved":
+                    return [], f"{name} ({status}; skipped)"
             spans = data.get("spans", data if isinstance(data, list) else [])
             return list(spans), name
     return [], "none"

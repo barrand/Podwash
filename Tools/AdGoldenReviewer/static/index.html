@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PodWash Ad Golden Reviewer</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div id="loading" class="loading">Loading the Cougar pilot…</div>
+
+  <main id="dashboard" class="dashboard hidden">
+    <header class="dashboard-header">
+      <p class="eyebrow">PodWash evaluation</p>
+      <h1>Ad Golden Reviewer</h1>
+      <p>One episode at a time. Complete transcript, exact words, direct saves.</p>
+    </header>
+    <section id="episodeCards" class="episode-cards" aria-label="Pilot episodes"></section>
+  </main>
+
+  <div id="reviewer" class="reviewer hidden">
+    <header class="topbar">
+      <button id="backButton" class="quiet-button" type="button">← Episodes</button>
+      <div class="episode-heading">
+        <p id="showName" class="eyebrow"></p>
+        <h1 id="episodeTitle"></h1>
+      </div>
+      <div class="save-area">
+        <span id="saveStatus" class="save-status">Saved</span>
+        <span id="reviewPercent" class="progress-label">0% reviewed</span>
+      </div>
+    </header>
+
+    <div class="review-layout">
+      <article class="transcript-shell">
+        <div class="transcript-intro">
+          <div>
+            <strong>Read from top to bottom.</strong>
+            Drag across whole words to paint or correct a span.
+          </div>
+          <button id="continueButton" class="quiet-button" type="button">Continue where I stopped</button>
+        </div>
+        <div id="reviewMarker" class="review-marker hidden">
+          <span>Reviewed through here</span>
+        </div>
+        <section id="transcript" class="transcript" aria-label="Complete episode transcript"></section>
+      </article>
+
+      <aside class="control-panel" aria-label="Review controls">
+        <section class="panel-section primary-tools">
+          <div class="panel-title-row">
+            <h2>Paint selection</h2>
+            <button id="hideHighlightsButton" class="quiet-button small" type="button">Hide labels</button>
+          </div>
+          <p id="selectionStatus" class="muted">Drag across words to select a range.</p>
+          <div id="labelPalette" class="label-palette">
+            <button class="label-button dai" data-label="paid_dai" type="button"><kbd>1</kbd> Paid DAI</button>
+            <button class="label-button baked" data-label="paid_baked_in" type="button"><kbd>2</kbd> Baked-in</button>
+            <button class="label-button host" data-label="paid_host_read" type="button"><kbd>3</kbd> Host-read</button>
+            <button class="label-button promo" data-label="network_promo" type="button"><kbd>4</kbd> Network promo</button>
+            <button class="label-button member" data-label="membership_cta" type="button"><kbd>5</kbd> Membership</button>
+            <button class="label-button content" data-label="content" type="button"><kbd>0</kbd> Content / erase</button>
+          </div>
+        </section>
+
+        <section id="activeEditor" class="panel-section hidden">
+          <div class="panel-title-row">
+            <h2>Selected span</h2>
+            <span id="activeOrigin" class="origin-badge"></span>
+          </div>
+          <div class="field">
+            <label for="advertiserInput">Advertiser <span>optional</span></label>
+            <input id="advertiserInput" type="text" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="noteInput">Note <span>optional</span></label>
+            <textarea id="noteInput" rows="2"></textarea>
+          </div>
+          <div class="compact-actions">
+            <button id="startLeftButton" type="button">Start ←</button>
+            <button id="startRightButton" type="button">Start →</button>
+            <button id="endLeftButton" type="button">End ←</button>
+            <button id="endRightButton" type="button">End →</button>
+          </div>
+          <div class="compact-actions">
+            <button id="splitButton" type="button">Split at cursor</button>
+            <button id="mergeButton" type="button">Merge next</button>
+            <button id="deleteButton" class="danger-button" type="button">Delete</button>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <div class="panel-title-row">
+            <h2>Reading progress</h2>
+            <span id="progressFraction" class="muted">0 / 0</span>
+          </div>
+          <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
+          <div class="stacked-actions">
+            <button id="markReviewedButton" class="primary-button" type="button">Reviewed through selection</button>
+            <button id="markEndButton" type="button">Reviewed to episode end</button>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <div class="panel-title-row">
+            <h2>Optional model notes</h2>
+            <span id="auditCount" class="count-badge">0</span>
+          </div>
+          <p class="muted">Use these only if helpful. Approval is based on your spans.</p>
+          <div id="auditList" class="audit-list"></div>
+        </section>
+
+        <section class="panel-section finish-section">
+          <label class="attestation">
+            <input id="attestationCheckbox" type="checkbox">
+            <span>I reviewed the complete transcript and the highlighted spans.</span>
+          </label>
+          <button id="approveButton" class="approve-button" type="button" disabled>Approve Cougar golden</button>
+          <p id="approvalHelp" class="muted"></p>
+        </section>
+
+        <section class="panel-section shortcuts">
+          <h2>Shortcuts</h2>
+          <p><kbd>1–5</kbd> label · <kbd>0</kbd> erase · <kbd>⌘Z</kbd> undo · <kbd>⇧⌘Z</kbd> redo · <kbd>Delete</kbd> remove span</p>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <div id="floatingPalette" class="floating-palette hidden" role="toolbar" aria-label="Label selected words">
+    <button class="dai" data-label="paid_dai" type="button" aria-label="Paid DAI">1</button>
+    <button class="baked" data-label="paid_baked_in" type="button" aria-label="Paid baked-in">2</button>
+    <button class="host" data-label="paid_host_read" type="button" aria-label="Paid host-read">3</button>
+    <button class="promo" data-label="network_promo" type="button" aria-label="Network promo">4</button>
+    <button class="member" data-label="membership_cta" type="button" aria-label="Membership CTA">5</button>
+    <button class="content" data-label="content" type="button" aria-label="Content">×</button>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
