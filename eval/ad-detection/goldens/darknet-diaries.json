@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "annotationPolicy": "ads-only-v1",
+  "status": "human-approved",
+  "showSlug": "darknet-diaries",
+  "audioSha256": "",
+  "transcriptSha256": "7200a11869fec9afc77f6390d5e70246c74ee5458c29b2f52269f4c30284272e",
+  "asr": {
+    "engine": "",
+    "engineVersion": "",
+    "model": "",
+    "modelRevision": "",
+    "wordCount": 11997
+  },
+  "review": {
+    "reviewer": "Brian",
+    "reviewedAt": "2026-07-19T22:21:46.832903+00:00",
+    "reviewedThroughWord": 11997,
+    "proposalSha256": "bd5f6f1f31f1b18c5c5c872ad3f36295f404971dd7ef224f9e79c14a7746079d",
+    "optionalModelNotesCount": 5
+  },
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 253,
+      "endWord": 398,
+      "start": 110.25,
+      "end": 162.81,
+      "label": "paid_host_read",
+      "category": "paid_ad",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "host",
+      "origin": "ai-proposal",
+      "advertiser": "ThreatLocker",
+      "note": "Opening sponsor read after show intro; ends immediately before the Maze read."
+    },
+    {
+      "id": "span-2",
+      "startWord": 398,
+      "endWord": 543,
+      "start": 167.61,
+      "end": 223.31,
+      "label": "paid_host_read",
+      "category": "paid_ad",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "host",
+      "origin": "ai-proposal",
+      "advertiser": "Maze",
+      "note": "Opening sponsor read; ASR says Mays/mayshq. Keep 'For this episode, I sat down...' as content."
+    },
+    {
+      "id": "span-3",
+      "startWord": 5721,
+      "endWord": 5892,
+      "start": 2106.72,
+      "end": 2172.84,
+      "label": "paid_host_read",
+      "category": "paid_ad",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "host",
+      "origin": "ai-proposal",
+      "advertiser": "NetSuite",
+      "note": "Midroll sponsor read after the break tease; ends before the ACLU story resumes."
+    },
+    {
+      "id": "span-4",
+      "startWord": 11816,
+      "endWord": 11947,
+      "start": 4124.89,
+      "end": 4167.09,
+      "label": "membership_cta",
+      "category": "membership_cta",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "host",
+      "origin": "ai-proposal",
+      "advertiser": "Darknet Diaries Plus",
+      "note": "Outro CTA for the Plus feed and early access; ends before production credits."
+    }
+  ]
+}
