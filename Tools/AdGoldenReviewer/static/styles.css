@@ -117,6 +117,36 @@ kbd {
   font-size: 1.15rem;
 }
 
+.dashboard-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 1.6rem;
+}
+
+.summary-stat {
+  min-width: 9rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  padding: 0.75rem 0.9rem;
+}
+
+.summary-stat strong,
+.summary-stat span {
+  display: block;
+}
+
+.summary-stat strong {
+  font-size: 1.45rem;
+  line-height: 1.1;
+}
+
+.summary-stat span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .eyebrow {
   margin: 0 0 0.2rem;
   color: var(--accent);
@@ -134,18 +164,55 @@ kbd {
 
 .episode-card {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 1rem;
   align-items: center;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 12px;
   background: var(--surface);
-  padding: 1.2rem 1.4rem;
+  padding: 1rem 1.2rem;
+}
+
+.episode-card.approved {
+  border-color: rgba(116, 221, 164, 0.55);
+  background: linear-gradient(90deg, rgba(116, 221, 164, 0.08), var(--surface) 28%);
+}
+
+.golden-check {
+  display: grid;
+  width: 2.05rem;
+  height: 2.05rem;
+  place-items: center;
+  border: 2px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--success);
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.golden-check.checked {
+  border-color: var(--success);
+  background: rgba(116, 221, 164, 0.12);
+}
+
+.episode-copy {
+  min-width: 0;
+}
+
+.episode-show {
+  color: var(--accent) !important;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .episode-card h2 {
+  overflow: hidden;
   margin: 0;
   font-size: 1.1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .episode-card p {

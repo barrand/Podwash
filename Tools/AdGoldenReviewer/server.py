@@ -8,6 +8,7 @@ import hashlib
 import json
 import mimetypes
 import os
+import subprocess
 import tempfile
 import threading
 from dataclasses import dataclass
@@ -23,7 +24,6 @@ ROOT = Path(__file__).resolve().parents[2]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 DEFAULT_WORKDIR = ROOT / "tmp" / "ad-eval"
 DEFAULT_GOLDEN_DIR = ROOT / "eval" / "ad-detection" / "goldens"
-PILOT_SLUGS = ("cougar-sports",)
 
 ALLOWED_LABELS = {
     "paid_dai",
@@ -111,6 +111,98 @@ def load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def run_git(args: list[str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", *args],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=30,
+    )
+
+
+def git_auto_commit_golden(path: Path, slug: str) -> dict[str, Any]:
+    """Best-effort commit/push for one approved golden file.
+
+    This is intentionally narrow: approval should never accidentally commit
+    unrelated local work. Git failures are reported to the UI but do not undo
+    the saved human-approved golden.
+    """
+
+    try:
+        relative = path.resolve().relative_to(ROOT)
+    except ValueError:
+        return {
+            "attempted": False,
+            "success": False,
+            "message": "Golden is outside the repository; git auto-commit skipped.",
+        }
+
+    if relative.parts[:3] != ("eval", "ad-detection", "goldens"):
+        return {
+            "attempted": False,
+            "success": False,
+            "message": f"Golden path {relative} is outside eval/ad-detection/goldens; git auto-commit skipped.",
+        }
+
+    status = run_git(["status", "--porcelain", "--", str(relative)])
+    if status.returncode != 0:
+        return {
+            "attempted": True,
+            "success": False,
+            "message": (status.stderr or status.stdout or "git status failed").strip(),
+        }
+    if not status.stdout.strip():
+        return {
+            "attempted": True,
+            "success": True,
+            "message": "Golden already matched git; no commit needed.",
+        }
+
+    add = run_git(["add", "--", str(relative)])
+    if add.returncode != 0:
+        return {
+            "attempted": True,
+            "success": False,
+            "message": (add.stderr or add.stdout or "git add failed").strip(),
+        }
+
+    commit = run_git(
+        [
+            "commit",
+            "--only",
+            "-m",
+            f"golden: approve {slug} ad spans",
+            "--",
+            str(relative),
+        ]
+    )
+    if commit.returncode != 0:
+        return {
+            "attempted": True,
+            "success": False,
+            "message": (commit.stderr or commit.stdout or "git commit failed").strip(),
+        }
+
+    push = run_git(["push"])
+    if push.returncode != 0:
+        return {
+            "attempted": True,
+            "success": False,
+            "message": (push.stderr or push.stdout or "git push failed").strip(),
+            "commitOutput": commit.stdout.strip(),
+        }
+
+    return {
+        "attempted": True,
+        "success": True,
+        "message": "Golden committed and pushed.",
+        "commitOutput": commit.stdout.strip(),
+        "pushOutput": push.stdout.strip() or push.stderr.strip(),
+    }
+
+
 def normalized_span(raw: dict[str, Any], word_count: int) -> dict[str, Any]:
     try:
         start = int(raw["startWord"])
@@ -173,16 +265,27 @@ class ReviewStore:
         self,
         workdir: Path = DEFAULT_WORKDIR,
         golden_dir: Path = DEFAULT_GOLDEN_DIR,
-        slugs: tuple[str, ...] = PILOT_SLUGS,
+        slugs: tuple[str, ...] | None = None,
     ):
         self.workdir = workdir.resolve()
         self.golden_dir = golden_dir.resolve()
         self.slugs = slugs
         self._write_lock = threading.Lock()
 
+    def episode_slugs(self) -> tuple[str, ...]:
+        if self.slugs is not None:
+            return self.slugs
+        if not self.workdir.exists():
+            return ()
+        return tuple(
+            path.name
+            for path in sorted(self.workdir.iterdir())
+            if path.is_dir() and not path.name.startswith(".")
+        )
+
     def files(self, slug: str) -> EpisodeFiles:
-        if slug not in self.slugs:
-            raise ReviewError("unknown pilot episode", HTTPStatus.NOT_FOUND)
+        if slug not in self.episode_slugs():
+            raise ReviewError("unknown review episode", HTTPStatus.NOT_FOUND)
         directory = self.workdir / slug
         return EpisodeFiles(
             slug=slug,
@@ -295,13 +398,17 @@ class ReviewStore:
 
     def list_episodes(self) -> list[dict[str, Any]]:
         episodes: list[dict[str, Any]] = []
-        for slug in self.slugs:
+        for slug in self.episode_slugs():
             files = self.files(slug)
             title = slug
+            show_name = slug
             if files.meta.exists():
-                title = str(load_json(files.meta).get("episodeTitle") or slug)
+                meta = load_json(files.meta)
+                title = str(meta.get("episodeTitle") or meta.get("title") or slug)
+                show_name = str(meta.get("showName") or meta.get("showTitle") or slug)
             status = "transcript_missing"
             progress = 0.0
+            word_count = 0
             if files.transcript.exists():
                 status = "not_started"
                 words = load_json(files.transcript)
@@ -321,9 +428,13 @@ class ReviewStore:
                 {
                     "slug": slug,
                     "title": title,
+                    "showName": show_name,
                     "status": status,
                     "progress": progress,
+                    "wordCount": word_count,
+                    "transcriptReady": files.transcript.exists(),
                     "proposalReady": files.proposal.exists(),
+                    "reviewExists": files.review.exists(),
                     "goldenExists": files.golden.exists(),
                 }
             )
@@ -479,7 +590,8 @@ class ReviewStore:
         saved["approvedAt"] = approved_at
         saved["revision"] = int(saved["revision"]) + 1
         atomic_json(files.review, saved)
-        return {"review": saved, "golden": golden}
+        git_result = git_auto_commit_golden(files.golden, slug)
+        return {"review": saved, "golden": golden, "git": git_result}
 
 
 class ReviewHandler(BaseHTTPRequestHandler):
@@ -607,7 +719,7 @@ def main() -> int:
         raise SystemExit("reviewer may only bind to localhost")
     store = ReviewStore(args.workdir, args.golden_dir)
     server = ThreadingHTTPServer((args.host, args.port), make_handler(store))
-    print(f"PodWash ad-golden reviewer: http://{args.host}:{server.server_port}")
+    print(f"PodWash Golden Retriever: http://{args.host}:{server.server_port}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

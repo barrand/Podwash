@@ -40,6 +40,7 @@ OPTIONAL_SHOWS: list[tuple[str, str]] = [
 # Pin by title/guid substring when present; otherwise latest episode.
 # TAL 891 is required standing dogfood.
 EPISODE_PINS: dict[str, str] = {
+    "economics-of-everyday-things": "50. Self-Checkout",
     "this-american-life": "891",
 }
 

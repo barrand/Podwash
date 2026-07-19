@@ -36,6 +36,7 @@ const loading = document.getElementById("loading");
 const dashboard = document.getElementById("dashboard");
 const reviewer = document.getElementById("reviewer");
 const episodeCards = document.getElementById("episodeCards");
+const dashboardSummary = document.getElementById("dashboardSummary");
 const transcript = document.getElementById("transcript");
 const floatingPalette = document.getElementById("floatingPalette");
 const saveStatus = document.getElementById("saveStatus");
@@ -87,29 +88,70 @@ async function api(path, options = {}) {
 
 async function loadDashboard() {
   const payload = await api("/api/episodes");
+  const episodes = payload.episodes || [];
+  const approvedCount = episodes.filter((episode) => episode.goldenExists || episode.status === "approved").length;
+  const transcriptCount = episodes.filter((episode) => episode.transcriptReady).length;
+  dashboardSummary.textContent = "";
+  const approvedStat = document.createElement("div");
+  approvedStat.className = "summary-stat";
+  approvedStat.innerHTML = `<strong>${approvedCount}/${episodes.length}</strong><span>goldens saved</span>`;
+  const transcriptStat = document.createElement("div");
+  transcriptStat.className = "summary-stat";
+  transcriptStat.innerHTML = `<strong>${transcriptCount}/${episodes.length}</strong><span>transcripts ready</span>`;
+  dashboardSummary.append(approvedStat, transcriptStat);
+
   episodeCards.textContent = "";
-  for (const episode of payload.episodes) {
+  for (const episode of episodes) {
+    const approved = episode.goldenExists || episode.status === "approved";
     const card = document.createElement("article");
-    card.className = "episode-card";
+    card.className = `episode-card${approved ? " approved" : ""}`;
+    const check = document.createElement("div");
+    check.className = `golden-check${approved ? " checked" : ""}`;
+    check.setAttribute("aria-label", approved ? "Golden saved" : "Golden not saved");
+    check.textContent = approved ? "✓" : "";
     const copy = document.createElement("div");
+    copy.className = "episode-copy";
+    const show = document.createElement("p");
+    show.className = "episode-show";
+    show.textContent = episode.showName || episode.slug;
     const title = document.createElement("h2");
     title.textContent = episode.title;
     const detail = document.createElement("p");
     const percent = Math.round((episode.progress || 0) * 100);
-    detail.textContent = `${humanStatus(episode.status)} · ${percent}% reviewed`;
-    copy.append(title, detail);
+    const readiness = [
+      `${humanStatus(episode.status)} · ${percent}% reviewed`,
+      episode.transcriptReady ? `${Number(episode.wordCount || 0).toLocaleString()} words` : "needs transcript",
+      episode.proposalReady ? "AI pass ready" : "needs AI pass",
+    ];
+    detail.textContent = readiness.join(" · ");
+    copy.append(show, title, detail);
     const button = document.createElement("button");
     button.type = "button";
     button.className = "primary-button";
-    button.textContent = episode.status === "not_started" ? "Start Cougar pilot" : "Continue review";
-    button.disabled = episode.status === "transcript_missing";
+    button.textContent = dashboardButtonText(episode);
+    button.disabled = !dashboardEpisodeCanOpen(episode);
     button.addEventListener("click", () => openEpisode(episode.slug));
-    card.append(copy, button);
+    card.append(check, copy, button);
     episodeCards.append(card);
   }
+  floatingPalette.classList.add("hidden");
   loading.classList.add("hidden");
   reviewer.classList.add("hidden");
   dashboard.classList.remove("hidden");
+}
+
+function dashboardButtonText(episode) {
+  if (episode.status === "transcript_missing") return "Need transcript";
+  if (episode.goldenExists || episode.status === "approved") return "View / edit golden";
+  if (!episode.proposalReady && !episode.reviewExists) return "Need AI pass";
+  if (episode.status === "not_started") return "Start review";
+  return "Continue review";
+}
+
+function dashboardEpisodeCanOpen(episode) {
+  if (episode.status === "transcript_missing") return false;
+  if (episode.goldenExists || episode.status === "approved") return true;
+  return Boolean(episode.proposalReady || episode.reviewExists);
 }
 
 function humanStatus(status) {
@@ -140,6 +182,7 @@ async function openEpisode(slug) {
     state.idCounter = nextIdCounter();
     document.getElementById("showName").textContent = episode.showName;
     document.getElementById("episodeTitle").textContent = episode.title;
+    approveButton.textContent = `Approve ${episode.showName} golden`;
     attestationCheckbox.checked = Boolean(state.review.attested);
     buildTranscript();
     renderAll();
@@ -843,7 +886,12 @@ async function approveGolden() {
     state.spans = clone(payload.review.spans);
     setSaveStatus("saved", "Golden approved");
     renderAll();
-    showToast("Cougar Sports golden saved and human-approved.");
+    const showName = state.episode?.showName || state.episode?.title || "Episode";
+    const git = payload.git || {};
+    const gitMessage = git.attempted
+      ? (git.success ? " Committed and pushed." : ` Git still needs attention: ${git.message}`)
+      : "";
+    showToast(`${showName} golden saved and human-approved.${gitMessage}`);
   } catch (error) {
     setSaveStatus("error", "Approval failed");
     showToast(error.message);

@@ -1,7 +1,7 @@
-# Ad Golden Reviewer
+# Golden Retriever
 
-Local, dark-mode transcript reviewer for the Cougar Sports pilot. It does not
-touch the player, factory, audio, or production ad detector.
+Local, dark-mode transcript reviewer for building human-approved ad goldens.
+It does not touch the player, factory, audio, or production ad detector.
 
 Start it from the repository root:
 

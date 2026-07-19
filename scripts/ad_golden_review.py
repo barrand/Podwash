@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch the local PodWash ad-golden reviewer."""
+"""Launch the local PodWash Golden Retriever."""
 
 from __future__ import annotations
 
