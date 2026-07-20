@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "annotationPolicy": "ads-only-v1",
+  "status": "human-approved",
+  "showSlug": "version-history",
+  "audioSha256": "9f4ed45e6fe6deaccc298b20f76703ee6950adf3175cd6ad14a3453d50c1a8cb",
+  "transcriptSha256": "6b9c9768cf02c81e652a8a0b0318b6db93d7695f1bd35238f8db94b47c9e41cd",
+  "asr": {
+    "engine": "mlx-whisper",
+    "engineVersion": "0.4.3",
+    "model": "mlx-community/whisper-large-v3-mlx",
+    "modelRevision": "49e6aa286ad60c14352c404340ded53710378a11",
+    "wordCount": 12518
+  },
+  "review": {
+    "reviewer": "Brian",
+    "reviewedAt": "2026-07-20T01:40:22.454892+00:00",
+    "reviewedThroughWord": 12518,
+    "proposalSha256": "bd9263d4bfaab11541e9fdac31bdb99981a783c4bd23b84a7f9d7627d873032c",
+    "optionalModelNotesCount": 3
+  },
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 88,
+      "endWord": 180,
+      "start": 60.56,
+      "end": 89.08,
+      "label": "paid_dai",
+      "category": "paid_ad",
+      "delivery": "dynamic",
+      "deliveryConfidence": "suspected",
+      "readStyle": "unknown",
+      "origin": "ai-proposal",
+      "advertiser": "Thumbtack",
+      "note": "Early ad after show intro; ASR cuts off the CTA at 'and you can'."
+    },
+    {
+      "id": "span-2",
+      "startWord": 4790,
+      "endWord": 4839,
+      "start": 1672.76,
+      "end": 1687.74,
+      "label": "paid_dai",
+      "category": "paid_ad",
+      "delivery": "dynamic",
+      "deliveryConfidence": "suspected",
+      "readStyle": "unknown",
+      "origin": "ai-proposal",
+      "advertiser": "Indeed / Comcast Business",
+      "note": "Very short presenter/sponsored-jobs spot before CES re-entry."
+    },
+    {
+      "id": "span-3",
+      "startWord": 12370,
+      "endWord": 12427,
+      "start": 4238.42,
+      "end": 4252.64,
+      "label": "membership_cta",
+      "category": "membership_cta",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "host",
+      "origin": "ai-proposal",
+      "advertiser": "The Verge subscription",
+      "note": "Outro subscription CTA."
+    },
+    {
+      "id": "span-4",
+      "startWord": 12443,
+      "endWord": 12518,
+      "start": 4292.68,
+      "end": 4321.6,
+      "label": "paid_dai",
+      "category": "paid_ad",
+      "delivery": "dynamic",
+      "deliveryConfidence": "suspected",
+      "readStyle": "unknown",
+      "origin": "ai-proposal",
+      "advertiser": "Smith's / Kroger",
+      "note": "Post-roll grocery spot."
+    }
+  ]
+}
