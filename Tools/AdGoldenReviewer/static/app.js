@@ -424,7 +424,7 @@ function renderAudit() {
     card.setAttribute("role", "button");
     card.setAttribute("aria-label", "Jump to model note");
     const jumpToItem = () => {
-      setSelection(Number(item.startWord), Math.max(Number(item.startWord), Number(item.endWord) - 1));
+      clearSelection();
       scrollToWord(Number(item.startWord), true);
     };
     card.addEventListener("click", jumpToItem);
