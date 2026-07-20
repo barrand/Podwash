@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "annotationPolicy": "ads-only-v1",
+  "status": "human-approved",
+  "showSlug": "unexplainable",
+  "audioSha256": "a51786bcd9bd9ef86af6c3ead3888c9f8e62784f72b1567abfa20a2943ae8695",
+  "transcriptSha256": "220ec505bc7a7d75acd975f820fcab62cb68243ffd6d554716d304984c549bac",
+  "asr": {
+    "engine": "mlx-whisper",
+    "engineVersion": "0.4.3",
+    "model": "mlx-community/whisper-large-v3-mlx",
+    "modelRevision": "49e6aa286ad60c14352c404340ded53710378a11",
+    "wordCount": 5182
+  },
+  "review": {
+    "reviewer": "Brian",
+    "reviewedAt": "2026-07-20T01:39:31.895427+00:00",
+    "reviewedThroughWord": 5182,
+    "proposalSha256": "949e8c770c7064f13c20fd378a20d1b0a0e8d4dc99cb796a8c3e3d8026bd83dd",
+    "optionalModelNotesCount": 3
+  },
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 0,
+      "endWord": 177,
+      "start": 0.0,
+      "end": 59.92,
+      "label": "paid_dai",
+      "category": "paid_ad",
+      "delivery": "dynamic",
+      "deliveryConfidence": "suspected",
+      "readStyle": "unknown",
+      "origin": "ai-proposal",
+      "advertiser": "Thumbtack",
+      "note": "Cold-open Thumbtack spot; transcript begins mid-copy."
+    },
+    {
+      "id": "span-2",
+      "startWord": 1815,
+      "endWord": 2015,
+      "start": 740.34,
+      "end": 803.28,
+      "label": "network_promo",
+      "category": "network_promo",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "unknown",
+      "origin": "ai-proposal",
+      "advertiser": "Today, Explained / Comcast Business",
+      "note": "Network promo/presenter segment after break; verify if Comcast line should be separate paid ad."
+    },
+    {
+      "id": "span-3",
+      "startWord": 2015,
+      "endWord": 2218,
+      "start": 803.8,
+      "end": 868.1,
+      "label": "network_promo",
+      "category": "network_promo",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "unknown",
+      "origin": "ai-proposal",
+      "advertiser": "Switched on Pop",
+      "note": "Network promo for Switched on Pop/Netflix; content resumes with the undiagnosed diseases story."
+    },
+    {
+      "id": "span-4",
+      "startWord": 5038,
+      "endWord": 5124,
+      "start": 1964.62,
+      "end": 1988.84,
+      "label": "membership_cta",
+      "category": "membership_cta",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "host",
+      "origin": "ai-proposal",
+      "advertiser": "Vox membership",
+      "note": "Outro Vox membership/support CTA."
+    }
+  ]
+}
