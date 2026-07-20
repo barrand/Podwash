@@ -18,6 +18,30 @@ Constraints:
 - Runtime must stay **on device** (no cloud LLM/API for labeling).
 - Must handle both **DAI fills** (cold opens / midrolls that change per download) and **baked-in** ads (host live-reads, underwriting identical in every copy).
 
+## Labeling policy: feed-drops and cross-posts
+
+A full feed-drop / cross-post should be treated as **episode content**, not as a
+network promo, even if the source show is different from the subscribed show.
+
+Examples:
+
+- A Dr. Death RSS item titled "What To Listen To Next" that plays a substantial
+  episode/preview of Dan Taberski's Manifesto is content for this feed item.
+- A publisher intentionally running episode one of another show as the main
+  payload is content.
+
+Do still label separately inserted ads, membership CTAs, or short network promos
+that wrap or interrupt the feed-drop. The distinction is:
+
+- **Short trailer/promo inside a normal episode** → `network_promo`
+- **Whole/substantial cross-post episode as the payload** → content / no span
+- **Separate paid ad inside the cross-post** → paid ad span
+- **Brief host framing that explains the cross-post** → content unless it turns
+  into a standalone CTA unrelated to the feed-drop payload
+
+This prevents the detector from learning the bad rule "other podcast title =
+ad," which would create large false positives.
+
 ---
 
 ## Approach summary

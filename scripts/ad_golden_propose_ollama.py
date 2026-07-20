@@ -101,6 +101,10 @@ Boundary policy:
 - Host reads and local segment sponsorships can sound in-domain.
 - ASR may mangle brands, URLs, punctuation, and numbers.
 - Do not turn an entire paragraph into an ad because it contains one sponsor tag.
+- A full feed-drop/cross-post episode or substantial preview played as the main
+  payload of the RSS item is content, not network_promo. Do not label the body
+  just because it is another podcast. Only label separate inserted ads, short
+  trailers, or standalone CTAs that wrap/interrupt that payload.
 
 Output exactly:
 {{
