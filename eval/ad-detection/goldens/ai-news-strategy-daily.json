@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "annotationPolicy": "ads-only-v1",
+  "status": "human-approved",
+  "showSlug": "ai-news-strategy-daily",
+  "audioSha256": "",
+  "transcriptSha256": "4b061f227dd4868b77b697e070bffb7cdbec2cc06d0f6dcc9393fde1e2cd30f9",
+  "asr": {
+    "engine": "",
+    "engineVersion": "",
+    "model": "",
+    "modelRevision": "",
+    "wordCount": 3236
+  },
+  "review": {
+    "reviewer": "Brian",
+    "reviewedAt": "2026-07-20T01:16:56.446945+00:00",
+    "reviewedThroughWord": 3236,
+    "proposalSha256": "799b54f1901a685a05e1e4ee54b8ae693d6bae27bbfb424f6cee22f423c738f7",
+    "optionalModelNotesCount": 3
+  },
+  "spans": []
+}
