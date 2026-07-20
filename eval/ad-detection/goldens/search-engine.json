@@ -14,7 +14,7 @@
   },
   "review": {
     "reviewer": "Brian",
-    "reviewedAt": "2026-07-20T01:38:11.442069+00:00",
+    "reviewedAt": "2026-07-20T01:38:35.483997+00:00",
     "reviewedThroughWord": 11661,
     "proposalSha256": "ccc9062ce695729cac92ecda009339e2752e88f6e3f9e671f40297c10aada5e2",
     "optionalModelNotesCount": 4
@@ -128,15 +128,15 @@
     {
       "id": "span-8",
       "startWord": 11382,
-      "endWord": 11505,
+      "endWord": 11506,
       "start": 4555.18,
-      "end": 4604.34,
+      "end": 4604.72,
       "label": "membership_cta",
       "category": "membership_cta",
       "delivery": "unknown",
       "deliveryConfidence": "unknown",
       "readStyle": "host",
-      "origin": "ai-proposal",
+      "origin": "human-edited",
       "advertiser": "Search Engine Incognito Mode",
       "note": "Outro sponsor-contact plus paid-feed CTA."
     },
