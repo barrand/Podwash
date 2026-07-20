@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "annotationPolicy": "ads-only-v1",
+  "status": "human-approved",
+  "showSlug": "dr-death",
+  "audioSha256": "2024fb1c58be26bb17f92ee89afb1212eb3958df660dead4f71bec5e87341da8",
+  "transcriptSha256": "d9150942ae003c43847092e61adadcb6beeea420e454b891c77d6431a2104456",
+  "asr": {
+    "engine": "mlx-whisper",
+    "engineVersion": "0.4.3",
+    "model": "mlx-community/whisper-large-v3-mlx",
+    "modelRevision": "49e6aa286ad60c14352c404340ded53710378a11",
+    "wordCount": 5551
+  },
+  "review": {
+    "reviewer": "Brian",
+    "reviewedAt": "2026-07-20T01:22:41.852290+00:00",
+    "reviewedThroughWord": 5551,
+    "proposalSha256": "19c425b6ca1ea51b287658070ca73ae4065cc8f7e8d5ea2e42e574bcfa0ed574",
+    "optionalModelNotesCount": 1
+  },
+  "spans": []
+}
