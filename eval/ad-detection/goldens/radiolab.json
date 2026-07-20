@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "annotationPolicy": "ads-only-v1",
+  "status": "human-approved",
+  "showSlug": "radiolab",
+  "audioSha256": "2c8d9a0cf58e7b20c986114519e8e70d27f7cc6a70e07147774e2e9b8faf8962",
+  "transcriptSha256": "bff470d7c4114d9ca1f4a4b700bae3bb77c44dd9f525320350de0e19b19536f1",
+  "asr": {
+    "engine": "mlx-whisper",
+    "engineVersion": "0.4.3",
+    "model": "mlx-community/whisper-large-v3-mlx",
+    "modelRevision": "49e6aa286ad60c14352c404340ded53710378a11",
+    "wordCount": 6055
+  },
+  "review": {
+    "reviewer": "Brian",
+    "reviewedAt": "2026-07-20T01:36:39.226933+00:00",
+    "reviewedThroughWord": 6055,
+    "proposalSha256": "8e287edd01eb4d6c00aa754199bc15ef28fc8bfc078677b1efde06d626b98b7c",
+    "optionalModelNotesCount": 2
+  },
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 0,
+      "endWord": 10,
+      "start": 0.0,
+      "end": 31.24,
+      "label": "paid_dai",
+      "category": "paid_ad",
+      "delivery": "dynamic",
+      "deliveryConfidence": "suspected",
+      "readStyle": "unknown",
+      "origin": "ai-proposal",
+      "advertiser": "Alienware",
+      "note": "Cold-open support/URL fragment; ASR appears to have omitted most of the copy."
+    },
+    {
+      "id": "span-2",
+      "startWord": 10,
+      "endWord": 72,
+      "start": 34.5,
+      "end": 51.56,
+      "label": "paid_dai",
+      "category": "paid_ad",
+      "delivery": "dynamic",
+      "deliveryConfidence": "suspected",
+      "readStyle": "unknown",
+      "origin": "ai-proposal",
+      "advertiser": "Progressive Insurance",
+      "note": "Cold-open Progressive spot; content starts at the Radiolab bumper."
+    },
+    {
+      "id": "span-3",
+      "startWord": 6026,
+      "endWord": 6055,
+      "start": 2461.36,
+      "end": 2473.08,
+      "label": "paid_baked_in",
+      "category": "paid_ad",
+      "delivery": "baked_in",
+      "deliveryConfidence": "suspected",
+      "readStyle": "unknown",
+      "origin": "ai-proposal",
+      "advertiser": "Radiolab funders",
+      "note": "End-credit foundation support acknowledgements."
+    }
+  ]
+}
