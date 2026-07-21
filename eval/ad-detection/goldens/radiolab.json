@@ -14,10 +14,10 @@
   },
   "review": {
     "reviewer": "Brian",
-    "reviewedAt": "2026-07-20T01:36:39.226933+00:00",
+    "reviewedAt": "2026-07-21T23:44:23.185303+00:00",
     "reviewedThroughWord": 6055,
-    "proposalSha256": "8e287edd01eb4d6c00aa754199bc15ef28fc8bfc078677b1efde06d626b98b7c",
-    "optionalModelNotesCount": 2
+    "proposalSha256": "5d76fb629f15eae8983fbf521a631a095576bb9e1f008e595f9bb46817dee19f",
+    "optionalModelNotesCount": 3
   },
   "spans": [
     {
@@ -49,6 +49,51 @@
       "origin": "ai-proposal",
       "advertiser": "Progressive Insurance",
       "note": "Cold-open Progressive spot; content starts at the Radiolab bumper."
+    },
+    {
+      "id": "span-4",
+      "startWord": 1646,
+      "endWord": 1742,
+      "start": 703.64,
+      "end": 726.94,
+      "label": "paid_dai",
+      "category": "paid_ad",
+      "delivery": "dynamic",
+      "deliveryConfidence": "suspected",
+      "readStyle": "unknown",
+      "origin": "ai-proposal",
+      "advertiser": "Capital One",
+      "note": "Deep-audit proposed missed midroll after the short-break tease."
+    },
+    {
+      "id": "span-5",
+      "startWord": 1742,
+      "endWord": 2077,
+      "start": 729.6,
+      "end": 828.64,
+      "label": "paid_host_read",
+      "category": "paid_ad",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "host",
+      "origin": "ai-proposal",
+      "advertiser": "BetterHelp",
+      "note": "Deep-audit proposed missed midroll support read; ends before This American Life promo."
+    },
+    {
+      "id": "span-6",
+      "startWord": 2077,
+      "endWord": 2167,
+      "start": 830.24,
+      "end": 856.76,
+      "label": "network_promo",
+      "category": "network_promo",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "unknown",
+      "origin": "ai-proposal",
+      "advertiser": "This American Life",
+      "note": "Deep-audit proposed cross-show promo before Radiolab resumes."
     },
     {
       "id": "span-3",
