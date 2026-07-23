@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "annotationPolicy": "ads-only-v1",
+  "development": [
+    "ai-daily-brief",
+    "bill-simmons-kawhi",
+    "dan-le-batard-local-hour",
+    "economics-of-everyday-things",
+    "locked-on-big-12",
+    "pardon-my-take-larry-fitzgerald",
+    "planet-money",
+    "radiolab",
+    "search-engine",
+    "smartless-olivia-wilde",
+    "unexplainable",
+    "version-history"
+  ],
+  "holdout": [
+    "99-percent-invisible",
+    "ai-news-strategy-daily",
+    "armchair-expert-grant-achatz",
+    "cougar-sports",
+    "cougar-sports-2026-07-17-hour4",
+    "darknet-diaries",
+    "dr-death",
+    "joe-rogan-mrbeast",
+    "this-american-life"
+  ],
+  "notes": "Frozen before anchor-viterbi-v1 tuning. All approved span labels are removable."
+}

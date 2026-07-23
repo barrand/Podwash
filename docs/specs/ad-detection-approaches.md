@@ -4,7 +4,12 @@ Catalog of candidate ways to mark **ad vs content** from a podcast episode, down
 
 **Status (2026-07):** `topic-llm-v1` (Apple Foundation Models) is **scrapped** for production use — weak on Cougar DAI cold opens and TAL midrolls (swiss-cheese FNs, midroll FPs, 4k context, guardrail refusals). Ship default remains **heuristic-cue-v6.1** until a path below proves out on `tmp/ad-eval/*/REVIEW.html`.
 
-**Eval notes:** Prefer human-approved goldens under `tmp/ad-eval/`. TAL’s large golden set is partly polluted (story spans marked “ad” via ad-free transcript diff) — clean before trusting scores.
+**Eval notes (2026-07-22):** The authoritative corpus is now the 21
+human-approved files in `eval/ad-detection/goldens/`; local transcripts under
+`tmp/ad-eval/` are accepted only when their SHA-256 matches the approved golden.
+Use `eval/ad-detection/corpus-manifest.json` for the frozen development/holdout
+split and `scripts/ad_eval_corpus_score.py` for scoring. All approved labels are
+removal targets; label/delivery/read-style remain diagnostics.
 
 ---
 
@@ -56,7 +61,11 @@ ad," which would create large false positives.
 
 **User idea (sentence confidence + neighbors):** score each sentence vs neighbors and the episode; treat enter / CTA / “welcome back” as transitions; fill interiors between anchors. Correct mental model for baked-in stacks. Informal neighbor if/else recreates heuristic bleed — **fold into #3** (anchors as transition evidence, global Viterbi decode, not greedy rules).
 
-**Recommended stack (when we resume after Phase 1):** **#1** for DAI fills → **#3** for baked-in residue → optional **#4** repetition. Near-term work: [ad-detection-dai-phase1.md](ad-detection-dai-phase1.md) (probe only).
+**Current evidence:** the offline `anchor-viterbi-v1` candidate is measurable
+against the frozen corpus but has not passed its content-loss promotion rule;
+`heuristic-cue-v6.1` remains the production candidate. Run the DAI existence
+probe separately before assuming dynamic word-diff is viable. See
+`docs/reports/ad-detection-crux-phase.md`.
 
 ---
 

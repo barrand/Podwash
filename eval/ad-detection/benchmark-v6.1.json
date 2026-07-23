@@ -1,0 +1,1385 @@
+{
+  "schemaVersion": 1,
+  "corpusManifest": "corpus-manifest.json",
+  "approachRequested": "v6.1",
+  "summaries": {
+    "development": {
+      "episodeCount": 12,
+      "macroTimeWeightedPrecision": 0.4889,
+      "macroTimeWeightedRecall": 0.1421,
+      "durationWeightedPrecision": 0.9776,
+      "durationWeightedRecall": 0.112,
+      "contentLossSeconds": 8.8,
+      "missedAdSeconds": 3047.75,
+      "contentLossSecondsPerListeningHour": 0.739,
+      "missedAdSecondsPerListeningHour": 255.835,
+      "worstEpisodeTimeWeightedPrecision": 0.0,
+      "worstEpisodeContentLossSecondsPerListeningHour": 4.728
+    },
+    "holdout": {
+      "episodeCount": 9,
+      "macroTimeWeightedPrecision": 0.8094,
+      "macroTimeWeightedRecall": 0.5265,
+      "durationWeightedPrecision": 0.9184,
+      "durationWeightedRecall": 0.377,
+      "contentLossSeconds": 89.12,
+      "missedAdSeconds": 1656.73,
+      "contentLossSecondsPerListeningHour": 8.324,
+      "missedAdSecondsPerListeningHour": 154.74,
+      "worstEpisodeTimeWeightedPrecision": 0.0,
+      "worstEpisodeContentLossSecondsPerListeningHour": 48.798
+    },
+    "all": {
+      "episodeCount": 21,
+      "macroTimeWeightedPrecision": 0.6262,
+      "macroTimeWeightedRecall": 0.3068,
+      "durationWeightedPrecision": 0.9341,
+      "durationWeightedRecall": 0.2277,
+      "contentLossSeconds": 97.92,
+      "missedAdSeconds": 4704.48,
+      "contentLossSecondsPerListeningHour": 4.329,
+      "missedAdSecondsPerListeningHour": 207.984,
+      "worstEpisodeTimeWeightedPrecision": 0.0,
+      "worstEpisodeContentLossSecondsPerListeningHour": 48.798
+    }
+  },
+  "episodes": [
+    {
+      "slug": "99-percent-invisible",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 2754.36,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 8,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 297.4,
+        "precision": 0.0,
+        "recall": 0.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 297.4
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 388.707,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "breakdowns": {
+        "label": {
+          "network_promo": {
+            "goldenSeconds": 64.94,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 232.46,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 232.46,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 64.94,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "unknown": {
+            "goldenSeconds": 297.4,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "ai-daily-brief",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 1872.92,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 3,
+      "falseNegatives": 5,
+      "timeWeighted": {
+        "truePositiveSeconds": 23.5,
+        "falsePositiveSeconds": 2.46,
+        "falseNegativeSeconds": 158.46,
+        "precision": 0.9052,
+        "recall": 0.1291,
+        "predictedAdSeconds": 25.96,
+        "goldenAdSeconds": 181.96
+      },
+      "contentLossSecondsPerListeningHour": 4.728,
+      "missedAdSecondsPerListeningHour": 304.581,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "breakdowns": {
+        "label": {
+          "membership_cta": {
+            "goldenSeconds": 14.06,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_host_read": {
+            "goldenSeconds": 167.9,
+            "coveredSeconds": 23.5,
+            "coverage": 0.14
+          }
+        },
+        "delivery": {
+          "unknown": {
+            "goldenSeconds": 181.96,
+            "coveredSeconds": 23.5,
+            "coverage": 0.1291
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 181.96,
+            "coveredSeconds": 23.5,
+            "coverage": 0.1291
+          }
+        }
+      }
+    },
+    {
+      "slug": "ai-news-strategy-daily",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 945.19,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 0.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 0
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 0.0,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "breakdowns": {
+        "label": {},
+        "delivery": {},
+        "readStyle": {}
+      }
+    },
+    {
+      "slug": "armchair-expert-grant-achatz",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 6977.85,
+      "precision": 0.3333,
+      "recall": 0.1111,
+      "truePositives": 1,
+      "falsePositives": 2,
+      "falseNegatives": 8,
+      "timeWeighted": {
+        "truePositiveSeconds": 84.66,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 509.53,
+        "precision": 1.0,
+        "recall": 0.1425,
+        "predictedAdSeconds": 84.66,
+        "goldenAdSeconds": 594.19
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 262.876,
+      "boundary": {
+        "matched": 1,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 14.52,
+        "maxAbsDeltaStart": 0.0,
+        "maxAbsDeltaEnd": 14.52,
+        "within3sBoth": 0
+      },
+      "breakdowns": {
+        "label": {
+          "paid_baked_in": {
+            "goldenSeconds": 77.52,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 516.67,
+            "coveredSeconds": 84.66,
+            "coverage": 0.1639
+          }
+        },
+        "delivery": {
+          "baked_in": {
+            "goldenSeconds": 77.52,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "dynamic": {
+            "goldenSeconds": 516.67,
+            "coveredSeconds": 84.66,
+            "coverage": 0.1639
+          }
+        },
+        "readStyle": {
+          "unknown": {
+            "goldenSeconds": 594.19,
+            "coveredSeconds": 84.66,
+            "coverage": 0.1425
+          }
+        }
+      }
+    },
+    {
+      "slug": "bill-simmons-kawhi",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 7119.63,
+      "precision": 0.5714,
+      "recall": 0.3636,
+      "truePositives": 4,
+      "falsePositives": 3,
+      "falseNegatives": 7,
+      "timeWeighted": {
+        "truePositiveSeconds": 195.88,
+        "falsePositiveSeconds": 5.72,
+        "falseNegativeSeconds": 245.32,
+        "precision": 0.9716,
+        "recall": 0.444,
+        "predictedAdSeconds": 201.6,
+        "goldenAdSeconds": 441.2
+      },
+      "contentLossSecondsPerListeningHour": 2.892,
+      "missedAdSecondsPerListeningHour": 124.045,
+      "boundary": {
+        "matched": 4,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 19.87,
+        "maxAbsDeltaStart": 30.34,
+        "maxAbsDeltaEnd": 36.14,
+        "within3sBoth": 1
+      },
+      "breakdowns": {
+        "label": {
+          "paid_dai": {
+            "goldenSeconds": 401.07,
+            "coveredSeconds": 174.0,
+            "coverage": 0.4338
+          },
+          "paid_host_read": {
+            "goldenSeconds": 40.13,
+            "coveredSeconds": 21.88,
+            "coverage": 0.5452
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 401.07,
+            "coveredSeconds": 174.0,
+            "coverage": 0.4338
+          },
+          "unknown": {
+            "goldenSeconds": 40.13,
+            "coveredSeconds": 21.88,
+            "coverage": 0.5452
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 40.13,
+            "coveredSeconds": 21.88,
+            "coverage": 0.5452
+          },
+          "unknown": {
+            "goldenSeconds": 401.07,
+            "coveredSeconds": 174.0,
+            "coverage": 0.4338
+          }
+        }
+      }
+    },
+    {
+      "slug": "cougar-sports",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 3132.44,
+      "precision": 0.6,
+      "recall": 0.3,
+      "truePositives": 3,
+      "falsePositives": 2,
+      "falseNegatives": 7,
+      "timeWeighted": {
+        "truePositiveSeconds": 88.04,
+        "falsePositiveSeconds": 42.46,
+        "falseNegativeSeconds": 175.82,
+        "precision": 0.6746,
+        "recall": 0.3337,
+        "predictedAdSeconds": 130.5,
+        "goldenAdSeconds": 263.86
+      },
+      "contentLossSecondsPerListeningHour": 48.798,
+      "missedAdSecondsPerListeningHour": 202.064,
+      "boundary": {
+        "matched": 3,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 10.6,
+        "maxAbsDeltaStart": 6.22,
+        "maxAbsDeltaEnd": 25.64,
+        "within3sBoth": 0
+      },
+      "breakdowns": {
+        "label": {
+          "network_promo": {
+            "goldenSeconds": 12.7,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 149.3,
+            "coveredSeconds": 30.02,
+            "coverage": 0.2011
+          },
+          "paid_host_read": {
+            "goldenSeconds": 101.86,
+            "coveredSeconds": 58.02,
+            "coverage": 0.5696
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 149.3,
+            "coveredSeconds": 30.02,
+            "coverage": 0.2011
+          },
+          "unknown": {
+            "goldenSeconds": 114.56,
+            "coveredSeconds": 58.02,
+            "coverage": 0.5065
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 101.86,
+            "coveredSeconds": 58.02,
+            "coverage": 0.5696
+          },
+          "unknown": {
+            "goldenSeconds": 162.0,
+            "coveredSeconds": 30.02,
+            "coverage": 0.1853
+          }
+        }
+      }
+    },
+    {
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 3210.84,
+      "precision": 0.75,
+      "recall": 0.25,
+      "truePositives": 3,
+      "falsePositives": 1,
+      "falseNegatives": 9,
+      "timeWeighted": {
+        "truePositiveSeconds": 52.82,
+        "falsePositiveSeconds": 21.74,
+        "falseNegativeSeconds": 273.56,
+        "precision": 0.7084,
+        "recall": 0.1618,
+        "predictedAdSeconds": 74.56,
+        "goldenAdSeconds": 326.38
+      },
+      "contentLossSecondsPerListeningHour": 24.375,
+      "missedAdSecondsPerListeningHour": 306.716,
+      "boundary": {
+        "matched": 3,
+        "medianAbsDeltaStart": 0.58,
+        "medianAbsDeltaEnd": 14.26,
+        "maxAbsDeltaStart": 1.24,
+        "maxAbsDeltaEnd": 22.74,
+        "within3sBoth": 0
+      },
+      "breakdowns": {
+        "label": {
+          "network_promo": {
+            "goldenSeconds": 24.18,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 171.24,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_host_read": {
+            "goldenSeconds": 130.96,
+            "coveredSeconds": 52.82,
+            "coverage": 0.4033
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 171.24,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 155.14,
+            "coveredSeconds": 52.82,
+            "coverage": 0.3405
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 130.96,
+            "coveredSeconds": 52.82,
+            "coverage": 0.4033
+          },
+          "unknown": {
+            "goldenSeconds": 195.42,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "dan-le-batard-local-hour",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 2665.16,
+      "precision": 1.0,
+      "recall": 0.1111,
+      "truePositives": 1,
+      "falsePositives": 0,
+      "falseNegatives": 8,
+      "timeWeighted": {
+        "truePositiveSeconds": 28.62,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 434.3,
+        "precision": 1.0,
+        "recall": 0.0618,
+        "predictedAdSeconds": 28.62,
+        "goldenAdSeconds": 462.92
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 586.636,
+      "boundary": {
+        "matched": 1,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 0.0,
+        "maxAbsDeltaStart": 0.0,
+        "maxAbsDeltaEnd": 0.0,
+        "within3sBoth": 1
+      },
+      "breakdowns": {
+        "label": {
+          "paid_dai": {
+            "goldenSeconds": 121.12,
+            "coveredSeconds": 28.62,
+            "coverage": 0.2363
+          },
+          "paid_host_read": {
+            "goldenSeconds": 341.8,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 121.12,
+            "coveredSeconds": 28.62,
+            "coverage": 0.2363
+          },
+          "unknown": {
+            "goldenSeconds": 341.8,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 341.8,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 121.12,
+            "coveredSeconds": 28.62,
+            "coverage": 0.2363
+          }
+        }
+      }
+    },
+    {
+      "slug": "darknet-diaries",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 4186.65,
+      "precision": 0.6667,
+      "recall": 0.5,
+      "truePositives": 2,
+      "falsePositives": 1,
+      "falseNegatives": 2,
+      "timeWeighted": {
+        "truePositiveSeconds": 136.12,
+        "falsePositiveSeconds": 4.8,
+        "falseNegativeSeconds": 80.46,
+        "precision": 0.9659,
+        "recall": 0.6285,
+        "predictedAdSeconds": 140.92,
+        "goldenAdSeconds": 216.58
+      },
+      "contentLossSecondsPerListeningHour": 4.127,
+      "missedAdSecondsPerListeningHour": 69.186,
+      "boundary": {
+        "matched": 2,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 7.08,
+        "maxAbsDeltaStart": 0.0,
+        "maxAbsDeltaEnd": 7.78,
+        "within3sBoth": 0
+      },
+      "breakdowns": {
+        "label": {
+          "membership_cta": {
+            "goldenSeconds": 42.2,
+            "coveredSeconds": 20.84,
+            "coverage": 0.4938
+          },
+          "paid_host_read": {
+            "goldenSeconds": 174.38,
+            "coveredSeconds": 115.28,
+            "coverage": 0.6611
+          }
+        },
+        "delivery": {
+          "unknown": {
+            "goldenSeconds": 216.58,
+            "coveredSeconds": 136.12,
+            "coverage": 0.6285
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 216.58,
+            "coveredSeconds": 136.12,
+            "coverage": 0.6285
+          }
+        }
+      }
+    },
+    {
+      "slug": "dr-death",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 2113.86,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 0.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 0
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 0.0,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "breakdowns": {
+        "label": {},
+        "delivery": {},
+        "readStyle": {}
+      }
+    },
+    {
+      "slug": "economics-of-everyday-things",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 1369.12,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 8,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 228.78,
+        "precision": 0.0,
+        "recall": 0.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 228.78
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 601.56,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "breakdowns": {
+        "label": {
+          "paid_dai": {
+            "goldenSeconds": 228.78,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 228.78,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "unknown": {
+            "goldenSeconds": 228.78,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "joe-rogan-mrbeast",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 10785.78,
+      "precision": 0.7,
+      "recall": 0.5385,
+      "truePositives": 7,
+      "falsePositives": 3,
+      "falseNegatives": 6,
+      "timeWeighted": {
+        "truePositiveSeconds": 425.32,
+        "falsePositiveSeconds": 11.52,
+        "falseNegativeSeconds": 289.62,
+        "precision": 0.9736,
+        "recall": 0.5949,
+        "predictedAdSeconds": 436.84,
+        "goldenAdSeconds": 714.94
+      },
+      "contentLossSecondsPerListeningHour": 3.845,
+      "missedAdSecondsPerListeningHour": 96.667,
+      "boundary": {
+        "matched": 7,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 15.62,
+        "maxAbsDeltaStart": 57.08,
+        "maxAbsDeltaEnd": 51.1,
+        "within3sBoth": 2
+      },
+      "breakdowns": {
+        "label": {
+          "paid_host_read": {
+            "goldenSeconds": 714.94,
+            "coveredSeconds": 425.32,
+            "coverage": 0.5949
+          }
+        },
+        "delivery": {
+          "unknown": {
+            "goldenSeconds": 714.94,
+            "coveredSeconds": 425.32,
+            "coverage": 0.5949
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 714.94,
+            "coveredSeconds": 425.32,
+            "coverage": 0.5949
+          }
+        }
+      }
+    },
+    {
+      "slug": "locked-on-big-12",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 1485.94,
+      "precision": 1.0,
+      "recall": 0.5,
+      "truePositives": 1,
+      "falsePositives": 0,
+      "falseNegatives": 1,
+      "timeWeighted": {
+        "truePositiveSeconds": 50.22,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 30.18,
+        "precision": 1.0,
+        "recall": 0.6246,
+        "predictedAdSeconds": 50.22,
+        "goldenAdSeconds": 80.4
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 73.117,
+      "boundary": {
+        "matched": 1,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 0.74,
+        "maxAbsDeltaStart": 0.0,
+        "maxAbsDeltaEnd": 0.74,
+        "within3sBoth": 1
+      },
+      "breakdowns": {
+        "label": {
+          "paid_dai": {
+            "goldenSeconds": 29.44,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_host_read": {
+            "goldenSeconds": 50.96,
+            "coveredSeconds": 50.22,
+            "coverage": 0.9855
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 29.44,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 50.96,
+            "coveredSeconds": 50.22,
+            "coverage": 0.9855
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 50.96,
+            "coveredSeconds": 50.22,
+            "coverage": 0.9855
+          },
+          "unknown": {
+            "goldenSeconds": 29.44,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "pardon-my-take-larry-fitzgerald",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 8089.5,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 2,
+      "falseNegatives": 7,
+      "timeWeighted": {
+        "truePositiveSeconds": 24.78,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 406.36,
+        "precision": 1.0,
+        "recall": 0.0575,
+        "predictedAdSeconds": 24.78,
+        "goldenAdSeconds": 431.14
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 180.839,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "breakdowns": {
+        "label": {
+          "network_promo": {
+            "goldenSeconds": 38.52,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 149.34,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_host_read": {
+            "goldenSeconds": 243.28,
+            "coveredSeconds": 24.78,
+            "coverage": 0.1019
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 149.34,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 281.8,
+            "coveredSeconds": 24.78,
+            "coverage": 0.0879
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 243.28,
+            "coveredSeconds": 24.78,
+            "coverage": 0.1019
+          },
+          "unknown": {
+            "goldenSeconds": 187.86,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "planet-money",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 2507.54,
+      "precision": 1.0,
+      "recall": 0.4286,
+      "truePositives": 3,
+      "falsePositives": 0,
+      "falseNegatives": 4,
+      "timeWeighted": {
+        "truePositiveSeconds": 61.32,
+        "falsePositiveSeconds": 0.62,
+        "falseNegativeSeconds": 96.68,
+        "precision": 0.99,
+        "recall": 0.3881,
+        "predictedAdSeconds": 61.94,
+        "goldenAdSeconds": 158.0
+      },
+      "contentLossSecondsPerListeningHour": 0.89,
+      "missedAdSecondsPerListeningHour": 138.801,
+      "boundary": {
+        "matched": 3,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 7.28,
+        "maxAbsDeltaStart": 28.22,
+        "maxAbsDeltaEnd": 16.46,
+        "within3sBoth": 1
+      },
+      "breakdowns": {
+        "label": {
+          "network_promo": {
+            "goldenSeconds": 112.52,
+            "coveredSeconds": 15.84,
+            "coverage": 0.1408
+          },
+          "paid_dai": {
+            "goldenSeconds": 45.48,
+            "coveredSeconds": 45.48,
+            "coverage": 1.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 45.48,
+            "coveredSeconds": 45.48,
+            "coverage": 1.0
+          },
+          "unknown": {
+            "goldenSeconds": 112.52,
+            "coveredSeconds": 15.84,
+            "coverage": 0.1408
+          }
+        },
+        "readStyle": {
+          "unknown": {
+            "goldenSeconds": 158.0,
+            "coveredSeconds": 61.32,
+            "coverage": 0.3881
+          }
+        }
+      }
+    },
+    {
+      "slug": "radiolab",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 2473.08,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 6,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 208.88,
+        "precision": 0.0,
+        "recall": 0.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 208.88
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 304.061,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "breakdowns": {
+        "label": {
+          "network_promo": {
+            "goldenSeconds": 26.52,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_baked_in": {
+            "goldenSeconds": 11.72,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 71.6,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_host_read": {
+            "goldenSeconds": 99.04,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "baked_in": {
+            "goldenSeconds": 11.72,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "dynamic": {
+            "goldenSeconds": 71.6,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 125.56,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 99.04,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 109.84,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "search-engine",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 4685.06,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 9,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 450.4,
+        "precision": 0.0,
+        "recall": 0.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 450.4
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 346.087,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "breakdowns": {
+        "label": {
+          "membership_cta": {
+            "goldenSeconds": 49.54,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 175.76,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_host_read": {
+            "goldenSeconds": 225.1,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 175.76,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 274.64,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 274.64,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 175.76,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "smartless-olivia-wilde",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 4274.7,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 10,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 490.37,
+        "precision": 0.0,
+        "recall": 0.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 490.37
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 412.972,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "breakdowns": {
+        "label": {
+          "paid_dai": {
+            "goldenSeconds": 435.39,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_host_read": {
+            "goldenSeconds": 54.98,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 435.39,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 54.98,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 54.98,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 435.39,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "this-american-life",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 4436.54,
+      "precision": 1.0,
+      "recall": 0.8889,
+      "truePositives": 8,
+      "falsePositives": 0,
+      "falseNegatives": 1,
+      "timeWeighted": {
+        "truePositiveSeconds": 215.66,
+        "falsePositiveSeconds": 8.6,
+        "falseNegativeSeconds": 30.34,
+        "precision": 0.9617,
+        "recall": 0.8767,
+        "predictedAdSeconds": 224.26,
+        "goldenAdSeconds": 246.0
+      },
+      "contentLossSecondsPerListeningHour": 6.978,
+      "missedAdSecondsPerListeningHour": 24.619,
+      "boundary": {
+        "matched": 8,
+        "medianAbsDeltaStart": 15.23,
+        "medianAbsDeltaEnd": 10.97,
+        "maxAbsDeltaStart": 61.96,
+        "maxAbsDeltaEnd": 61.56,
+        "within3sBoth": 1
+      },
+      "breakdowns": {
+        "label": {
+          "membership_cta": {
+            "goldenSeconds": 58.98,
+            "coveredSeconds": 28.64,
+            "coverage": 0.4856
+          },
+          "paid_dai": {
+            "goldenSeconds": 187.02,
+            "coveredSeconds": 187.02,
+            "coverage": 1.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 187.02,
+            "coveredSeconds": 187.02,
+            "coverage": 1.0
+          },
+          "unknown": {
+            "goldenSeconds": 58.98,
+            "coveredSeconds": 28.64,
+            "coverage": 0.4856
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 58.98,
+            "coveredSeconds": 28.64,
+            "coverage": 0.4856
+          },
+          "unknown": {
+            "goldenSeconds": 187.02,
+            "coveredSeconds": 187.02,
+            "coverage": 1.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "unexplainable",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 2022.3,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 4,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 211.38,
+        "precision": 0.0,
+        "recall": 0.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 211.38
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 376.288,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "breakdowns": {
+        "label": {
+          "membership_cta": {
+            "goldenSeconds": 24.22,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "network_promo": {
+            "goldenSeconds": 127.24,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 59.92,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 59.92,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 151.46,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 24.22,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 187.16,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "version-history",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 4321.6,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 4,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 86.64,
+        "precision": 0.0,
+        "recall": 0.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 86.64
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 72.173,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "breakdowns": {
+        "label": {
+          "membership_cta": {
+            "goldenSeconds": 14.22,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 72.42,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 72.42,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 14.22,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 14.22,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 72.42,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        }
+      }
+    }
+  ]
+}

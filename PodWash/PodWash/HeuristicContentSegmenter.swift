@@ -554,4 +554,96 @@ struct HeuristicContentSegmenter: ContentSegmenting {
         out.append(current)
         return out
     }
+
+    /// Offline candidate decoder. It deliberately reuses v6.1's tokenization,
+    /// sentence grouping, anchors, brand carry, and sentence scores; only the
+    /// local greedy state machine is replaced by global Viterbi decoding.
+    struct AnchorViterbiContentSegmenter: ContentSegmenting {
+        var approachIdentifier: String { "anchor-viterbi-v1" }
+
+        func segments(in transcript: [TimedWord]) -> [ContentSegment] {
+            let tokens = HeuristicContentSegmenter.normalizedTokens(from: transcript)
+            guard tokens.count >= 3 else { return [] }
+            let sentences = HeuristicContentSegmenter.groupSentences(tokens)
+            guard !sentences.isEmpty else { return [] }
+
+            var carry: Set<String> = []
+            var emissions: [(content: Double, ad: Double)] = []
+            var enterPenalties: [Double] = []
+            for sentence in sentences {
+                let text = HeuristicContentSegmenter.joinedBare(sentence)
+                let opener = HeuristicContentSegmenter.containsFuzzyOpener(text)
+                let closer = HeuristicContentSegmenter.containsFuzzyCloser(text)
+                if opener {
+                    carry.formUnion(HeuristicContentSegmenter.extractBrandAfterOpener(sentence))
+                }
+                let brand = HeuristicContentSegmenter.sentenceMentionsBrand(text, brandCarry: carry)
+                let score = HeuristicContentSegmenter.scoreSentence(
+                    sentence, text: text, brandCarry: carry,
+                    hasOpener: opener, hasCloser: closer, mentionsBrand: brand
+                )
+                let first = sentence.tokens.first?.bare ?? ""
+                let resume = (HeuristicContentSegmenter.resumeStarters.contains(first) || text.contains("back to"))
+                    && !opener && !closer
+                let showOpen = HeuristicContentSegmenter.containsShowOpen(text) && !opener
+                // Strong content anchors stay hard exits. Other evidence is the
+                // same score consumed by v6.1, expressed as an HMM emission.
+                // Scores already include opener, closer, and brand boosts. A
+                // content explanation is penalized only for strongly ad-like
+                // sentences; weak interior copy is resolved by transitions.
+                var ad = score - 1.0
+                var content = score >= 4.0 ? -1.0 : 0.0
+                if resume { content += 5.0; ad -= 5.0 }
+                if showOpen { content += 10.0; ad -= 12.0 }
+                emissions.append((content, ad))
+                // Preserve the precision-first contract of v6.1: ad state may
+                // begin only on a sponsor/CTA opener, while Viterbi still gets
+                // to decide its full interior and exit globally.
+                enterPenalties.append(opener ? 3.0 : 20.0)
+            }
+
+            // Two-state Viterbi: transitions penalize choppy, sentence-by-
+            // sentence switching and give ad runs a modest duration preference.
+            let negativeInfinity = -Double.greatestFiniteMagnitude
+            var scores = Array(repeating: (content: negativeInfinity, ad: negativeInfinity), count: sentences.count)
+            var back = Array(repeating: (content: false, ad: false), count: sentences.count)
+            scores[0] = (emissions[0].content, emissions[0].ad - enterPenalties[0])
+            if sentences.count > 1 {
+                for i in 1..<sentences.count {
+                    let stayContent = scores[i - 1].content
+                    let exitAd = scores[i - 1].ad - 1.0
+                    if stayContent >= exitAd {
+                        scores[i].content = stayContent + emissions[i].content
+                        back[i].content = false
+                    } else {
+                        scores[i].content = exitAd + emissions[i].content
+                        back[i].content = true
+                    }
+                    let enterAd = scores[i - 1].content - enterPenalties[i]
+                    let stayAd = scores[i - 1].ad
+                    if enterAd >= stayAd {
+                        scores[i].ad = enterAd + emissions[i].ad
+                        back[i].ad = false
+                    } else {
+                        scores[i].ad = stayAd + emissions[i].ad
+                        back[i].ad = true
+                    }
+                }
+            }
+            var states = Array(repeating: false, count: sentences.count)
+            states[states.count - 1] = scores.last!.ad > scores.last!.content
+            if states.count > 1 {
+                for i in stride(from: states.count - 1, through: 1, by: -1) {
+                    states[i - 1] = states[i] ? back[i].ad : back[i].content
+                }
+            }
+            let pods = HeuristicContentSegmenter.mergeNearbyPods(
+                HeuristicContentSegmenter.podsFromStates(sentences: sentences, states: states),
+                gapSeconds: Constants.mergeGapSeconds
+            )
+            return pods
+                .filter { $0.end - $0.start >= Constants.minDurationSeconds }
+                .map { ContentSegment(start: $0.start, end: $0.end) }
+        }
+    }
 }
