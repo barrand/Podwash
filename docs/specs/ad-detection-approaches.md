@@ -64,7 +64,9 @@ ad," which would create large false positives.
 **Current evidence:** the offline `anchor-viterbi-v1` candidate is measurable
 against the frozen corpus but has not passed its content-loss promotion rule;
 `heuristic-cue-v6.1` remains the production candidate. Run the DAI existence
-probe separately before assuming dynamic word-diff is viable. See
+probe separately before assuming dynamic word-diff is viable. The completed
+corpus probe found `dai_likely` media variation in 17 of 21 episodes, so the
+next offline experiment is same-model second-copy ASR plus word alignment. See
 `docs/reports/ad-detection-crux-phase.md`.
 
 ---

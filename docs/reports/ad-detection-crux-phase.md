@@ -31,3 +31,12 @@ extra audio under `tmp`. A hash change is `dai_likely` only with a material
 duration or size difference; identical copies remain `inconclusive`.
 
 No second ASR, word diff, or app download behavior is part of this phase.
+
+### Probe result
+
+The completed local probe classified 17 of 21 corpus episodes as `dai_likely`,
+two as `inconclusive`, and two as `fetch_error`. This is sufficient evidence to
+start an offline word-diff pilot, but it does **not** establish that every media
+difference is an ad. `scripts/ad_eval_dai_diff.py` therefore aligns a changed
+copy back to the approved original transcript and scores only original-copy
+divergences against its golden spans.
