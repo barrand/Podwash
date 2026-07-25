@@ -24,12 +24,27 @@ final class ASRSpyTranscriber: ASRTranscribing, @unchecked Sendable {
     }
 }
 
+/// Test double conforming to CloudAdSpanDetecting — records detectAdSpans invocation count.
+final class CloudAdSpyDetector: CloudAdSpanDetecting, @unchecked Sendable {
+    private(set) var detectCallCount = 0
+    var segmentsToReturn: [ContentSegment] = []
+
+    func detectAdSpans(in transcript: [TimedWord], episodeID: String) async throws -> [ContentSegment] {
+        detectCallCount += 1
+        return segmentsToReturn
+    }
+}
+
 final class AnalysisPipelineTests: XCTestCase {
 
     private let tolerance = 0.0005
     private let episodeID = "fixture-spec-section8"
+    private let retainEpisodeID = "fixture-task-030-retain"
+    private let deleteEpisodeID = "fixture-task-030-delete"
+    private let emptyCloudEpisodeID = "fixture-task-030-empty-cloud"
     private let fullTargetSet: Set<String> = ["shit", "damn"]
     private let subsetTargetSet: Set<String> = ["shit"]
+    private let emptyTargetSet: Set<String> = []
 
     private var cacheDir: URL!
     private var spy: ASRSpyTranscriber!
@@ -87,6 +102,56 @@ final class AnalysisPipelineTests: XCTestCase {
 
     private func dummyAudioURL() -> URL {
         innerProjectDir.appendingPathComponent("PodWashTests/Fixtures/asr/speech-pangram.wav")
+    }
+
+    private func cleanTranscriptFixture() -> [TimedWord] {
+        [
+            TimedWord(word: "Hello", start: 0.50, end: 0.90),
+            TimedWord(word: "world", start: 1.00, end: 1.30),
+        ]
+    }
+
+    private func makeSharedCaches() -> (intervalCache: IntervalCache, transcriptCache: TranscriptCache, transcriptDir: URL) {
+        let transcriptDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("TranscriptCache-030-\(UUID().uuidString)", isDirectory: true)
+        return (
+            IntervalCache(baseDirectory: cacheDir),
+            TranscriptCache(baseDirectory: transcriptDir),
+            transcriptDir
+        )
+    }
+
+    private func makePipeline(
+        asrSpy: ASRSpyTranscriber,
+        cloudSpy: CloudAdSpyDetector,
+        intervalCache: IntervalCache,
+        transcriptCache: TranscriptCache
+    ) -> AnalysisPipeline {
+        AnalysisPipeline(
+            transcriber: asrSpy,
+            cache: intervalCache,
+            transcriptCache: transcriptCache,
+            cloudAdDetector: cloudSpy
+        )
+    }
+
+    /// Mirrors episode delete / download cleanup — transcript plus interval artifacts.
+    private func removePersistedEpisodeAnalysis(
+        episodeID: String,
+        intervalCache: IntervalCache,
+        transcriptCache: TranscriptCache
+    ) throws {
+        try transcriptCache.remove(episodeID: episodeID)
+        let stem = DownloadPaths.fileNameStem(for: episodeID)
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: intervalCache.baseDirectory.path) else { return }
+        let contents = try fm.contentsOfDirectory(
+            at: intervalCache.baseDirectory,
+            includingPropertiesForKeys: nil
+        )
+        for url in contents where url.lastPathComponent.hasPrefix("\(stem)__") {
+            try fm.removeItem(at: url)
+        }
     }
 
     private func assertIntervals(
@@ -360,5 +425,168 @@ final class AnalysisPipelineTests: XCTestCase {
             "interval cache hit with missing transcript must invoke ASR for backfill"
         )
         XCTAssertNotNil(transcriptCache.load(episodeID: backfillEpisodeID))
+    }
+
+    // MARK: - Task 030: retain completed analysis across navigation
+
+    func testCompletedAnalysisSurvivesNewPipelineForUndeletedEpisode() async throws {
+        let (intervalCache, transcriptCache, transcriptDir) = makeSharedCaches()
+        defer { try? TranscriptCache(baseDirectory: transcriptDir).clear() }
+
+        let transcript = try loadTranscript()
+        let asrSpy1 = ASRSpyTranscriber()
+        asrSpy1.wordsToReturn = transcript
+        let cloudSpy1 = CloudAdSpyDetector()
+        cloudSpy1.segmentsToReturn = [ContentSegment(start: 10.0, end: 20.0)]
+        let pipeline1 = makePipeline(
+            asrSpy: asrSpy1,
+            cloudSpy: cloudSpy1,
+            intervalCache: intervalCache,
+            transcriptCache: transcriptCache
+        )
+
+        let episode = EpisodeIdentity(id: retainEpisodeID)
+        let first = try await pipeline1.analyze(
+            episode: episode,
+            audioURL: dummyAudioURL(),
+            targetWords: fullTargetSet
+        )
+
+        XCTAssertEqual(asrSpy1.transcribeCallCount, 1, "first path must transcribe once")
+        XCTAssertEqual(cloudSpy1.detectCallCount, 1, "first path must invoke cloud ad detection once")
+        XCTAssertNotNil(transcriptCache.load(episodeID: retainEpisodeID))
+        XCTAssertNotNil(intervalCache.load(episodeID: retainEpisodeID, targetWords: fullTargetSet))
+
+        let asrSpy2 = ASRSpyTranscriber()
+        let cloudSpy2 = CloudAdSpyDetector()
+        let pipeline2 = makePipeline(
+            asrSpy: asrSpy2,
+            cloudSpy: cloudSpy2,
+            intervalCache: intervalCache,
+            transcriptCache: transcriptCache
+        )
+
+        let second = try await pipeline2.analyze(
+            episode: episode,
+            audioURL: dummyAudioURL(),
+            targetWords: fullTargetSet
+        )
+
+        XCTAssertEqual(second, first, "undeleted episode must reuse persisted intervals")
+        XCTAssertEqual(asrSpy2.transcribeCallCount, 0, "fresh pipeline must not re-transcribe")
+        XCTAssertEqual(cloudSpy2.detectCallCount, 0, "fresh pipeline must not re-run cloud ad detection")
+        XCTAssertEqual(transcriptCache.load(episodeID: retainEpisodeID), transcript)
+    }
+
+    func testDeletedEpisodeDoesNotReuseCompletedAnalysis() async throws {
+        let (intervalCache, transcriptCache, transcriptDir) = makeSharedCaches()
+        defer { try? TranscriptCache(baseDirectory: transcriptDir).clear() }
+
+        let transcript = try loadTranscript()
+        let asrSpy1 = ASRSpyTranscriber()
+        asrSpy1.wordsToReturn = transcript
+        let cloudSpy1 = CloudAdSpyDetector()
+        cloudSpy1.segmentsToReturn = [ContentSegment(start: 10.0, end: 20.0)]
+        let pipeline1 = makePipeline(
+            asrSpy: asrSpy1,
+            cloudSpy: cloudSpy1,
+            intervalCache: intervalCache,
+            transcriptCache: transcriptCache
+        )
+
+        let episode = EpisodeIdentity(id: deleteEpisodeID)
+        _ = try await pipeline1.analyze(
+            episode: episode,
+            audioURL: dummyAudioURL(),
+            targetWords: fullTargetSet
+        )
+        XCTAssertEqual(asrSpy1.transcribeCallCount, 1)
+        XCTAssertEqual(cloudSpy1.detectCallCount, 1)
+
+        try removePersistedEpisodeAnalysis(
+            episodeID: deleteEpisodeID,
+            intervalCache: intervalCache,
+            transcriptCache: transcriptCache
+        )
+        XCTAssertNil(transcriptCache.load(episodeID: deleteEpisodeID))
+        XCTAssertNil(intervalCache.load(episodeID: deleteEpisodeID, targetWords: fullTargetSet))
+
+        let asrSpy2 = ASRSpyTranscriber()
+        asrSpy2.wordsToReturn = transcript
+        let cloudSpy2 = CloudAdSpyDetector()
+        cloudSpy2.segmentsToReturn = [ContentSegment(start: 10.0, end: 20.0)]
+        let pipeline2 = makePipeline(
+            asrSpy: asrSpy2,
+            cloudSpy: cloudSpy2,
+            intervalCache: intervalCache,
+            transcriptCache: transcriptCache
+        )
+
+        _ = try await pipeline2.analyze(
+            episode: episode,
+            audioURL: dummyAudioURL(),
+            targetWords: fullTargetSet
+        )
+
+        XCTAssertEqual(
+            asrSpy2.transcribeCallCount,
+            1,
+            "after delete cleanup, fresh analysis must transcribe again"
+        )
+        XCTAssertEqual(
+            cloudSpy2.detectCallCount,
+            1,
+            "after delete cleanup, fresh analysis must invoke cloud ad detection again"
+        )
+    }
+
+    func testCompletedEmptyCloudAnalysisIsReused() async throws {
+        let (intervalCache, transcriptCache, transcriptDir) = makeSharedCaches()
+        defer { try? TranscriptCache(baseDirectory: transcriptDir).clear() }
+
+        let transcript = cleanTranscriptFixture()
+        let asrSpy1 = ASRSpyTranscriber()
+        asrSpy1.wordsToReturn = transcript
+        let cloudSpy1 = CloudAdSpyDetector()
+        cloudSpy1.segmentsToReturn = []
+        let pipeline1 = makePipeline(
+            asrSpy: asrSpy1,
+            cloudSpy: cloudSpy1,
+            intervalCache: intervalCache,
+            transcriptCache: transcriptCache
+        )
+
+        let episode = EpisodeIdentity(id: emptyCloudEpisodeID)
+        let first = try await pipeline1.analyze(
+            episode: episode,
+            audioURL: dummyAudioURL(),
+            targetWords: emptyTargetSet
+        )
+
+        XCTAssertTrue(first.isEmpty, "fixture has no profanity or ad spans")
+        XCTAssertEqual(cloudSpy1.detectCallCount, 1, "first path must complete cloud ad detection")
+        XCTAssertNotNil(
+            intervalCache.load(episodeID: emptyCloudEpisodeID, targetWords: emptyTargetSet),
+            "zero-span cloud result must persist an explicit completion record"
+        )
+
+        let asrSpy2 = ASRSpyTranscriber()
+        let cloudSpy2 = CloudAdSpyDetector()
+        let pipeline2 = makePipeline(
+            asrSpy: asrSpy2,
+            cloudSpy: cloudSpy2,
+            intervalCache: intervalCache,
+            transcriptCache: transcriptCache
+        )
+
+        let second = try await pipeline2.analyze(
+            episode: episode,
+            audioURL: dummyAudioURL(),
+            targetWords: emptyTargetSet
+        )
+
+        XCTAssertEqual(second, first)
+        XCTAssertEqual(asrSpy2.transcribeCallCount, 0, "cache hit must not re-transcribe")
+        XCTAssertEqual(cloudSpy2.detectCallCount, 0, "cache hit must not re-run cloud ad detection")
     }
 }
