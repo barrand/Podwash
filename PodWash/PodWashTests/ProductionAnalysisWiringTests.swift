@@ -131,6 +131,13 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         )
     }
 
+    /// Production play path gates prepare behind the first-use cloud consent sheet.
+    /// Wiring tests drive `playEpisode` without UI, so fixtures must already be past that gate.
+    private func applyCloudConsentAlreadyDecided(_ store: SettingsStore, enabled: Bool = true) {
+        store.cloudTranscriptProcessingConsentPrompted = true
+        store.cloudTranscriptProcessingEnabled = enabled
+    }
+
     private func makePinnedSettingsStore() -> SettingsStore {
         guard let defaults = UserDefaults(suiteName: settingsDefaultsSuite!) else {
             XCTFail("Could not create isolated UserDefaults suite for pinned target set")
@@ -143,6 +150,7 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         }
         store.addCustomWord("shit")
         store.addCustomWord("damn")
+        applyCloudConsentAlreadyDecided(store)
         let pinned: Set<String> = ["shit", "damn"]
         XCTAssertEqual(
             store.activeNormalizedTargetSet(),
@@ -159,6 +167,7 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         }
         defaults.removePersistentDomain(forName: settingsDefaultsSuite!)
         let store = SettingsStore(userDefaults: defaults)
+        applyCloudConsentAlreadyDecided(store)
         XCTAssertTrue(
             WordMatcher.matches("fuck", in: store.activeNormalizedTargetSet()),
             "Precondition: fresh default settings store must include fWord seeds"
@@ -168,10 +177,8 @@ final class ProductionAnalysisWiringTests: XCTestCase {
 
     /// Skip ads + cloud consent — task-031 positive-ad production wiring fixture.
     private func makePositiveAdSettingsStore() -> SettingsStore {
-        let store = makeSkipAdsSettingsStore()
-        store.cloudTranscriptProcessingEnabled = true
-        store.cloudTranscriptProcessingConsentPrompted = true
-        return store
+        // makeSkipAdsSettingsStore already marks cloud consent decided + enabled.
+        return makeSkipAdsSettingsStore()
     }
 
     private func configureDeterministicPositiveAd() {
@@ -247,6 +254,7 @@ final class ProductionAnalysisWiringTests: XCTestCase {
             store.setCategoryEnabled(categoryID, false)
         }
         store.unrelatedContentEnabled = true
+        applyCloudConsentAlreadyDecided(store)
         XCTAssertEqual(store.unrelatedContentAction, .skip)
         XCTAssertTrue(
             store.activeNormalizedTargetSet().isEmpty,
