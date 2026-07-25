@@ -563,6 +563,10 @@ body.hide-highlights .word.span-start::before {
   font-size: 0.7rem;
 }
 
+.compact-actions.span-actions button {
+  font-size: 0.78rem;
+}
+
 .stacked-actions {
   flex-direction: column;
 }
@@ -625,6 +629,7 @@ body.hide-highlights .word.span-start::before {
   background: #0c1016;
   padding: 0.55rem;
   cursor: pointer;
+  overflow-wrap: anywhere;
   transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
 }
 
@@ -639,6 +644,108 @@ body.hide-highlights .word.span-start::before {
 .audit-item p {
   margin: 0;
   font-size: 0.72rem;
+}
+
+.audit-item.queue-span {
+  border-color: rgba(142, 184, 255, 0.28);
+}
+
+.audit-item.queue-span:hover,
+.audit-item.queue-span:focus-visible {
+  border-color: rgba(142, 184, 255, 0.86);
+}
+
+.audit-item.active-queue-item {
+  border-color: #fff;
+  background: #162235;
+}
+
+.audit-item.queue-note {
+  opacity: 0.82;
+}
+
+.audit-item.queue-note .queue-title {
+  align-items: flex-start;
+  line-height: 1.35;
+}
+
+.audit-item.queue-note .queue-note-badge {
+  margin-top: 0.1rem;
+}
+
+.queue-title {
+  display: flex;
+  gap: 0.42rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.queue-title > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.queue-number,
+.queue-note-badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #263246;
+  color: #dce8ff;
+  padding: 0.05rem 0.38rem;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.queue-note-badge {
+  background: #2a2f3a;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.queue-label {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 0.05rem 0.38rem;
+  font-size: 0.58rem;
+  font-weight: 900;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.queue-label-paid_dai {
+  background: var(--dai);
+  color: var(--dai-ink);
+}
+
+.queue-label-paid_baked_in {
+  background: var(--baked);
+  color: var(--baked-ink);
+}
+
+.queue-label-paid_host_read {
+  background: var(--host);
+  color: var(--host-ink);
+}
+
+.queue-label-network_promo {
+  background: var(--promo);
+  color: var(--promo-ink);
+}
+
+.queue-label-membership_cta {
+  background: var(--member);
+  color: var(--member-ink);
+}
+
+.queue-detail {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 0.28rem !important;
+  color: var(--muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .attestation {

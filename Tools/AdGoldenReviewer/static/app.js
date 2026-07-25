@@ -43,8 +43,6 @@ const saveStatus = document.getElementById("saveStatus");
 const selectionStatus = document.getElementById("selectionStatus");
 const activeEditor = document.getElementById("activeEditor");
 const activeOrigin = document.getElementById("activeOrigin");
-const advertiserInput = document.getElementById("advertiserInput");
-const noteInput = document.getElementById("noteInput");
 const progressFill = document.getElementById("progressFill");
 const progressFraction = document.getElementById("progressFraction");
 const reviewPercent = document.getElementById("reviewPercent");
@@ -88,7 +86,7 @@ async function api(path, options = {}) {
 
 async function loadDashboard() {
   const payload = await api("/api/episodes");
-  const episodes = payload.episodes || [];
+  const episodes = [...(payload.episodes || [])].sort(compareDashboardEpisodes);
   const approvedCount = episodes.filter((episode) => episode.goldenExists || episode.status === "approved").length;
   const transcriptCount = episodes.filter((episode) => episode.transcriptReady).length;
   dashboardSummary.textContent = "";
@@ -138,6 +136,28 @@ async function loadDashboard() {
   loading.classList.add("hidden");
   reviewer.classList.add("hidden");
   dashboard.classList.remove("hidden");
+}
+
+function dashboardEpisodeDone(episode) {
+  return Boolean(episode.goldenExists || episode.status === "approved");
+}
+
+function dashboardEpisodeSortBucket(episode) {
+  if (dashboardEpisodeDone(episode)) return 3;
+  if (episode.transcriptReady && episode.proposalReady) return 0;
+  if (episode.transcriptReady) return 1;
+  return 2;
+}
+
+function compareDashboardEpisodes(left, right) {
+  const bucket = dashboardEpisodeSortBucket(left) - dashboardEpisodeSortBucket(right);
+  if (bucket !== 0) return bucket;
+  const leftProgress = Number(left.progress || 0);
+  const rightProgress = Number(right.progress || 0);
+  if (leftProgress !== rightProgress) return rightProgress - leftProgress;
+  return String(left.showName || left.slug).localeCompare(String(right.showName || right.slug), undefined, {
+    sensitivity: "base",
+  });
 }
 
 function dashboardButtonText(episode) {
@@ -246,6 +266,14 @@ function sortedSpans() {
   );
 }
 
+function spanNumberMap() {
+  const numbered = new Map();
+  sortedSpans().forEach((span, index) => {
+    numbered.set(span.id, index + 1);
+  });
+  return numbered;
+}
+
 function renderAll() {
   renderAnnotations();
   renderSelection();
@@ -257,6 +285,7 @@ function renderAll() {
 
 function renderAnnotations() {
   state.spanAtWord = new Array(state.words.length).fill(null);
+  const numbers = spanNumberMap();
   for (const element of state.wordElements) {
     element.className = "word";
     element.removeAttribute("data-chip");
@@ -274,7 +303,9 @@ function renderAnnotations() {
     const startElement = state.wordElements[span.startWord];
     if (startElement) {
       startElement.classList.add("span-start");
-      startElement.dataset.chip = LABELS[span.label]?.short || span.label;
+      const number = numbers.get(span.id);
+      const label = LABELS[span.label]?.short || span.label;
+      startElement.dataset.chip = number ? `#${number} ${label}` : label;
     }
   }
 
@@ -376,8 +407,6 @@ function renderEditor() {
   }
   activeEditor.classList.remove("hidden");
   activeOrigin.textContent = span.origin === "ai-proposal" ? "AI proposal" : "Human edited";
-  if (document.activeElement !== advertiserInput) advertiserInput.value = span.advertiser || "";
-  if (document.activeElement !== noteInput) noteInput.value = span.note || "";
 }
 
 function renderProgress() {
@@ -405,27 +434,65 @@ function auditItems() {
   return state.proposal?.auditItems || [];
 }
 
+function queueItems() {
+  const spans = sortedSpans().map((span, index) => ({
+    type: "span",
+    id: span.id,
+    number: index + 1,
+    startWord: span.startWord,
+    endWord: span.endWord,
+    label: span.label,
+    advertiser: span.advertiser || "",
+    note: span.note || "",
+    origin: span.origin || "",
+  }));
+  const notes = auditItems().map((item, index) => ({
+    type: "note",
+    id: item.id || `note-${index + 1}`,
+    startWord: Number(item.startWord || 0),
+    endWord: Number(item.endWord || item.startWord || 0),
+    reason: item.reason || "Review this possible missed ad.",
+  }));
+  return [...spans, ...notes].sort((left, right) => {
+    const start = Number(left.startWord || 0) - Number(right.startWord || 0);
+    if (start !== 0) return start;
+    if (left.type !== right.type) return left.type === "span" ? -1 : 1;
+    return String(left.id).localeCompare(String(right.id));
+  });
+}
+
 function renderAudit() {
-  const items = auditItems();
+  const items = queueItems();
   auditCount.textContent = `${items.length}`;
   auditList.textContent = "";
   if (!items.length) {
     const empty = document.createElement("p");
     empty.className = "muted";
-    empty.textContent = "No model review notes.";
+    empty.textContent = "No ad spans or model notes yet.";
     auditList.append(empty);
     return;
   }
 
   for (const item of items) {
     const card = document.createElement("div");
-    card.className = "audit-item";
+    card.className = `audit-item ${item.type === "span" ? "queue-span" : "queue-note"}`;
+    if (item.type === "span" && item.id === state.activeSpanId) {
+      card.classList.add("active-queue-item");
+    }
     card.tabIndex = 0;
     card.setAttribute("role", "button");
-    card.setAttribute("aria-label", "Jump to model note");
+    card.setAttribute("aria-label", item.type === "span" ? "Jump to ad span" : "Jump to model note");
     const jumpToItem = () => {
       clearSelection();
-      scrollToWord(Number(item.startWord), true);
+      if (item.type === "span") {
+        state.activeSpanId = item.id;
+        scrollToWord(Number(item.startWord), true);
+        renderAll();
+      } else {
+        state.activeSpanId = null;
+        scrollToWord(Number(item.startWord), true);
+        renderAll();
+      }
     };
     card.addEventListener("click", jumpToItem);
     card.addEventListener("keydown", (event) => {
@@ -434,18 +501,42 @@ function renderAudit() {
         jumpToItem();
       }
     });
-    const reason = document.createElement("p");
-    reason.textContent = item.reason || "Review this possible missed ad.";
-    card.append(reason);
+    if (item.type === "span") {
+      const title = document.createElement("p");
+      title.className = "queue-title";
+      const number = document.createElement("span");
+      number.className = "queue-number";
+      number.textContent = `#${item.number}`;
+      const label = document.createElement("span");
+      label.className = `queue-label queue-label-${item.label}`;
+      label.textContent = LABELS[item.label]?.short || item.label;
+      const name = document.createElement("span");
+      name.textContent = item.advertiser || LABELS[item.label]?.name || "Ad span";
+      title.append(number, label, name);
+      card.append(title);
+      if (item.note) {
+        const note = document.createElement("p");
+        note.className = "queue-detail";
+        note.textContent = item.note;
+        card.append(note);
+      }
+    } else {
+      const title = document.createElement("p");
+      title.className = "queue-title";
+      const badge = document.createElement("span");
+      badge.className = "queue-note-badge";
+      badge.textContent = "note";
+      const reason = document.createElement("span");
+      reason.textContent = item.reason || "Review this possible missed ad.";
+      title.append(badge, reason);
+      card.append(title);
+    }
     auditList.append(card);
   }
 }
 
 function approvalProblems() {
   const problems = [];
-  if (Number(state.review.reviewedThroughWord || 0) !== state.words.length) {
-    problems.push("finish the transcript");
-  }
   if (!state.review.attested) problems.push("check the final attestation");
   return problems;
 }
@@ -977,17 +1068,8 @@ function bindEvents() {
     scrollToWord(state.review.resumeWord || state.review.reviewedThroughWord || 0, true);
   });
   document.getElementById("hideHighlightsButton").addEventListener("click", toggleHighlights);
-  advertiserInput.addEventListener("change", () => updateActiveField("advertiser", advertiserInput.value.trim()));
-  noteInput.addEventListener("change", () => updateActiveField("note", noteInput.value.trim()));
-  document.getElementById("startLeftButton").addEventListener("click", () => nudge("start", -1));
-  document.getElementById("startRightButton").addEventListener("click", () => nudge("start", 1));
-  document.getElementById("endLeftButton").addEventListener("click", () => nudge("end", -1));
-  document.getElementById("endRightButton").addEventListener("click", () => nudge("end", 1));
-  document.getElementById("splitButton").addEventListener("click", splitActive);
   document.getElementById("mergeButton").addEventListener("click", mergeNext);
   document.getElementById("deleteButton").addEventListener("click", deleteActive);
-  document.getElementById("markReviewedButton").addEventListener("click", markReviewedThroughSelection);
-  document.getElementById("markEndButton").addEventListener("click", markReviewedToEnd);
   attestationCheckbox.addEventListener("change", () => {
     pushHistory();
     state.review.attested = attestationCheckbox.checked;

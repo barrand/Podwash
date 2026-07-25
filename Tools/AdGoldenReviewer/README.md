@@ -16,6 +16,6 @@ The browser writes edits directly and atomically to
 export JSON. Final approval writes the compact tracked artifact to
 `eval/ad-detection/goldens/cougar-sports.json`.
 
-The reviewer refuses approval until the complete transcript has been marked
-reviewed, every missed-ad audit item is resolved, the attestation is checked,
-and transcript/proposal hashes still match.
+The reviewer refuses approval until the reviewer supplies the end-to-end
+attestation and transcript/proposal hashes still match. The review queue offers
+direct jump targets for every proposed span and any optional model notes.

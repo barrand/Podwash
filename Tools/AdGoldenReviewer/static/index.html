@@ -69,22 +69,8 @@
             <h2>Selected span</h2>
             <span id="activeOrigin" class="origin-badge"></span>
           </div>
-          <div class="field">
-            <label for="advertiserInput">Advertiser <span>optional</span></label>
-            <input id="advertiserInput" type="text" autocomplete="off">
-          </div>
-          <div class="field">
-            <label for="noteInput">Note <span>optional</span></label>
-            <textarea id="noteInput" rows="2"></textarea>
-          </div>
-          <div class="compact-actions">
-            <button id="startLeftButton" type="button">Start ←</button>
-            <button id="startRightButton" type="button">Start →</button>
-            <button id="endLeftButton" type="button">End ←</button>
-            <button id="endRightButton" type="button">End →</button>
-          </div>
-          <div class="compact-actions">
-            <button id="splitButton" type="button">Split at cursor</button>
+          <p class="muted">Drag handles to adjust boundaries, or use the actions below.</p>
+          <div class="compact-actions span-actions">
             <button id="mergeButton" type="button">Merge next</button>
             <button id="deleteButton" class="danger-button" type="button">Delete</button>
           </div>
@@ -96,18 +82,14 @@
             <span id="progressFraction" class="muted">0 / 0</span>
           </div>
           <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
-          <div class="stacked-actions">
-            <button id="markReviewedButton" class="primary-button" type="button">Reviewed through selection</button>
-            <button id="markEndButton" type="button">Reviewed to episode end</button>
-          </div>
         </section>
 
         <section class="panel-section">
           <div class="panel-title-row">
-            <h2>Optional model notes</h2>
+            <h2>Ad review queue</h2>
             <span id="auditCount" class="count-badge">0</span>
           </div>
-          <p class="muted">Use these only if helpful. Approval is based on your spans.</p>
+          <p class="muted">Numbered ad links match the chips in the transcript. Notes are extra jump targets.</p>
           <div id="auditList" class="audit-list"></div>
         </section>
 

@@ -619,8 +619,6 @@ class ReviewStore:
         files = self.files(slug)
         episode = self.load_episode(slug)
         word_count = len(episode["words"])
-        if int(submitted.get("reviewedThroughWord") or 0) != word_count:
-            raise ReviewError("review cursor must reach the final word before approval")
 
         raw_decisions = submitted.get("auditDecisions") or {}
         if not isinstance(raw_decisions, dict):
