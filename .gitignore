@@ -47,6 +47,7 @@ fastlane/test_output
 .env
 .env.*
 *.xcconfig.local
+GoogleService-Info.plist
 
 # Audio: large media ignored by default...
 *.m4a
