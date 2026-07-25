@@ -47,6 +47,12 @@ final class SegmentationPipelineAnalyzeSpy: EpisodeAnalyzing, @unchecked Sendabl
     }
 }
 
+nonisolated struct IntegrationCloudDetector: CloudAdSpanDetecting {
+    func detectAdSpans(in transcript: [TimedWord], episodeID: String) async throws -> [ContentSegment] {
+        [ContentSegment(start: 14.13, end: 27.51), ContentSegment(start: 56.16, end: 62.2)]
+    }
+}
+
 @MainActor
 final class SegmentationIntegrationTests: XCTestCase {
 
@@ -75,7 +81,7 @@ final class SegmentationIntegrationTests: XCTestCase {
         pipeline = AnalysisPipeline(
             transcriber: asrSpy,
             cache: IntervalCache(baseDirectory: cacheDir),
-            topicSegmenter: HeuristicTopicSegmenter()
+            cloudAdDetector: IntegrationCloudDetector()
         )
         pipelineSpy = SegmentationPipelineAnalyzeSpy(inner: pipeline)
     }

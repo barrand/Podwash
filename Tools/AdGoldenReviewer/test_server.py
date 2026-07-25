@@ -24,6 +24,7 @@ class ReviewStoreTests(unittest.TestCase):
         root = Path(self.temporary.name)
         self.workdir = root / "work"
         self.golden_dir = root / "goldens"
+        self.gemini_dir = root / "gemini"
         self.episode_dir = self.workdir / "cougar-sports"
         self.episode_dir.mkdir(parents=True)
 
@@ -81,7 +82,7 @@ class ReviewStoreTests(unittest.TestCase):
                 ],
             },
         )
-        self.store = ReviewStore(self.workdir, self.golden_dir)
+        self.store = ReviewStore(self.workdir, self.golden_dir, self.gemini_dir)
 
     def tearDown(self) -> None:
         self.temporary.cleanup()
@@ -220,6 +221,41 @@ class ReviewStoreTests(unittest.TestCase):
 
         self.assertEqual(saved["status"], "in_review")
         self.assertFalse((self.golden_dir / "cougar-sports.json").exists())
+
+    def test_gemini_comparison_is_read_only_and_maps_sentence_ranges(self) -> None:
+        transcript = self.episode_dir / "transcript.json"
+        transcript_hash = file_sha256(transcript)
+        atomic_json(
+            self.golden_dir / "cougar-sports.json",
+            {
+                "schemaVersion": 1,
+                "status": "human-approved",
+                "showSlug": "cougar-sports",
+                "transcriptSha256": transcript_hash,
+                "spans": [{"id": "span-1", "startWord": 1, "endWord": 3, "label": "paid_dai"}],
+            },
+        )
+        atomic_json(
+            self.gemini_dir / "cougar-sports" / "result.json",
+            {
+                "model": "gemini-test",
+                "transcriptSha256": transcript_hash,
+                "sentenceRows": [
+                    {"start_word": 0, "end_word": 1},
+                    {"start_word": 1, "end_word": 3},
+                    {"start_word": 3, "end_word": 6},
+                ],
+                "sentenceSpans": [{"startSentence": 2, "endSentence": 2}],
+                "score": {"timeWeighted": {"precision": 1.0, "recall": 1.0}},
+            },
+        )
+
+        comparison = self.store.load_gemini_episode("cougar-sports")
+
+        self.assertEqual(comparison["geminiSpans"][0]["startWord"], 1)
+        self.assertEqual(comparison["geminiSpans"][0]["endWord"], 3)
+        self.assertEqual(comparison["goldenSpans"][0]["label"], "paid_dai")
+        self.assertEqual(self.store.list_gemini_episodes()[0]["slug"], "cougar-sports")
 
 
 if __name__ == "__main__":

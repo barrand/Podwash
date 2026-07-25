@@ -47,8 +47,7 @@ final class AnalysisPipeline: @unchecked Sendable {
     nonisolated(unsafe) private let transcriber: any ASRTranscribing
     private let cache: IntervalCache
     private let transcriptCache: TranscriptCache
-    private let fallbackSegmenter: HeuristicContentSegmenter
-    private let topicSegmenter: any TopicSegmenting
+    private let cloudAdDetector: any CloudAdSpanDetecting
 
     /// Show/episode text for TopicCard (set by playback before analyze).
     var segmentationContext: SegmentationContext = .empty
@@ -65,14 +64,16 @@ final class AnalysisPipeline: @unchecked Sendable {
         transcriber: any ASRTranscribing,
         cache: IntervalCache,
         transcriptCache: TranscriptCache = .applicationSupport,
-        topicSegmenter: any TopicSegmenting = TopicLLMSegmenter(),
-        fallbackSegmenter: HeuristicContentSegmenter = HeuristicContentSegmenter()
+        cloudAdDetector: any CloudAdSpanDetecting = CloudAdSpanClient(
+            configuration: .applicationDefault(consentGranted: {
+                SettingsStore().cloudTranscriptProcessingEnabled
+            })
+        )
     ) {
         self.transcriber = transcriber
         self.cache = cache
         self.transcriptCache = transcriptCache
-        self.topicSegmenter = topicSegmenter
-        self.fallbackSegmenter = fallbackSegmenter
+        self.cloudAdDetector = cloudAdDetector
     }
 
     // Avoid MainActor/TaskLocal deinit crash when boxed as `any EpisodeAnalyzing`.
@@ -149,16 +150,6 @@ final class AnalysisPipeline: @unchecked Sendable {
                     injectedTranscript: injectedTranscript
                 )
             }
-        } else if onPartialIntervals != nil {
-            union = try await analyzeChunkedColdMiss(
-                episode: episode,
-                audioURL: audioURL,
-                duration: duration,
-                targetWords: targetWords,
-                injectedTranscript: injectedTranscript,
-                profanityAction: profanityAction,
-                unrelatedContent: unrelatedContent
-            )
         } else {
             let transcript: [TimedWord]
             if let injected = injectedTranscript, !injected.isEmpty {
@@ -184,10 +175,14 @@ final class AnalysisPipeline: @unchecked Sendable {
             }
 
             // Always segment on cache miss; enablement is a return/playback filter.
-            let segmentIntervals = await self.contentSegments(
+            // A cloud failure is intentionally not cached. Persisting an empty
+            // result here would make a transient outage look like "no ads" on
+            // every subsequent playback of the episode.
+            let detectedSegments = try? await cloudAdDetector.detectAdSpans(
                 in: transcript,
-                terminal: true
-            ).map { segment in
+                episodeID: episode.id
+            )
+            let segmentIntervals = (detectedSegments ?? []).map { segment in
                 CensorInterval(
                     start: segment.start,
                     end: segment.end,
@@ -197,7 +192,9 @@ final class AnalysisPipeline: @unchecked Sendable {
             }
 
             union = (profanity + segmentIntervals).sorted { $0.start < $1.start }
-            try cache.store(union, episodeID: episode.id, targetWords: targetWords)
+            if detectedSegments != nil {
+                try cache.store(union, episodeID: episode.id, targetWords: targetWords)
+            }
             try transcriptCache.store(transcript, episodeID: episode.id)
         }
 
@@ -224,97 +221,6 @@ final class AnalysisPipeline: @unchecked Sendable {
         }
 
         return projected
-    }
-
-    /// Chunked cold-miss path (ADR-021 §3). Cache write only after the final chunk.
-    private func analyzeChunkedColdMiss(
-        episode: EpisodeIdentity,
-        audioURL: URL,
-        duration: Double,
-        targetWords: Set<String>,
-        injectedTranscript: [TimedWord]?,
-        profanityAction: CensorAction,
-        unrelatedContent: UnrelatedContentOptions
-    ) async throws -> [CensorInterval] {
-        // Live ASR: one full-file pass, then emit logical chunk frontiers (ADR-021 §3).
-        // Injected path filters the transcript per chunk without ASR.
-        let fullTranscript: [TimedWord]
-        if let injected = injectedTranscript, !injected.isEmpty {
-            fullTranscript = injected
-        } else {
-            fullTranscript = try await transcriber.transcribe(fileURL: audioURL)
-        }
-
-        var lastUnion: [CensorInterval] = []
-        let ends = AnalysisChunking.chunkEnds(duration: max(duration, 0.001))
-        for chunkEnd in ends {
-            let accumulatedTranscript = fullTranscript.filter { $0.start < chunkEnd }
-            let isTerminal = chunkEnd >= duration - 0.000_1
-
-            let profanity = IntervalBuilder.buildIntervals(
-                from: accumulatedTranscript,
-                targetSet: targetWords,
-                action: profanityAction
-            ).map {
-                CensorInterval(
-                    start: $0.start,
-                    end: $0.end,
-                    action: profanityAction,
-                    source: .profanity
-                )
-            }
-            let segmentIntervals = await self.contentSegments(
-                in: accumulatedTranscript,
-                terminal: isTerminal
-            ).map { segment in
-                CensorInterval(
-                    start: segment.start,
-                    end: segment.end,
-                    action: unrelatedContent.action,
-                    source: .unrelatedContent
-                )
-            }
-            let fullUnion = (profanity + segmentIntervals).sorted { $0.start < $1.start }
-            lastUnion = fullUnion
-
-            let eligible = fullUnion.filter { $0.end <= chunkEnd }
-            let projectedEligible = Self.projectPlaybackIntervals(
-                union: eligible,
-                profanityAction: profanityAction,
-                unrelatedContent: unrelatedContent
-            )
-
-            let snapshot: AnalysisProgressSnapshot
-            if isTerminal {
-                let terminalProjected = Self.projectPlaybackIntervals(
-                    union: fullUnion,
-                    profanityAction: profanityAction,
-                    unrelatedContent: unrelatedContent
-                )
-                snapshot = Self.completeSnapshot(
-                    duration: duration,
-                    intervals: terminalProjected,
-                    adRangeIntervals: Self.adRangePaintIntervals(
-                        playbackIntervals: terminalProjected,
-                        analysisUnion: fullUnion,
-                        unrelatedContentEnabled: unrelatedContent.enabled
-                    )
-                )
-            } else {
-                snapshot = AnalysisChunking.inFlightSnapshot(
-                    duration: duration,
-                    processedEnd: chunkEnd
-                )
-            }
-
-            await emitProgress(snapshot)
-            await emitPartialIntervals(projectedEligible, snapshot: snapshot)
-        }
-
-        try cache.store(lastUnion, episodeID: episode.id, targetWords: targetWords)
-        // Terminal-only transcript write (ADR-022 §4 / ADR-021) — never mid-chunk.
-        try transcriptCache.store(fullTranscript, episodeID: episode.id)
-        return lastUnion
     }
 
     /// Interval cache hit with no transcript file — persist ASR (or injected) without re-analyzing intervals.
@@ -433,17 +339,6 @@ final class AnalysisPipeline: @unchecked Sendable {
                 )
             }
         }
-    }
-
-    /// Topic LLM on terminal / full pass; cheap heuristic for interim progressive chunks.
-    private func contentSegments(
-        in transcript: [TimedWord],
-        terminal: Bool
-    ) async -> [ContentSegment] {
-        if terminal {
-            return await topicSegmenter.segments(in: transcript, context: segmentationContext)
-        }
-        return fallbackSegmenter.segments(in: transcript)
     }
 
     private func emitProgress(_ snapshot: AnalysisProgressSnapshot) async {

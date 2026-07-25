@@ -24,6 +24,7 @@ struct PodWashApp: App {
     private let remoteCommands: RemoteCommandCoordinator
 
     init() {
+        FirebaseCloudBootstrap.configure()
         if FixtureDownload.isEnabled {
             FixtureDownload.clearDownloadsDirectoryIfNeeded()
         }

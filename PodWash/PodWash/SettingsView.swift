@@ -138,6 +138,21 @@ struct SettingsView: View {
             .accessibilityValue(store.unrelatedContentEnabled ? "1" : "0")
             .accessibilityHint("Skips or mutes segments that seem like ads.")
 
+            Toggle(isOn: $store.cloudTranscriptProcessingEnabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Use cloud ad detection")
+                    Text("Sends the text from your on-device transcript—not audio—to identify ads.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 2)
+            .padding(.horizontal, 12)
+            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+            .accessibilityIdentifier("cloudTranscriptProcessingToggle")
+            .accessibilityLabel("Use cloud ad detection")
+            .accessibilityValue(store.cloudTranscriptProcessingEnabled ? "1" : "0")
+
             if store.unrelatedContentEnabled {
                 Button(action: cycleUnrelatedContentAction) {
                     HStack {

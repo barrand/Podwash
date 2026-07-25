@@ -8,6 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		90184D50562F5B7749D2C408 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5AA73DA2CC666D68641E9C37 /* WhisperKit */; };
+		AC9000010000000000000001 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = AC9000040000000000000001 /* FirebaseAuth */; };
+		AC9000020000000000000001 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = AC9000050000000000000001 /* FirebaseAppCheck */; };
+		AC9000030000000000000001 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = AC9000060000000000000001 /* FirebaseCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -90,6 +93,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				90184D50562F5B7749D2C408 /* WhisperKit in Frameworks */,
+				AC9000010000000000000001 /* FirebaseAuth in Frameworks */,
+				AC9000020000000000000001 /* FirebaseAppCheck in Frameworks */,
+				AC9000030000000000000001 /* FirebaseCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -178,6 +184,9 @@
 			name = PodWash;
 			packageProductDependencies = (
 				5AA73DA2CC666D68641E9C37 /* WhisperKit */,
+				AC9000040000000000000001 /* FirebaseAuth */,
+				AC9000050000000000000001 /* FirebaseAppCheck */,
+				AC9000060000000000000001 /* FirebaseCore */,
 			);
 			productName = PodWash;
 			productReference = E3E16DD02FFF1BCC00E398A5 /* PodWash.app */;
@@ -267,6 +276,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				2497113C66B2A000B4EE4808 /* XCRemoteSwiftPackageReference "WhisperKit" */,
+				AC9000070000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E3E16DD12FFF1BCC00E398A5 /* Products */;
@@ -773,6 +783,14 @@
 				version = 1.0.0;
 			};
 		};
+		AC9000070000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -780,6 +798,21 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 2497113C66B2A000B4EE4808 /* XCRemoteSwiftPackageReference "WhisperKit" */;
 			productName = WhisperKit;
+		};
+		AC9000040000000000000001 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AC9000070000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		AC9000050000000000000001 /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AC9000070000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
+		};
+		AC9000060000000000000001 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AC9000070000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

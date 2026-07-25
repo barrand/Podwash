@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PodWash Gemini comparison</title>
+  <link rel="stylesheet" href="/gemini-review.css">
+</head>
+<body>
+  <header>
+    <div>
+      <p class="eyebrow">PodWash evaluation · read-only</p>
+      <h1>Gemini vs. approved goldens</h1>
+      <p id="subtitle">Loading experiment results…</p>
+    </div>
+    <label>Episode <select id="episodeSelect" aria-label="Episode"></select></label>
+  </header>
+  <main>
+    <aside>
+      <section id="metrics"></section>
+      <section>
+        <h2>Legend</h2>
+        <p><span class="swatch golden"></span> Human-approved golden</p>
+        <p><span class="swatch gemini"></span> Gemini prediction</p>
+        <p><span class="swatch both"></span> Both</p>
+      </section>
+      <section>
+        <div class="section-heading"><h2>Deltas</h2><span id="deltaCount" class="muted"></span></div>
+        <div class="delta-controls">
+          <button id="previousDelta" type="button">← Previous</button>
+          <button id="nextDelta" type="button">Next →</button>
+        </div>
+        <p class="muted">Jump directly to yellow-only misses and purple-only extra coverage.</p>
+        <ol id="deltaList" class="span-list"></ol>
+      </section>
+      <section>
+        <h2>Golden spans</h2>
+        <ol id="goldenList" class="span-list"></ol>
+      </section>
+      <section>
+        <h2>Gemini spans</h2>
+        <ol id="geminiList" class="span-list"></ol>
+      </section>
+    </aside>
+    <article id="transcript" aria-label="Transcript comparison"></article>
+  </main>
+  <script src="/gemini-review.js"></script>
+</body>
+</html>

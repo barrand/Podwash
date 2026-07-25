@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 DEFAULT_WORKDIR = ROOT / "tmp" / "ad-eval"
 DEFAULT_GOLDEN_DIR = ROOT / "eval" / "ad-detection" / "goldens"
+DEFAULT_GEMINI_DIR = DEFAULT_WORKDIR / "gemini-v1"
 
 ALLOWED_LABELS = {
     "paid_dai",
@@ -265,10 +266,12 @@ class ReviewStore:
         self,
         workdir: Path = DEFAULT_WORKDIR,
         golden_dir: Path = DEFAULT_GOLDEN_DIR,
+        gemini_dir: Path = DEFAULT_GEMINI_DIR,
         slugs: tuple[str, ...] | None = None,
     ):
         self.workdir = workdir.resolve()
         self.golden_dir = golden_dir.resolve()
+        self.gemini_dir = gemini_dir.resolve()
         self.slugs = slugs
         self._write_lock = threading.Lock()
 
@@ -436,6 +439,97 @@ class ReviewStore:
                     "proposalReady": files.proposal.exists(),
                     "reviewExists": files.review.exists(),
                     "goldenExists": files.golden.exists(),
+                }
+            )
+        return episodes
+
+    def gemini_episode_slugs(self) -> tuple[str, ...]:
+        """Return only complete local Gemini experiment results.
+
+        These are deliberately separate from review proposals: opening the
+        comparison screen must never alter a human review or golden.
+        """
+        if not self.gemini_dir.exists():
+            return ()
+        return tuple(
+            path.name
+            for path in sorted(self.gemini_dir.iterdir())
+            if path.is_dir() and (path / "result.json").is_file()
+        )
+
+    def load_gemini_episode(self, slug: str) -> dict[str, Any]:
+        if slug not in self.gemini_episode_slugs():
+            raise ReviewError("unknown Gemini experiment episode", HTTPStatus.NOT_FOUND)
+        files = self.files(slug)
+        if not files.transcript.exists() or not files.meta.exists():
+            raise ReviewError("Gemini experiment transcript is unavailable", HTTPStatus.NOT_FOUND)
+        if not files.golden.exists():
+            raise ReviewError("Gemini comparison requires an approved golden", HTTPStatus.CONFLICT)
+
+        result = load_json(self.gemini_dir / slug / "result.json")
+        transcript_hash = self.transcript_hash(files)
+        if str(result.get("transcriptSha256") or "") != transcript_hash:
+            raise ReviewError("Gemini result is stale for the current transcript")
+        golden = load_json(files.golden)
+        if str(golden.get("transcriptSha256") or "") != transcript_hash:
+            raise ReviewError("approved golden is stale for the current transcript")
+        words = load_json(files.transcript)
+        if not isinstance(words, list) or not words:
+            raise ReviewError("episode transcript is empty")
+
+        sentence_rows = result.get("sentenceRows") or []
+        predicted: list[dict[str, Any]] = []
+        for index, span in enumerate(result.get("sentenceSpans") or [], 1):
+            try:
+                first = int(span["startSentence"])
+                last = int(span["endSentence"])
+                start_word = int(sentence_rows[first - 1]["start_word"])
+                end_word = int(sentence_rows[last - 1]["end_word"])
+            except (IndexError, KeyError, TypeError, ValueError) as exc:
+                raise ReviewError("Gemini result has invalid sentence spans") from exc
+            if start_word < 0 or end_word <= start_word or end_word > len(words):
+                raise ReviewError("Gemini result has invalid word boundaries")
+            predicted.append(
+                {
+                    "id": f"gemini-{index}",
+                    "startWord": start_word,
+                    "endWord": end_word,
+                    "start": float(words[start_word]["start"]),
+                    "end": float(words[end_word - 1]["end"]),
+                }
+            )
+
+        meta = load_json(files.meta)
+        score = result.get("score") or {}
+        return {
+            "slug": slug,
+            "model": str(result.get("model") or "Gemini"),
+            "title": str(meta.get("episodeTitle") or slug),
+            "showName": str(meta.get("showName") or meta.get("showTitle") or slug),
+            "words": words,
+            "goldenSpans": validate_spans(golden.get("spans") or [], len(words)),
+            "geminiSpans": predicted,
+            "score": score,
+            "cost": result.get("cost") or {},
+        }
+
+    def list_gemini_episodes(self) -> list[dict[str, Any]]:
+        episodes: list[dict[str, Any]] = []
+        for slug in self.gemini_episode_slugs():
+            try:
+                episode = self.load_gemini_episode(slug)
+            except ReviewError:
+                continue
+            score = episode["score"].get("timeWeighted") or {}
+            episodes.append(
+                {
+                    "slug": slug,
+                    "title": episode["title"],
+                    "showName": episode["showName"],
+                    "precision": score.get("precision"),
+                    "recall": score.get("recall"),
+                    "predictionCount": len(episode["geminiSpans"]),
+                    "goldenCount": len(episode["goldenSpans"]),
                 }
             )
         return episodes
@@ -644,6 +738,12 @@ class ReviewHandler(BaseHTTPRequestHandler):
             if parts == ["api", "episodes"]:
                 self.send_json({"episodes": self.store.list_episodes()})
                 return
+            if parts == ["api", "gemini", "episodes"]:
+                self.send_json({"episodes": self.store.list_gemini_episodes()})
+                return
+            if len(parts) == 3 and parts[:2] == ["api", "gemini"]:
+                self.send_json(self.store.load_gemini_episode(parts[2]))
+                return
             if len(parts) == 3 and parts[:2] == ["api", "episodes"]:
                 self.send_json(self.store.load_episode(parts[2]))
                 return
@@ -713,11 +813,12 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--workdir", type=Path, default=DEFAULT_WORKDIR)
     parser.add_argument("--golden-dir", type=Path, default=DEFAULT_GOLDEN_DIR)
+    parser.add_argument("--gemini-dir", type=Path, default=DEFAULT_GEMINI_DIR)
     args = parser.parse_args()
 
     if args.host not in {"127.0.0.1", "localhost"}:
         raise SystemExit("reviewer may only bind to localhost")
-    store = ReviewStore(args.workdir, args.golden_dir)
+    store = ReviewStore(args.workdir, args.golden_dir, args.gemini_dir)
     server = ThreadingHTTPServer((args.host, args.port), make_handler(store))
     print(f"PodWash Golden Retriever: http://{args.host}:{server.server_port}")
     try:
