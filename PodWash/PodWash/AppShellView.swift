@@ -96,6 +96,16 @@ struct AppShellView: View {
                 shellMiniPlayerBar(engine: engine, reservesTabBarClearance: true)
             }
         }
+        .alert("Enable ad detection?", isPresented: $model.isCloudTranscriptConsentPresented) {
+            Button("Not now", role: .cancel) {
+                model.declineCloudTranscriptProcessing()
+            }
+            Button("Enable ad detection") {
+                model.enableCloudTranscriptProcessing()
+            }
+        } message: {
+            Text("PodWash transcribes audio on your device. To identify ads, it sends the transcript text—not audio—to our secure processing service.")
+        }
         // Content-tree Settings control (not ToolbarItem). iOS 26 nav-bar glass +
         // toolbar Image buttons often report exists&&!isHittable under XCTest; a
         // plain SwiftUI Button overlaid in the safe-area trailing slot stays hittable.

@@ -45,6 +45,12 @@ final class AppShellModel {
     /// Episode awaiting download-before-play (channel cleaning on, no local file).
     private var pendingDownloadForPlayEpisodeID: String?
 
+    /// One-time disclosure presented immediately before the first cloud ad scan.
+    var isCloudTranscriptConsentPresented = false
+    private var pendingCloudConsentEpisode: Episode?
+    private var pendingCloudConsentPodcastTitle = ""
+    private var pendingCloudConsentFeedURL: URL?
+
     private var playbackProgressHandlerID: UUID?
 
     /// Observes deferred NoCache transcript backfill so episode/full-player affordances refresh.
@@ -504,6 +510,15 @@ final class AppShellModel {
             return
         }
 
+        if !settingsStore.cloudTranscriptProcessingEnabled,
+           !settingsStore.cloudTranscriptProcessingConsentPrompted {
+            pendingCloudConsentEpisode = episode
+            pendingCloudConsentPodcastTitle = podcastTitle
+            pendingCloudConsentFeedURL = feedURL
+            isCloudTranscriptConsentPresented = true
+            return
+        }
+
         let targetWords = settingsStore.activeNormalizedTargetSet()
         let action = settingsStore.censorAction()
         let channelUnrelated = channelUnrelatedContentEnabled(forFeedURL: feedURL)
@@ -611,6 +626,34 @@ final class AppShellModel {
                 )
             }
         }
+    }
+
+    /// Accept the disclosure and resume the play request that triggered it.
+    func enableCloudTranscriptProcessing() {
+        settingsStore.cloudTranscriptProcessingConsentPrompted = true
+        settingsStore.cloudTranscriptProcessingEnabled = true
+        isCloudTranscriptConsentPresented = false
+        resumePendingCloudConsentPlay()
+    }
+
+    /// Keep cloud analysis off without interrupting the already-created player session.
+    func declineCloudTranscriptProcessing() {
+        settingsStore.cloudTranscriptProcessingConsentPrompted = true
+        settingsStore.cloudTranscriptProcessingEnabled = false
+        isCloudTranscriptConsentPresented = false
+        pendingCloudConsentEpisode = nil
+        pendingCloudConsentPodcastTitle = ""
+        pendingCloudConsentFeedURL = nil
+    }
+
+    private func resumePendingCloudConsentPlay() {
+        guard let episode = pendingCloudConsentEpisode else { return }
+        let title = pendingCloudConsentPodcastTitle
+        let feedURL = pendingCloudConsentFeedURL
+        pendingCloudConsentEpisode = nil
+        pendingCloudConsentPodcastTitle = ""
+        pendingCloudConsentFeedURL = nil
+        playEpisode(episode, podcastTitle: title, feedURL: feedURL)
     }
 
     func toggleMiniPlayerPlayPause() {

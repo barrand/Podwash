@@ -28,6 +28,7 @@ nonisolated final class SettingsStore: @unchecked Sendable {
         static let autoDeleteAfterPlayedEnabled = "podwash.settings.autoDeleteAfterPlayedEnabled"
         static let unrelatedContentEnabled = "podwash.settings.unrelatedContentEnabled"
         static let cloudTranscriptProcessingEnabled = "podwash.settings.cloudTranscriptProcessingEnabled"
+        static let cloudTranscriptProcessingConsentPrompted = "podwash.settings.cloudTranscriptProcessingConsentPrompted"
         static let unrelatedContentAction = "podwash.settings.unrelatedContentAction"
         static let muteOverlayMode = "podwash.settings.muteOverlayMode"
         static let smartAutoplayEnabled = "podwash.settings.smartAutoplayEnabled"
@@ -41,6 +42,7 @@ nonisolated final class SettingsStore: @unchecked Sendable {
             autoDeleteAfterPlayedEnabled,
             unrelatedContentEnabled,
             cloudTranscriptProcessingEnabled,
+            cloudTranscriptProcessingConsentPrompted,
             unrelatedContentAction,
             muteOverlayMode,
             smartAutoplayEnabled,
@@ -79,6 +81,11 @@ nonisolated final class SettingsStore: @unchecked Sendable {
     /// Explicit consent gate: local Whisper transcript text may be sent to Gemini.
     var cloudTranscriptProcessingEnabled: Bool {
         didSet { userDefaults.set(cloudTranscriptProcessingEnabled, forKey: Keys.cloudTranscriptProcessingEnabled) }
+    }
+    /// Records that the one-time transcript disclosure has been shown, whether
+    /// the listener accepted or declined it.
+    var cloudTranscriptProcessingConsentPrompted: Bool {
+        didSet { userDefaults.set(cloudTranscriptProcessingConsentPrompted, forKey: Keys.cloudTranscriptProcessingConsentPrompted) }
     }
     /// Action for unrelated-content intervals when enabled. Fresh default: skip.
     var unrelatedContentAction: SettingsCleaningAction {
@@ -145,6 +152,11 @@ nonisolated final class SettingsStore: @unchecked Sendable {
             cloudTranscriptProcessingEnabled = userDefaults.bool(forKey: Keys.cloudTranscriptProcessingEnabled)
         } else {
             cloudTranscriptProcessingEnabled = false
+        }
+        if userDefaults.object(forKey: Keys.cloudTranscriptProcessingConsentPrompted) != nil {
+            cloudTranscriptProcessingConsentPrompted = userDefaults.bool(forKey: Keys.cloudTranscriptProcessingConsentPrompted)
+        } else {
+            cloudTranscriptProcessingConsentPrompted = false
         }
 
         if let raw = userDefaults.string(forKey: Keys.unrelatedContentAction),
