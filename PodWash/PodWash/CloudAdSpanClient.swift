@@ -83,7 +83,7 @@ nonisolated struct CloudAdSpanClient: CloudAdSpanDetecting {
     }
 
     func detectAdSpans(in transcript: [TimedWord], episodeID: String) async throws -> [ContentSegment] {
-        guard configuration.consentGranted else { throw CloudAdDetectionError.consentRequired }
+        guard configuration.consentGranted() else { throw CloudAdDetectionError.consentRequired }
         guard let endpoint = configuration.endpoint else { throw CloudAdDetectionError.unavailable }
         let sentences = Self.sentences(from: transcript)
         guard !sentences.isEmpty else { return [] }
@@ -112,7 +112,7 @@ nonisolated struct CloudAdSpanClient: CloudAdSpanDetecting {
         }
     }
 
-    static func sentences(from transcript: [TimedWord]) -> [Sentence] {
+    private static func sentences(from transcript: [TimedWord]) -> [Sentence] {
         var result: [Sentence] = []
         var words: [TimedWord] = []
         func finish() {
