@@ -23,6 +23,8 @@ struct MiniPlayerBar: View {
     let episodeDuration: Double
     let processedEnd: Double
     let muteIntervals: [CensorInterval]
+    /// The tab shell can host this below the player controls, immediately above its tab bar.
+    let showsSuperSeekBar: Bool
     let onExpand: () -> Void
     let onTogglePlayPause: () -> Void
     let onSeekTo: (Double) -> Void
@@ -116,18 +118,8 @@ struct MiniPlayerBar: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
 
-                VStack(spacing: 4) {
-                    if let analysisProgress {
-                        ProgressView(value: analysisProgress, total: 1.0)
-                            .tint(BrandTheme.primary)
-                            .accessibilityElement(children: .ignore)
-                            .accessibilityIdentifier("miniPlayer.analysisProgress")
-                            .accessibilityLabel("Analysis progress")
-                            .accessibilityValue(String(format: "%.4f", analysisProgress))
-                            .accessibilityHint("Overall progress of episode cleaning analysis.")
-                    }
-
-                    SuperSeekBarView(
+                if showsSuperSeekBar {
+                    MiniPlayerSeekBar(
                         showsCompleteContentTrack: showCompletePaint,
                         adBands: adBands,
                         elapsed: elapsedSeconds,
@@ -135,17 +127,57 @@ struct MiniPlayerBar: View {
                         processedEnd: frontier,
                         muteMarkers: muteMarkers,
                         muteMarkerCountForAccessibility: muteMarkerCountForAccessibility,
-                        barHeight: AnalysisTimelineModel.miniPlayerTimelineHeight,
-                        accessibilityIdentifier: "miniPlayer.superSeekBar",
-                        onSeek: onSeekTo
+                        analysisProgress: analysisProgress,
+                        onSeekTo: onSeekTo
                     )
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
             }
             .frame(maxWidth: .infinity)
             .background(.bar)
         }
+    }
+}
+
+/// Shared mini-player analysis progress and seek chrome. The tab shell places it in the
+/// space directly above the tab navigation; sheets place it inside the mini-player card.
+struct MiniPlayerSeekBar: View {
+    let showsCompleteContentTrack: Bool
+    let adBands: [AdBand]
+    let elapsed: Double
+    let duration: Double
+    let processedEnd: Double
+    let muteMarkers: [MuteMarker]
+    let muteMarkerCountForAccessibility: Int?
+    let analysisProgress: Double?
+    let onSeekTo: (Double) -> Void
+
+    var body: some View {
+        VStack(spacing: 4) {
+            if let analysisProgress {
+                ProgressView(value: analysisProgress, total: 1.0)
+                    .tint(BrandTheme.primary)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityIdentifier("miniPlayer.analysisProgress")
+                    .accessibilityLabel("Analysis progress")
+                    .accessibilityValue(String(format: "%.4f", analysisProgress))
+                    .accessibilityHint("Overall progress of episode cleaning analysis.")
+            }
+
+            SuperSeekBarView(
+                showsCompleteContentTrack: showsCompleteContentTrack,
+                adBands: adBands,
+                elapsed: elapsed,
+                duration: duration,
+                processedEnd: processedEnd,
+                muteMarkers: muteMarkers,
+                muteMarkerCountForAccessibility: muteMarkerCountForAccessibility,
+                barHeight: AnalysisTimelineModel.miniPlayerTimelineHeight,
+                accessibilityIdentifier: "miniPlayer.superSeekBar",
+                onSeek: onSeekTo
+            )
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
     }
 }
 

@@ -88,6 +88,11 @@ next offline experiment is same-model second-copy ASR plus word alignment. See
 
 **Next step:** Phase 1 probe only — see [ad-detection-dai-phase1.md](ad-detection-dai-phase1.md).
 
+**Phase 2 gate:** [ad-detection-dai-differential-gate.md](ad-detection-dai-differential-gate.md)
+tests a production-realistic single extra copy. Copy B is repeatability
+diagnostics only; all alternate ASR provenance must exactly match the approved
+pipeline before alignment.
+
 ---
 
 ## 2. Distilled Core ML token classifier

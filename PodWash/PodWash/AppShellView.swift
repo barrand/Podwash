@@ -5,6 +5,7 @@
 //  Slice 23 — Production TabView + mini-player overlay (ADR-015 §2).
 //
 
+import AVFoundation
 import SwiftUI
 import UIKit
 
@@ -216,6 +217,7 @@ struct AppShellView: View {
                 episodeDuration: model.superSeekDuration,
                 processedEnd: model.superSeekProcessedEnd,
                 muteIntervals: model.nowPlayingMuteIntervals,
+                showsSuperSeekBar: !reservesTabBarClearance,
                 onExpand: { model.expandFullPlayer() },
                 onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
                 onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) },
@@ -228,12 +230,58 @@ struct AppShellView: View {
             }
             if reservesTabBarClearance {
                 // iOS 26 TabView bottom inset overlaps the tab bar unless we reserve its height.
-                Color.clear
-                    .frame(height: tabBarHeight)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
+                // The Super Seek Bar belongs in that reservation, immediately above the tabs.
+                shellMiniPlayerSeekBar(engine: engine)
+                .frame(height: tabBarHeight, alignment: .top)
+                .background(BrandTheme.surface)
             }
         }
+    }
+
+    private func shellMiniPlayerSeekBar(engine: PlaybackEngine) -> some View {
+        TimelineView(.periodic(from: .now, by: 0.25)) { _ in
+            let _ = engine.uiRefreshToken
+            MiniPlayerSeekBar(
+                showsCompleteContentTrack: model.isPlayerSeekBarAnalysisComplete,
+                adBands: miniPlayerAdBands(for: engine),
+                elapsed: engine.avPlayer.currentTime().seconds,
+                duration: miniPlayerDuration(for: engine),
+                processedEnd: miniPlayerProcessedEnd(for: engine),
+                muteMarkers: miniPlayerMuteMarkers(for: engine),
+                muteMarkerCountForAccessibility: miniPlayerMuteMarkerCount(for: engine),
+                analysisProgress: model.analysisProgressFraction,
+                onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) }
+            )
+        }
+    }
+
+    private func miniPlayerDuration(for engine: PlaybackEngine) -> Double {
+        model.superSeekDuration > 0 ? model.superSeekDuration : engine.duration
+    }
+
+    private func miniPlayerProcessedEnd(for engine: PlaybackEngine) -> Double {
+        let duration = miniPlayerDuration(for: engine)
+        return model.superSeekProcessedEnd > 0 ? model.superSeekProcessedEnd : duration
+    }
+
+    private func miniPlayerAdBands(for engine: PlaybackEngine) -> [AdBand] {
+        guard model.isPlayerSeekBarAnalysisComplete else { return [] }
+        return SuperSeekBarModel.adBands(
+            from: model.nowPlayingMuteIntervals,
+            duration: miniPlayerDuration(for: engine)
+        )
+    }
+
+    private func miniPlayerMuteMarkers(for engine: PlaybackEngine) -> [MuteMarker] {
+        guard model.isPlayerSeekBarAnalysisComplete else { return [] }
+        return SuperSeekBarModel.muteMarkers(
+            from: model.nowPlayingMuteIntervals,
+            duration: miniPlayerDuration(for: engine)
+        )
+    }
+
+    private func miniPlayerMuteMarkerCount(for engine: PlaybackEngine) -> Int? {
+        model.isPlayerSeekBarAnalysisComplete ? miniPlayerMuteMarkers(for: engine).count : nil
     }
 
     @ViewBuilder

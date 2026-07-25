@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "candidateCopy": "a",
+  "diagnosticCopy": "b",
+  "excluded": ["99-percent-invisible"],
+  "development": [
+    "economics-of-everyday-things",
+    "dan-le-batard-local-hour",
+    "planet-money",
+    "smartless-olivia-wilde"
+  ],
+  "validation": [
+    "armchair-expert-grant-achatz",
+    "cougar-sports",
+    "cougar-sports-2026-07-17-hour4",
+    "this-american-life"
+  ],
+  "negativeControls": [
+    "ai-news-strategy-daily",
+    "dr-death"
+  ],
+  "referenceOverrides": {
+    "ai-news-strategy-daily": "matched-rerun",
+    "dan-le-batard-local-hour": "matched-rerun",
+    "smartless-olivia-wilde": "matched-rerun",
+    "armchair-expert-grant-achatz": "matched-rerun",
+    "this-american-life": "matched-rerun"
+  },
+  "gate": {
+    "minimumAllRemovablePrecision": 0.98,
+    "minimumDynamicRecall": 0.75,
+    "maximumEpisodeContentLossSecondsPerHour": 10.0,
+    "maximumControlPredictionSeconds": 0.0,
+    "maximumHybridAddedContentLossSecondsPerHour": 5.0
+  }
+}

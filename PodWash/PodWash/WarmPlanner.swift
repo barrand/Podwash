@@ -66,7 +66,7 @@ final class WarmPlanner {
         let cleaningOn = cleaningStore.isChannelCleaningEnabled(forFeedURL: feedURL)
         if !cleaningOn { return true }
         let targets = settingsStore.activeNormalizedTargetSet()
-        return intervalCache.load(episodeID: episodeID, targetWords: targets) != nil
+        return intervalCache.isAnalysisCompleted(episodeID: episodeID, targetWords: targets)
     }
 
     func isLocallyDownloaded(episodeID: String) -> Bool {
@@ -111,10 +111,10 @@ final class WarmPlanner {
             ) { _ in }
             guard generation == warmGeneration else { return }
 
-            if intervalCache.load(
+            if !intervalCache.isAnalysisCompleted(
                 episodeID: item.episodeID,
                 targetWords: settingsStore.activeNormalizedTargetSet()
-            ) == nil {
+            ) {
                 let targets = settingsStore.activeNormalizedTargetSet()
                 let unrelated = UnrelatedContentOptions(
                     enabled: settingsStore.unrelatedContentEnabled

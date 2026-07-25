@@ -707,10 +707,13 @@ final class AppShellModel {
 
     /// Channel-row cleaning summary from IntervalCache hit (ADR-025). Nil on miss.
     func cleaningSummary(for episodeID: String) -> EpisodeCleaningSummary? {
-        guard let intervals = intervalCache.load(
-            episodeID: episodeID,
-            targetWords: settingsStore.activeNormalizedTargetSet()
-        ) else {
+        let targetWords = settingsStore.activeNormalizedTargetSet()
+        guard intervalCache.isAnalysisCompleted(episodeID: episodeID, targetWords: targetWords),
+              let intervals = intervalCache.load(
+                  episodeID: episodeID,
+                  targetWords: targetWords
+              )
+        else {
             return nil
         }
         return CleaningSummaryModel.summary(from: intervals)

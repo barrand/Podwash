@@ -5,6 +5,7 @@
 //  Slice 07 — Analyze-episode pipeline. On-disk JSON cache of merged censor
 //  intervals keyed by episode ID + normalized target-word fingerprint (ADR-005 §3).
 //  Slice 28 — `asr-model:<pin>` fingerprint token (ADR-024).
+//  Task 030 — explicit `analysisCompleted` record (empty interval list ≠ cache miss).
 //
 
 import CryptoKit
@@ -13,6 +14,13 @@ import Foundation
 /// Stable episode identity for cache keys. Slice 11 may replace with persisted model IDs.
 struct EpisodeIdentity: Hashable, Codable, Equatable, Sendable {
     let id: String
+}
+
+/// On-disk interval-cache payload. `analysisCompleted` distinguishes a finished analyze
+/// (including zero ad spans) from a partial profanity-only write after cloud failure.
+struct IntervalCacheRecord: Codable, Equatable, Sendable {
+    let intervals: [CensorInterval]
+    let analysisCompleted: Bool
 }
 
 /// On-disk JSON cache of merged censor intervals.
@@ -51,17 +59,50 @@ struct IntervalCache: Sendable {
             .joined(separator: "\n")
     }
 
-    func load(episodeID: String, targetWords: Set<String>) -> [CensorInterval]? {
+    func loadRecord(episodeID: String, targetWords: Set<String>) -> IntervalCacheRecord? {
         let url = cacheFileURL(episodeID: episodeID, targetWords: targetWords)
         guard let data = try? Data(contentsOf: url) else { return nil }
-        return try? JSONDecoder().decode([CensorInterval].self, from: data)
+        let decoder = JSONDecoder()
+        if let record = try? decoder.decode(IntervalCacheRecord.self, from: data) {
+            return record
+        }
+        guard let legacy = try? decoder.decode([CensorInterval].self, from: data) else { return nil }
+        return IntervalCacheRecord(intervals: legacy, analysisCompleted: true)
     }
 
-    func store(_ intervals: [CensorInterval], episodeID: String, targetWords: Set<String>) throws {
+    func load(episodeID: String, targetWords: Set<String>) -> [CensorInterval]? {
+        loadRecord(episodeID: episodeID, targetWords: targetWords)?.intervals
+    }
+
+    func isAnalysisCompleted(episodeID: String, targetWords: Set<String>) -> Bool {
+        loadRecord(episodeID: episodeID, targetWords: targetWords)?.analysisCompleted ?? false
+    }
+
+    func store(
+        _ intervals: [CensorInterval],
+        episodeID: String,
+        targetWords: Set<String>,
+        analysisCompleted: Bool = true
+    ) throws {
         try FileManager.default.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
         let url = cacheFileURL(episodeID: episodeID, targetWords: targetWords)
-        let data = try JSONEncoder().encode(intervals)
+        let record = IntervalCacheRecord(intervals: intervals, analysisCompleted: analysisCompleted)
+        let data = try JSONEncoder().encode(record)
         try data.write(to: url, options: .atomic)
+    }
+
+    /// Episode delete / download+cache purge — removes all fingerprint files for `episodeID`.
+    func remove(episodeID: String) throws {
+        let stem = DownloadPaths.fileNameStem(for: episodeID)
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: baseDirectory.path) else { return }
+        let contents = try fm.contentsOfDirectory(
+            at: baseDirectory,
+            includingPropertiesForKeys: nil
+        )
+        for url in contents where url.lastPathComponent.hasPrefix("\(stem)__") {
+            try fm.removeItem(at: url)
+        }
     }
 
     /// Test helper — removes all cached files.

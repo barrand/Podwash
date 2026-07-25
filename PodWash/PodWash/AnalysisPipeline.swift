@@ -134,14 +134,22 @@ final class AnalysisPipeline: @unchecked Sendable {
             duration = audioDuration
         }
 
-        if duration > 0 {
+        let cachedRecord = cache.loadRecord(episodeID: episode.id, targetWords: targetWords)
+        let showInFlightProgress: Bool
+        if let cachedRecord, cachedRecord.analysisCompleted {
+            showInFlightProgress = transcriptCache.load(episodeID: episode.id) == nil
+        } else {
+            showInFlightProgress = true
+        }
+
+        if duration > 0, showInFlightProgress {
             await emitProgress(AnalysisTimelineModel.startSnapshot(duration: duration))
         }
 
         let union: [CensorInterval]
-        if let cached = cache.load(episodeID: episode.id, targetWords: targetWords) {
-            // Interval cache hit — do not overwrite an existing transcript (ADR-022 §4).
-            union = cached
+        if let cachedRecord, cachedRecord.analysisCompleted {
+            // Terminal cache hit — do not overwrite an existing transcript (ADR-022 §4).
+            union = cachedRecord.intervals
             if transcriptCache.load(episodeID: episode.id) == nil {
                 try await backfillMissingTranscript(
                     episode: episode,
@@ -150,52 +158,27 @@ final class AnalysisPipeline: @unchecked Sendable {
                     injectedTranscript: injectedTranscript
                 )
             }
-        } else {
-            let transcript: [TimedWord]
-            if let injected = injectedTranscript, !injected.isEmpty {
-                transcript = injected
-            } else {
-                transcript = try await transcribeWithLiveProgress(
-                    fileURL: audioURL,
-                    duration: duration
-                )
-            }
-
-            let profanity = IntervalBuilder.buildIntervals(
-                from: transcript,
-                targetSet: targetWords,
-                action: profanityAction
-            ).map {
-                CensorInterval(
-                    start: $0.start,
-                    end: $0.end,
-                    action: profanityAction,
-                    source: .profanity
-                )
-            }
-
-            // Always segment on cache miss; enablement is a return/playback filter.
-            // A cloud failure is intentionally not cached. Persisting an empty
-            // result here would make a transient outage look like "no ads" on
-            // every subsequent playback of the episode.
-            let detectedSegments = try? await cloudAdDetector.detectAdSpans(
-                in: transcript,
-                episodeID: episode.id
+        } else if let cachedRecord, !cachedRecord.analysisCompleted {
+            union = try await resumePartialAnalysis(
+                episode: episode,
+                audioURL: audioURL,
+                duration: duration,
+                targetWords: targetWords,
+                injectedTranscript: injectedTranscript,
+                profanityAction: profanityAction,
+                unrelatedContent: unrelatedContent,
+                partialIntervals: cachedRecord.intervals
             )
-            let segmentIntervals = (detectedSegments ?? []).map { segment in
-                CensorInterval(
-                    start: segment.start,
-                    end: segment.end,
-                    action: unrelatedContent.action,
-                    source: .unrelatedContent
-                )
-            }
-
-            union = (profanity + segmentIntervals).sorted { $0.start < $1.start }
-            if detectedSegments != nil {
-                try cache.store(union, episodeID: episode.id, targetWords: targetWords)
-            }
-            try transcriptCache.store(transcript, episodeID: episode.id)
+        } else {
+            union = try await runColdMissAnalysis(
+                episode: episode,
+                audioURL: audioURL,
+                duration: duration,
+                targetWords: targetWords,
+                injectedTranscript: injectedTranscript,
+                profanityAction: profanityAction,
+                unrelatedContent: unrelatedContent
+            )
         }
 
         lastAnalysisUnion = union
@@ -221,6 +204,150 @@ final class AnalysisPipeline: @unchecked Sendable {
         }
 
         return projected
+    }
+
+    private func runColdMissAnalysis(
+        episode: EpisodeIdentity,
+        audioURL: URL,
+        duration: Double,
+        targetWords: Set<String>,
+        injectedTranscript: [TimedWord]?,
+        profanityAction: CensorAction,
+        unrelatedContent: UnrelatedContentOptions
+    ) async throws -> [CensorInterval] {
+        let transcript = try await resolveTranscript(
+            episode: episode,
+            audioURL: audioURL,
+            duration: duration,
+            injectedTranscript: injectedTranscript,
+            allowCachedTranscript: false
+        )
+
+        let profanity = IntervalBuilder.buildIntervals(
+            from: transcript,
+            targetSet: targetWords,
+            action: profanityAction
+        ).map {
+            CensorInterval(
+                start: $0.start,
+                end: $0.end,
+                action: profanityAction,
+                source: .profanity
+            )
+        }
+
+        // Always segment on cache miss; enablement is a return/playback filter.
+        let detectedSegments = try? await cloudAdDetector.detectAdSpans(
+            in: transcript,
+            episodeID: episode.id
+        )
+        let segmentIntervals = (detectedSegments ?? []).map { segment in
+            CensorInterval(
+                start: segment.start,
+                end: segment.end,
+                action: unrelatedContent.action,
+                source: .unrelatedContent
+            )
+        }
+
+        let union = (profanity + segmentIntervals).sorted { $0.start < $1.start }
+        try persistAnalysisResult(
+            union: union,
+            episodeID: episode.id,
+            targetWords: targetWords,
+            cloudCompleted: detectedSegments != nil
+        )
+        try transcriptCache.store(transcript, episodeID: episode.id)
+        return union
+    }
+
+    /// Partial cache hit — profanity persisted after a prior cloud failure; retry cloud only.
+    private func resumePartialAnalysis(
+        episode: EpisodeIdentity,
+        audioURL: URL,
+        duration: Double,
+        targetWords: Set<String>,
+        injectedTranscript: [TimedWord]?,
+        profanityAction: CensorAction,
+        unrelatedContent: UnrelatedContentOptions,
+        partialIntervals: [CensorInterval]
+    ) async throws -> [CensorInterval] {
+        let transcript = try await resolveTranscript(
+            episode: episode,
+            audioURL: audioURL,
+            duration: duration,
+            injectedTranscript: injectedTranscript,
+            allowCachedTranscript: true
+        )
+
+        let profanity = partialIntervals.filter { $0.source == .profanity }
+        let detectedSegments = try? await cloudAdDetector.detectAdSpans(
+            in: transcript,
+            episodeID: episode.id
+        )
+        let segmentIntervals = (detectedSegments ?? []).map { segment in
+            CensorInterval(
+                start: segment.start,
+                end: segment.end,
+                action: unrelatedContent.action,
+                source: .unrelatedContent
+            )
+        }
+
+        let union: [CensorInterval]
+        if detectedSegments != nil {
+            union = (profanity + segmentIntervals).sorted { $0.start < $1.start }
+        } else {
+            union = partialIntervals
+        }
+        try persistAnalysisResult(
+            union: union,
+            episodeID: episode.id,
+            targetWords: targetWords,
+            cloudCompleted: detectedSegments != nil
+        )
+        if transcriptCache.load(episodeID: episode.id) == nil {
+            try transcriptCache.store(transcript, episodeID: episode.id)
+        }
+        return union
+    }
+
+    private func resolveTranscript(
+        episode: EpisodeIdentity,
+        audioURL: URL,
+        duration: Double,
+        injectedTranscript: [TimedWord]?,
+        allowCachedTranscript: Bool
+    ) async throws -> [TimedWord] {
+        if let injected = injectedTranscript, !injected.isEmpty {
+            return injected
+        }
+        if allowCachedTranscript, let cached = transcriptCache.load(episodeID: episode.id) {
+            return cached
+        }
+        return try await transcribeWithLiveProgress(
+            fileURL: audioURL,
+            duration: duration
+        )
+    }
+
+    /// Persists terminal or partial interval artifacts. Cloud failure stores profanity-only
+    /// with `analysisCompleted: false` so a later visit retries cloud without re-transcribing.
+    /// A successful cloud pass (including zero ad spans) writes `analysisCompleted: true`.
+    private func persistAnalysisResult(
+        union: [CensorInterval],
+        episodeID: String,
+        targetWords: Set<String>,
+        cloudCompleted: Bool
+    ) throws {
+        if cloudCompleted || !union.isEmpty {
+            try cache.store(
+                union,
+                episodeID: episodeID,
+                targetWords: targetWords,
+                analysisCompleted: cloudCompleted
+            )
+        }
     }
 
     /// Interval cache hit with no transcript file — persist ASR (or injected) without re-analyzing intervals.

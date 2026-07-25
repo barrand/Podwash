@@ -179,6 +179,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         preferredFileExtensionByEpisodeID.removeValue(forKey: episodeID)
         stateStore.setState(.notDownloaded, for: episodeID)
         try? TranscriptCache.applicationSupport.remove(episodeID: episodeID)
+        try? IntervalCache.applicationSupport.remove(episodeID: episodeID)
         notifyStateChanged()
     }
 
