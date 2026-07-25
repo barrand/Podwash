@@ -80,9 +80,12 @@ final class AppShellModel {
                 || FixturePrerollAdBands.isAnyEnabled)
     }
 
-    /// Applied / cached intervals for mute-marker overlays on mini + full player (ADR-023 / ADR-026).
+    /// Applied playback intervals for seek-bar ad/mute paint (ADR-023 / ADR-026 / task-031).
+    /// Matches `presentTranscript(for:)` precedence so transcript and player chrome
+    /// never diverge on recognized ad spans.
     var nowPlayingMuteIntervals: [CensorInterval] {
-        playbackCoordinator?.cachedIntervals ?? []
+        guard let episodeID = nowPlayingEpisodeID else { return [] }
+        return presentationIntervals(for: episodeID)
     }
 
     private(set) var engine: PlaybackEngine?
@@ -735,20 +738,8 @@ final class AppShellModel {
         }
 
         let intervals: [CensorInterval]
-        if let coordinator = playbackCoordinator, nowPlayingEpisodeID == episodeID {
-            let applied = coordinator.appliedPlaybackIntervals
-            if !applied.isEmpty {
-                intervals = applied
-            } else if !coordinator.cachedIntervals.isEmpty {
-                intervals = coordinator.cachedIntervals
-            } else if let fromDisk = intervalCache.load(
-                episodeID: episodeID,
-                targetWords: settingsStore.activeNormalizedTargetSet()
-            ) {
-                intervals = fromDisk
-            } else {
-                intervals = []
-            }
+        if nowPlayingEpisodeID == episodeID {
+            intervals = presentationIntervals(for: episodeID)
         } else if let fromDisk = intervalCache.load(
             episodeID: episodeID,
             targetWords: settingsStore.activeNormalizedTargetSet()
@@ -976,6 +967,27 @@ final class AppShellModel {
                 unrelatedContentEnabled: unrelatedContent.enabled
             )
         )
+    }
+
+    /// Intervals for transcript skipped-ad rows and mini/full seek-bar ad bands.
+    /// Prefers applied schedule, then coordinator cache, then persisted analysis union.
+    private func presentationIntervals(for episodeID: String) -> [CensorInterval] {
+        if let coordinator = playbackCoordinator, nowPlayingEpisodeID == episodeID {
+            let applied = coordinator.appliedPlaybackIntervals
+            if !applied.isEmpty {
+                return applied
+            }
+            if !coordinator.cachedIntervals.isEmpty {
+                return coordinator.cachedIntervals
+            }
+        }
+        if let fromDisk = intervalCache.load(
+            episodeID: episodeID,
+            targetWords: settingsStore.activeNormalizedTargetSet()
+        ) {
+            return fromDisk
+        }
+        return []
     }
 
     /// Re-project analyze union when playback analyze omitted unrelated (legacy 4-arg spies).
