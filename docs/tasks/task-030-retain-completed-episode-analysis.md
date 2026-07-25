@@ -60,5 +60,5 @@ episode may remove this local result and a later fresh download may analyze agai
 > Loop writes `VERIFY RESULT:` here. For tasks, `tier=2` and `filtered=1` are valid for Done.
 
 ```
-VERIFY RESULT: exit=0 total=11 passed=11 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260724-235347.xcresult tier=2 class=tests
+VERIFY RESULT: exit=0 total=11 passed=11 failed=0 skipped=0 filtered=1 bundle=build/test-results/verify-20260725-001720.xcresult tier=2 class=tests
 ```

@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 031 |
 | **Title** | Completed analysis must surface recognized ad spans in player and transcript |
-| **Status** | Queued |
+| **Status** | Implemented |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/AnalysisPipeline.swift`, `PodWash/PodWash/PlaybackCoordinator.swift`, `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWash/IntervalCache.swift`, `PodWash/PodWash/MiniPlayerBar.swift`, `PodWash/PodWash/TranscriptViewModel.swift`, `PodWash/PodWashTests/ProductionAnalysisWiringTests.swift` |
