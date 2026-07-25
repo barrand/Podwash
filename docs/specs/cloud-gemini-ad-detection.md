@@ -9,4 +9,4 @@ PodWash transcribes audio locally with Whisper. Only the timed transcript text i
 3. Add `PodWashCloudAdEndpoint` to the app target's generated Info.plist, set to the Cloud Run base URL. Configure Cloud Run to require the Firebase-verified gateway, a billing alert, and an outer shared rate limit (Cloud Armor or equivalent).
 4. Keep `AD_DETECTION_ENABLED=true`; set it to `false` to immediately disable requests. The app then leaves ad spans unscheduled and never uses a local-detection fallback.
 
-Results are keyed by an HMAC of the transcript plus the server-owned model, prompt, and schema versions. Updating any of those versions deliberately reprocesses an episode.
+Successful results are retained for 180 days. Results are keyed by an HMAC of the transcript plus the server-owned model, prompt, and schema versions. Updating any of those versions deliberately reprocesses an episode.
