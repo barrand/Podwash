@@ -43,6 +43,9 @@ final class ProductionAnalysisWiringTests: XCTestCase {
     private var harness: PersistenceReloadHarness!
     private var downloadsDirectory: URL!
     private var cacheDir: URL!
+    private var transcriptCacheDir: URL!
+    private var transcriptCache: TranscriptCache!
+    private var cloudSpy: CloudAdSpyDetector!
     private var settingsDefaultsSuite: String!
     private var pipelineSpy: PipelineAnalyzeSpy!
 
@@ -60,19 +63,26 @@ final class ProductionAnalysisWiringTests: XCTestCase {
 
         cacheDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("ProductionWiring-Cache-\(UUID().uuidString)", isDirectory: true)
+        transcriptCacheDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ProductionWiring-Transcript-\(UUID().uuidString)", isDirectory: true)
+        transcriptCache = TranscriptCache(baseDirectory: transcriptCacheDir)
+        cloudSpy = CloudAdSpyDetector()
 
         settingsDefaultsSuite = "podwash.production-wiring.\(UUID().uuidString)"
 
         let spyTranscriber = ASRSpyTranscriber()
         let pipeline = AnalysisPipeline(
             transcriber: spyTranscriber,
-            cache: IntervalCache(baseDirectory: cacheDir)
+            cache: IntervalCache(baseDirectory: cacheDir),
+            transcriptCache: transcriptCache,
+            cloudAdDetector: cloudSpy
         )
         pipelineSpy = PipelineAnalyzeSpy(inner: pipeline)
     }
 
     override func tearDown() async throws {
         try? IntervalCache(baseDirectory: cacheDir).clear()
+        try? TranscriptCache(baseDirectory: transcriptCacheDir).clear()
         if let downloadsDirectory {
             try? FileManager.default.removeItem(at: downloadsDirectory)
         }
@@ -80,6 +90,9 @@ final class ProductionAnalysisWiringTests: XCTestCase {
             UserDefaults(suiteName: settingsDefaultsSuite)?.removePersistentDomain(forName: settingsDefaultsSuite)
         }
         pipelineSpy = nil
+        cloudSpy = nil
+        transcriptCache = nil
+        transcriptCacheDir = nil
         cacheDir = nil
         downloadsDirectory = nil
         settingsDefaultsSuite = nil
@@ -151,6 +164,75 @@ final class ProductionAnalysisWiringTests: XCTestCase {
             "Precondition: fresh default settings store must include fWord seeds"
         )
         return store
+    }
+
+    /// Skip ads + cloud consent — task-031 positive-ad production wiring fixture.
+    private func makePositiveAdSettingsStore() -> SettingsStore {
+        let store = makeSkipAdsSettingsStore()
+        store.cloudTranscriptProcessingEnabled = true
+        store.cloudTranscriptProcessingConsentPrompted = true
+        return store
+    }
+
+    private func configureDeterministicPositiveAd() {
+        cloudSpy.segmentsToReturn = [
+            ContentSegment(start: midEpisodeAdStart, end: midEpisodeAdEnd)
+        ]
+    }
+
+    private func makePositiveAdTranscript() -> [TimedWord] {
+        [
+            TimedWord(word: "pre", start: 590, end: 595),
+            TimedWord(word: "ad1", start: 610, end: 620),
+            TimedWord(word: "ad2", start: 640, end: 650),
+            TimedWord(word: "post", start: 700, end: 710),
+        ]
+    }
+
+    @discardableResult
+    private func preparePositiveAdEpisode(on model: AppShellModel) throws -> Episode {
+        let episode = fixtureEpisode()
+        try installLongLocalDownload(for: episode.id, duration: tal891Duration)
+        try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: false)
+        try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
+        try model.cleaningStore.setChannelUnrelatedContent(forFeedURL: feedURL, enabled: true)
+        return episode
+    }
+
+    private func waitForPositiveAdAnalysisCompletion(on model: AppShellModel) async {
+        await waitUntil(timeout: 15) { model.isPlayerSeekBarAnalysisComplete }
+        await waitUntil(timeout: 15) {
+            let cached = model.playbackCoordinator?.cachedIntervals ?? []
+            return cached.contains { $0.source == .unrelatedContent && $0.action == .skip }
+        }
+    }
+
+    private func unrelatedSkipInterval(from model: AppShellModel) -> CensorInterval? {
+        model.playbackCoordinator?.cachedIntervals.first {
+            $0.source == .unrelatedContent && $0.action == .skip
+        }
+    }
+
+    private func adBandOverlapsDeterministicAd(_ band: AdBand, duration: Double) -> Bool {
+        let bandStart = band.startNormalized * duration
+        let bandEnd = band.endNormalized * duration
+        return max(0, min(bandEnd, midEpisodeAdEnd) - max(bandStart, midEpisodeAdStart)) > 0
+    }
+
+    private func adRangeOverlapsDeterministicAd(_ range: AdTimeRange) -> Bool {
+        max(0, min(range.end, midEpisodeAdEnd) - max(range.start, midEpisodeAdStart)) > 0
+    }
+
+    private func makePositiveAdShell(
+        settingsStore: SettingsStore? = nil,
+        injectedTranscript: [TimedWord]? = nil
+    ) -> AppShellModel {
+        makeShell(
+            settingsStore: settingsStore ?? makePositiveAdSettingsStore(),
+            injectedTranscript: injectedTranscript,
+            intervalCache: IntervalCache(baseDirectory: cacheDir),
+            transcriptCache: transcriptCache
+        )
     }
 
     /// Skip ads on, profanity targets off — task-019 AC3 unrelated-only fixture.
@@ -305,11 +387,14 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         useInjectedSpy: Bool = true,
         settingsStore: SettingsStore? = nil,
         fixtureLibraryMode: Bool? = false,
-        injectedTranscript: [TimedWord]? = nil
+        injectedTranscript: [TimedWord]? = nil,
+        intervalCache: IntervalCache? = nil,
+        transcriptCache: TranscriptCache? = nil,
+        episodeAnalyzer: (any EpisodeAnalyzing)? = nil
     ) -> AppShellModel {
         let persistence = harness.makeController()
         let commands = RemoteCommandCoordinator(commands: MPRemoteCommandCenterAdapter())
-        let analyzer: (any EpisodeAnalyzing)? = useInjectedSpy ? pipelineSpy : nil
+        let analyzer: (any EpisodeAnalyzing)? = episodeAnalyzer ?? (useInjectedSpy ? pipelineSpy : nil)
         let context = persistence.viewContext
         let downloadConfig = URLSessionConfiguration.ephemeral
         downloadConfig.protocolClasses = [StubDownloadURLProtocol.self]
@@ -326,7 +411,9 @@ final class ProductionAnalysisWiringTests: XCTestCase {
             episodeAnalyzer: analyzer,
             settingsStore: settingsStore ?? makePinnedSettingsStore(),
             fixtureLibraryModeForTesting: fixtureLibraryMode,
-            downloadManager: testDownloadManager
+            downloadManager: testDownloadManager,
+            transcriptCache: transcriptCache ?? .applicationSupport,
+            intervalCache: intervalCache ?? .applicationSupport
         )
         model.downloadsDirectoryForTesting = downloadsDirectory
         model.injectedTranscriptForTesting = injectedTranscript
@@ -1017,6 +1104,182 @@ final class ProductionAnalysisWiringTests: XCTestCase {
                 )
             }
         }
+    }
+
+    // MARK: - Task 031: completed positive ad analysis reaches player + transcript
+
+    func testCompletedPositiveAdAnalysisRetainsIntervalForPlayerChrome() async throws {
+        configureDeterministicPositiveAd()
+        let transcript = makePositiveAdTranscript()
+        let model = makePositiveAdShell(injectedTranscript: transcript)
+        let episode = try preparePositiveAdEpisode(on: model)
+
+        model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+        await waitForPositiveAdAnalysisCompletion(on: model)
+
+        XCTAssertEqual(pipelineSpy.analyzeCallCount, 1)
+        XCTAssertEqual(cloudSpy.detectCallCount, 1)
+
+        guard let adInterval = unrelatedSkipInterval(from: model) else {
+            XCTFail("Terminal cachedIntervals must retain unrelated-content skip interval")
+            return
+        }
+        XCTAssertEqual(adInterval.start, midEpisodeAdStart, accuracy: pipelineTolerance)
+        XCTAssertEqual(adInterval.end, midEpisodeAdEnd, accuracy: pipelineTolerance)
+
+        guard let snapshot = model.playbackAnalysisSnapshot else {
+            XCTFail("Expected terminal playbackAnalysisSnapshot after positive-ad analysis")
+            return
+        }
+        XCTAssertEqual(snapshot.episodeDuration, tal891Duration, accuracy: boundaryTolerance)
+        XCTAssertFalse(
+            snapshot.adRanges.isEmpty,
+            "Positive-ad fixture must project adRanges into terminal snapshot"
+        )
+        XCTAssertTrue(
+            snapshot.adRanges.contains(where: adRangeOverlapsDeterministicAd),
+            "playbackAnalysisSnapshot.adRanges must overlap deterministic ad interval"
+        )
+    }
+
+    func testCompletedPositiveAdAnalysisShowsYellowMiniPlayerBand() async throws {
+        configureDeterministicPositiveAd()
+        let model = makePositiveAdShell(injectedTranscript: makePositiveAdTranscript())
+        let episode = try preparePositiveAdEpisode(on: model)
+
+        model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+        await waitForPositiveAdAnalysisCompletion(on: model)
+
+        guard let snapshot = model.playbackAnalysisSnapshot else {
+            XCTFail("Expected terminal playbackAnalysisSnapshot")
+            return
+        }
+        let colors = AnalysisTimelineModel.segmentColors(snapshot: snapshot)
+        XCTAssertTrue(
+            colors.contains(.yellow),
+            "Positive-ad fixture must not present green-only seek-bar coverage"
+        )
+
+        XCTAssertTrue(model.isPlayerSeekBarAnalysisComplete)
+        let duration = model.superSeekDuration
+        let bands = SuperSeekBarModel.adBands(
+            from: model.nowPlayingMuteIntervals,
+            duration: duration
+        )
+        XCTAssertFalse(bands.isEmpty, "Mini-player seek bar must expose at least one yellow ad band")
+        XCTAssertTrue(
+            bands.contains { adBandOverlapsDeterministicAd($0, duration: duration) },
+            "Yellow ad band must overlap deterministic unrelated skip interval"
+        )
+    }
+
+    func testCompletedPositiveAdAnalysisHighlightsTranscriptWords() async throws {
+        configureDeterministicPositiveAd()
+        let model = makePositiveAdShell(injectedTranscript: makePositiveAdTranscript())
+        let episode = try preparePositiveAdEpisode(on: model)
+
+        model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+        await waitForPositiveAdAnalysisCompletion(on: model)
+        model.presentTranscriptForNowPlaying()
+
+        guard let viewModel = model.transcriptSheetViewModel else {
+            XCTFail("presentTranscriptForNowPlaying must build TranscriptViewModel")
+            return
+        }
+
+        let insideIndices: Set<Int> = [1, 2]
+        let outsideIndices: Set<Int> = [0, 3]
+        for display in viewModel.words where insideIndices.contains(display.index) {
+            XCTAssertTrue(
+                display.skippedAd,
+                "word \(display.index) overlapping ad interval must be skippedAd"
+            )
+        }
+        for display in viewModel.words where outsideIndices.contains(display.index) {
+            XCTAssertFalse(
+                display.skippedAd,
+                "word \(display.index) outside ad interval must not be skippedAd"
+            )
+        }
+
+        let duration = model.superSeekDuration
+        let bands = SuperSeekBarModel.adBands(
+            from: model.nowPlayingMuteIntervals,
+            duration: duration
+        )
+        for display in viewModel.words where display.skippedAd {
+            let wordStartNorm = display.word.start / duration
+            let wordEndNorm = display.word.end / duration
+            let overlapsBand = bands.contains { band in
+                wordStartNorm < band.endNormalized && wordEndNorm > band.startNormalized
+            }
+            XCTAssertTrue(
+                overlapsBand,
+                "skippedAd word \(display.index) must overlap mini-player yellow ad band"
+            )
+        }
+    }
+
+    func testCachedPositiveAdAnalysisSurvivesFreshShellPresentation() async throws {
+        configureDeterministicPositiveAd()
+        let settings = makePositiveAdSettingsStore()
+        let transcript = makePositiveAdTranscript()
+        let firstModel = makePositiveAdShell(
+            settingsStore: settings,
+            injectedTranscript: transcript
+        )
+        let episode = try preparePositiveAdEpisode(on: firstModel)
+
+        firstModel.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+        await waitForPositiveAdAnalysisCompletion(on: firstModel)
+        firstModel.presentTranscriptForNowPlaying()
+        let expectedSkippedIndices = Set(
+            firstModel.transcriptSheetViewModel?.words.filter(\.skippedAd).map(\.index) ?? []
+        )
+        XCTAssertFalse(expectedSkippedIndices.isEmpty)
+        let firstDuration = firstModel.superSeekDuration
+        let firstBands = SuperSeekBarModel.adBands(
+            from: firstModel.nowPlayingMuteIntervals,
+            duration: firstDuration
+        )
+        XCTAssertTrue(
+            firstBands.contains { adBandOverlapsDeterministicAd($0, duration: firstDuration) }
+        )
+
+        firstModel.stopAndDismissPlayer()
+
+        let secondModel = makePositiveAdShell(settingsStore: settings)
+        try preparePositiveAdEpisode(on: secondModel)
+        secondModel.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+        await waitForPositiveAdAnalysisCompletion(on: secondModel)
+
+        XCTAssertEqual(
+            cloudSpy.detectCallCount,
+            1,
+            "Fresh shell must reuse persisted positive ad analysis without re-running cloud detection"
+        )
+
+        secondModel.presentTranscriptForNowPlaying()
+        guard let viewModel = secondModel.transcriptSheetViewModel else {
+            XCTFail("Fresh shell must present transcript from persisted analysis")
+            return
+        }
+        let secondSkippedIndices = Set(viewModel.words.filter(\.skippedAd).map(\.index))
+        XCTAssertEqual(
+            secondSkippedIndices,
+            expectedSkippedIndices,
+            "Persisted ad interval must yield the same skippedAd transcript words"
+        )
+
+        let secondDuration = secondModel.superSeekDuration
+        let secondBands = SuperSeekBarModel.adBands(
+            from: secondModel.nowPlayingMuteIntervals,
+            duration: secondDuration
+        )
+        XCTAssertTrue(
+            secondBands.contains { adBandOverlapsDeterministicAd($0, duration: secondDuration) },
+            "Fresh shell must still expose yellow ad band overlapping persisted ad interval"
+        )
     }
 
     // MARK: - AC8: fixture library mode skips prepare even when cleaning is on
