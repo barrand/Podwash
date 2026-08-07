@@ -97,15 +97,13 @@ struct AppShellView: View {
                 shellMiniPlayerBar(engine: engine, reservesTabBarClearance: true)
             }
         }
-        .alert("Enable ad detection?", isPresented: $model.isCloudTranscriptConsentPresented) {
-            Button("Not now", role: .cancel) {
-                model.declineCloudTranscriptProcessing()
-            }
-            Button("Enable ad detection") {
-                model.enableCloudTranscriptProcessing()
-            }
-        } message: {
-            Text("PodWash transcribes audio on your device. To identify ads, it sends the transcript text—not audio—to our secure processing service.")
+        .sheet(isPresented: $model.isPreparationPresented) {
+            PreparationDetailView(
+                jobs: model.preparationJobs,
+                onRetry: { model.retryPreparation(episodeID: $0) },
+                onPlayWithAds: { model.playWithAds(episodeID: $0) },
+                onDismiss: { model.isPreparationPresented = false }
+            )
         }
         // Content-tree Settings control (not ToolbarItem). iOS 26 nav-bar glass +
         // toolbar Image buttons often report exists&&!isHittable under XCTest; a
@@ -213,7 +211,7 @@ struct AppShellView: View {
                 isPreparingPlayback: model.isPreparingPlayback,
                 isPreparingNextEpisode: model.isPreparingNextEpisode,
                 preparingNextAnnouncement: model.preparingNextAnnouncement,
-                comingUpItems: model.comingUpItems,
+                preparationJobs: model.preparationJobs,
                 episodeDuration: model.superSeekDuration,
                 processedEnd: model.superSeekProcessedEnd,
                 muteIntervals: model.nowPlayingMuteIntervals,
@@ -221,7 +219,8 @@ struct AppShellView: View {
                 onExpand: { model.expandFullPlayer() },
                 onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
                 onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) },
-                onSkipToNextShow: { model.skipToNextShow() }
+                onSkipToNextShow: { model.skipToNextShow() },
+                onOpenPreparation: { model.isPreparationPresented = true }
             )
             .onChange(of: model.preparingAnnouncementGeneration) { _, _ in
                 if let text = model.preparingNextAnnouncement {

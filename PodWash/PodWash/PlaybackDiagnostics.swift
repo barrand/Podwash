@@ -133,6 +133,23 @@ enum PlaybackDiagnostics {
         }
     }
 
+    /// Cloud-ad lifecycle entries are deliberately compact: no transcript text,
+    /// sentence text, auth tokens, or audio URLs are retained in Settings logs.
+    static func logCloudAdDetectionStarted(episodeID: String, sentenceCount: Int) {
+        info("cloudAdDetection start episodeID=\(episodeID) sentences=\(sentenceCount)")
+    }
+
+    static func logCloudAdDetectionCompleted(episodeID: String, spanCount: Int) {
+        info("cloudAdDetection complete episodeID=\(episodeID) spans=\(spanCount)")
+    }
+
+    static func logCloudAdDetectionFailed(
+        episodeID: String,
+        category: CloudAdDetectionFailureCategory
+    ) {
+        warning("cloudAdDetection failed episodeID=\(episodeID) category=\(category.rawValue)")
+    }
+
     static func logDownloadReady(episodeID: String, url: URL) {
         let size = fileByteCount(at: url)
         info("download ready episodeID=\(episodeID) path=\(url.lastPathComponent) bytes=\(size)")

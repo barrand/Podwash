@@ -66,6 +66,7 @@ class AdSpan(BaseModel):
 
 class AdSpanResponse(BaseModel):
     request_id: str
+    job_id: str
     status: str  # complete | processing
     spans: list[AdSpan] = []
     pipeline_version: str = PIPELINE_VERSION
@@ -259,12 +260,12 @@ class Service:
         key = self.cache_key(request)
         cached = await self.cache.get(key)
         if cached:
-            return AdSpanResponse(request_id=request.request_id, cached=True, **cached)
+            return AdSpanResponse(request_id=request.request_id, job_id=key, cached=True, **cached)
         expires_at = time.time() + CACHE_TTL_SECONDS
         if not await self.cache.begin(key, expires_at):
             # Another Cloud Run instance owns this exact request. The app can
             # safely retry its stable request ID without spending twice.
-            return AdSpanResponse(request_id=request.request_id, status="processing")
+            return AdSpanResponse(request_id=request.request_id, job_id=key, status="processing")
         try:
             prompt = prompt_for(request.sentences)
             total_tokens = await self.gemini.count_tokens(prompt)
@@ -275,10 +276,18 @@ class Service:
             value = {"status": "complete", "spans": [span.model_dump() for span in spans], "pipeline_version": PIPELINE_VERSION}
             await self.cache.put(key, value, expires_at)
             logger.info("ad_span_complete model=%s pipeline=%s sentence_count=%d span_count=%d", MODEL, PIPELINE_VERSION, len(request.sentences), len(spans))
-            return AdSpanResponse(request_id=request.request_id, **value)
+            return AdSpanResponse(request_id=request.request_id, job_id=key, **value)
         except Exception:
             await self.cache.abandon(key)
             raise
+
+    async def status(self, job_id: str) -> AdSpanResponse:
+        cached = await self.cache.get(job_id)
+        if cached:
+            return AdSpanResponse(request_id="", job_id=job_id, cached=True, **cached)
+        # A missing value is deliberately reported as processing. The caller can retry
+        # its original idempotent POST; this avoids leaking cache existence across jobs.
+        return AdSpanResponse(request_id="", job_id=job_id, status="processing")
 
 
 def service_from_environment() -> Service:
@@ -322,6 +331,12 @@ async def ad_spans(payload: AdSpanRequest, request: Request) -> AdSpanResponse:
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Rate limit exceeded")
     service: Service = request.app.state.service
     return await service.detect(payload)
+
+
+@app.get("/v1/ad-spans/{job_id}", response_model=AdSpanResponse, dependencies=[Depends(verify_request)])
+async def ad_span_status(job_id: str, request: Request) -> AdSpanResponse:
+    service: Service = request.app.state.service
+    return await service.status(job_id)
 
 
 @app.on_event("startup")

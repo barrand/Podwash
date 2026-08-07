@@ -10,6 +10,10 @@ import SwiftUI
 struct SettingsView: View {
     @Bindable var store: SettingsStore
     @State private var customWordDraft = ""
+    #if DEBUG
+    @State private var isCloudProbeRunning = false
+    @State private var cloudProbeResult: String?
+    #endif
     /// Bumped on category taps so AX values refresh even if Observation is quiet
     /// on the nonisolated SettingsStore (UITest reads accessibilityValue post-tap).
     @State private var categoryChangeToken = 0
@@ -36,10 +40,17 @@ struct SettingsView: View {
                     customWordsSection
                     episodeBehaviorSection
                     playbackDiagnosticsSection
+                    #if DEBUG
+                    cloudConnectivityProbeSection
+                    #endif
                     buildStampSection
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
+                // The shell mini-player may include its preparation shelf, making it
+                // substantially taller than the tab bar. Keep the final Settings
+                // controls scrollable above that persistent player chrome.
+                .padding(.bottom, 160)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .onAppear {
@@ -356,6 +367,72 @@ struct SettingsView: View {
             }
         }
     }
+
+    #if DEBUG
+    private var cloudConnectivityProbeSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Debug cloud check")
+                .font(.headline)
+
+            Text("Uses a tiny built-in transcript to test Firebase credentials, App Check, Cloud Run, and Gemini without downloading an episode.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Button(isCloudProbeRunning ? "Testing cloud…" : "Test cloud ad detection") {
+                runCloudConnectivityProbe()
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isCloudProbeRunning)
+            .accessibilityIdentifier("debugCloudConnectivityProbe")
+
+            if let cloudProbeResult {
+                Text(cloudProbeResult)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(cloudProbeResult.hasPrefix("Success") ? .green : .orange)
+                    .textSelection(.enabled)
+                    .accessibilityIdentifier("debugCloudConnectivityProbeResult")
+            }
+        }
+        .padding(10)
+        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func runCloudConnectivityProbe() {
+        guard store.cloudTranscriptProcessingEnabled else {
+            cloudProbeResult = "Enable Use cloud ad detection first."
+            return
+        }
+        isCloudProbeRunning = true
+        cloudProbeResult = nil
+        let startedAt = Date()
+        let client = CloudAdSpanClient(
+            configuration: .applicationDefault(consentGranted: { true })
+        )
+        let transcript = [
+            TimedWord(word: "This", start: 0, end: 0.2),
+            TimedWord(word: "is", start: 0.2, end: 0.4),
+            TimedWord(word: "a", start: 0.4, end: 0.5),
+            TimedWord(word: "connectivity", start: 0.5, end: 1.1),
+            TimedWord(word: "check.", start: 1.1, end: 1.4),
+        ]
+        Task {
+            defer { isCloudProbeRunning = false }
+            do {
+                let spans = try await client.detectAdSpans(
+                    in: transcript,
+                    episodeID: "debug-cloud-connectivity-check"
+                )
+                let elapsed = Date().timeIntervalSince(startedAt)
+                cloudProbeResult = "Success · spans=\(spans.count) · \(String(format: "%.1f", elapsed))s"
+                PlaybackDiagnostics.info("cloudConnectivityProbe success spans=\(spans.count)")
+            } catch {
+                let category = CloudAdDetectionFailureCategory.classify(error)
+                cloudProbeResult = "Failed · \(category.rawValue)"
+                PlaybackDiagnostics.warning("cloudConnectivityProbe failed category=\(category.rawValue)")
+            }
+        }
+    }
+    #endif
 
     private var buildStampSection: some View {
         HStack {

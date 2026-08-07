@@ -4,7 +4,7 @@
 |-------|-------|
 | **ID** | 030 |
 | **Title** | Retain completed episode analysis across navigation |
-| **Status** | In Progress |
+| **Status** | Implemented |
 | **Kind** | fix |
 | **Priority** | P1 |
 | **Area** | `PodWash/PodWash/AnalysisPipeline.swift`, `PodWash/PodWash/IntervalCache.swift`, `PodWash/PodWash/TranscriptCache.swift`, `PodWash/PodWash/AppShellModel.swift`, `PodWash/PodWashTests/AnalysisPipelineTests.swift` |

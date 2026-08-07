@@ -78,12 +78,11 @@ nonisolated final class SettingsStore: @unchecked Sendable {
     var unrelatedContentEnabled: Bool {
         didSet { userDefaults.set(unrelatedContentEnabled, forKey: Keys.unrelatedContentEnabled) }
     }
-    /// Explicit consent gate: local Whisper transcript text may be sent to Gemini.
+    /// Cloud ad detection is enabled by default; listeners can still opt out in Settings.
     var cloudTranscriptProcessingEnabled: Bool {
         didSet { userDefaults.set(cloudTranscriptProcessingEnabled, forKey: Keys.cloudTranscriptProcessingEnabled) }
     }
-    /// Records that the one-time transcript disclosure has been shown, whether
-    /// the listener accepted or declined it.
+    /// Deprecated compatibility bit retained for existing defaults migrations.
     var cloudTranscriptProcessingConsentPrompted: Bool {
         didSet { userDefaults.set(cloudTranscriptProcessingConsentPrompted, forKey: Keys.cloudTranscriptProcessingConsentPrompted) }
     }
@@ -151,12 +150,12 @@ nonisolated final class SettingsStore: @unchecked Sendable {
         if userDefaults.object(forKey: Keys.cloudTranscriptProcessingEnabled) != nil {
             cloudTranscriptProcessingEnabled = userDefaults.bool(forKey: Keys.cloudTranscriptProcessingEnabled)
         } else {
-            cloudTranscriptProcessingEnabled = false
+            cloudTranscriptProcessingEnabled = true
         }
         if userDefaults.object(forKey: Keys.cloudTranscriptProcessingConsentPrompted) != nil {
             cloudTranscriptProcessingConsentPrompted = userDefaults.bool(forKey: Keys.cloudTranscriptProcessingConsentPrompted)
         } else {
-            cloudTranscriptProcessingConsentPrompted = false
+            cloudTranscriptProcessingConsentPrompted = true
         }
 
         if let raw = userDefaults.string(forKey: Keys.unrelatedContentAction),

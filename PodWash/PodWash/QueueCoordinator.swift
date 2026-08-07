@@ -22,6 +22,10 @@ final class QueueCoordinator {
     /// Resolves the next smart-autoplay episode ID when the manual queue is empty.
     /// `skipToNextShow` is true for the Next Show control (dismiss + exit binge).
     var resolveSmartNext: ((_ endedEpisodeID: String, _ skipToNextShow: Bool) -> String?)?
+    /// Selects the earliest fully prepared manual queue item. Returning nil means
+    /// autoplay must wait rather than starting an episode whose ad check is delayed.
+    var resolveQueuedNext: ((_ queuedIDs: [String]) -> String?)?
+    var onQueuedPreparationBlocked: (() -> Void)?
 
     /// Wires queue + resume Core Data stores to an `EpisodePlaying` surface.
     /// Optional `sessionStore` updates the durable active episode on end / advance (ADR-027).
@@ -99,7 +103,18 @@ final class QueueCoordinator {
         }
 
         let ids = queue.queueEpisodeIDs()
-        if !skipToNextShow, let nextID = ids.first {
+        if !skipToNextShow, !ids.isEmpty {
+            let nextID: String
+            if let resolveQueuedNext {
+                guard let selected = resolveQueuedNext(ids) else {
+                    onQueuedPreparationBlocked?()
+                    currentEpisodeID = nil
+                    return
+                }
+                nextID = selected
+            } else {
+                nextID = ids[0]
+            }
             try? queue.remove(nextID)
             currentEpisodeID = nextID
             try? sessionStore?.setActiveEpisodeID(nextID)

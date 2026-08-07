@@ -25,6 +25,17 @@ class ServiceTests(unittest.TestCase):
         self.assertTrue(second.cached)
         self.assertEqual(gemini.calls, 1)
 
+    def test_status_returns_server_owned_completed_job(self):
+        gemini = FakeGemini()
+        service = Service(MemoryCache(), gemini, b"key")
+        result = asyncio.run(service.detect(self.request()))
+
+        status = asyncio.run(service.status(result.job_id))
+
+        self.assertEqual(status.job_id, result.job_id)
+        self.assertEqual(status.status, "complete")
+        self.assertTrue(status.cached)
+
     def test_invalid_model_span_is_rejected(self):
         class BadGemini(FakeGemini):
             async def classify(self, prompt): return [{"start_sentence_id": 99, "end_sentence_id": 99}]

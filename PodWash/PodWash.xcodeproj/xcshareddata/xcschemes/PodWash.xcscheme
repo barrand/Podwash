@@ -88,6 +88,11 @@
             value = "9247E28D-EB72-406D-A69A-2A353E9B626A"
             isEnabled = "YES">
          </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "FIRAAppCheckDebugToken"
+            value = "02AB0F39-4B29-46A8-820B-D5C3080CFB1D"
+            isEnabled = "YES">
+         </EnvironmentVariable>
       </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction

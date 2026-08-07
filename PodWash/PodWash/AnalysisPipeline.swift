@@ -23,8 +23,18 @@ enum PodWashTranscriptBackfillUserInfoKey {
     static let episodeID = "episodeID"
 }
 
+enum CloudAdDetectionOutcome: Equatable, Sendable {
+    case completed
+    case failed(CloudAdDetectionFailureCategory)
+}
+
 /// ASR → matcher → segmenter → cache pipeline.
 final class AnalysisPipeline: @unchecked Sendable {
+
+    private struct CloudAdDetectionObserver: Sendable {
+        let started: @Sendable () -> Void
+        let finished: @Sendable (CloudAdDetectionOutcome) -> Void
+    }
 
     /// Signals live transcription progress emission to stop.
     private final class TranscriptionProgressGate: @unchecked Sendable {
@@ -56,9 +66,17 @@ final class AnalysisPipeline: @unchecked Sendable {
     /// `nonisolated(unsafe)`: cleared from `nonisolated deinit` without a MainActor TaskLocal hop.
     nonisolated(unsafe) var onMainActorProgress: MainActorAnalysisProgressHandler?
     var onPartialIntervals: AnalysisPartialIntervalsHandler?
+    /// Emits immediately before transcript text is submitted for cloud ad detection.
+    /// Kept separate from timeline progress so UI never pretends this is ASR work.
+    var onCloudAdDetectionStarted: (@Sendable () -> Void)?
+    /// Emits a terminal cloud outcome without exposing transcript content.
+    var onCloudAdDetectionFinished: (@Sendable (CloudAdDetectionOutcome) -> Void)?
+    private var cloudAdDetectionObservers: [UUID: CloudAdDetectionObserver] = [:]
 
     /// Full cache union from the most recent `analyze` call (includes filtered unrelated spans).
     private(set) var lastAnalysisUnion: [CensorInterval] = []
+    /// Terminal outcome for the most recent cloud attempt; contains no transcript data.
+    private(set) var lastCloudAdDetectionOutcome: CloudAdDetectionOutcome?
 
     init(
         transcriber: any ASRTranscribing,
@@ -78,6 +96,21 @@ final class AnalysisPipeline: @unchecked Sendable {
 
     // Avoid MainActor/TaskLocal deinit crash when boxed as `any EpisodeAnalyzing`.
     nonisolated deinit {}
+
+    /// Registers a non-content-bearing lifecycle observer. Multiple presentation
+    /// surfaces may observe one cloud request without replacing one another.
+    func addCloudAdDetectionObserver(
+        started: @escaping @Sendable () -> Void,
+        finished: @escaping @Sendable (CloudAdDetectionOutcome) -> Void
+    ) -> UUID {
+        let id = UUID()
+        cloudAdDetectionObservers[id] = CloudAdDetectionObserver(started: started, finished: finished)
+        return id
+    }
+
+    func removeCloudAdDetectionObserver(_ id: UUID) {
+        cloudAdDetectionObservers.removeValue(forKey: id)
+    }
 
     /// Full path: check cache → ASR (if miss) → build intervals → persist → return.
     func analyze(
@@ -121,6 +154,7 @@ final class AnalysisPipeline: @unchecked Sendable {
         profanityAction: CensorAction,
         unrelatedContent: UnrelatedContentOptions
     ) async throws -> [CensorInterval] {
+        lastCloudAdDetectionOutcome = nil
         let audioDuration = await Self.resolveDuration(audioURL: audioURL)
         // Progressive + injected short fixtures: pad horizon to ≥ one chunk so AC8’s
         // first-chunk frontier (`processedEnd >= 30`) is observable on 5 s sine audio.
@@ -237,10 +271,7 @@ final class AnalysisPipeline: @unchecked Sendable {
         }
 
         // Always segment on cache miss; enablement is a return/playback filter.
-        let detectedSegments = try? await cloudAdDetector.detectAdSpans(
-            in: transcript,
-            episodeID: episode.id
-        )
+        let detectedSegments = await detectAdSpans(in: transcript, episodeID: episode.id)
         let segmentIntervals = (detectedSegments ?? []).map { segment in
             CensorInterval(
                 start: segment.start,
@@ -281,10 +312,7 @@ final class AnalysisPipeline: @unchecked Sendable {
         )
 
         let profanity = partialIntervals.filter { $0.source == .profanity }
-        let detectedSegments = try? await cloudAdDetector.detectAdSpans(
-            in: transcript,
-            episodeID: episode.id
-        )
+        let detectedSegments = await detectAdSpans(in: transcript, episodeID: episode.id)
         let segmentIntervals = (detectedSegments ?? []).map { segment in
             CensorInterval(
                 start: segment.start,
@@ -340,13 +368,48 @@ final class AnalysisPipeline: @unchecked Sendable {
         targetWords: Set<String>,
         cloudCompleted: Bool
     ) throws {
-        if cloudCompleted || !union.isEmpty {
-            try cache.store(
-                union,
-                episodeID: episodeID,
-                targetWords: targetWords,
-                analysisCompleted: cloudCompleted
+        // An explicit incomplete record is critical when a cloud attempt fails with
+        // no profanity hits: it prevents a later visit from mistaking "nothing
+        // persisted" for a completed no-ad result and re-transcribing needlessly.
+        try cache.store(
+            union,
+            episodeID: episodeID,
+            targetWords: targetWords,
+            analysisCompleted: cloudCompleted
+        )
+    }
+
+    private func detectAdSpans(
+        in transcript: [TimedWord],
+        episodeID: String
+    ) async -> [ContentSegment]? {
+        PlaybackDiagnostics.logCloudAdDetectionStarted(
+            episodeID: episodeID,
+            sentenceCount: transcript.count
+        )
+        onCloudAdDetectionStarted?()
+        cloudAdDetectionObservers.values.forEach { $0.started() }
+        do {
+            let segments = try await cloudAdDetector.detectAdSpans(
+                in: transcript,
+                episodeID: episodeID
             )
+            PlaybackDiagnostics.logCloudAdDetectionCompleted(
+                episodeID: episodeID,
+                spanCount: segments.count
+            )
+            lastCloudAdDetectionOutcome = .completed
+            onCloudAdDetectionFinished?(.completed)
+            cloudAdDetectionObservers.values.forEach { $0.finished(.completed) }
+            return segments
+        } catch {
+            let category = CloudAdDetectionFailureCategory.classify(error)
+            let outcome = CloudAdDetectionOutcome.failed(category)
+            lastCloudAdDetectionOutcome = outcome
+            onCloudAdDetectionFinished?(outcome)
+            cloudAdDetectionObservers.values.forEach { $0.finished(outcome) }
+            PlaybackDiagnostics.logCloudAdDetectionFailed(episodeID: episodeID, category: category)
+            return nil
         }
     }
 

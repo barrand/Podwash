@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDisplayName</key>
 	<string>PodWash</string>
+	<key>PodWashCloudAdEndpoint</key>
+	<string>https://podwash-gemini-155728924073.us-central1.run.app</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

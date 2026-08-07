@@ -19,7 +19,7 @@ struct MiniPlayerBar: View {
     let isPreparingPlayback: Bool
     let isPreparingNextEpisode: Bool
     let preparingNextAnnouncement: String?
-    let comingUpItems: [ComingUpItem]
+    let preparationJobs: [AnalysisJob]
     let episodeDuration: Double
     let processedEnd: Double
     let muteIntervals: [CensorInterval]
@@ -29,6 +29,7 @@ struct MiniPlayerBar: View {
     let onTogglePlayPause: () -> Void
     let onSeekTo: (Double) -> Void
     let onSkipToNextShow: () -> Void
+    let onOpenPreparation: () -> Void
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.25)) { _ in
@@ -50,9 +51,7 @@ struct MiniPlayerBar: View {
                 : nil
 
             VStack(spacing: 0) {
-                if !comingUpItems.isEmpty {
-                    ComingUpStrip(items: comingUpItems)
-                }
+                QueueStatusButton(jobs: preparationJobs, onOpen: onOpenPreparation)
 
                 HStack(spacing: 12) {
                     Button(action: onExpand) {
@@ -178,49 +177,5 @@ struct MiniPlayerSeekBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
-    }
-}
-
-/// Coming up strip — next 2–3 smart-autoplay predictions (ADR-029).
-struct ComingUpStrip: View {
-    let items: [ComingUpItem]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Coming up")
-                .font(.caption2)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-            ForEach(Array(items.enumerated()), id: \.element.episodeID) { index, item in
-                HStack(spacing: 6) {
-                    Text(item.podcastTitle)
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .lineLimit(1)
-                    Text("·")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text(item.episodeTitle)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    if item.isBinge {
-                        Text("Binge")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("comingUpRow_\(index)")
-                .accessibilityLabel("\(item.podcastTitle), \(item.episodeTitle)")
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("comingUpList")
-        .accessibilityLabel("Coming up")
     }
 }

@@ -45,7 +45,8 @@ final class AppShellModel {
     /// Episode awaiting download-before-play (channel cleaning on, no local file).
     private var pendingDownloadForPlayEpisodeID: String?
 
-    /// One-time disclosure presented immediately before the first cloud ad scan.
+    /// Legacy compatibility state for older tests. Cloud detection is now enabled by
+    /// default and the shell never blocks playback behind this disclosure.
     var isCloudTranscriptConsentPresented = false
     private var pendingCloudConsentEpisode: Episode?
     private var pendingCloudConsentPodcastTitle = ""
@@ -135,11 +136,25 @@ final class AppShellModel {
     /// Coming up peek for UI (next 2–3 smart predictions when Up Next is empty).
     private(set) var comingUpItems: [ComingUpItem] = []
 
+    /// User-facing preparation queue (manual Up Next first, then smart predictions).
+    var preparationJobs: [AnalysisJob] {
+        guard let warmPlanner else { return [] }
+        let manual = queueStore.queueEpisodeIDs().compactMap { warmPlanner.job(for: $0) }
+        let predicted = comingUpItems.compactMap { warmPlanner.job(for: $0.episodeID) }
+        var seen = Set<String>()
+        let foreground = foregroundPreparationJob.map { [$0] } ?? []
+        return (foreground + manual + predicted).filter { seen.insert($0.episodeID).inserted }
+    }
+    /// The now-playing analysis uses the same listener-facing state as warm jobs.
+    private(set) var foregroundPreparationJob: AnalysisJob?
+    var isPreparationPresented = false
+
     /// True while waiting on analysis before auto-advancing (rare miss path).
     private(set) var isPreparingNextEpisode = false
     private(set) var preparingNextAnnouncement: String?
 
     @ObservationIgnored private var warmPlanner: WarmPlanner?
+    private var didStartPreparationForCurrentSession = false
 
     /// Spoken / AX announcement generation for Preparing fallback.
     private(set) var preparingAnnouncementGeneration = 0
@@ -449,6 +464,15 @@ final class AppShellModel {
                 skipToNextShow: skipToNextShow
             )
         }
+        queue.resolveQueuedNext = { [weak self] ids in
+            self?.firstReadyQueuedEpisode(in: ids)
+        }
+        queue.onQueuedPreparationBlocked = { [weak self] in
+            guard let self else { return }
+            self.isPreparingNextEpisode = true
+            self.preparingNextAnnouncement = "Still checking the next episode for ads"
+            self.preparingAnnouncementGeneration += 1
+        }
 
         newEngine.onPlaybackEnded = { [weak self] in
             self?.handleEnginePlaybackEnded()
@@ -475,7 +499,9 @@ final class AppShellModel {
             }
         }
         refreshComingUp()
-        scheduleWarmForComingUp()
+        // Queue preparation begins on the first actual Play action, not merely when a
+        // paused mini-player session is created.
+        didStartPreparationForCurrentSession = false
         PlaybackDiagnostics.info(
             "playEpisode session ready episodeID=\(episode.id) miniPlayer=visible paused=true"
         )
@@ -513,15 +539,6 @@ final class AppShellModel {
             return
         }
 
-        if !settingsStore.cloudTranscriptProcessingEnabled,
-           !settingsStore.cloudTranscriptProcessingConsentPrompted {
-            pendingCloudConsentEpisode = episode
-            pendingCloudConsentPodcastTitle = podcastTitle
-            pendingCloudConsentFeedURL = feedURL
-            isCloudTranscriptConsentPresented = true
-            return
-        }
-
         let targetWords = settingsStore.activeNormalizedTargetSet()
         let action = settingsStore.censorAction()
         let channelUnrelated = channelUnrelatedContentEnabled(forFeedURL: feedURL)
@@ -535,12 +552,51 @@ final class AppShellModel {
 
         acceptingPlaybackProgress = true
         isPreparingPlayback = true
+        foregroundPreparationJob = AnalysisJob(
+            episodeID: episode.id,
+            title: episode.title,
+            stage: .transcribing,
+            estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: nil),
+            updatedAt: Date(),
+            retryAfter: nil,
+            detail: nil
+        )
         PlaybackDiagnostics.logPreparePlaybackStart(
             episodeID: episode.id,
             cleaning: cleaningApplies,
             localFile: isLocalFile
         )
         Task { @MainActor in
+            let cloudObserverID: UUID?
+            if let pipeline = self.episodeAnalyzer as? AnalysisPipeline {
+                cloudObserverID = pipeline.addCloudAdDetectionObserver(started: { [weak self] in
+                    Task { @MainActor in
+                        guard let self else { return }
+                        self.updateForegroundPreparation(
+                            episodeID: episode.id,
+                            stage: .checkingAds
+                        )
+                    }
+                }, finished: { [weak self] outcome in
+                    Task { @MainActor in
+                        guard case let .failed(category) = outcome else { return }
+                        guard let self else { return }
+                        self.updateForegroundPreparation(
+                            episodeID: episode.id,
+                            stage: Self.isRetryableCloudFailure(category) ? .adCheckDelayed : .needsAttention,
+                            detail: Self.foregroundDetail(for: category),
+                            cloudFailure: category
+                        )
+                    }
+                })
+            } else {
+                cloudObserverID = nil
+            }
+            defer {
+                if let cloudObserverID, let pipeline = self.episodeAnalyzer as? AnalysisPipeline {
+                    pipeline.removeCloudAdDetectionObserver(cloudObserverID)
+                }
+            }
             let duration = await resolvedEpisodeDuration(audioURL: audioURL)
             if duration > 0 {
                 playbackAnalysisSnapshot = AnalysisTimelineModel.startSnapshot(duration: duration)
@@ -573,6 +629,7 @@ final class AppShellModel {
                 pendingPlayAfterPrepare = false
                 if shouldPlay, engine?.isPlaying != true {
                     engine?.play()
+                    startQueuePreparationIfNeeded()
                 }
             }
             do {
@@ -594,6 +651,7 @@ final class AppShellModel {
                         guard self.pendingPlayAfterPrepare else { return }
                         self.pendingPlayAfterPrepare = false
                         self.engine?.play()
+                        self.startQueuePreparationIfNeeded()
                     }
                 )
                 let (playbackIntervals, analysisUnion) = reconcilePlaybackIntervals(
@@ -617,6 +675,23 @@ final class AppShellModel {
                     unrelatedContent: unrelated,
                     audioURL: audioURL
                 )
+                if !settingsStore.cloudTranscriptProcessingEnabled {
+                    updateForegroundPreparation(
+                        episodeID: episode.id,
+                        stage: .ready,
+                        detail: "Ad checks are off"
+                    )
+                } else if let pipeline = self.episodeAnalyzer as? AnalysisPipeline,
+                   case let .failed(category)? = pipeline.lastCloudAdDetectionOutcome {
+                    updateForegroundPreparation(
+                        episodeID: episode.id,
+                        stage: Self.isRetryableCloudFailure(category) ? .adCheckDelayed : .needsAttention,
+                        detail: Self.foregroundDetail(for: category),
+                        cloudFailure: category
+                    )
+                } else {
+                    updateForegroundPreparation(episodeID: episode.id, stage: .ready)
+                }
             } catch {
                 PlaybackDiagnostics.logPreparePlaybackEnd(
                     episodeID: episode.id,
@@ -626,6 +701,13 @@ final class AppShellModel {
                 )
                 PlaybackDiagnostics.error(
                     "Analysis did not finish — playback will be uncleaned until you replay this episode."
+                )
+                let category = CloudAdDetectionFailureCategory.classify(error)
+                updateForegroundPreparation(
+                    episodeID: episode.id,
+                    stage: Self.isRetryableCloudFailure(category) ? .adCheckDelayed : .needsAttention,
+                    detail: Self.foregroundDetail(for: category),
+                    cloudFailure: category
                 )
             }
         }
@@ -675,12 +757,14 @@ final class AppShellModel {
         } else if isPreparingPlayback {
             if playbackCoordinator?.canStartPlayback == true {
                 engine.play()
+                startQueuePreparationIfNeeded()
             } else {
                 pendingPlayAfterPrepare = true
                 PlaybackDiagnostics.info("miniPlayer play queued — waiting for analysis")
             }
         } else {
             engine.play()
+            startQueuePreparationIfNeeded()
         }
     }
 
@@ -689,6 +773,7 @@ final class AppShellModel {
         if isPreparingPlayback {
             if playbackCoordinator?.canStartPlayback == true {
                 engine?.play()
+                startQueuePreparationIfNeeded()
             } else {
                 pendingPlayAfterPrepare = true
                 PlaybackDiagnostics.info("playback queued — analysis in flight")
@@ -696,6 +781,7 @@ final class AppShellModel {
             return
         }
         engine?.play()
+        startQueuePreparationIfNeeded()
     }
 
     func expandFullPlayer() {
@@ -791,6 +877,7 @@ final class AppShellModel {
         nowPlayingPodcastTitle = ""
         nowPlayingFeedURL = nil
         comingUpItems = []
+        foregroundPreparationJob = nil
         warmPlanner?.cancel()
         clearPlaybackAnalysisProgress()
         // Durable session id is intentionally retained (ADR-027 intake).
@@ -890,7 +977,124 @@ final class AppShellModel {
 
     private func scheduleWarmForComingUp() {
         refreshComingUp()
-        warmPlanner?.reaim(at: comingUpItems)
+        // `comingUpItems` intentionally hides smart predictions while a manual queue
+        // exists. The preparation worker still needs those predictions to fill any
+        // unused slots after the listener's explicit Up Next ordering.
+        let smartPredictions = smartPredictionItems()
+        warmPlanner?.reaim(
+            manualQueueIDs: queueStore.queueEpisodeIDs(),
+            predicted: smartPredictions
+        )
+    }
+
+    private func startQueuePreparationIfNeeded() {
+        guard !didStartPreparationForCurrentSession else { return }
+        didStartPreparationForCurrentSession = true
+        scheduleWarmForComingUp()
+    }
+
+    /// Requeue the current preparation selection immediately, bypassing its scheduled retry.
+    func retryPreparation(episodeID: String) {
+        warmPlanner?.resetJobForRetry(episodeID: episodeID)
+        if var job = foregroundPreparationJob, job.episodeID == episodeID {
+            job.stage = .queued
+            job.estimate = AnalysisJobEstimate(secondsRemaining: nil, progress: nil)
+            job.updatedAt = Date()
+            job.retryAfter = nil
+            job.detail = nil
+            job.cloudFailure = nil
+            job.retryCount = 0
+            foregroundPreparationJob = job
+        }
+        scheduleWarmForComingUp()
+    }
+
+    private func updateForegroundPreparation(
+        episodeID: String,
+        stage: AnalysisJobStage,
+        detail: String? = nil,
+        cloudFailure: CloudAdDetectionFailureCategory? = nil
+    ) {
+        guard var job = foregroundPreparationJob, job.episodeID == episodeID else { return }
+        job.stage = stage
+        job.detail = detail
+        job.cloudFailure = cloudFailure
+        job.updatedAt = Date()
+        foregroundPreparationJob = job
+    }
+
+    private static func isRetryableCloudFailure(_ category: CloudAdDetectionFailureCategory) -> Bool {
+        switch category {
+        case .network, .rateLimited, .serviceUnavailable, .timeout: return true
+        case .disabled, .configuration, .firebaseAuth, .appCheck, .credentials, .unauthorized, .invalidResponse: return false
+        }
+    }
+
+    private static func foregroundDetail(for category: CloudAdDetectionFailureCategory) -> String {
+        switch category {
+        case .disabled: return "Cloud ad checks are off"
+        case .configuration, .firebaseAuth, .appCheck, .credentials, .unauthorized: return "Ad checks need attention"
+        case .invalidResponse: return "Ad check returned an invalid result"
+        case .network, .rateLimited, .serviceUnavailable, .timeout: return "Retrying automatically"
+        }
+    }
+
+    /// Listener override for a delayed ad scan. Existing local profanity intervals remain
+    /// active; no Gemini-derived ad interval is required to begin playback.
+    func playWithAds(episodeID: String) {
+        guard let lookup = podcastStore.episodeLookup(id: episodeID),
+              let localURL = resolvedLocalFileURL(for: episodeID)
+        else { return }
+        beginPlaybackSession(
+            episode: lookup.episode,
+            podcastTitle: lookup.podcastTitle,
+            feedURL: lookup.feedURL,
+            audioURL: localURL,
+            localCandidate: localURL,
+            remoteCandidate: lookup.episode.audioURL,
+            startAnalysis: false
+        )
+        let targets = settingsStore.activeNormalizedTargetSet()
+        if let record = intervalCache.loadRecord(episodeID: episodeID, targetWords: targets) {
+            let localOnly = record.intervals.filter { $0.source == .profanity }
+            Task { @MainActor [weak self, weak coordinator = playbackCoordinator] in
+                guard let self, let coordinator, self.nowPlayingEpisodeID == episodeID else { return }
+                await coordinator.applyReconciledIntervals(localOnly)
+                self.engine?.play()
+                self.startQueuePreparationIfNeeded()
+            }
+        } else {
+            engine?.play()
+            startQueuePreparationIfNeeded()
+        }
+        isPreparationPresented = false
+    }
+
+    private func smartPredictionItems() -> [ComingUpItem] {
+        guard settingsStore.smartAutoplayEnabled else { return [] }
+        let order = SmartOrderEngine(activeBingeFeedURL: activeBingeFeedURL)
+        return order.peek(
+            count: WarmPlanner.peekCount,
+            shows: podcastStore.smartOrderShows(),
+            currentEpisodeID: nowPlayingEpisodeID,
+            currentFeedURL: nowPlayingFeedURL
+        )
+    }
+
+    private func firstReadyQueuedEpisode(in ids: [String]) -> String? {
+        let first = ids.first
+        for id in ids {
+            guard let lookup = podcastStore.episodeLookup(id: id) else { continue }
+            if warmPlanner?.isReadyForSeamlessPlay(episodeID: id, feedURL: lookup.feedURL) == true {
+                if id != first {
+                    let skippedTitle = podcastStore.episodeLookup(id: first ?? id)?.episode.title ?? "the next episode"
+                    preparingNextAnnouncement = "Skipping \(skippedTitle) for now — still checking it for ads"
+                    preparingAnnouncementGeneration += 1
+                }
+                return id
+            }
+        }
+        return nil
     }
 
     /// Cold-start / post-relaunch: rebuild paused mini session from durable stores.
@@ -925,6 +1129,15 @@ final class AppShellModel {
             startAnalysis: false
         )
 
+        // A relaunch intentionally does not re-run analysis, but the player chrome and
+        // engine still need the completed cache restored. Without this, a previously
+        // analyzed episode is playable after launch with an empty seek bar.
+        restoreCachedPlaybackAnalysis(
+            episode: lookup.episode,
+            feedURL: lookup.feedURL,
+            audioURL: audioURL
+        )
+
         let position = resumeStore.position(for: id)
         if position > 0 {
             // Prefer restorePausedPosition — do not call pause() afterward (refreshCurrentTime
@@ -932,6 +1145,48 @@ final class AppShellModel {
             engine?.restorePausedPosition(position)
         }
         // Pause-not-play: never call play() / startPlaybackWhenReady on this path.
+    }
+
+    /// Reapplies a terminal cache hit to a cold-restored player without starting ASR/cloud work.
+    private func restoreCachedPlaybackAnalysis(
+        episode: Episode,
+        feedURL: URL?,
+        audioURL: URL
+    ) {
+        guard cleaningApplies(for: episode, feedURL: feedURL) else { return }
+
+        let targetWords = settingsStore.activeNormalizedTargetSet()
+        guard let record = intervalCache.loadRecord(
+            episodeID: episode.id,
+            targetWords: targetWords
+        ), record.analysisCompleted else {
+            return
+        }
+
+        let action = settingsStore.censorAction()
+        let unrelated = UnrelatedContentOptions(
+            enabled: channelUnrelatedContentEnabled(forFeedURL: feedURL)
+                && (settingsStore.unrelatedContentEnabled || cleaningApplies(for: episode, feedURL: feedURL)),
+            action: settingsStore.unrelatedCensorAction()
+        )
+        let playbackIntervals = AnalysisPipeline.projectPlaybackIntervals(
+            union: record.intervals,
+            profanityAction: action,
+            unrelatedContent: unrelated
+        )
+
+        Task { @MainActor [weak self, weak coordinator = playbackCoordinator] in
+            guard let self, let coordinator,
+                  self.nowPlayingEpisodeID == episode.id
+            else { return }
+            await coordinator.applyReconciledIntervals(playbackIntervals)
+            await self.publishTerminalPlaybackAnalysisSnapshot(
+                intervals: playbackIntervals,
+                analysisUnion: record.intervals,
+                unrelatedContent: unrelated,
+                audioURL: audioURL
+            )
+        }
     }
 
     /// Writes `ResumePositionStore` from the live engine clock for the active id.

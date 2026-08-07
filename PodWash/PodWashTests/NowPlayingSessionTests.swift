@@ -16,6 +16,7 @@ final class NowPlayingSessionTests: XCTestCase {
 
   private var harness: PersistenceReloadHarness!
   private var downloadsDirectory: URL!
+  private var intervalCache: IntervalCache!
 
   private let activeEpisodeID = "fixture-ep-001"
   private let nextEpisodeID = "fixture-ep-002"
@@ -29,10 +30,16 @@ final class NowPlayingSessionTests: XCTestCase {
     downloadsDirectory = FileManager.default.temporaryDirectory
       .appendingPathComponent("podwash-now-playing-session-\(UUID().uuidString)", isDirectory: true)
     try? FileManager.default.createDirectory(at: downloadsDirectory, withIntermediateDirectories: true)
+    intervalCache = IntervalCache(
+      baseDirectory: FileManager.default.temporaryDirectory
+        .appendingPathComponent("podwash-now-playing-cache-\(UUID().uuidString)", isDirectory: true)
+    )
   }
 
   override func tearDown() {
     try? FileManager.default.removeItem(at: downloadsDirectory)
+    try? intervalCache.clear()
+    intervalCache = nil
     harness = nil
     super.tearDown()
   }
@@ -93,6 +100,37 @@ final class NowPlayingSessionTests: XCTestCase {
     XCTAssertLessThanOrEqual(abs(current - pinnedPosition), positionTolerance)
 
     // Tear down session before AppShellModel leaves scope (MainActor deinit hygiene).
+    model.stopAndDismissPlayer()
+  }
+
+  func testBootstrapRestoresCompletedAnalysisIntoSeekBar() throws {
+    let persistence = harness.makeController()
+    try seedFeedAndSession(
+      persistence: persistence,
+      activeID: activeEpisodeID,
+      position: pinnedPosition,
+      queueIDs: []
+    )
+    try installLocalDownload(for: activeEpisodeID)
+    try persistence.save()
+
+    let model = makeShell(persistence: persistence)
+    let cachedIntervals = [
+      CensorInterval(start: 0.5, end: 1.0, action: .mute, source: .profanity),
+      CensorInterval(start: 1.5, end: 2.0, action: .skip, source: .unrelatedContent)
+    ]
+    try intervalCache.store(
+      cachedIntervals,
+      episodeID: activeEpisodeID,
+      targetWords: model.settingsStore.activeNormalizedTargetSet()
+    )
+
+    model.restoreNowPlayingSessionIfNeeded()
+
+    waitUntil(timeout: 3.0) { model.isPlayerSeekBarAnalysisComplete }
+    XCTAssertEqual(model.nowPlayingMuteIntervals, cachedIntervals)
+    XCTAssertFalse(model.playbackAnalysisSnapshot?.adRanges.isEmpty ?? true)
+
     model.stopAndDismissPlayer()
   }
 
@@ -226,7 +264,8 @@ final class NowPlayingSessionTests: XCTestCase {
       episodeAnalyzer: InstantEpisodeAnalyzer(),
       settingsStore: makeIsolatedSettingsStore(),
       fixtureLibraryModeForTesting: false,
-      downloadManager: testDownloadManager
+      downloadManager: testDownloadManager,
+      intervalCache: intervalCache
     )
     model.downloadsDirectoryForTesting = downloadsDirectory
     return model
