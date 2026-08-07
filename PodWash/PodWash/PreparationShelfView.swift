@@ -60,35 +60,46 @@ struct PreparationDetailView: View {
 
     var body: some View {
         NavigationStack {
-            List(jobs) { job in
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text(job.title).fontWeight(.semibold)
-                        Spacer()
-                        Text(job.stage.userLabel).foregroundStyle(.secondary)
-                    }
-                    if let progress = job.estimate.progress, job.stage == .downloading {
-                        ProgressView(value: progress)
-                    }
-                    if job.stage == .adCheckDelayed || job.stage == .needsAttention {
-                        Text(job.detail ?? (job.stage == .adCheckDelayed
-                            ? "Ad check delayed · Retrying automatically"
-                            : "Ad check needs attention"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        HStack {
-                            Button("Retry now") { onRetry(job.episodeID) }
-                            Button("Play with ads") { onPlayWithAds(job.episodeID) }
+            List {
+                if jobs.isEmpty {
+                    ContentUnavailableView(
+                        "Your queue is empty",
+                        systemImage: "text.line.first.and.arrowtriangle.forward",
+                        description: Text("Add episodes from a podcast to play them next.")
+                    )
+                    .accessibilityIdentifier("queueEmpty")
+                } else {
+                    ForEach(jobs) { job in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(job.title).fontWeight(.semibold)
+                                Spacer()
+                                Text(job.stage.userLabel).foregroundStyle(.secondary)
+                            }
+                            if let progress = job.estimate.progress, job.stage == .downloading {
+                                ProgressView(value: progress)
+                            }
+                            if job.stage == .adCheckDelayed || job.stage == .needsAttention {
+                                Text(job.detail ?? (job.stage == .adCheckDelayed
+                                    ? "Ad check delayed · Retrying automatically"
+                                    : "Ad check needs attention"))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                HStack {
+                                    Button("Retry now") { onRetry(job.episodeID) }
+                                    Button("Play with ads") { onPlayWithAds(job.episodeID) }
+                                }
+                                .buttonStyle(.bordered)
+                            } else if let detail = job.detail {
+                                Text(detail).font(.caption).foregroundStyle(.secondary)
+                            }
+                            #if DEBUG
+                            debugCloudDiagnostics(for: job)
+                            #endif
                         }
-                        .buttonStyle(.bordered)
-                    } else if let detail = job.detail {
-                        Text(detail).font(.caption).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("preparationJob_\(job.episodeID)")
                     }
-                    #if DEBUG
-                    debugCloudDiagnostics(for: job)
-                    #endif
                 }
-                .accessibilityIdentifier("preparationJob_\(job.episodeID)")
             }
             .navigationTitle("Queue")
             .toolbar {
