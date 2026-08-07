@@ -7,8 +7,7 @@
 
 import Foundation
 
-/// Persists the last-applied ASR logical pin and wipes interval + transcript caches
-/// when the bundled pin changes (or no stored pin exists yet).
+/// Persists the last-applied ASR logical pin without deleting listener-visible data.
 enum ASRModelPinStore {
     static let storedPinFileName = "asr-model-pin-applied.txt"
 
@@ -17,9 +16,8 @@ enum ASRModelPinStore {
         applicationSupport.appendingPathComponent(storedPinFileName, isDirectory: false)
     }
 
-    /// If stored pin ≠ `bundledPin` (or stored missing): delete the interval and
-    /// transcript cache directories (if present), then write `bundledPin`.
-    /// If equal: no-op (do not wipe).
+    /// Records `bundledPin`. The directory arguments remain for factory compatibility
+    /// but must never be removed merely because an analysis implementation changed.
     static func reconcile(
         bundledPin: String,
         storedPinURL: URL,
@@ -36,16 +34,9 @@ enum ASRModelPinStore {
             stored = nil
         }
 
-        if stored == bundledPin {
-            return
-        }
-
-        if fileManager.fileExists(atPath: intervalCacheDirectory.path) {
-            try fileManager.removeItem(at: intervalCacheDirectory)
-        }
-        if fileManager.fileExists(atPath: transcriptCacheDirectory.path) {
-            try fileManager.removeItem(at: transcriptCacheDirectory)
-        }
+        _ = intervalCacheDirectory
+        _ = transcriptCacheDirectory
+        if stored == bundledPin { return }
 
         try fileManager.createDirectory(
             at: storedPinURL.deletingLastPathComponent(),

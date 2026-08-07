@@ -71,21 +71,21 @@ final class ASRModelPinWipeTests: XCTestCase {
         )
     }
 
-    // MARK: - AC4: pin-mismatch wipe
+    // MARK: - Pin reconciliation preserves listener artifacts
 
-    func testPinMismatchWipesCaches() throws {
+    func testPinMismatchPreservesCaches() throws {
         try seedCacheDirectories()
         try writeStoredPin(tinyPin)
 
         try reconcile(bundledPin: basePin)
 
-        XCTAssertFalse(
+        XCTAssertTrue(
             FileManager.default.fileExists(atPath: intervalCacheDir.path),
-            "Pin mismatch must remove the interval cache directory"
+            "Pin changes must not erase completed listener analysis"
         )
-        XCTAssertFalse(
+        XCTAssertTrue(
             FileManager.default.fileExists(atPath: transcriptCacheDir.path),
-            "Pin mismatch must remove the transcript cache directory"
+            "Pin changes must not erase transcripts"
         )
         let stored = try String(contentsOf: storedPinURL, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
         XCTAssertEqual(stored, basePin, "Reconcile must persist the new bundled pin after wipe")
@@ -111,14 +111,14 @@ final class ASRModelPinWipeTests: XCTestCase {
         XCTAssertEqual(transcriptFiles.count, 1, "Transcript cache file must survive matching-pin reconcile")
     }
 
-    func testMissingStoredPinWipesCaches() throws {
+    func testMissingStoredPinPreservesCaches() throws {
         try seedCacheDirectories()
         XCTAssertFalse(FileManager.default.fileExists(atPath: storedPinURL.path))
 
         try reconcile(bundledPin: basePin)
 
-        XCTAssertFalse(FileManager.default.fileExists(atPath: intervalCacheDir.path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: transcriptCacheDir.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: intervalCacheDir.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: transcriptCacheDir.path))
         let stored = try String(contentsOf: storedPinURL, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
         XCTAssertEqual(stored, basePin)
     }

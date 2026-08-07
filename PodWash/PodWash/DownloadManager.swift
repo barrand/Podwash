@@ -180,6 +180,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         stateStore.setState(.notDownloaded, for: episodeID)
         try? TranscriptCache.applicationSupport.remove(episodeID: episodeID)
         try? IntervalCache.applicationSupport.remove(episodeID: episodeID)
+        try? EpisodeAnalysisArtifactStore.applicationSupport.remove(episodeID: episodeID)
         notifyStateChanged()
     }
 

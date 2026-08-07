@@ -59,6 +59,17 @@ final class NowPlayingSessionUITests: XCTestCase {
       "restored mini player must not auto-play"
     )
 
+    // Regression: the restored mini-player reservation must not paint over the
+    // system tab bar. Query the visible UIKit tab buttons (rather than its
+    // implementation-specific UITabBarItem identifier) because this is the
+    // exact control a listener taps to reach their library or add a show.
+    let libraryTab = relaunched.tabBars.buttons["Library"]
+    XCTAssertTrue(libraryTab.waitForExistence(timeout: fixtureTimeout))
+    XCTAssertTrue(libraryTab.isHittable, "Library must remain hittable on cold restore")
+    let discoverTab = relaunched.tabBars.buttons["Discover"]
+    XCTAssertTrue(discoverTab.waitForExistence(timeout: fixtureTimeout))
+    XCTAssertTrue(discoverTab.isHittable, "Discover must remain hittable on cold restore")
+
     tapMiniPlayerBar(relaunched)
 
     let elapsed = element("playback.elapsed", in: relaunched)

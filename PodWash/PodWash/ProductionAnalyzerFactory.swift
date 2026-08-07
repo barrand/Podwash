@@ -81,14 +81,17 @@ enum ProductionAnalyzerFactory {
         let supportRoot: URL
         let intervalCacheDir: URL
         let transcriptCacheDir: URL
+        let artifactDir: URL
         if let cacheBaseDirectory {
             supportRoot = cacheBaseDirectory
             intervalCacheDir = cacheBaseDirectory.appendingPathComponent("IntervalCache", isDirectory: true)
             transcriptCacheDir = cacheBaseDirectory.appendingPathComponent("TranscriptCache", isDirectory: true)
+            artifactDir = cacheBaseDirectory.appendingPathComponent("EpisodeAnalysisArtifacts", isDirectory: true)
         } else {
             supportRoot = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             intervalCacheDir = supportRoot.appendingPathComponent("IntervalCache", isDirectory: true)
             transcriptCacheDir = supportRoot.appendingPathComponent("TranscriptCache", isDirectory: true)
+            artifactDir = supportRoot.appendingPathComponent("EpisodeAnalysisArtifacts", isDirectory: true)
         }
 
         try ASRModelPinStore.reconcile(
@@ -102,10 +105,12 @@ enum ProductionAnalyzerFactory {
         let transcriber = WhisperKitASRTranscriber(modelFolder: folder, compute: resolvedCompute)
         let cache = IntervalCache(baseDirectory: intervalCacheDir, asrModelPin: pin)
         let transcriptCache = TranscriptCache(baseDirectory: transcriptCacheDir)
+        let artifactStore = EpisodeAnalysisArtifactStore(baseDirectory: artifactDir)
         return AnalysisPipeline(
             transcriber: transcriber,
             cache: cache,
-            transcriptCache: transcriptCache
+            transcriptCache: transcriptCache,
+            artifactStore: artifactStore
         )
     }
 

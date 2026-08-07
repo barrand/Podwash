@@ -11,6 +11,19 @@ import Foundation
 
 @MainActor @Observable
 final class AppShellModel {
+    enum AnalysisRecoveryState: Equatable {
+        case notNeeded
+        case refreshAvailable
+        case missingArtifacts
+        case inProgress
+    }
+
+    private struct RestoredAnalysisContext {
+        let episode: Episode
+        let podcastTitle: String
+        let feedURL: URL?
+        let audioURL: URL
+    }
     let persistence: PersistenceController
     let podcastStore: PodcastStore
     let queueStore: QueueStore
@@ -38,6 +51,9 @@ final class AppShellModel {
 
     /// True while `preparePlayback` is running for the current episode.
     private(set) var isPreparingPlayback = false
+    private(set) var analysisRecoveryState: AnalysisRecoveryState = .notNeeded
+    private var restoredAnalysisContext: RestoredAnalysisContext?
+    private var stagedRefreshIntervals: ([CensorInterval], [CensorInterval], UnrelatedContentOptions, URL)?
 
     /// User tapped play while analysis was still preparing; start once ready.
     private var pendingPlayAfterPrepare = false
@@ -124,6 +140,7 @@ final class AppShellModel {
 
     private let transcriptCache: TranscriptCache
     private let intervalCache: IntervalCache
+    private let artifactStore: EpisodeAnalysisArtifactStore
 
     private(set) var nowPlayingEpisodeTitle: String = "Now playing"
     private(set) var nowPlayingPodcastTitle: String = ""
@@ -167,7 +184,8 @@ final class AppShellModel {
         fixtureLibraryModeForTesting: Bool? = nil,
         downloadManager: DownloadManager? = nil,
         transcriptCache: TranscriptCache = .applicationSupport,
-        intervalCache: IntervalCache = .applicationSupport
+        intervalCache: IntervalCache = .applicationSupport,
+        artifactStore: EpisodeAnalysisArtifactStore = .applicationSupport
     ) {
         self.persistence = persistence
         self.remoteCommands = remoteCommands
@@ -175,6 +193,7 @@ final class AppShellModel {
         self.settingsStore = settingsStore ?? SettingsStore()
         self.transcriptCache = transcriptCache
         self.intervalCache = intervalCache
+        self.artifactStore = artifactStore
         let resolvedAnalyzer = episodeAnalyzer
             ?? Self.makeDefaultAnalyzer(fixtureLibraryMode: fixtureLibraryModeForTesting)
         self.episodeAnalyzer = resolvedAnalyzer
@@ -214,6 +233,13 @@ final class AppShellModel {
                 self.acceptingPlaybackProgress = false
             }
         }
+        let knownEpisodeIDs = podcastStore.allSubscriptions().flatMap {
+            podcastStore.subscription(forFeedURL: $0.feedURL)?.episodes.map(\.id) ?? []
+        }
+        artifactStore.migrateLegacyArtifactsIfNeeded(
+            intervalCache: intervalCache,
+            episodeIDs: knownEpisodeIDs
+        )
 
         transcriptBackfillObserver = NotificationCenter.default.addObserver(
             forName: .podwashTranscriptBackfillDidStore,
@@ -289,6 +315,7 @@ final class AppShellModel {
 
     /// Clamped seek used by mini + full super seek bars and ±15 transport.
     func seekClampedToProcessedFrontier(to seconds: Double) {
+        applyStagedRefreshIfNeeded()
         let frontier = superSeekProcessedEnd > 0
             ? superSeekProcessedEnd
             : (engine?.duration ?? seconds)
@@ -415,6 +442,9 @@ final class AppShellModel {
         remoteCandidate: URL?,
         startAnalysis: Bool = true
     ) {
+        analysisRecoveryState = .notNeeded
+        restoredAnalysisContext = nil
+        stagedRefreshIntervals = nil
         PlaybackDiagnostics.logAudioURLResolution(
             episodeID: episode.id,
             localURL: localCandidate,
@@ -661,7 +691,11 @@ final class AppShellModel {
                     analysisUnion: coordinator.lastAnalysisUnion
                 )
                 if playbackIntervals != coordinator.cachedIntervals {
-                    await coordinator.applyReconciledIntervals(playbackIntervals)
+                    await coordinator.applyReconciledIntervals(
+                        playbackIntervals,
+                        profanityAction: action,
+                        unrelatedContent: unrelated
+                    )
                 }
                 PlaybackDiagnostics.logPreparePlaybackEnd(
                     episodeID: episode.id,
@@ -754,6 +788,14 @@ final class AppShellModel {
         if engine.isPlaying {
             engine.pause()
             flushPlaybackPosition()
+        } else if analysisRecoveryState == .missingArtifacts {
+            pendingPlayAfterPrepare = true
+            startRestoredRecoveryIfNeeded()
+        } else if analysisRecoveryState == .refreshAvailable {
+            applyStagedRefreshIfNeeded()
+            engine.play()
+            startQueuePreparationIfNeeded()
+            startRestoredRecoveryIfNeeded()
         } else if isPreparingPlayback {
             if playbackCoordinator?.canStartPlayback == true {
                 engine.play()
@@ -763,9 +805,15 @@ final class AppShellModel {
                 PlaybackDiagnostics.info("miniPlayer play queued — waiting for analysis")
             }
         } else {
+            applyStagedRefreshIfNeeded()
             engine.play()
             startQueuePreparationIfNeeded()
         }
+    }
+
+    func openPreparation() {
+        isPreparationPresented = true
+        startRestoredRecoveryIfNeeded()
     }
 
     /// Starts playback when allowed, or queues play until analysis finishes.
@@ -1059,7 +1107,11 @@ final class AppShellModel {
             let localOnly = record.intervals.filter { $0.source == .profanity }
             Task { @MainActor [weak self, weak coordinator = playbackCoordinator] in
                 guard let self, let coordinator, self.nowPlayingEpisodeID == episodeID else { return }
-                await coordinator.applyReconciledIntervals(localOnly)
+                await coordinator.applyReconciledIntervals(
+                    localOnly,
+                    profanityAction: settingsStore.censorAction(),
+                    unrelatedContent: UnrelatedContentOptions(enabled: false)
+                )
                 self.engine?.play()
                 self.startQueuePreparationIfNeeded()
             }
@@ -1144,10 +1196,131 @@ final class AppShellModel {
             // would wipe an in-flight seek). beginPlaybackSession already left transport paused.
             engine?.restorePausedPosition(position)
         }
+        restoredAnalysisContext = RestoredAnalysisContext(
+            episode: lookup.episode,
+            podcastTitle: lookup.podcastTitle,
+            feedURL: lookup.feedURL,
+            audioURL: audioURL
+        )
+        let hasExact = intervalCache.isAnalysisCompleted(
+            episodeID: lookup.episode.id,
+            targetWords: settingsStore.activeNormalizedTargetSet()
+        )
+        analysisRecoveryState = !cleaningApplies(for: lookup.episode, feedURL: lookup.feedURL)
+            ? .notNeeded
+            : (hasExact ? .notNeeded : (artifactStore.load(episodeID: lookup.episode.id) == nil ? .missingArtifacts : .refreshAvailable))
         // Pause-not-play: never call play() / startPlaybackWhenReady on this path.
     }
 
-    /// Reapplies a terminal cache hit to a cold-restored player without starting ASR/cloud work.
+    /// Starts analysis only after a listener interaction with a cold-restored session.
+    /// It deliberately retains the existing engine and queue binding.
+    private func startRestoredRecoveryIfNeeded() {
+        guard analysisRecoveryState == .refreshAvailable || analysisRecoveryState == .missingArtifacts,
+              let context = restoredAnalysisContext,
+              let coordinator = playbackCoordinator
+        else { return }
+        let hadPriorResult = analysisRecoveryState == .refreshAvailable
+        analysisRecoveryState = .inProgress
+        isPreparingPlayback = !hadPriorResult
+        foregroundPreparationJob = AnalysisJob(
+            episodeID: context.episode.id,
+            title: context.episode.title,
+            stage: .transcribing,
+            estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: nil),
+            updatedAt: Date(), retryAfter: nil, detail: nil
+        )
+        let targets = settingsStore.activeNormalizedTargetSet()
+        let action = settingsStore.censorAction()
+        let unrelated = UnrelatedContentOptions(
+            enabled: channelUnrelatedContentEnabled(forFeedURL: context.feedURL),
+            action: settingsStore.unrelatedCensorAction()
+        )
+        Task { @MainActor [weak self, weak coordinator] in
+            guard let self, let coordinator else { return }
+            defer {
+                self.isPreparingPlayback = false
+                if self.transcriptExists(for: context.episode.id) {
+                    self.transcriptAffordanceGeneration += 1
+                }
+            }
+            do {
+                if hadPriorResult {
+                    let intervals = try await self.episodeAnalyzer.analyze(
+                        episode: EpisodeIdentity(id: context.episode.id),
+                        audioURL: context.audioURL,
+                        targetWords: targets,
+                        injectedTranscript: self.injectedTranscriptForTesting,
+                        profanityAction: action,
+                        unrelatedContent: unrelated
+                    )
+                    let union = (self.episodeAnalyzer as? AnalysisPipeline)?.lastAnalysisUnion ?? intervals
+                    self.stagedRefreshIntervals = (intervals, union, unrelated, context.audioURL)
+                    self.updateForegroundPreparation(episodeID: context.episode.id, stage: .ready)
+                    self.analysisRecoveryState = .notNeeded
+                } else {
+                    try await coordinator.preparePlaybackProgressive(
+                        episode: EpisodeIdentity(id: context.episode.id),
+                        audioURL: context.audioURL,
+                        targetWords: targets,
+                        action: action,
+                        unrelatedContent: unrelated,
+                        injectedTranscript: self.injectedTranscriptForTesting,
+                        segmentationContext: SegmentationContext(
+                            showTitle: context.podcastTitle,
+                            showDescription: context.feedURL.flatMap { self.podcastStore.feedDescription(feedURL: $0) } ?? "",
+                            episodeTitle: context.episode.title,
+                            episodeDescription: context.episode.showNotes ?? ""
+                        ),
+                        onChunkReady: { [weak self] in
+                            guard let self, self.pendingPlayAfterPrepare else { return }
+                            self.pendingPlayAfterPrepare = false
+                            self.engine?.play()
+                        }
+                    )
+                    await self.publishTerminalPlaybackAnalysisSnapshot(
+                        intervals: coordinator.cachedIntervals,
+                        analysisUnion: coordinator.lastAnalysisUnion,
+                        unrelatedContent: unrelated,
+                        audioURL: context.audioURL
+                    )
+                    self.updateForegroundPreparation(episodeID: context.episode.id, stage: .ready)
+                    self.analysisRecoveryState = .notNeeded
+                }
+            } catch {
+                self.analysisRecoveryState = hadPriorResult ? .refreshAvailable : .missingArtifacts
+                self.updateForegroundPreparation(
+                    episodeID: context.episode.id,
+                    stage: .needsAttention,
+                    detail: "Analysis needs attention",
+                    cloudFailure: CloudAdDetectionFailureCategory.classify(error)
+                )
+            }
+        }
+    }
+
+    private func applyStagedRefreshIfNeeded() {
+        guard let staged = stagedRefreshIntervals,
+              let coordinator = playbackCoordinator
+        else { return }
+        stagedRefreshIntervals = nil
+        Task { @MainActor [weak self, weak coordinator] in
+            guard let self, let coordinator else { return }
+            await coordinator.applyReconciledIntervals(
+                staged.0,
+                profanityAction: self.settingsStore.censorAction(),
+                unrelatedContent: staged.2
+            )
+            await self.publishTerminalPlaybackAnalysisSnapshot(
+                intervals: staged.0,
+                analysisUnion: staged.1,
+                unrelatedContent: staged.2,
+                audioURL: staged.3
+            )
+        }
+    }
+
+    /// Reapplies current derived results, or the durable prior ad result, without
+    /// starting ASR/cloud work during cold restoration.
     private func restoreCachedPlaybackAnalysis(
         episode: Episode,
         feedURL: URL?,
@@ -1156,12 +1329,10 @@ final class AppShellModel {
         guard cleaningApplies(for: episode, feedURL: feedURL) else { return }
 
         let targetWords = settingsStore.activeNormalizedTargetSet()
-        guard let record = intervalCache.loadRecord(
+        let exactRecord = intervalCache.loadRecord(
             episodeID: episode.id,
             targetWords: targetWords
-        ), record.analysisCompleted else {
-            return
-        }
+        ).flatMap { $0.analysisCompleted ? $0 : nil }
 
         let action = settingsStore.censorAction()
         let unrelated = UnrelatedContentOptions(
@@ -1169,8 +1340,22 @@ final class AppShellModel {
                 && (settingsStore.unrelatedContentEnabled || cleaningApplies(for: episode, feedURL: feedURL)),
             action: settingsStore.unrelatedCensorAction()
         )
+        let union: [CensorInterval]
+        if let exactRecord {
+            union = exactRecord.intervals
+        } else if let artifact = artifactStore.load(episodeID: episode.id) {
+            let adIntervals = artifact.adSpans.map {
+                CensorInterval(start: $0.start, end: $0.end, action: unrelated.action, source: .unrelatedContent)
+            }
+            let profanity = transcriptCache.load(episodeID: episode.id).map {
+                IntervalBuilder.buildIntervals(from: $0, targetSet: targetWords, action: action)
+            } ?? []
+            union = (profanity + adIntervals).sorted { $0.start < $1.start }
+        } else {
+            return
+        }
         let playbackIntervals = AnalysisPipeline.projectPlaybackIntervals(
-            union: record.intervals,
+            union: union,
             profanityAction: action,
             unrelatedContent: unrelated
         )
@@ -1179,10 +1364,14 @@ final class AppShellModel {
             guard let self, let coordinator,
                   self.nowPlayingEpisodeID == episode.id
             else { return }
-            await coordinator.applyReconciledIntervals(playbackIntervals)
+            await coordinator.applyReconciledIntervals(
+                playbackIntervals,
+                profanityAction: action,
+                unrelatedContent: unrelated
+            )
             await self.publishTerminalPlaybackAnalysisSnapshot(
                 intervals: playbackIntervals,
-                analysisUnion: record.intervals,
+                analysisUnion: union,
                 unrelatedContent: unrelated,
                 audioURL: audioURL
             )
@@ -1241,6 +1430,24 @@ final class AppShellModel {
             targetWords: settingsStore.activeNormalizedTargetSet()
         ) {
             return fromDisk
+        }
+        if let artifact = artifactStore.load(episodeID: episodeID) {
+            let profanity = transcriptCache.load(episodeID: episodeID).map {
+                IntervalBuilder.buildIntervals(
+                    from: $0,
+                    targetSet: settingsStore.activeNormalizedTargetSet(),
+                    action: settingsStore.censorAction()
+                )
+            } ?? []
+            let adIntervals = artifact.adSpans.map {
+                CensorInterval(
+                    start: $0.start,
+                    end: $0.end,
+                    action: settingsStore.unrelatedCensorAction(),
+                    source: .unrelatedContent
+                )
+            }
+            return profanity + adIntervals
         }
         return []
     }

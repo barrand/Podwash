@@ -57,6 +57,7 @@ final class AnalysisPipeline: @unchecked Sendable {
     nonisolated(unsafe) private let transcriber: any ASRTranscribing
     private let cache: IntervalCache
     private let transcriptCache: TranscriptCache
+    private let artifactStore: EpisodeAnalysisArtifactStore
     private let cloudAdDetector: any CloudAdSpanDetecting
 
     /// Show/episode text for TopicCard (set by playback before analyze).
@@ -82,6 +83,7 @@ final class AnalysisPipeline: @unchecked Sendable {
         transcriber: any ASRTranscribing,
         cache: IntervalCache,
         transcriptCache: TranscriptCache = .applicationSupport,
+        artifactStore: EpisodeAnalysisArtifactStore = .applicationSupport,
         cloudAdDetector: any CloudAdSpanDetecting = CloudAdSpanClient(
             configuration: .applicationDefault(consentGranted: {
                 SettingsStore().cloudTranscriptProcessingEnabled
@@ -91,6 +93,7 @@ final class AnalysisPipeline: @unchecked Sendable {
         self.transcriber = transcriber
         self.cache = cache
         self.transcriptCache = transcriptCache
+        self.artifactStore = artifactStore
         self.cloudAdDetector = cloudAdDetector
     }
 
@@ -377,6 +380,19 @@ final class AnalysisPipeline: @unchecked Sendable {
             targetWords: targetWords,
             analysisCompleted: cloudCompleted
         )
+        guard cloudCompleted else { return }
+        let spans = union.compactMap { interval -> ContentSegment? in
+            guard interval.source == .unrelatedContent else { return nil }
+            return ContentSegment(start: interval.start, end: interval.end)
+        }
+        // The normal cache/transcript write remains usable even if the durable
+        // convenience artifact cannot be written (for example, disk pressure).
+        try? artifactStore.store(EpisodeAnalysisArtifact(
+            episodeID: episodeID,
+            adSpans: spans,
+            analysisFingerprint: cache.currentFingerprint(for: targetWords),
+            completedAt: Date()
+        ))
     }
 
     private func detectAdSpans(

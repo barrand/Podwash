@@ -220,7 +220,7 @@ struct AppShellView: View {
                 onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
                 onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) },
                 onSkipToNextShow: { model.skipToNextShow() },
-                onOpenPreparation: { model.isPreparationPresented = true }
+                onOpenPreparation: { model.openPreparation() }
             )
             .onChange(of: model.preparingAnnouncementGeneration) { _, _ in
                 if let text = model.preparingNextAnnouncement {
@@ -232,7 +232,10 @@ struct AppShellView: View {
                 // The Super Seek Bar belongs in that reservation, immediately above the tabs.
                 shellMiniPlayerSeekBar(engine: engine)
                 .frame(height: tabBarHeight, alignment: .top)
-                .background(BrandTheme.surface)
+                // This inset occupies the same visual territory as UIKit's tab bar.
+                // Keep its unused area transparent: an opaque background here hides the
+                // system Library/Discover controls on cold-restored mini-player sessions.
+                .background(Color.clear)
             }
         }
     }
@@ -495,8 +498,18 @@ private struct TabBarAccessibilityConfigurator: UIViewRepresentable {
         }
     }
 
-    private static func apply(from view: UIView, coordinator: Coordinator) {
-        guard let tabBar = findTabBar(from: view) else { return }
+    private static func apply(from view: UIView, coordinator: Coordinator, attempt: Int = 0) {
+        guard let tabBar = findTabBar(from: view) else {
+            // The representable can be updated before SwiftUI has attached the TabView's
+            // UIKit hierarchy, particularly during a cold restored mini-player session.
+            // Retry briefly so the identifiers describe the actual controls, not a
+            // transient view-tree state.
+            guard attempt < 10 else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                apply(from: view, coordinator: coordinator, attempt: attempt + 1)
+            }
+            return
+        }
         let measuredHeight = tabBar.bounds.height
         if measuredHeight > 0, coordinator.tabBarHeight.wrappedValue != measuredHeight {
             coordinator.tabBarHeight.wrappedValue = measuredHeight
@@ -508,6 +521,18 @@ private struct TabBarAccessibilityConfigurator: UIViewRepresentable {
         items[1].accessibilityIdentifier = "tabDiscover"
         items[1].accessibilityLabel = "Discover"
         items[1].accessibilityHint = "Search and subscribe to podcasts."
+
+        // On recent iOS versions XCTest queries the private tab-bar button views
+        // rather than UITabBarItem. Use the public accessibility surface of those
+        // views too, keeping the visible Library and Discover controls addressable.
+        let controls = tabBar.subviews
+            .filter(\.isAccessibilityElement)
+            .sorted { $0.frame.minX < $1.frame.minX }
+        guard controls.count >= 2 else { return }
+        controls[0].accessibilityIdentifier = "tabLibrary"
+        controls[0].accessibilityLabel = "Library"
+        controls[1].accessibilityIdentifier = "tabDiscover"
+        controls[1].accessibilityLabel = "Discover"
     }
 
     private static func findTabBar(from view: UIView) -> UITabBar? {

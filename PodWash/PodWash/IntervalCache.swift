@@ -26,6 +26,13 @@ struct IntervalCacheRecord: Codable, Equatable, Sendable {
 /// On-disk JSON cache of merged censor intervals.
 struct IntervalCache: Sendable {
 
+    struct CompletedRecord: Sendable {
+        let episodeID: String
+        let fingerprint: String
+        let record: IntervalCacheRecord
+        let modifiedAt: Date
+    }
+
     let baseDirectory: URL
     /// Logical ASR pin included in fingerprint material as `asr-model:<pin>`.
     let asrModelPin: String
@@ -78,6 +85,52 @@ struct IntervalCache: Sendable {
         loadRecord(episodeID: episodeID, targetWords: targetWords)?.analysisCompleted ?? false
     }
 
+    /// Full derived-cache fingerprint for diagnostics and durable artifacts.
+    func currentFingerprint(for targetWords: Set<String>) -> String {
+        Self.cacheFingerprint(targetWords: targetWords, asrModelPin: asrModelPin)
+    }
+
+    /// Migration-only enumeration of completed cache files. Safe identifier stems are
+    /// reversible; hashed historical IDs have no durable reverse mapping and skip.
+    func completedRecords() -> [CompletedRecord] {
+        completedRecords(episodeIDs: [])
+    }
+
+    /// Supplying known podcast ids also migrates historical hashed filename stems.
+    func completedRecords(episodeIDs: [String]) -> [CompletedRecord] {
+        let fm = FileManager.default
+        guard let files = try? fm.contentsOfDirectory(
+            at: baseDirectory,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else { return [] }
+        var latest: [String: CompletedRecord] = [:]
+        for url in files where url.pathExtension == "json" {
+            guard let data = try? Data(contentsOf: url) else { continue }
+            let decoder = JSONDecoder()
+            let record: IntervalCacheRecord?
+            if let decoded = try? decoder.decode(IntervalCacheRecord.self, from: data) {
+                record = decoded
+            } else if let legacy = try? decoder.decode([CensorInterval].self, from: data) {
+                record = IntervalCacheRecord(intervals: legacy, analysisCompleted: true)
+            } else {
+                record = nil
+            }
+            guard let record, record.analysisCompleted else { continue }
+            let stem = url.deletingPathExtension().lastPathComponent
+            guard let separator = stem.range(of: "__") else { continue }
+            let prefix = String(stem[..<separator.lowerBound])
+            let episodeID = episodeIDs.first(where: { DownloadPaths.fileNameStem(for: $0) == prefix }) ?? prefix
+            guard !episodeID.isEmpty else { continue }
+            let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            let candidate = CompletedRecord(episodeID: episodeID, fingerprint: stem, record: record, modifiedAt: modified)
+            if latest[episodeID]?.modifiedAt ?? .distantPast < modified {
+                latest[episodeID] = candidate
+            }
+        }
+        return latest.values.sorted { $0.modifiedAt > $1.modifiedAt }
+    }
+
     func store(
         _ intervals: [CensorInterval],
         episodeID: String,
@@ -118,17 +171,18 @@ struct IntervalCache: Sendable {
         // ADR-013 §3.4 — format token so sourced unions do not collide with v1 payloads.
         // Segmenter revision bumps invalidate stale unions missing unrelated spans.
         // ADR-024 — asr-model pin so pre-upgrade tiny intervals miss after pin change.
-        let fp = Self.fingerprint(for: targetWords)
-            + "\n"
-            + "interval-format:v2"
-            + "\n"
-            + "segmenter:cloud-gemini-v1"
-            + "\n"
-            + "asr-model:\(asrModelPin)"
+        let fp = Self.cacheFingerprint(targetWords: targetWords, asrModelPin: asrModelPin)
         let digest = SHA256.hash(data: Data(fp.utf8))
         let hash = digest.map { String(format: "%02x", $0) }.joined()
         let safeStem = DownloadPaths.fileNameStem(for: episodeID)
         let filename = "\(safeStem)__\(hash).json"
         return baseDirectory.appendingPathComponent(filename, isDirectory: false)
+    }
+
+    private static func cacheFingerprint(targetWords: Set<String>, asrModelPin: String) -> String {
+        fingerprint(for: targetWords)
+            + "\ninterval-format:v2"
+            + "\nsegmenter:cloud-gemini-v1"
+            + "\nasr-model:\(asrModelPin)"
     }
 }

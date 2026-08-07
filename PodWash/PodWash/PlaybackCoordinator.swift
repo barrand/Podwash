@@ -76,7 +76,18 @@ final class PlaybackCoordinator {
     }
 
     /// Re-applies schedule from reconciled intervals without re-running analyze (task-019).
-    func applyReconciledIntervals(_ intervals: [CensorInterval]) async {
+    func applyReconciledIntervals(
+        _ intervals: [CensorInterval],
+        profanityAction: CensorAction? = nil,
+        unrelatedContent: UnrelatedContentOptions? = nil
+    ) async {
+        if let profanityAction {
+            currentAction = profanityAction
+        }
+        if let unrelatedContent {
+            unrelatedContentEnabled = unrelatedContent.enabled
+            unrelatedContentAction = unrelatedContent.action
+        }
         cachedIntervals = intervals
         await applySchedule(intervals: intervals)
     }

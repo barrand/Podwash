@@ -17,6 +17,9 @@ final class NowPlayingSessionTests: XCTestCase {
   private var harness: PersistenceReloadHarness!
   private var downloadsDirectory: URL!
   private var intervalCache: IntervalCache!
+  private var transcriptCache: TranscriptCache!
+  private var artifactStore: EpisodeAnalysisArtifactStore!
+  private var artifactDefaults: UserDefaults!
 
   private let activeEpisodeID = "fixture-ep-001"
   private let nextEpisodeID = "fixture-ep-002"
@@ -34,12 +37,27 @@ final class NowPlayingSessionTests: XCTestCase {
       baseDirectory: FileManager.default.temporaryDirectory
         .appendingPathComponent("podwash-now-playing-cache-\(UUID().uuidString)", isDirectory: true)
     )
+    let artifactRoot = FileManager.default.temporaryDirectory
+      .appendingPathComponent("podwash-now-playing-artifacts-\(UUID().uuidString)", isDirectory: true)
+    transcriptCache = TranscriptCache(baseDirectory: artifactRoot.appendingPathComponent("transcripts"))
+    let suite = "com.podwash.tests.now-playing-artifacts.\(UUID().uuidString)"
+    artifactDefaults = UserDefaults(suiteName: suite)!
+    artifactDefaults.removePersistentDomain(forName: suite)
+    artifactStore = EpisodeAnalysisArtifactStore(
+      baseDirectory: artifactRoot.appendingPathComponent("artifacts"),
+      defaults: artifactDefaults
+    )
   }
 
   override func tearDown() {
     try? FileManager.default.removeItem(at: downloadsDirectory)
     try? intervalCache.clear()
+    try? transcriptCache.clear()
+    try? FileManager.default.removeItem(at: artifactStore.baseDirectory.deletingLastPathComponent())
     intervalCache = nil
+    transcriptCache = nil
+    artifactStore = nil
+    artifactDefaults = nil
     harness = nil
     super.tearDown()
   }
@@ -115,6 +133,10 @@ final class NowPlayingSessionTests: XCTestCase {
     try persistence.save()
 
     let model = makeShell(persistence: persistence)
+    model.settingsStore.unrelatedContentEnabled = true
+    let feedURL = try XCTUnwrap(model.podcastStore.episodeLookup(id: activeEpisodeID)?.feedURL)
+    try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
+    try model.cleaningStore.setChannelUnrelatedContent(forFeedURL: feedURL, enabled: true)
     let cachedIntervals = [
       CensorInterval(start: 0.5, end: 1.0, action: .mute, source: .profanity),
       CensorInterval(start: 1.5, end: 2.0, action: .skip, source: .unrelatedContent)
@@ -130,6 +152,75 @@ final class NowPlayingSessionTests: XCTestCase {
     waitUntil(timeout: 3.0) { model.isPlayerSeekBarAnalysisComplete }
     XCTAssertEqual(model.nowPlayingMuteIntervals, cachedIntervals)
     XCTAssertFalse(model.playbackAnalysisSnapshot?.adRanges.isEmpty ?? true)
+
+    model.stopAndDismissPlayer()
+  }
+
+  func testBootstrapRestoresDurableArtifactWithoutRunningAnalysis() throws {
+    let persistence = harness.makeController()
+    try seedFeedAndSession(
+      persistence: persistence,
+      activeID: activeEpisodeID,
+      position: pinnedPosition,
+      queueIDs: []
+    )
+    try installLocalDownload(for: activeEpisodeID)
+    try transcriptCache.store(
+      [TimedWord(word: "artifactword", start: 2, end: 2.4)],
+      episodeID: activeEpisodeID
+    )
+    try artifactStore.store(EpisodeAnalysisArtifact(
+      episodeID: activeEpisodeID,
+      adSpans: [ContentSegment(start: 10, end: 20)],
+      analysisFingerprint: "previous-model",
+      completedAt: Date()
+    ))
+    try persistence.save()
+
+    let settings = makeIsolatedSettingsStore()
+    settings.addCustomWord("artifactword")
+    settings.unrelatedContentEnabled = true
+    let analyzer = CountingRestoreAnalyzer()
+    let model = makeShell(persistence: persistence, settingsStore: settings, analyzer: analyzer)
+
+    model.restoreNowPlayingSessionIfNeeded()
+
+    waitUntil(timeout: 3.0) {
+      model.nowPlayingMuteIntervals.contains { $0.source == .unrelatedContent }
+    }
+    XCTAssertTrue(model.nowPlayingTranscriptExists)
+    XCTAssertEqual(analyzer.calls, 0, "cold restoration must not start analysis")
+    XCTAssertTrue(
+      model.nowPlayingMuteIntervals.contains { $0.source == .profanity },
+      "current word-list must rebuild profanity markers from the restored transcript"
+    )
+    XCTAssertTrue(
+      model.nowPlayingMuteIntervals.contains { $0.source == .unrelatedContent },
+      "durable prior ad spans must survive an exact-cache miss"
+    )
+
+    model.stopAndDismissPlayer()
+  }
+
+  func testBootstrapWithMissingArtifactsDoesNotAnalyzeUntilListenerInteracts() throws {
+    let persistence = harness.makeController()
+    try seedFeedAndSession(
+      persistence: persistence,
+      activeID: activeEpisodeID,
+      position: pinnedPosition,
+      queueIDs: []
+    )
+    try installLocalDownload(for: activeEpisodeID)
+    try persistence.save()
+
+    let analyzer = CountingRestoreAnalyzer()
+    let model = makeShell(persistence: persistence, analyzer: analyzer)
+
+    model.restoreNowPlayingSessionIfNeeded()
+
+    XCTAssertNotNil(model.engine)
+    XCTAssertEqual(analyzer.calls, 0, "restoring a session must never begin analysis")
+    XCTAssertEqual(model.analysisRecoveryState, .missingArtifacts)
 
     model.stopAndDismissPlayer()
   }
@@ -246,7 +337,11 @@ final class NowPlayingSessionTests: XCTestCase {
     try FileManager.default.copyItem(at: source, to: destination)
   }
 
-  private func makeShell(persistence: PersistenceController) -> AppShellModel {
+  private func makeShell(
+    persistence: PersistenceController,
+    settingsStore: SettingsStore? = nil,
+    analyzer: (any EpisodeAnalyzing)? = nil
+  ) -> AppShellModel {
     let commands = RemoteCommandCoordinator(commands: MPRemoteCommandCenterAdapter())
     let context = persistence.viewContext
     let downloadConfig = URLSessionConfiguration.ephemeral
@@ -261,11 +356,13 @@ final class NowPlayingSessionTests: XCTestCase {
     let model = AppShellModel(
       persistence: persistence,
       remoteCommands: commands,
-      episodeAnalyzer: InstantEpisodeAnalyzer(),
-      settingsStore: makeIsolatedSettingsStore(),
+      episodeAnalyzer: analyzer ?? InstantEpisodeAnalyzer(),
+      settingsStore: settingsStore ?? makeIsolatedSettingsStore(),
       fixtureLibraryModeForTesting: false,
       downloadManager: testDownloadManager,
-      intervalCache: intervalCache
+      transcriptCache: transcriptCache,
+      intervalCache: intervalCache,
+      artifactStore: artifactStore
     )
     model.downloadsDirectoryForTesting = downloadsDirectory
     return model
@@ -294,5 +391,32 @@ final class NowPlayingSessionTests: XCTestCase {
       RunLoop.current.run(until: Date().addingTimeInterval(pollInterval))
     }
     XCTFail("Condition not met within \(timeout)s", file: file, line: line)
+  }
+}
+
+private final class CountingRestoreAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
+  var calls = 0
+  var onPartialIntervals: AnalysisPartialIntervalsHandler?
+
+  func analyze(
+    episode: EpisodeIdentity,
+    audioURL: URL,
+    targetWords: Set<String>,
+    injectedTranscript: [TimedWord]?
+  ) async throws -> [CensorInterval] {
+    calls += 1
+    return []
+  }
+
+  func analyze(
+    episode: EpisodeIdentity,
+    audioURL: URL,
+    targetWords: Set<String>,
+    injectedTranscript: [TimedWord]?,
+    profanityAction: CensorAction,
+    unrelatedContent: UnrelatedContentOptions
+  ) async throws -> [CensorInterval] {
+    calls += 1
+    return []
   }
 }
