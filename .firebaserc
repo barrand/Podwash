@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "gen-lang-client-0583348292"
+  },
+  "targets": {
+    "gen-lang-client-0583348292": {
+      "hosting": {
+        "podwash-public": [
+          "podwash-support"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="PodWash Privacy Policy.">
+  <title>PodWash Privacy Policy</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <div class="shell">
+      <a class="brand" href="/">Pod<span>Wash</span></a>
+      <nav aria-label="Primary navigation">
+        <a href="/support">Support</a>
+        <a href="/privacy" aria-current="page">Privacy</a>
+      </nav>
+    </div>
+  </header>
+  <main class="shell">
+    <p class="eyebrow">Last updated August 8, 2026</p>
+    <h1>Privacy Policy</h1>
+    <p class="lead">This policy explains how PodWash handles information when you use the app.</p>
+
+    <h2>Who we are</h2>
+    <p>PodWash is operated by Barrand Farm (“we,” “us,” and “our”). Questions about this policy can be sent to <a href="mailto:barrandlixo@gmail.com">barrandlixo@gmail.com</a>.</p>
+
+    <h2>Information stored on your device</h2>
+    <p>PodWash stores the podcast feeds, podcasts, and episodes you choose; playback and app settings; listening state; downloaded audio; and locally generated transcripts and cleaning data on your device. This information supports playback, downloads, local cleaning, and your chosen settings. You can remove downloaded episodes and their related local analysis data in the app.</p>
+
+    <h2>Optional cloud ad detection</h2>
+    <p>PodWash transcribes podcast audio on your device. When cloud ad detection is enabled, PodWash sends timed transcript text and timestamps, an episode identifier, a randomly generated request identifier, and technical request data to our cloud service to identify likely advertisements. PodWash does not upload podcast audio for this feature.</p>
+    <p>To protect cloud requests and provide the feature, Firebase Authentication may create an anonymous authentication identifier, Firebase App Check processes app-attestation material and tokens, and Google services may process standard technical information such as IP address and user-agent data. PodWash does not use advertising SDKs or cross-app tracking.</p>
+
+    <h2>How information is used</h2>
+    <p>We use this information to provide podcast playback, local cleaning features, optional ad detection, troubleshooting, and support. We do not sell personal information or share it for advertising or cross-app tracking.</p>
+
+    <h2>Service providers</h2>
+    <p>When cloud ad detection is enabled, Google services process the information described above: Firebase Authentication and App Check help secure requests; Cloud Run operates the service; Firestore stores the ad-detection result; and Gemini analyzes transcript text. Firebase Hosting serves this website. These providers process data under their applicable terms and privacy policies. We use service providers to operate PodWash and do not authorize them to use your data for our advertising or cross-app tracking.</p>
+    <p>Google’s processing, retention, and use of Gemini API inputs and outputs depend on the applicable service plan and settings. Before you enable cloud ad detection, review Google’s <a href="https://ai.google.dev/gemini-api/terms">Gemini API terms</a> and <a href="https://ai.google.dev/gemini-api/docs/logs-policy">data logging policy</a>.</p>
+
+    <h2>Retention</h2>
+    <p>Local downloads, transcripts, and cleaning data remain on your device until you remove the associated download or delete the app. Successful cloud ad-detection results are retained in Firestore for up to 180 days and are keyed by a protected hash of the request rather than by the episode identifier. Deletion by Firestore’s time-to-live process may not occur immediately after that period.</p>
+    <p>Anonymous Firebase Authentication data, App Check data, server logs, and Gemini API data are subject to the retention periods and controls of the applicable Google service and plan. Support correspondence is retained only as long as reasonably necessary to respond to and document the request.</p>
+
+    <h2>Your choices and requests</h2>
+    <p>You can disable cloud ad detection in PodWash Settings. Turning it off stops future transcript submissions; it does not automatically delete information already processed by cloud providers. To ask a privacy question or request deletion of data associated with PodWash, contact <a href="mailto:barrandlixo@gmail.com">barrandlixo@gmail.com</a> with the subject line “PodWash privacy request.” Include your app version and the approximate date of the cloud request, if known. We may request information needed to verify and locate the request, and will respond as required by applicable law.</p>
+
+    <h2>Children’s privacy</h2>
+    <p>PodWash is not directed to children, and we do not knowingly collect personal information from children. Cloud ad detection uses the Gemini API; review the Gemini API terms before enabling that feature.</p>
+
+    <h2>Changes to this policy</h2>
+    <p>We may update this policy as PodWash changes. We will post the updated version here and revise the “Last updated” date.</p>
+
+    <section class="card" aria-labelledby="privacy-contact-heading">
+      <h2 id="privacy-contact-heading">Contact</h2>
+      <p>Questions about this policy: <a class="contact-link" href="mailto:barrandlixo@gmail.com">barrandlixo@gmail.com</a></p>
+    </section>
+  </main>
+  <footer class="shell">© 2026 Barrand Farm · PodWash</footer>
+</body>
+</html>
