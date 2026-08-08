@@ -7,8 +7,8 @@ record the owner, date, and evidence beside each check when it is done.
 
 - [x] **1.1** Identify a clean, reviewed release commit. Do not archive while
   unrelated local changes are present. Current candidate: `1ac191a` on `main`.
-- [ ] **1.2** Set the intended marketing version and increment the build number
-  from `1`.
+- [x] **1.2** Set the intended marketing version and increment the build number
+  from `1`. Release candidate: version `1.0`, build `2`.
 - [ ] **1.3** Confirm the Distribution signing certificate, provisioning profile, bundle ID,
   and Release entitlements are correct for `com.barrandfarm.PodWash`.
 - [ ] **1.4** Run the full verification suite, then Archive and Validate the Release build.
@@ -86,6 +86,7 @@ record the owner, date, and evidence beside each check when it is done.
   (`82e86c5`) work intended for the 1.0 release.
 - Release-source prerequisite **1.1** is complete at clean, pushed commit
   `1ac191a`; it still needs full release verification before an archive is made.
+- Release version prerequisite **1.2** is complete: `1.0 (2)`.
 - The repository intentionally omits `GoogleService-Info.plist`; a production
   archive must supply it by a secure delivery process.
 - The project currently uses marketing version `1.0`, build `1`, and an iOS 26.1
