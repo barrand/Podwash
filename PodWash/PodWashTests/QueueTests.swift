@@ -50,6 +50,45 @@ final class QueueTests: XCTestCase {
         XCTAssertEqual(reloadedQueue.queueEpisodeIDs().count, 2)
     }
 
+    func testSelectingQueuedEpisodeKeepsInterruptedEpisodeFirst() throws {
+        let persistence = harness.makeController()
+        let queue = QueueStore(context: persistence.viewContext)
+        try queue.add("fixture-ep-002")
+        try queue.add("fixture-ep-003")
+        try queue.add("fixture-ep-004")
+
+        let selected = try queue.selectForImmediatePlayback(
+            "fixture-ep-003",
+            replacingCurrentEpisodeID: "fixture-ep-001"
+        )
+
+        XCTAssertTrue(selected)
+        XCTAssertEqual(
+            queue.queueEpisodeIDs(),
+            ["fixture-ep-001", "fixture-ep-002", "fixture-ep-004"]
+        )
+
+        let reloaded = harness.makeController()
+        XCTAssertEqual(
+            QueueStore(context: reloaded.viewContext).queueEpisodeIDs(),
+            ["fixture-ep-001", "fixture-ep-002", "fixture-ep-004"]
+        )
+    }
+
+    func testPlayingReadyEpisodeKeepsInterruptedEpisodeFirst() throws {
+        let persistence = harness.makeController()
+        let queue = QueueStore(context: persistence.viewContext)
+        try queue.add("fixture-ep-002")
+        try queue.add("fixture-ep-003")
+
+        try queue.prepareForImmediatePlayback(
+            selectedEpisodeID: "ready-episode-not-in-queue",
+            replacingCurrentEpisodeID: "fixture-ep-001"
+        )
+
+        XCTAssertEqual(queue.queueEpisodeIDs(), ["fixture-ep-001", "fixture-ep-002", "fixture-ep-003"])
+    }
+
     // MARK: - AC2: auto-advance plays next queued episode within 1.0 s
 
     func testAutoAdvanceOnEpisodeEnd() throws {

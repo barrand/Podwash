@@ -162,6 +162,32 @@ final class AppShellModel {
         let foreground = foregroundPreparationJob.map { [$0] } ?? []
         return (foreground + manual + predicted).filter { seen.insert($0.episodeID).inserted }
     }
+
+    /// One shared snapshot powers the Queue tab and the mini-player status strip.
+    var queuePresentation: QueuePresentation {
+        let manualIDs = queueStore.queueEpisodeIDs()
+        let manual = manualIDs.compactMap { queueEpisodePresentation(for: $0) }
+        let manualSet = Set(manualIDs)
+        let ready = (warmPlanner?.allJobs ?? [])
+            .filter { $0.stage == .ready && !manualSet.contains($0.episodeID) }
+            .compactMap { queueEpisodePresentation(for: $0.episodeID) }
+            .filter(\.isReadyOffline)
+        let automatic = (warmPlanner?.allJobs ?? [])
+            .filter { !manualSet.contains($0.episodeID) && $0.stage != .ready }
+            .compactMap { queueEpisodePresentation(for: $0.episodeID) }
+        let preparingCount = manual.filter { !$0.isReadyOffline }.count + automatic.count
+        let status = QueueStatusResolver.resolve(
+            foreground: foregroundPreparationJob,
+            upNext: manual,
+            automatic: automatic
+        )
+        return QueuePresentation(
+            upNext: manual,
+            readyToPlay: ready,
+            preparingCount: preparingCount,
+            activeStatus: status
+        )
+    }
     /// The now-playing analysis uses the same listener-facing state as warm jobs.
     private(set) var foregroundPreparationJob: AnalysisJob?
     var isPreparationPresented = false
@@ -185,7 +211,8 @@ final class AppShellModel {
         downloadManager: DownloadManager? = nil,
         transcriptCache: TranscriptCache = .applicationSupport,
         intervalCache: IntervalCache = .applicationSupport,
-        artifactStore: EpisodeAnalysisArtifactStore = .applicationSupport
+        artifactStore: EpisodeAnalysisArtifactStore = .applicationSupport,
+        analysisJobStore: AnalysisJobStore = AnalysisJobStore()
     ) {
         self.persistence = persistence
         self.remoteCommands = remoteCommands
@@ -223,7 +250,8 @@ final class AppShellModel {
             settingsStore: self.settingsStore,
             intervalCache: intervalCache,
             cleaningStore: cleaningStore,
-            podcastStore: podcastStore
+            podcastStore: podcastStore,
+            jobStore: analysisJobStore
         )
 
         playbackProgressHandlerID = analysisProgressRelay.addHandler { [weak self] snapshot in
@@ -529,8 +557,9 @@ final class AppShellModel {
             }
         }
         refreshComingUp()
-        // Queue preparation begins on the first actual Play action, not merely when a
-        // paused mini-player session is created.
+        // A new session waits for its first Play action before beginning background
+        // preparation. A restored session is handled separately after its durable
+        // playback state has been rebuilt.
         didStartPreparationForCurrentSession = false
         PlaybackDiagnostics.info(
             "playEpisode session ready episodeID=\(episode.id) miniPlayer=visible paused=true"
@@ -1009,11 +1038,6 @@ final class AppShellModel {
             comingUpItems = []
             return
         }
-        if !queueStore.queueEpisodeIDs().isEmpty {
-            // Manual Up Next wins — Coming up shows smart peek after the queue empties.
-            comingUpItems = []
-            return
-        }
         let engine = SmartOrderEngine(activeBingeFeedURL: activeBingeFeedURL)
         comingUpItems = engine.peek(
             count: WarmPlanner.peekCount,
@@ -1023,16 +1047,82 @@ final class AppShellModel {
         )
     }
 
+    func addAndPrepare(episodeID: String) {
+        guard podcastStore.episodeLookup(id: episodeID) != nil else { return }
+        try? queueStore.add(episodeID)
+        didStartPreparationForCurrentSession = true
+        scheduleWarmForComingUp()
+    }
+
+    func moveUpNext(episodeID: String, to index: Int) {
+        try? queueStore.move(episodeID, toIndex: index)
+        scheduleWarmForComingUp()
+    }
+
+    func removeFromUpNext(episodeID: String) {
+        let wasReady = queueEpisodePresentation(for: episodeID)?.isReadyOffline == true
+        try? queueStore.remove(episodeID)
+        if !wasReady {
+            warmPlanner?.removeJob(episodeID: episodeID)
+            Task { [downloadManager] in
+                await downloadManager.cancel(episodeID: episodeID)
+                try? downloadManager.deleteDownload(episodeID: episodeID)
+            }
+        }
+        scheduleWarmForComingUp()
+    }
+
+    func removeDownloadAndPreparation(episodeID: String) {
+        try? queueStore.remove(episodeID)
+        warmPlanner?.removeJob(episodeID: episodeID)
+        Task { [downloadManager] in
+            await downloadManager.cancel(episodeID: episodeID)
+            try? downloadManager.deleteDownload(episodeID: episodeID)
+        }
+        scheduleWarmForComingUp()
+    }
+
+    func playReadyEpisodeNow(_ episodeID: String) {
+        guard let currentEpisodeID = nowPlayingEpisodeID,
+              podcastStore.episodeLookup(id: episodeID) != nil
+        else { return }
+        flushPlaybackPosition()
+        try? queueStore.prepareForImmediatePlayback(
+            selectedEpisodeID: episodeID,
+            replacingCurrentEpisodeID: currentEpisodeID
+        )
+        play(episodeID: episodeID)
+        scheduleWarmForComingUp()
+    }
+
+    private func queueEpisodePresentation(for episodeID: String) -> QueueEpisodePresentation? {
+        guard let lookup = podcastStore.episodeLookup(id: episodeID) else { return nil }
+        let job = warmPlanner?.job(for: episodeID)
+        return QueueEpisodePresentation(
+            episodeID: episodeID,
+            title: lookup.episode.title,
+            podcastTitle: lookup.podcastTitle,
+            job: job,
+            isReadyOffline: warmPlanner?.isReadyOffline(episodeID: episodeID, feedURL: lookup.feedURL) == true
+        )
+    }
+
     private func scheduleWarmForComingUp() {
         refreshComingUp()
-        // `comingUpItems` intentionally hides smart predictions while a manual queue
-        // exists. The preparation worker still needs those predictions to fill any
-        // unused slots after the listener's explicit Up Next ordering.
+        // Manual Up Next stays first, followed by visible smart predictions. This
+        // makes the listener's ordered queue trustworthy while keeping several
+        // likely next episodes ready in the background.
         let smartPredictions = smartPredictionItems()
         warmPlanner?.reaim(
             manualQueueIDs: queueStore.queueEpisodeIDs(),
             predicted: smartPredictions
         )
+    }
+
+    /// Immediately switches to a tapped Up Next item, retaining the interrupted
+    /// episode as the first item to resume afterward.
+    func playQueuedEpisodeNow(_ episodeID: String) {
+        playReadyEpisodeNow(episodeID)
     }
 
     private func startQueuePreparationIfNeeded() {
@@ -1134,19 +1224,11 @@ final class AppShellModel {
     }
 
     private func firstReadyQueuedEpisode(in ids: [String]) -> String? {
-        let first = ids.first
-        for id in ids {
-            guard let lookup = podcastStore.episodeLookup(id: id) else { continue }
-            if warmPlanner?.isReadyForSeamlessPlay(episodeID: id, feedURL: lookup.feedURL) == true {
-                if id != first {
-                    let skippedTitle = podcastStore.episodeLookup(id: first ?? id)?.episode.title ?? "the next episode"
-                    preparingNextAnnouncement = "Skipping \(skippedTitle) for now — still checking it for ads"
-                    preparingAnnouncementGeneration += 1
-                }
-                return id
-            }
-        }
-        return nil
+        guard let first = ids.first,
+              let lookup = podcastStore.episodeLookup(id: first),
+              warmPlanner?.isReadyForSeamlessPlay(episodeID: first, feedURL: lookup.feedURL) == true
+        else { return nil }
+        return first
     }
 
     /// Cold-start / post-relaunch: rebuild paused mini session from durable stores.
@@ -1209,7 +1291,22 @@ final class AppShellModel {
         analysisRecoveryState = !cleaningApplies(for: lookup.episode, feedURL: lookup.feedURL)
             ? .notNeeded
             : (hasExact ? .notNeeded : (artifactStore.load(episodeID: lookup.episode.id) == nil ? .missingArtifacts : .refreshAvailable))
+        resumeNextUpPreparationAfterRestore()
         // Pause-not-play: never call play() / startPlaybackWhenReady on this path.
+    }
+
+    /// A restored listener session may quietly continue preparing its next items so
+    /// the next transition is seamless. This never touches the active episode and
+    /// only permits new background downloads when the listener has enabled the
+    /// explicit Auto-download new episodes preference.
+    private func resumeNextUpPreparationAfterRestore() {
+        guard settingsStore.autoDownloadEnabled else {
+            PlaybackDiagnostics.info("restored session leaves next-up downloads idle — auto-download disabled")
+            return
+        }
+        guard nowPlayingEpisodeID != nil else { return }
+        didStartPreparationForCurrentSession = true
+        scheduleWarmForComingUp()
     }
 
     /// Starts analysis only after a listener interaction with a cold-restored session.

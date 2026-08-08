@@ -42,6 +42,10 @@ final class WarmPlannerTests: XCTestCase {
         XCTAssertTrue(
             env.planner.isReadyForSeamlessPlay(episodeID: "warm-ep-1", feedURL: feedURL)
         )
+        XCTAssertFalse(
+            env.planner.isReadyOffline(episodeID: "warm-ep-1", feedURL: feedURL),
+            "Ready to Play must still require a local file when cleaning is off"
+        )
     }
 
     func testCleaningOnRequiresLocalFileAndCacheHit() throws {
@@ -82,6 +86,24 @@ final class WarmPlannerTests: XCTestCase {
         XCTAssertNotNil(env.downloadManager.localFileURL(for: "warm-ep-1"))
         XCTAssertTrue(
             env.planner.isReadyForSeamlessPlay(episodeID: "warm-ep-1", feedURL: feedURL)
+        )
+    }
+
+    func testWarmTargetPreparesAtLeastTwoFollowOnEpisodes() async throws {
+        let env = try makeEnv(cleaningOn: true, episodeCount: 4)
+        let candidates = (1...4).map { comingUp("warm-ep-\($0)") }
+
+        env.planner.reaim(at: candidates)
+
+        await waitUntil(timeout: 8.0) {
+            env.planner.warmedEpisodeIDs.count == WarmPlanner.peekCount
+        }
+
+        XCTAssertEqual(WarmPlanner.peekCount, 4)
+        XCTAssertEqual(
+            env.planner.warmedEpisodeIDs,
+            Set(candidates.map(\.episodeID)),
+            "the selected next episode and multiple follow-ons should be ready"
         )
     }
 

@@ -14,6 +14,10 @@ struct PodcastDetailView: View {
     var queueStore: QueueStore
     /// Slice 23 — episode row tap starts playback in the app shell (nil in exclusive fixtures).
     var onPlayEpisode: ((Episode) -> Void)? = nil
+    /// Switch immediately to a tapped Up Next item while preserving the current episode.
+    var onPlayQueuedEpisode: ((String) -> Void)? = nil
+    /// Queue an explicit listener-selected episode and begin preparation.
+    var onAddAndPrepare: ((String) -> Void)? = nil
     /// Slice 26 — transcript affordance gate + present action.
     var transcriptExists: ((String) -> Bool)? = nil
     var onViewTranscript: ((String) -> Void)? = nil
@@ -62,13 +66,13 @@ struct PodcastDetailView: View {
         let _ = transcriptAffordanceGeneration
         return VStack(alignment: .leading, spacing: 0) {
             podcastHeader(feed)
-            upNextSection(feed: feed)
             EpisodeListView(
                 feed: feed,
                 analysisViewModel: analysisViewModel,
                 downloadManager: downloadManager,
                 queueStore: queueStore,
                 onQueueChanged: { queueRevision += 1 },
+                onAddAndPrepare: onAddAndPrepare,
                 onPlayEpisode: onPlayEpisode,
                 transcriptExists: transcriptExists,
                 onViewTranscript: onViewTranscript,
@@ -124,11 +128,26 @@ struct PodcastDetailView: View {
                     // label/value collapses the row container in XCUITest (only
                     // queueRemoveButton_* remained queryable).
                     HStack {
-                        Text(titleByID[episodeID] ?? episodeID)
-                            .lineLimit(2)
+                        if let onPlayQueuedEpisode {
+                            Button {
+                                onPlayQueuedEpisode(episodeID)
+                                queueRevision += 1
+                            } label: {
+                                Text(titleByID[episodeID] ?? episodeID)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
                             .accessibilityIdentifier("queueCell_\(index)")
                             .accessibilityLabel(titleByID[episodeID] ?? episodeID)
                             .accessibilityValue(episodeID)
+                            .accessibilityHint("Plays now and keeps the current episode next.")
+                        } else {
+                            Text(titleByID[episodeID] ?? episodeID)
+                                .lineLimit(2)
+                                .accessibilityIdentifier("queueCell_\(index)")
+                                .accessibilityLabel(titleByID[episodeID] ?? episodeID)
+                                .accessibilityValue(episodeID)
+                        }
                         Spacer()
                         Button("Remove") {
                             try? queueStore.remove(episodeID)

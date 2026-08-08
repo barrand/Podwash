@@ -11,6 +11,7 @@ import UIKit
 
 enum AppShellTab: Hashable {
     case library
+    case queue
     case discover
 }
 
@@ -64,6 +65,12 @@ struct AppShellView: View {
                 }
                 .tag(AppShellTab.library)
 
+            queueTab
+                .tabItem {
+                    Label("Queue", systemImage: "text.line.first.and.arrowtriangle.forward")
+                }
+                .tag(AppShellTab.queue)
+
             discoverTab
                 .tabItem {
                     Label("Discover", systemImage: "magnifyingglass")
@@ -96,14 +103,6 @@ struct AppShellView: View {
             if showsMiniPlayerInShellInset, let engine = model.engine {
                 shellMiniPlayerBar(engine: engine, reservesTabBarClearance: true)
             }
-        }
-        .sheet(isPresented: $model.isPreparationPresented) {
-            PreparationDetailView(
-                jobs: model.preparationJobs,
-                onRetry: { model.retryPreparation(episodeID: $0) },
-                onPlayWithAds: { model.playWithAds(episodeID: $0) },
-                onDismiss: { model.isPreparationPresented = false }
-            )
         }
         // Content-tree Settings control (not ToolbarItem). iOS 26 nav-bar glass +
         // toolbar Image buttons often report exists&&!isHittable under XCTest; a
@@ -211,7 +210,7 @@ struct AppShellView: View {
                 isPreparingPlayback: model.isPreparingPlayback,
                 isPreparingNextEpisode: model.isPreparingNextEpisode,
                 preparingNextAnnouncement: model.preparingNextAnnouncement,
-                preparationJobs: model.preparationJobs,
+                queuePresentation: model.queuePresentation,
                 episodeDuration: model.superSeekDuration,
                 processedEnd: model.superSeekProcessedEnd,
                 muteIntervals: model.nowPlayingMuteIntervals,
@@ -220,7 +219,7 @@ struct AppShellView: View {
                 onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
                 onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) },
                 onSkipToNextShow: { model.skipToNextShow() },
-                onOpenPreparation: { model.openPreparation() }
+                onOpenPreparation: { selectedTab = .queue }
             )
             .onChange(of: model.preparingAnnouncementGeneration) { _, _ in
                 if let text = model.preparingNextAnnouncement {
@@ -232,12 +231,33 @@ struct AppShellView: View {
                 // The Super Seek Bar belongs in that reservation, immediately above the tabs.
                 shellMiniPlayerSeekBar(engine: engine)
                 .frame(height: tabBarHeight, alignment: .top)
-                // This inset occupies the same visual territory as UIKit's tab bar.
-                // Keep its unused area transparent: an opaque background here hides the
-                // system Library/Discover controls on cold-restored mini-player sessions.
+                // This inset shares the tab bar's space. Its unused area must stay
+                // transparent so UIKit's tab labels and controls remain visible.
                 .background(Color.clear)
             }
         }
+    }
+
+    private var queueTab: some View {
+        QueueTabView(
+            presentation: model.queuePresentation,
+            onMove: { offsets, destination in
+                guard let source = offsets.first,
+                      source < model.queuePresentation.upNext.count
+                else { return }
+                let target = destination > source ? destination - 1 : destination
+                model.moveUpNext(
+                    episodeID: model.queuePresentation.upNext[source].episodeID,
+                    to: target
+                )
+            },
+            onPlayNow: { model.playReadyEpisodeNow($0) },
+            onRemoveFromUpNext: { model.removeFromUpNext(episodeID: $0) },
+            onRemoveDownload: { model.removeDownloadAndPreparation(episodeID: $0) },
+            onAddToUpNext: { model.addAndPrepare(episodeID: $0) },
+            onRetry: { model.retryPreparation(episodeID: $0) },
+            onPlayWithAds: { model.playWithAds(episodeID: $0) }
+        )
     }
 
     private func shellMiniPlayerSeekBar(engine: PlaybackEngine) -> some View {
@@ -337,6 +357,7 @@ struct AppShellView: View {
     /// Hide when a pushed Settings screen or full player would cover the affordance.
     private var showsShellSettingsButton: Bool {
         !model.isFullPlayerPresented
+            && selectedTab != .queue
             && librarySettingsRoute == nil
             && discoverSettingsRoute == nil
     }
@@ -345,6 +366,8 @@ struct AppShellView: View {
         switch selectedTab {
         case .library:
             librarySettingsRoute = .settings
+        case .queue:
+            break
         case .discover:
             discoverSettingsRoute = .settings
         }
@@ -451,6 +474,8 @@ private struct LibraryPodcastDetailView: View {
                         feedURL: summary.feedURL
                     )
                 },
+                onPlayQueuedEpisode: { model.playQueuedEpisodeNow($0) },
+                onAddAndPrepare: { model.addAndPrepare(episodeID: $0) },
                 transcriptExists: { model.transcriptExists(for: $0) },
                 onViewTranscript: { model.presentTranscript(for: $0) },
                 transcriptAffordanceGeneration: model.transcriptAffordanceGeneration,

@@ -12,7 +12,8 @@ import Observation
 /// for source compatibility with ADR-029 tests, while exposing durable user-facing jobs.
 @MainActor
 @Observable final class WarmPlanner {
-    static let peekCount = 3
+    /// Keep the selected next episode plus multiple likely follow-ons warm.
+    static let peekCount = 4
     static let warmCap = 5
 
     private let downloadManager: DownloadManager
@@ -52,9 +53,12 @@ import Observation
 
     /// Cancel in-flight warm work and start warming `items` (up to peek / cap).
     func reaim(at items: [ComingUpItem]) {
+        reaim(items: Array(items.prefix(Self.peekCount)), manualEpisodeIDs: [])
+    }
+
+    private func reaim(items: [ComingUpItem], manualEpisodeIDs: Set<String>) {
         warmGeneration += 1
         let generation = warmGeneration
-        let limited = Array(items.prefix(Self.peekCount))
         workerTask?.cancel()
         let previousTask = workerTask
         workerTask = Task { @MainActor [weak self, previousTask] in
@@ -63,9 +67,13 @@ import Observation
             // genuinely serial even when an adapter observes cancellation late.
             await previousTask?.value
             guard let self else { return }
-            for item in limited {
+            for item in items {
                 guard generation == self.warmGeneration, !Task.isCancelled else { return }
-                await self.warmOne(item, generation: generation)
+                await self.warmOne(
+                    item,
+                    generation: generation,
+                    isUserRequested: manualEpisodeIDs.contains(item.episodeID)
+                )
             }
         }
     }
@@ -84,8 +92,9 @@ import Observation
             )
         }
         var seen = Set<String>()
-        let ordered = (manual + predicted).filter { seen.insert($0.episodeID).inserted }
-        reaim(at: Array(ordered.prefix(Self.peekCount)))
+        let automatic = predicted.filter { !manualQueueIDs.contains($0.episodeID) }
+        let ordered = manual + Array(automatic.prefix(Self.peekCount))
+        reaim(items: ordered, manualEpisodeIDs: Set(manualQueueIDs))
     }
 
     func cancel() {
@@ -96,6 +105,15 @@ import Observation
     }
 
     func job(for episodeID: String) -> AnalysisJob? { jobs[episodeID] }
+
+    var allJobs: [AnalysisJob] { jobs.values.sorted { $0.updatedAt > $1.updatedAt } }
+
+    func removeJob(episodeID: String) {
+        jobs.removeValue(forKey: episodeID)
+        warmedEpisodeIDs.remove(episodeID)
+        warmingEpisodeIDs.remove(episodeID)
+        jobStore.save(jobs)
+    }
 
     /// A listener-initiated retry must immediately retire stale failure copy while
     /// the serial worker is being re-aimed. The next attempt owns all subsequent
@@ -138,9 +156,19 @@ import Observation
             && isAnalysisReady(episodeID: episodeID, feedURL: feedURL)
     }
 
-    private func warmOne(_ item: ComingUpItem, generation: Int) async {
+    /// Listener-visible Ready to Play always means the episode is available offline.
+    func isReadyOffline(episodeID: String, feedURL: URL) -> Bool {
+        isLocallyDownloaded(episodeID: episodeID)
+            && isAnalysisReady(episodeID: episodeID, feedURL: feedURL)
+    }
+
+    private func warmOne(
+        _ item: ComingUpItem,
+        generation: Int,
+        isUserRequested: Bool = false
+    ) async {
         guard generation == warmGeneration, !Task.isCancelled else { return }
-        if warmedEpisodeIDs.count >= Self.warmCap,
+        if !isUserRequested, warmedEpisodeIDs.count >= Self.warmCap,
            !warmedEpisodeIDs.contains(item.episodeID) {
             return
         }
@@ -257,11 +285,11 @@ import Observation
                 scheduleRetry(item, generation: generation, delay: delay)
                 return
             }
-            if warmedEpisodeIDs.count < Self.warmCap
+            if isUserRequested || warmedEpisodeIDs.count < Self.warmCap
                 || warmedEpisodeIDs.contains(item.episodeID) {
                 warmedEpisodeIDs.insert(item.episodeID)
             }
-            while warmedEpisodeIDs.count > Self.warmCap {
+            while !isUserRequested && warmedEpisodeIDs.count > Self.warmCap {
                 if let victim = warmedEpisodeIDs.first(where: { $0 != item.episodeID }) {
                     warmedEpisodeIDs.remove(victim)
                 } else {

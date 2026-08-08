@@ -29,6 +29,20 @@ final class AnalysisJobTests: XCTestCase {
         XCTAssertFalse(AnalysisJobStage.adCheckDelayed.userLabel.isEmpty)
     }
 
+    func testQueueDisplayPlacesReadyJobsFirstWithoutReorderingEitherGroup() {
+        let jobs = [
+            job(id: "preparing-first", stage: .checkingAds),
+            job(id: "ready-first", stage: .ready),
+            job(id: "preparing-second", stage: .downloading),
+            job(id: "ready-second", stage: .ready)
+        ]
+
+        XCTAssertEqual(
+            AnalysisJob.orderedForQueueDisplay(jobs).map(\.episodeID),
+            ["ready-first", "ready-second", "preparing-first", "preparing-second"]
+        )
+    }
+
     func testCompactShelfStatusUsesFourStepsAndMeasuredProgress() {
         let job = AnalysisJob(
             episodeID: "episode-1",
@@ -60,5 +74,17 @@ final class AnalysisJobTests: XCTestCase {
         job.stage = .adCheckDelayed
         job.retryAfter = start.addingTimeInterval(125)
         XCTAssertEqual(job.compactShelfStatus(now: start), "4/4 Ad check delayed · retrying in ~2 min")
+    }
+
+    private func job(id: String, stage: AnalysisJobStage) -> AnalysisJob {
+        AnalysisJob(
+            episodeID: id,
+            title: id,
+            stage: stage,
+            estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: nil),
+            updatedAt: Date(timeIntervalSince1970: 1),
+            retryAfter: nil,
+            detail: nil
+        )
     }
 }

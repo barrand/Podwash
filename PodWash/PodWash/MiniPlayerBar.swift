@@ -19,7 +19,7 @@ struct MiniPlayerBar: View {
     let isPreparingPlayback: Bool
     let isPreparingNextEpisode: Bool
     let preparingNextAnnouncement: String?
-    let preparationJobs: [AnalysisJob]
+    let queuePresentation: QueuePresentation
     let episodeDuration: Double
     let processedEnd: Double
     let muteIntervals: [CensorInterval]
@@ -51,7 +51,7 @@ struct MiniPlayerBar: View {
                 : nil
 
             VStack(spacing: 0) {
-                QueueStatusButton(jobs: preparationJobs, onOpen: onOpenPreparation)
+                QueueStatusButton(presentation: queuePresentation, onOpen: onOpenPreparation)
 
                 HStack(spacing: 12) {
                     Button(action: onExpand) {

@@ -52,6 +52,13 @@ struct AnalysisJob: Codable, Equatable, Identifiable, Sendable {
     var isReadyForAutomaticPlayback: Bool { stage == .ready }
     var isDelayed: Bool { stage == .adCheckDelayed }
 
+    /// Presents playable queue entries before entries that are still preparing,
+    /// without changing the listener's saved order within either group.
+    static func orderedForQueueDisplay(_ jobs: [AnalysisJob]) -> [AnalysisJob] {
+        jobs.filter(\.isReadyForAutomaticPlayback)
+            + jobs.filter { !$0.isReadyForAutomaticPlayback }
+    }
+
     /// Short, listener-facing status for the single-line preparation shelf.
     /// The numbered steps describe the normal clean-playback path; terminal and
     /// recovery states deliberately stay unnumbered so we do not imply progress

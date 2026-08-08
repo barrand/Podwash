@@ -7,18 +7,16 @@ import SwiftUI
 
 /// A compact entry point to the listener's upcoming playback queue.
 struct QueueStatusButton: View {
-    let jobs: [AnalysisJob]
+    let presentation: QueuePresentation
     let onOpen: () -> Void
 
     var body: some View {
-        let ready = jobs.filter(\.isReadyForAutomaticPlayback).count
-        let active = jobs.first { $0.stage != .ready }
         Button(action: onOpen) {
             HStack(spacing: 8) {
                 Image(systemName: "text.line.first.and.arrowtriangle.forward")
                 Text("Queue")
                     .fontWeight(.semibold)
-                Text(statusText(active: active))
+                Text(statusText)
                     .lineLimit(1)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -33,22 +31,19 @@ struct QueueStatusButton: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier("queueButton")
         .accessibilityLabel("Queue")
-        .accessibilityValue(accessibilityValue(active: active, ready: ready))
+        .accessibilityValue(accessibilityValue)
         .accessibilityHint("Shows upcoming episodes and their preparation status.")
     }
 
-    private func statusText(active: AnalysisJob?) -> String {
-        guard !jobs.isEmpty else { return "Empty" }
-        if let active {
-            return "\(jobs.count) items · \(active.compactShelfStatus())"
-        }
-        return "\(jobs.count) items · all ready"
+    private var statusText: String {
+        if let active = presentation.activeStatus { return active.text }
+        guard presentation.upNext.count + presentation.readyToPlay.count > 0 else { return "Empty" }
+        return "\(presentation.upNext.count) Up Next · \(presentation.readyToPlay.count) ready"
     }
 
-    private func accessibilityValue(active: AnalysisJob?, ready: Int) -> String {
-        guard !jobs.isEmpty else { return "Empty" }
-        let status = active?.compactShelfStatus() ?? "all ready"
-        return "\(jobs.count) items, \(ready) ready, \(status)"
+    private var accessibilityValue: String {
+        if let active = presentation.activeStatus { return active.accessibilityValue }
+        return "\(presentation.upNext.count) up next, \(presentation.readyToPlay.count) ready"
     }
 }
 
@@ -69,7 +64,7 @@ struct PreparationDetailView: View {
                     )
                     .accessibilityIdentifier("queueEmpty")
                 } else {
-                    ForEach(jobs) { job in
+                    ForEach(AnalysisJob.orderedForQueueDisplay(jobs)) { job in
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
                                 Text(job.title).fontWeight(.semibold)

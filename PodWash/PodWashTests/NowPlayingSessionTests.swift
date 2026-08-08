@@ -225,6 +225,91 @@ final class NowPlayingSessionTests: XCTestCase {
     model.stopAndDismissPlayer()
   }
 
+  func testBootstrapWithAutoDownloadPreparesNextQueuedEpisodeButNotActiveEpisode() throws {
+    let persistence = harness.makeController()
+    try seedFeedAndSession(
+      persistence: persistence,
+      activeID: activeEpisodeID,
+      position: pinnedPosition,
+      queueIDs: [nextEpisodeID]
+    )
+    try installLocalDownload(for: activeEpisodeID)
+    try persistence.save()
+
+    let settings = makeIsolatedSettingsStore()
+    settings.autoDownloadEnabled = true
+    let analyzer = CountingRestoreAnalyzer()
+    let model = makeShell(persistence: persistence, settingsStore: settings, analyzer: analyzer)
+
+    model.restoreNowPlayingSessionIfNeeded()
+
+    waitUntil(timeout: 5.0) {
+      model.preparationJobs.contains {
+        $0.episodeID == self.nextEpisodeID && $0.stage == .ready
+      }
+    }
+    XCTAssertEqual(analyzer.analyzedEpisodeIDs, [nextEpisodeID])
+    XCTAssertNotNil(
+      model.downloadManager.localFileURL(for: nextEpisodeID),
+      "restored next-up preparation should download the manually queued item"
+    )
+    XCTAssertFalse(
+      analyzer.analyzedEpisodeIDs.contains(activeEpisodeID),
+      "restoration must never reanalyze the active episode"
+    )
+
+    model.stopAndDismissPlayer()
+  }
+
+  func testBootstrapWithAutoDownloadDisabledLeavesNextQueuedEpisodeIdle() throws {
+    let persistence = harness.makeController()
+    try seedFeedAndSession(
+      persistence: persistence,
+      activeID: activeEpisodeID,
+      position: pinnedPosition,
+      queueIDs: [nextEpisodeID]
+    )
+    try installLocalDownload(for: activeEpisodeID)
+    try persistence.save()
+
+    let analyzer = CountingRestoreAnalyzer()
+    let model = makeShell(persistence: persistence, analyzer: analyzer)
+
+    model.restoreNowPlayingSessionIfNeeded()
+
+    XCTAssertEqual(analyzer.calls, 0)
+    XCTAssertTrue(model.preparationJobs.isEmpty)
+    XCTAssertNil(model.downloadManager.localFileURL(for: nextEpisodeID))
+
+    model.stopAndDismissPlayer()
+  }
+
+  func testTappingQueuedEpisodeSwitchesPlaybackAndKeepsCurrentEpisodeNext() throws {
+    let persistence = harness.makeController()
+    try seedFeedAndSession(
+      persistence: persistence,
+      activeID: activeEpisodeID,
+      position: pinnedPosition,
+      queueIDs: [nextEpisodeID, thirdEpisodeID]
+    )
+    try installLocalDownload(for: activeEpisodeID)
+    try installLocalDownload(for: thirdEpisodeID)
+    try persistence.save()
+
+    let model = makeShell(persistence: persistence)
+    model.restoreNowPlayingSessionIfNeeded()
+
+    model.playQueuedEpisodeNow(thirdEpisodeID)
+
+    XCTAssertEqual(model.nowPlayingEpisodeID, thirdEpisodeID)
+    XCTAssertEqual(
+      model.queueStore.queueEpisodeIDs(),
+      [activeEpisodeID, nextEpisodeID]
+    )
+
+    model.stopAndDismissPlayer()
+  }
+
   // MARK: - AC3: finish + empty queue clears durable session
 
   func testSessionClearsWhenEpisodeEndsWithEmptyQueue() throws {
@@ -362,7 +447,8 @@ final class NowPlayingSessionTests: XCTestCase {
       downloadManager: testDownloadManager,
       transcriptCache: transcriptCache,
       intervalCache: intervalCache,
-      artifactStore: artifactStore
+      artifactStore: artifactStore,
+      analysisJobStore: AnalysisJobStore(defaults: artifactDefaults)
     )
     model.downloadsDirectoryForTesting = downloadsDirectory
     return model
@@ -396,6 +482,7 @@ final class NowPlayingSessionTests: XCTestCase {
 
 private final class CountingRestoreAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
   var calls = 0
+  private(set) var analyzedEpisodeIDs: [String] = []
   var onPartialIntervals: AnalysisPartialIntervalsHandler?
 
   func analyze(
@@ -405,6 +492,7 @@ private final class CountingRestoreAnalyzer: EpisodeAnalyzing, @unchecked Sendab
     injectedTranscript: [TimedWord]?
   ) async throws -> [CensorInterval] {
     calls += 1
+    analyzedEpisodeIDs.append(episode.id)
     return []
   }
 
@@ -417,6 +505,7 @@ private final class CountingRestoreAnalyzer: EpisodeAnalyzing, @unchecked Sendab
     unrelatedContent: UnrelatedContentOptions
   ) async throws -> [CensorInterval] {
     calls += 1
+    analyzedEpisodeIDs.append(episode.id)
     return []
   }
 }

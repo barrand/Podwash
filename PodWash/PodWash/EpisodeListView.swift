@@ -14,6 +14,7 @@ struct EpisodeListView: View {
     var downloadManager: DownloadManager
     var queueStore: QueueStore
     var onQueueChanged: () -> Void
+    var onAddAndPrepare: ((String) -> Void)? = nil
     var onPlayEpisode: ((Episode) -> Void)? = nil
     var transcriptExists: ((String) -> Bool)? = nil
     var onViewTranscript: ((String) -> Void)? = nil
@@ -30,6 +31,7 @@ struct EpisodeListView: View {
             downloadManager: downloadManager,
             queueStore: queueStore,
             onQueueChanged: onQueueChanged,
+            onAddAndPrepare: onAddAndPrepare,
             onPlayEpisode: onPlayEpisode,
             transcriptExists: transcriptExists,
             onViewTranscript: onViewTranscript,
@@ -46,6 +48,7 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
     var downloadManager: DownloadManager
     var queueStore: QueueStore
     var onQueueChanged: () -> Void
+    var onAddAndPrepare: ((String) -> Void)?
     var onPlayEpisode: ((Episode) -> Void)?
     var transcriptExists: ((String) -> Bool)?
     var onViewTranscript: ((String) -> Void)?
@@ -60,6 +63,7 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
             downloadManager: downloadManager,
             queueStore: queueStore,
             onQueueChanged: onQueueChanged,
+            onAddAndPrepare: onAddAndPrepare,
             onPlayEpisode: onPlayEpisode,
             transcriptExists: transcriptExists,
             onViewTranscript: onViewTranscript,
@@ -74,6 +78,7 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
             downloadManager: downloadManager,
             queueStore: queueStore,
             onQueueChanged: onQueueChanged,
+            onAddAndPrepare: onAddAndPrepare,
             onPlayEpisode: onPlayEpisode,
             transcriptExists: transcriptExists,
             onViewTranscript: onViewTranscript,
@@ -89,6 +94,7 @@ private final class EpisodeTableViewController: UITableViewController {
     private var downloadManager: DownloadManager
     private var queueStore: QueueStore
     private var onQueueChanged: () -> Void
+    private var onAddAndPrepare: ((String) -> Void)?
     private var onPlayEpisode: ((Episode) -> Void)?
     private var transcriptExists: ((String) -> Bool)?
     private var onViewTranscript: ((String) -> Void)?
@@ -101,6 +107,7 @@ private final class EpisodeTableViewController: UITableViewController {
         downloadManager: DownloadManager,
         queueStore: QueueStore,
         onQueueChanged: @escaping () -> Void,
+        onAddAndPrepare: ((String) -> Void)?,
         onPlayEpisode: ((Episode) -> Void)?,
         transcriptExists: ((String) -> Bool)?,
         onViewTranscript: ((String) -> Void)?,
@@ -111,6 +118,7 @@ private final class EpisodeTableViewController: UITableViewController {
         self.downloadManager = downloadManager
         self.queueStore = queueStore
         self.onQueueChanged = onQueueChanged
+        self.onAddAndPrepare = onAddAndPrepare
         self.onPlayEpisode = onPlayEpisode
         self.transcriptExists = transcriptExists
         self.onViewTranscript = onViewTranscript
@@ -156,6 +164,7 @@ private final class EpisodeTableViewController: UITableViewController {
         downloadManager: DownloadManager,
         queueStore: QueueStore,
         onQueueChanged: @escaping () -> Void,
+        onAddAndPrepare: ((String) -> Void)?,
         onPlayEpisode: ((Episode) -> Void)?,
         transcriptExists: ((String) -> Bool)?,
         onViewTranscript: ((String) -> Void)?,
@@ -168,6 +177,7 @@ private final class EpisodeTableViewController: UITableViewController {
         self.downloadManager = downloadManager
         self.queueStore = queueStore
         self.onQueueChanged = onQueueChanged
+        self.onAddAndPrepare = onAddAndPrepare
         self.onPlayEpisode = onPlayEpisode
         self.transcriptExists = transcriptExists
         self.onViewTranscript = onViewTranscript
@@ -277,7 +287,11 @@ private final class EpisodeTableViewController: UITableViewController {
         { [weak self] in
             guard let self else { return }
             let episode = self.feed.episodes[indexPath.row]
-            try? self.queueStore.add(episode.id)
+            if let onAddAndPrepare = self.onAddAndPrepare {
+                onAddAndPrepare(episode.id)
+            } else {
+                try? self.queueStore.add(episode.id)
+            }
             self.onQueueChanged()
             self.refreshQueueDisplayOnVisibleRows()
         }
@@ -723,7 +737,8 @@ final class EpisodeTableViewCell: UITableViewCell {
         accessoryStack.accessibilityElementsHidden = false
         accessoryStack.isUserInteractionEnabled = true
         queueAddButton.isAccessibilityElement = true
-        downloadButton.isAccessibilityElement = true
+        downloadButton.isHidden = true
+        downloadButton.isAccessibilityElement = false
         transcriptButton.isAccessibilityElement = showsTranscript
 
         if onPlay != nil {
@@ -767,8 +782,8 @@ final class EpisodeTableViewCell: UITableViewCell {
         queueAddButton.accessibilityIdentifier = "queueAddButton_\(index)"
         queueAddButton.isEnabled = !isQueued
         queueAddButton.accessibilityValue = isQueued ? "queued" : "notQueued"
-        queueAddButton.accessibilityLabel = isQueued ? "In queue" : "Add to queue"
-        queueAddButton.accessibilityHint = isQueued ? nil : "Adds this episode to up next."
+        queueAddButton.accessibilityLabel = isQueued ? "In Up Next" : "Add and prepare"
+        queueAddButton.accessibilityHint = isQueued ? nil : "Adds this episode to Up Next and prepares clean playback."
     }
 
     func applyDownloadDisplay(
