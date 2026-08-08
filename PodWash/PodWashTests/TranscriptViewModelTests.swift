@@ -152,6 +152,64 @@ final class TranscriptViewModelTests: XCTestCase {
         XCTAssertEqual(paragraphs[0].lastWordIndex, 3)
     }
 
+    // MARK: - Follow-along render blocks
+
+    func testRenderBlocksPreserveSentenceBoundariesAndTimestamps() {
+        let transcript: [TimedWord] = [
+            TimedWord(word: "One", start: 0, end: 1),
+            TimedWord(word: "two.", start: 1, end: 2),
+            TimedWord(word: "Three", start: 2, end: 3),
+            TimedWord(word: "four.", start: 3, end: 4),
+        ]
+
+        let viewModel = TranscriptViewModel.make(
+            transcript: transcript,
+            intervals: [],
+            playbackPosition: 0
+        )
+
+        XCTAssertEqual(viewModel.paragraphs.count, 2)
+        XCTAssertEqual(viewModel.renderBlocks.count, 2)
+        XCTAssertEqual(viewModel.renderBlocks[0].firstWordIndex, 0)
+        XCTAssertEqual(viewModel.renderBlocks[0].lastWordIndex, 1)
+        XCTAssertTrue(viewModel.renderBlocks[0].showsParagraphHeader)
+        XCTAssertTrue(viewModel.renderBlocks[0].endsParagraph)
+        XCTAssertEqual(viewModel.renderBlocks[1].paragraphIndex, 1)
+        XCTAssertEqual(viewModel.paragraphs[1].formattedStartTimestamp, "0:02")
+    }
+
+    func testPunctuationFreeTranscriptSplitsIntoBoundedRenderBlocks() {
+        let wordCount = TranscriptViewModel.maximumWordsPerRenderBlock * 2 + 3
+        let transcript = (0 ..< wordCount).map { index in
+            TimedWord(word: "word\(index)", start: Double(index), end: Double(index + 1))
+        }
+
+        let viewModel = TranscriptViewModel.make(
+            transcript: transcript,
+            intervals: [],
+            playbackPosition: 0
+        )
+
+        XCTAssertEqual(viewModel.paragraphs.count, 1, "Display semantics remain one paragraph")
+        XCTAssertEqual(viewModel.renderBlocks.count, 3)
+        XCTAssertEqual(viewModel.renderBlocks.map(\.firstWordIndex), [0, 24, 48])
+        XCTAssertEqual(viewModel.renderBlocks.map(\.lastWordIndex), [23, 47, 50])
+        XCTAssertEqual(viewModel.renderBlocks.filter(\.showsParagraphHeader).count, 1)
+        XCTAssertEqual(viewModel.renderBlockIndex(containingWordAt: 0), 0)
+        XCTAssertEqual(viewModel.renderBlockIndex(containingWordAt: 24), 1)
+        XCTAssertEqual(viewModel.renderBlockIndex(containingWordAt: 50), 2)
+    }
+
+    func testActiveWordIndexUsesNextWordAtContiguousBoundary() {
+        let transcript = Self.syntheticTenWordTranscript()
+
+        XCTAssertEqual(
+            TranscriptViewModel.activeWordIndex(transcript: transcript, playhead: 2.0),
+            1,
+            "At a contiguous word boundary, the next half-open word is active."
+        )
+    }
+
     // MARK: - Synthetic fixture (slice-26 fixture table)
 
     /// 10 words, 2.0 s each: word[i] = [2i, 2i+2) seconds.

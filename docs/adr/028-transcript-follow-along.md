@@ -145,21 +145,20 @@ Do **not** drive live sync from a one-shot `ResumePositionStore` read after open
 | Event | Follow | Scroll |
 |-------|--------|--------|
 | Sheet appear | `true` | One-shot open-time `scrollTo(scrollAnchorIndex)` (Slice 26); then live follow scrolls |
-| `activeWordIndex` changes and follow **on** | stays `true` | `ScrollViewReader.scrollTo(activeIndex, anchor: .center)` (or UX-equivalent keep-on-screen) |
+| `activeWordIndex` enters a new render block and follow **on** | stays `true` | `ScrollViewReader.scrollTo(renderBlockID, anchor: .center)`; blocks are direct lazy children so distant positions materialize reliably |
 | User scroll interaction | → `false` | No further programmatic follow scrolls |
 | Programmatic follow / open `scrollTo` | stays `true` | Must **not** clear follow |
 | Tap `transcript.snapToFollow` (only when off) | → `true` | Scroll to current `activeWordIndex` |
 
 **User vs programmatic:**
 
-- Maintain `@State isFollowModeOn` and a short-lived
-  `isProgrammaticScrollInFlight` (set `true` immediately before `scrollTo`, clear
-  after the animation tick / next run-loop).
+- Maintain `@State isFollowModeOn`, initial alignment state, and the last followed
+  render-block index. Do not recenter for every word.
 - On `ScrollView.onScrollPhaseChange`, when the new phase is **`.interacting`**
-  (user finger) **and** `!isProgrammaticScrollInFlight` → call
+  (user finger) → call
   `noteUserScrollInteraction()` → `isFollowModeOn = false`.
-- Do **not** clear follow on `.animating` / `.decelerating` alone when the
-  programmatic gate is set.
+- Do **not** clear follow on `.animating` / `.decelerating`; only a user
+  `.interacting` phase breaks follow.
 
 This keeps the break rule unit-testable at the seam and AC5 assertable via UITest
 swipe on `transcript.view`.

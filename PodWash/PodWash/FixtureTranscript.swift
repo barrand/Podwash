@@ -10,19 +10,27 @@ import Foundation
 enum FixtureTranscript {
     static let launchArgument = "-UITestFixtureTranscript"
     static let noCacheLaunchArgument = "-UITestFixtureTranscriptNoCache"
+    static let longFollowLaunchArgument = "-UITestFixtureTranscriptLongFollow"
 
     static let wordCount = 24
     static let wordDuration = 2.5
     static let playbackPosition: TimeInterval = 30.0
+    static let longFollowWordCount = 1_100
+    static let longFollowPlaybackPosition: TimeInterval = 41 * 60
     static let unrelatedSkipStart = 35.0
     static let unrelatedSkipEnd = 42.5
 
     static var isEnabled: Bool {
         ProcessInfo.processInfo.arguments.contains { argument in
             argument == launchArgument
+                || argument == longFollowLaunchArgument
                 || (argument.hasSuffix("UITestFixtureTranscript")
                     && !argument.contains("NoCache"))
         }
+    }
+
+    static var isLongFollowEnabled: Bool {
+        ProcessInfo.processInfo.arguments.contains(longFollowLaunchArgument)
     }
 
     /// Dedicated negative mode: same library/intervals/resume, omit transcript file.
@@ -44,7 +52,8 @@ enum FixtureTranscript {
     }
 
     static func makeTranscript() -> [TimedWord] {
-        (0 ..< wordCount).map { index in
+        let count = isLongFollowEnabled ? longFollowWordCount : wordCount
+        return (0 ..< count).map { index in
             let start = Double(index) * wordDuration
             return TimedWord(word: "w\(index)", start: start, end: start + wordDuration)
         }
@@ -82,7 +91,8 @@ enum FixtureTranscript {
         // Wipe any leftover transcript from a prior UITest launch (shared Application Support).
         try? transcriptCache.remove(episodeID: episodeID)
 
-        try resumeStore.setPosition(playbackPosition, for: episodeID)
+        let position = isLongFollowEnabled ? longFollowPlaybackPosition : playbackPosition
+        try resumeStore.setPosition(position, for: episodeID)
 
         let targetWords = settingsStore.activeNormalizedTargetSet()
         try intervalCache.store(makeSkipIntervals(), episodeID: episodeID, targetWords: targetWords)

@@ -22,6 +22,7 @@ final class TranscriptUITests: XCTestCase {
 
     private static let transcriptFixtureArg = "-UITestFixtureTranscript"
     private static let transcriptNoCacheArg = "-UITestFixtureTranscriptNoCache"
+    private static let longFollowFixtureArg = "-UITestFixtureTranscriptLongFollow"
     private static let progressiveFixtureArg = "-UITestFixtureProgressivePlayback"
     private static let firstChunkProgressValue = 0.25
     private static let progressTolerance = 0.02
@@ -139,6 +140,78 @@ final class TranscriptUITests: XCTestCase {
 
         XCTAssertGreaterThanOrEqual(anchor, 28, "scroll anchor must be ≥ 28 for playbackPosition 30.0")
         XCTAssertLessThanOrEqual(anchor, 32, "scroll anchor must be ≤ 32 for playbackPosition 30.0")
+    }
+
+    @MainActor
+    func testLongTranscriptOpensAtFortyOneMinutePosition() throws {
+        let app = launchLongFollowTranscriptFixtureApp()
+        openTranscriptFromEpisodeRow(app)
+
+        // 41:00 ÷ 2.5 seconds per word = word 984. This is deliberately far
+        // outside the initial lazy viewport, proving the render-block target.
+        let expectedWord = element("transcript.word_984", in: app)
+        XCTAssertTrue(
+            expectedWord.waitForExistence(timeout: transcriptOpenTimeout),
+            "opening a long transcript must materialize the live 41-minute word"
+        )
+
+        let transcriptView = element("transcript.view", in: app)
+        XCTAssertTrue(transcriptView.exists)
+        XCTAssertGreaterThanOrEqual(expectedWord.frame.midY, transcriptView.frame.minY)
+        XCTAssertLessThanOrEqual(expectedWord.frame.midY, transcriptView.frame.maxY)
+    }
+
+    @MainActor
+    func testActiveWordHighlightDoesNotChangeWordGeometry() throws {
+        let app = launchTranscriptFixtureApp()
+        openTranscriptFromEpisodeRow(app)
+
+        // Fixture resume is 30.0 s, which is word 12's half-open interval.
+        let previousWord = element("transcript.word_11", in: app)
+        let activeWord = element("transcript.word_12", in: app)
+        XCTAssertTrue(previousWord.waitForExistence(timeout: transcriptOpenTimeout))
+        XCTAssertTrue(activeWord.waitForExistence(timeout: transcriptOpenTimeout))
+        XCTAssertEqual(accessibilityValue(for: "transcript.activeWord", in: app), "12")
+        XCTAssertLessThanOrEqual(
+            abs(previousWord.frame.height - activeWord.frame.height),
+            1,
+            "The active pill must not add padding or alter the word's font metrics."
+        )
+    }
+
+    @MainActor
+    func testManualScrollShowsFollowButtonAndSnapRestoresFollow() throws {
+        let app = launchTranscriptFixtureApp()
+        startPlaybackAndOpenTranscript(app)
+
+        waitForAccessibilityValue(
+            "on",
+            identifier: "transcript.followMode",
+            in: app,
+            timeout: transcriptOpenTimeout,
+            message: "Follow mode must begin on."
+        )
+
+        let transcript = element("transcript.view", in: app)
+        transcript.swipeUp()
+        waitForAccessibilityValue(
+            "off",
+            identifier: "transcript.followMode",
+            in: app,
+            timeout: transcriptOpenTimeout,
+            message: "A manual transcript scroll must suspend follow mode."
+        )
+
+        let snap = element("transcript.snapToFollow", in: app)
+        XCTAssertTrue(waitForElementHittable(snap, timeout: transcriptOpenTimeout))
+        snap.tap()
+        waitForAccessibilityValue(
+            "on",
+            identifier: "transcript.followMode",
+            in: app,
+            timeout: transcriptOpenTimeout,
+            message: "Snap-to-follow must restore follow mode."
+        )
     }
 
     // MARK: - Task 021
@@ -357,6 +430,15 @@ final class TranscriptUITests: XCTestCase {
         if !includeTranscriptCache {
             app.launchArguments.append(Self.transcriptNoCacheArg)
         }
+        app.launch()
+        return app
+    }
+
+    @MainActor
+    private func launchLongFollowTranscriptFixtureApp() -> XCUIApplication {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchArguments.append(Self.longFollowFixtureArg)
         app.launch()
         return app
     }

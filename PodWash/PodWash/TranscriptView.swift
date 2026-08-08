@@ -17,10 +17,9 @@ struct TranscriptView: View {
     var openPlaybackPosition: TimeInterval = 0
     var onClose: (() -> Void)? = nil
 
-    @State private var didAutoScroll = false
+    @State private var didInitialAlignment = false
     @State private var isFollowModeOn = true
-    @State private var isProgrammaticScrollInFlight = false
-    @State private var lastFollowedActiveIndex: Int?
+    @State private var lastFollowedBlockIndex: Int?
     @State private var activeWordIndex: Int = 0
 
     var body: some View {
@@ -28,16 +27,19 @@ struct TranscriptView: View {
             ScrollViewReader { proxy in
                 ZStack(alignment: .bottomTrailing) {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 12) {
+                        LazyVStack(alignment: .leading, spacing: 0) {
                             aggregateHosts
+                                .padding(.bottom, 12)
 
-                            TranscriptParagraphsView(
-                                words: viewModel.words,
-                                paragraphs: TranscriptViewModel.paragraphs(
-                                    from: viewModel.words.map(\.word)
-                                ),
-                                activeWordIndex: activeWordIndex
-                            )
+                            ForEach(viewModel.renderBlocks) { block in
+                                TranscriptRenderBlockView(
+                                    block: block,
+                                    words: viewModel.words,
+                                    paragraphs: viewModel.paragraphs,
+                                    activeWordIndex: activeWordIndex
+                                )
+                                .id(block.id)
+                            }
                         }
                         .padding()
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -45,12 +47,10 @@ struct TranscriptView: View {
                     .background(BrandTheme.surface)
                     .onScrollPhaseChange { _, newPhase in
                         guard newPhase == .interacting else { return }
-                        guard !isProgrammaticScrollInFlight else { return }
                         noteUserScrollInteraction()
                     }
                     .onAppear {
-                        refreshActiveWordIndex()
-                        performOpenTimeScrollIfNeeded(proxy: proxy)
+                        alignToLiveWordOnOpen(proxy: proxy)
                     }
                     .onChange(of: activeWordIndex) { _, newIndex in
                         followScrollIfNeeded(to: newIndex, proxy: proxy)
@@ -92,63 +92,69 @@ struct TranscriptView: View {
 
     private var computedActiveWordIndex: Int {
         TranscriptViewModel.activeWordIndex(
-            transcript: viewModel.words.map(\.word),
+            transcript: viewModel.timedWords,
             playhead: livePlayheadSeconds
         )
     }
 
     private var livePlayheadSeconds: TimeInterval {
         if let engine = playbackEngine {
-            let seconds = engine.avPlayer.currentTime().seconds
-            if seconds.isFinite, !seconds.isNaN {
-                return seconds
-            }
+            // `currentTime` is the observable, skip-aware engine clock. Reading
+            // AVPlayer directly can lag an in-flight seek or skip landing.
             return engine.currentTime
         }
         return openPlaybackPosition
-    }
-
-    private func refreshActiveWordIndex() {
-        activeWordIndex = computedActiveWordIndex
     }
 
     private func noteUserScrollInteraction() {
         isFollowModeOn = false
     }
 
-    private func performOpenTimeScrollIfNeeded(proxy: ScrollViewProxy) {
-        guard !didAutoScroll else { return }
-        didAutoScroll = true
-        guard viewModel.scrollAnchorSeconds > 0 || viewModel.scrollAnchorIndex > 0 else {
-            lastFollowedActiveIndex = viewModel.scrollAnchorIndex
-            return
-        }
-        scrollProgrammatically(to: viewModel.scrollAnchorIndex, proxy: proxy)
-        lastFollowedActiveIndex = viewModel.scrollAnchorIndex
+    private func alignToLiveWordOnOpen(proxy: ScrollViewProxy) {
+        guard !didInitialAlignment else { return }
+        didInitialAlignment = true
+
+        let index = computedActiveWordIndex
+        activeWordIndex = index
+        scrollToRenderBlock(containing: index, proxy: proxy, animated: false)
     }
 
     private func followScrollIfNeeded(to activeIndex: Int, proxy: ScrollViewProxy) {
         guard isFollowModeOn else { return }
-        guard didAutoScroll else { return }
-        guard lastFollowedActiveIndex != activeIndex else { return }
-        scrollProgrammatically(to: activeIndex, proxy: proxy)
-        lastFollowedActiveIndex = activeIndex
+        guard didInitialAlignment else { return }
+        guard let blockIndex = viewModel.renderBlockIndex(containingWordAt: activeIndex) else { return }
+        guard lastFollowedBlockIndex != blockIndex else { return }
+        scrollToRenderBlock(at: blockIndex, proxy: proxy, animated: true)
     }
 
     private func snapToFollow(activeIndex: Int, proxy: ScrollViewProxy) {
         isFollowModeOn = true
-        scrollProgrammatically(to: activeIndex, proxy: proxy)
-        lastFollowedActiveIndex = activeIndex
+        scrollToRenderBlock(containing: activeIndex, proxy: proxy, animated: true)
     }
 
-    private func scrollProgrammatically(to index: Int, proxy: ScrollViewProxy) {
-        isProgrammaticScrollInFlight = true
+    private func scrollToRenderBlock(
+        containing wordIndex: Int,
+        proxy: ScrollViewProxy,
+        animated: Bool
+    ) {
+        guard let blockIndex = viewModel.renderBlockIndex(containingWordAt: wordIndex) else { return }
+        scrollToRenderBlock(at: blockIndex, proxy: proxy, animated: animated)
+    }
+
+    private func scrollToRenderBlock(at blockIndex: Int, proxy: ScrollViewProxy, animated: Bool) {
+        guard viewModel.renderBlocks.indices.contains(blockIndex) else { return }
+        let blockID = viewModel.renderBlocks[blockIndex].id
+        lastFollowedBlockIndex = blockIndex
+
+        // Direct lazy-child IDs are available to ScrollViewReader even when a
+        // distant block has not yet been materialized.
         DispatchQueue.main.async {
-            withAnimation {
-                proxy.scrollTo(index, anchor: .center)
-            }
-            DispatchQueue.main.async {
-                isProgrammaticScrollInFlight = false
+            if animated {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    proxy.scrollTo(blockID, anchor: .center)
+                }
+            } else {
+                proxy.scrollTo(blockID, anchor: .center)
             }
         }
     }
@@ -235,53 +241,59 @@ struct TranscriptView: View {
     }
 }
 
-/// Sentence paragraphs with inline-wrapping words and start timestamps.
-private struct TranscriptParagraphsView: View {
+/// One direct LazyVStack child. Blocks preserve sentence timestamps and spacing
+/// while guaranteeing distant scroll targets can be materialized on demand.
+private struct TranscriptRenderBlockView: View {
+    let block: TranscriptRenderBlock
     let words: [TranscriptWordDisplay]
     let paragraphs: [TranscriptParagraph]
     var activeWordIndex: Int = -1
 
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: 12) {
-            ForEach(Array(paragraphs.enumerated()), id: \.offset) { paragraphIndex, paragraph in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(paragraph.formattedStartTimestamp)
-                        .font(.caption)
-                        .foregroundStyle(BrandTheme.onSurface.opacity(0.6))
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityIdentifier("transcript.paragraph_\(paragraphIndex).timestamp")
-                        .accessibilityLabel("Paragraph start time")
-                        .accessibilityValue(paragraph.formattedStartTimestamp)
+        VStack(alignment: .leading, spacing: 4) {
+            if block.showsParagraphHeader,
+               paragraphs.indices.contains(block.paragraphIndex) {
+                let paragraph = paragraphs[block.paragraphIndex]
+                Text(paragraph.formattedStartTimestamp)
+                    .font(.caption)
+                    .foregroundStyle(BrandTheme.onSurface.opacity(0.6))
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityIdentifier("transcript.paragraph_\(block.paragraphIndex).timestamp")
+                    .accessibilityLabel("Paragraph start time")
+                    .accessibilityValue(paragraph.formattedStartTimestamp)
+            }
 
-                    WrappingTranscriptWordsLayout(horizontalSpacing: 4, verticalSpacing: 4) {
-                        ForEach(wordsIn(paragraph), id: \.index) { display in
-                            let isActive = display.index == activeWordIndex
-                            Text(display.word.word)
-                                .font(isActive ? .body.weight(.semibold) : .body)
-                                .foregroundStyle(foreground(for: display))
-                                .padding(.horizontal, isActive ? 4 : 0)
-                                .padding(.vertical, isActive ? 2 : 0)
-                                .background {
-                                    if isActive {
-                                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                            .fill(BrandTheme.primary.opacity(0.25))
-                                    }
-                                }
-                                .id(display.index)
-                                .accessibilityElement(children: .ignore)
-                                .accessibilityIdentifier("transcript.word_\(display.index)")
-                                .accessibilityLabel(display.word.word)
-                                .accessibilityValue(accessibilityValue(for: display, isActive: isActive))
+            WrappingTranscriptWordsLayout(horizontalSpacing: 4, verticalSpacing: 4) {
+                ForEach(wordsIn(block), id: \.index) { display in
+                    let isActive = display.index == activeWordIndex
+                    Text(display.word.word)
+                        // Keep the text metrics identical as the active word
+                        // changes; karaoke is a highlight, not a layout change.
+                        .font(.body)
+                        .foregroundStyle(foreground(for: display))
+                        .background {
+                            if isActive {
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                    .fill(BrandTheme.primary.opacity(0.25))
+                            }
                         }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                        .id(display.index)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityIdentifier("transcript.word_\(display.index)")
+                        .accessibilityLabel(display.word.word)
+                        .accessibilityValue(accessibilityValue(for: display, isActive: isActive))
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .padding(.bottom, block.endsParagraph ? 12 : 0)
     }
 
-    private func wordsIn(_ paragraph: TranscriptParagraph) -> [TranscriptWordDisplay] {
-        Array(words[paragraph.firstWordIndex ... paragraph.lastWordIndex])
+    private func wordsIn(_ block: TranscriptRenderBlock) -> [TranscriptWordDisplay] {
+        guard words.indices.contains(block.firstWordIndex), words.indices.contains(block.lastWordIndex) else {
+            return []
+        }
+        return Array(words[block.firstWordIndex ... block.lastWordIndex])
     }
 
     private func foreground(for display: TranscriptWordDisplay) -> Color {
@@ -324,7 +336,8 @@ private struct WrappingTranscriptWordsLayout: Layout {
 
         for subview in subviews {
             let size = subview.sizeThatFits(.unspecified)
-            if x > 0, x + size.width > maxWidth {
+            let nextX = x == 0 ? size.width : x + horizontalSpacing + size.width
+            if x > 0, nextX > maxWidth {
                 totalWidth = max(totalWidth, x - horizontalSpacing)
                 x = 0
                 y += rowHeight + verticalSpacing
@@ -349,7 +362,8 @@ private struct WrappingTranscriptWordsLayout: Layout {
 
         for subview in subviews {
             let size = subview.sizeThatFits(.unspecified)
-            if x > bounds.minX, x + size.width > bounds.maxX {
+            let nextX = x == bounds.minX ? x + size.width : x + horizontalSpacing + size.width
+            if x > bounds.minX, nextX > bounds.maxX {
                 x = bounds.minX
                 y += rowHeight + verticalSpacing
                 rowHeight = 0

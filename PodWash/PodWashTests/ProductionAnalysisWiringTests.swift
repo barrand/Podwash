@@ -1228,6 +1228,32 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         }
     }
 
+    func testPresentNowPlayingTranscriptUsesLiveEnginePositionInsteadOfStaleResumePosition() async throws {
+        configureDeterministicPositiveAd()
+        let model = makePositiveAdShell(injectedTranscript: makePositiveAdTranscript())
+        let episode = try preparePositiveAdEpisode(on: model)
+
+        model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
+        await waitForPositiveAdAnalysisCompletion(on: model)
+        guard let engine = model.engine else {
+            XCTFail("Expected a now-playing engine")
+            return
+        }
+
+        // Do not flush: the persisted resume point intentionally remains stale.
+        engine.seek(to: 645)
+        XCTAssertEqual(engine.currentTime, 645, accuracy: 0.001)
+
+        model.presentTranscriptForNowPlaying()
+
+        XCTAssertEqual(model.transcriptSheetOpenPlaybackPosition, 645, accuracy: 0.001)
+        XCTAssertEqual(
+            model.transcriptSheetViewModel?.scrollAnchorIndex,
+            2,
+            "Transcript must open at the word containing the live playhead."
+        )
+    }
+
     func testCachedPositiveAdAnalysisSurvivesFreshShellPresentation() async throws {
         configureDeterministicPositiveAd()
         let settings = makePositiveAdSettingsStore()

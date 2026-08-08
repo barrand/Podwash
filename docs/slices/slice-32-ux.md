@@ -59,9 +59,9 @@ Vertical structure, top → bottom:
 | Attribute | Spec |
 |-----------|------|
 | **Grain** | **One** active word — index from `activeWordIndex(transcript:playhead:)` (ADR-028 §3) |
-| **Visual** | Rounded rect “pill” behind the word: fill `BrandTheme.primary` at **~25%** opacity; foreground `BrandTheme.onSurface` at **full** opacity; optional **semibold** `.body` |
+| **Visual** | Rounded rect “pill” behind the word: fill `BrandTheme.primary` at **~25%** opacity. It must not change the word's font, padding, baseline, or wrapping. |
 | **Precedence** | **Active wins** for the current word only — active styling is **additive** to listened / skipped-ad classification (skipped-ad yellow may show through pill edge; active pill still applied) |
-| **Scroll target** | Word views keep `id(index)` for `ScrollViewReader.scrollTo(_:anchor:)` — **`.center`** anchor when follow is on |
+| **Scroll target** | A bounded render block containing the word is a direct `LazyVStack` child and keeps a stable ID for `ScrollViewReader.scrollTo(_:anchor:)`. This permits distant positions to materialize without rendering the full episode. |
 
 **No** visible playhead cursor, progress bar, or per-word timestamps beyond existing paragraph headers.
 
@@ -86,7 +86,7 @@ Extends Slice 26 semantic roles. No pixel/snapshot ACs — AX values and viewpor
 
 | State | `transcript.followMode` `accessibilityValue` | Auto-scroll | `transcript.snapToFollow` |
 |-------|----------------------------------------------|-------------|---------------------------|
-| **On** (default at sheet appear) | `on` | Scrolls to `activeWordIndex` on each change (after open-time anchor scroll) | **Absent** / not hittable |
+| **On** (default at sheet appear) | `on` | Scrolls only when playback enters a new render block (after open-time alignment) | **Absent** / not hittable |
 | **Off** (user manual scroll) | `off` | Frozen — no programmatic `scrollTo` for follow | **Present** and hittable |
 | **Restored** (tap snap-back) | `on` | Immediate scroll to current active word; resumes live follow | **Absent** / not hittable |
 
@@ -124,7 +124,7 @@ Extends Slice 26 semantic roles. No pixel/snapshot ACs — AX values and viewpor
 | Action | Behavior |
 |--------|----------|
 | Sheet appears (playing session) | Open-time scroll to anchor (Slice 26); follow **on**; active word at live playhead |
-| Playback advances, follow **on** | Active highlight moves; list auto-scrolls to keep active word midY in viewport |
+| Playback advances, follow **on** | Active highlight moves; list scrolls only when playback crosses into a new bounded render block |
 | User vertical scroll / drag on transcript `ScrollView` | Follow → **off**; highlight **continues** updating; scroll position **stays** where user left it |
 | Programmatic follow / open `scrollTo` | Follow stays **on** — must **not** clear follow |
 | Tap `transcript.snapToFollow` (follow **off** only) | Follow → **on**; scroll to current active word |

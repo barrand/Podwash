@@ -22,9 +22,31 @@ struct TranscriptParagraph: Equatable, Sendable {
     var formattedStartTimestamp: String
 }
 
+/// A bounded, lazily-rendered piece of a paragraph. Blocks are a rendering and
+/// scroll-target detail only; they never add a visible timestamp or paragraph gap.
+struct TranscriptRenderBlock: Equatable, Sendable, Identifiable {
+    let paragraphIndex: Int
+    let firstWordIndex: Int
+    let lastWordIndex: Int
+    let showsParagraphHeader: Bool
+    let endsParagraph: Bool
+
+    var id: String { "transcript.renderBlock.\(firstWordIndex)" }
+}
+
 /// Pure classification over transcript + intervals + resume position.
 struct TranscriptViewModel: Equatable, Sendable {
+    static let maximumWordsPerRenderBlock = 24
+
+    /// Source timing retained for live active-word lookup without rebuilding it
+    /// from display rows on every playback tick.
+    var timedWords: [TimedWord]
     var words: [TranscriptWordDisplay]
+    /// Computed once at presentation time; never rebuild this on playback ticks.
+    var paragraphs: [TranscriptParagraph]
+    /// Direct lazy scroll targets that bound even an unpunctuated ASR paragraph.
+    var renderBlocks: [TranscriptRenderBlock]
+    private var renderBlockIndexByWordIndex: [Int]
     var wordCount: Int { words.count }
     var listenedCount: Int
     var skippedAdCount: Int
@@ -66,14 +88,31 @@ struct TranscriptViewModel: Equatable, Sendable {
             transcript: transcript,
             playbackPosition: playbackPosition
         )
+        let paragraphs = paragraphs(from: transcript)
+        let renderBlocks = renderBlocks(from: paragraphs)
+        let renderBlockIndexByWordIndex = renderBlockIndexMap(
+            wordCount: transcript.count,
+            renderBlocks: renderBlocks
+        )
 
         return TranscriptViewModel(
+            timedWords: transcript,
             words: displays,
+            paragraphs: paragraphs,
+            renderBlocks: renderBlocks,
+            renderBlockIndexByWordIndex: renderBlockIndexByWordIndex,
             listenedCount: listenedCount,
             skippedAdCount: skippedAdCount,
             scrollAnchorSeconds: anchorSeconds,
             scrollAnchorIndex: anchorIndex
         )
+    }
+
+    /// The stable lazy target containing `wordIndex`, if the transcript has one.
+    func renderBlockIndex(containingWordAt wordIndex: Int) -> Int? {
+        guard renderBlockIndexByWordIndex.indices.contains(wordIndex) else { return nil }
+        let blockIndex = renderBlockIndexByWordIndex[wordIndex]
+        return renderBlocks.indices.contains(blockIndex) ? blockIndex : nil
     }
 
     /// Index of the word that should be “current” for playhead `t` (ADR-028 §3).
@@ -135,6 +174,49 @@ struct TranscriptViewModel: Equatable, Sendable {
             )
         }
 
+        return result
+    }
+
+    /// Splits semantic paragraphs into small, direct lazy children. A sentence
+    /// remains visually continuous; only long sentences gain invisible block seams
+    /// so a distant word can always be scrolled into a lazily-rendered view.
+    static func renderBlocks(
+        from paragraphs: [TranscriptParagraph],
+        maximumWordsPerBlock: Int = maximumWordsPerRenderBlock
+    ) -> [TranscriptRenderBlock] {
+        let limit = max(1, maximumWordsPerBlock)
+        var result: [TranscriptRenderBlock] = []
+
+        for (paragraphIndex, paragraph) in paragraphs.enumerated() {
+            var first = paragraph.firstWordIndex
+            while first <= paragraph.lastWordIndex {
+                let last = min(paragraph.lastWordIndex, first + limit - 1)
+                result.append(
+                    TranscriptRenderBlock(
+                        paragraphIndex: paragraphIndex,
+                        firstWordIndex: first,
+                        lastWordIndex: last,
+                        showsParagraphHeader: first == paragraph.firstWordIndex,
+                        endsParagraph: last == paragraph.lastWordIndex
+                    )
+                )
+                first = last + 1
+            }
+        }
+        return result
+    }
+
+    private static func renderBlockIndexMap(
+        wordCount: Int,
+        renderBlocks: [TranscriptRenderBlock]
+    ) -> [Int] {
+        var result = Array(repeating: -1, count: wordCount)
+        for (blockIndex, block) in renderBlocks.enumerated() {
+            guard block.firstWordIndex <= block.lastWordIndex else { continue }
+            for wordIndex in block.firstWordIndex ... block.lastWordIndex where result.indices.contains(wordIndex) {
+                result[wordIndex] = blockIndex
+            }
+        }
         return result
     }
 

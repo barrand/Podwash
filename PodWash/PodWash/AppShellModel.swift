@@ -912,7 +912,15 @@ final class AppShellModel {
             intervals = []
         }
 
-        let position = resumeStore.position(for: episodeID)
+        // The resume store is only flushed at lifecycle boundaries. When this is
+        // the episode currently playing, use the engine's live clock so opening
+        // the transcript lands at the word being heard rather than an old save.
+        let position: TimeInterval
+        if nowPlayingEpisodeID == episodeID, let engine {
+            position = engine.currentTime
+        } else {
+            position = resumeStore.position(for: episodeID)
+        }
         transcriptSheetViewModel = TranscriptViewModel.make(
             transcript: words,
             intervals: intervals,
