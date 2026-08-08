@@ -66,3 +66,11 @@ enum FirebaseCloudBootstrap {
         FirebaseApp.configure()
     }
 }
+
+/// Firebase supplies the App Attest provider, while the app supplies the
+/// factory that vends it before Firebase is configured.
+private final class AppAttestProviderFactory: NSObject, AppCheckProviderFactory {
+    func createProvider(with app: FirebaseApp) -> AppCheckProvider? {
+        AppAttestProvider(app: app)
+    }
+}
