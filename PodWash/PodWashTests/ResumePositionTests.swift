@@ -84,4 +84,17 @@ final class ResumePositionTests: XCTestCase {
         XCTAssertTrue(reloadedResume.isPlayed(episodeID))
         XCTAssertFalse(reloadedResume.isPlayed("fixture-ep-001"))
     }
+
+    func testResetForReplayClearsPositionAndPlayedState() throws {
+        let persistence = harness.makeController()
+        let store = ResumePositionStore(context: persistence.viewContext)
+        let episodeID = "fixture-ep-001"
+        try store.setPosition(42, for: episodeID)
+        try store.setPlayed(true, for: episodeID)
+
+        try store.resetForReplay(episodeID)
+
+        XCTAssertEqual(store.position(for: episodeID), 0)
+        XCTAssertFalse(store.isPlayed(episodeID))
+    }
 }

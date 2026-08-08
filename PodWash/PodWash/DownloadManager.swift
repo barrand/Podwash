@@ -38,6 +38,23 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     nonisolated(unsafe) private var preferredFileExtensionByEpisodeID: [String: String] = [:]
 
     var onStateChanged: (() -> Void)?
+    private var stateChangeHandlers: [UUID: () -> Void] = [:]
+
+    @discardableResult
+    func addStateChangeHandler(_ handler: @escaping () -> Void) -> UUID {
+        let id = UUID()
+        stateChangeHandlers[id] = handler
+        return id
+    }
+
+    func removeStateChangeHandler(_ id: UUID) {
+        stateChangeHandlers.removeValue(forKey: id)
+    }
+
+    /// Durable downloaded rows whose files still exist on disk.
+    func downloadedEpisodeIDs() -> [String] {
+        stateStore.downloadedEpisodeIDs().filter { localFileURL(for: $0) != nil }
+    }
 
     init(
         sessionConfiguration: URLSessionConfiguration = .default,
@@ -636,6 +653,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
     private func notifyStateChanged() {
         onStateChanged?()
+        stateChangeHandlers.values.forEach { $0() }
     }
 
     private static func formatFailureDiagnostic(for error: Error) -> String {

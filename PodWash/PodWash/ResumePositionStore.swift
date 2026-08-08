@@ -52,6 +52,14 @@ final class ResumePositionStore {
         try context.save()
     }
 
+    /// Explicit replay intent starts the episode over and clears its played flag.
+    func resetForReplay(_ episodeID: String) throws {
+        let episode = try requireEpisode(id: episodeID)
+        episode.playbackPosition = 0
+        episode.isPlayed = false
+        try context.save()
+    }
+
     /// Updates position; sets `isPlayed == true` when
     /// `duration > 0 && seconds / duration >= playedThreshold` (default **0.95**).
     /// Does not clear `isPlayed` when progress later drops below threshold.

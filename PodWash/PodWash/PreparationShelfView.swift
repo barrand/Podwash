@@ -37,13 +37,13 @@ struct QueueStatusButton: View {
 
     private var statusText: String {
         if let active = presentation.activeStatus { return active.text }
-        guard presentation.upNext.count + presentation.readyToPlay.count > 0 else { return "Empty" }
-        return "\(presentation.upNext.count) Up Next · \(presentation.readyToPlay.count) ready"
+        guard presentation.upNext.count + presentation.downloads.count > 0 else { return "Empty" }
+        return "\(presentation.upNext.count) Up Next · \(presentation.downloads.count) downloaded"
     }
 
     private var accessibilityValue: String {
         if let active = presentation.activeStatus { return active.accessibilityValue }
-        return "\(presentation.upNext.count) up next, \(presentation.readyToPlay.count) ready"
+        return "\(presentation.upNext.count) up next, \(presentation.downloads.count) downloaded"
     }
 }
 

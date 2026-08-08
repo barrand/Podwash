@@ -12,6 +12,7 @@ import Observation
 /// for source compatibility with ADR-029 tests, while exposing durable user-facing jobs.
 @MainActor
 @Observable final class WarmPlanner {
+    var onJobsChanged: (() -> Void)?
     /// Keep the selected next episode plus multiple likely follow-ons warm.
     static let peekCount = 4
     static let warmCap = 5
@@ -113,6 +114,7 @@ import Observation
         warmedEpisodeIDs.remove(episodeID)
         warmingEpisodeIDs.remove(episodeID)
         jobStore.save(jobs)
+        onJobsChanged?()
     }
 
     /// A listener-initiated retry must immediately retire stale failure copy while
@@ -129,6 +131,7 @@ import Observation
         job.retryCount = 0
         jobs[episodeID] = job
         jobStore.save(jobs)
+        onJobsChanged?()
     }
 
     /// True when cleaning is off for the channel, or interval cache already has a hit.
@@ -390,6 +393,7 @@ import Observation
         if stage != .downloading || estimate.progress == nil || estimate.progress == 1 {
             jobStore.save(jobs)
         }
+        onJobsChanged?()
     }
 
     /// ADR-029: retry analysis once, then surface failure to caller.

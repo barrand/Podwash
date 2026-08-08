@@ -103,6 +103,11 @@ final class QueueStore {
         try context.save()
     }
 
+    /// Restores a previously captured manual order for Queue's Clear/Undo affordance.
+    func restore(_ episodeIDs: [String]) throws {
+        try replaceQueue(with: episodeIDs)
+    }
+
     private func reindex() throws {
         let request = CDQueueEntry.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "sortIndex", ascending: true)]

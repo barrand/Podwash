@@ -231,8 +231,8 @@ struct AppShellView: View {
                 // The Super Seek Bar belongs in that reservation, immediately above the tabs.
                 shellMiniPlayerSeekBar(engine: engine)
                 .frame(height: tabBarHeight, alignment: .top)
-                // This inset shares the tab bar's space. Its unused area must stay
-                // transparent so UIKit's tab labels and controls remain visible.
+                // This reservation shares the tab bar's space; leave its unused
+                // portion clear so UIKit can render the tab controls.
                 .background(Color.clear)
             }
         }
@@ -241,6 +241,12 @@ struct AppShellView: View {
     private var queueTab: some View {
         QueueTabView(
             presentation: model.queuePresentation,
+            // TabView's UIKit-backed List does not consistently inherit the shell's
+            // bottom inset. Reserve the mini-player card inside Queue itself so the
+            // last queued row can always scroll fully above it.
+            bottomContentClearance: showsMiniPlayerInShellInset
+                ? MiniPlayerBar.shellOverlayClearance
+                : 0,
             onMove: { offsets, destination in
                 guard let source = offsets.first,
                       source < model.queuePresentation.upNext.count
@@ -252,9 +258,15 @@ struct AppShellView: View {
                 )
             },
             onPlayNow: { model.playReadyEpisodeNow($0) },
-            onRemoveFromUpNext: { model.removeFromUpNext(episodeID: $0) },
+            onMoveToTop: { model.moveUpNextToTop(episodeID: $0) },
+            onRemoveFromUpNext: { model.removeFromUpNextWithUndo(episodeID: $0) },
+            onMarkPlayed: { model.markPlayedWithUndo(episodeID: $0) },
+            onRestore: { model.restoreQueueMutation($0) },
+            onCommitPlayed: { model.commitQueueMutation($0) },
             onRemoveDownload: { model.removeDownloadAndPreparation(episodeID: $0) },
             onAddToUpNext: { model.addAndPrepare(episodeID: $0) },
+            onClearUpNext: { model.clearUpNext() },
+            onRestoreUpNext: { model.restoreUpNext($0) },
             onRetry: { model.retryPreparation(episodeID: $0) },
             onPlayWithAds: { model.playWithAds(episodeID: $0) }
         )
@@ -275,6 +287,9 @@ struct AppShellView: View {
                 onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) }
             )
         }
+        // Only the seek-bar strip itself overlays tab content. Do not paint the
+        // whole tab-bar reservation or Library / Queue / Discover disappear.
+        .background(BrandTheme.surface)
     }
 
     private func miniPlayerDuration(for engine: PlaybackEngine) -> Double {

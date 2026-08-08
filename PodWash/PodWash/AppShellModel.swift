@@ -9,6 +9,14 @@
 import AVFoundation
 import Foundation
 
+struct QueueUndoSnapshot: Equatable {
+    let episodeID: String
+    let previousQueueIDs: [String]
+    let previousPlayedState: Bool
+    let previousPlaybackPosition: TimeInterval
+    let marksPlayed: Bool
+}
+
 @MainActor @Observable
 final class AppShellModel {
     enum AnalysisRecoveryState: Equatable {
@@ -153,6 +161,10 @@ final class AppShellModel {
     /// Coming up peek for UI (next 2–3 smart predictions when Up Next is empty).
     private(set) var comingUpItems: [ComingUpItem] = []
 
+    /// Explicit Observation dependency for Core Data, downloads, and WarmPlanner.
+    private(set) var queuePresentationRevision = 0
+    @ObservationIgnored private var downloadStateHandlerID: UUID?
+
     /// User-facing preparation queue (manual Up Next first, then smart predictions).
     var preparationJobs: [AnalysisJob] {
         guard let warmPlanner else { return [] }
@@ -165,28 +177,30 @@ final class AppShellModel {
 
     /// One shared snapshot powers the Queue tab and the mini-player status strip.
     var queuePresentation: QueuePresentation {
+        _ = queuePresentationRevision
         let manualIDs = queueStore.queueEpisodeIDs()
-        let manual = manualIDs.compactMap { queueEpisodePresentation(for: $0) }
-        let manualSet = Set(manualIDs)
-        let ready = (warmPlanner?.allJobs ?? [])
-            .filter { $0.stage == .ready && !manualSet.contains($0.episodeID) }
-            .compactMap { queueEpisodePresentation(for: $0.episodeID) }
-            .filter(\.isReadyOffline)
-        let automatic = (warmPlanner?.allJobs ?? [])
-            .filter { !manualSet.contains($0.episodeID) && $0.stage != .ready }
-            .compactMap { queueEpisodePresentation(for: $0.episodeID) }
-        let preparingCount = manual.filter { !$0.isReadyOffline }.count + automatic.count
-        let status = QueueStatusResolver.resolve(
-            foreground: foregroundPreparationJob,
-            upNext: manual,
-            automatic: automatic
-        )
-        return QueuePresentation(
-            upNext: manual,
-            readyToPlay: ready,
-            preparingCount: preparingCount,
-            activeStatus: status
-        )
+        let downloadedIDs = Set(downloadManager.downloadedEpisodeIDs())
+        let candidateIDs = Set(manualIDs).union(downloadedIDs)
+        var metadata: [String: QueueEpisodeMetadata] = [:]
+        for id in candidateIDs {
+            guard let lookup = podcastStore.episodeLookup(id: id) else { continue }
+            metadata[id] = QueueEpisodeMetadata(
+                episodeID: id,
+                title: lookup.episode.title,
+                podcastTitle: lookup.podcastTitle,
+                publicationDate: lookup.episode.pubDate,
+                isPlayed: resumeStore.isPlayed(id)
+            )
+        }
+        let jobs = Dictionary(uniqueKeysWithValues: (warmPlanner?.allJobs ?? []).map { ($0.episodeID, $0) })
+        return QueuePresentationBuilder.build(QueuePresentationInput(
+            manualQueueIDs: manualIDs,
+            downloadedEpisodeIDs: downloadedIDs,
+            nowPlayingEpisodeID: nowPlayingEpisodeID,
+            metadataByEpisodeID: metadata,
+            jobsByEpisodeID: jobs,
+            foregroundJob: foregroundPreparationJob
+        ))
     }
     /// The now-playing analysis uses the same listener-facing state as warm jobs.
     private(set) var foregroundPreparationJob: AnalysisJob?
@@ -253,6 +267,10 @@ final class AppShellModel {
             podcastStore: podcastStore,
             jobStore: analysisJobStore
         )
+        warmPlanner?.onJobsChanged = { [weak self] in self?.refreshQueuePresentation() }
+        downloadStateHandlerID = self.downloadManager.addStateChangeHandler { [weak self] in
+            self?.refreshQueuePresentation()
+        }
 
         playbackProgressHandlerID = analysisProgressRelay.addHandler { [weak self] snapshot in
             guard let self, self.acceptingPlaybackProgress else { return }
@@ -531,6 +549,9 @@ final class AppShellModel {
             self.preparingNextAnnouncement = "Still checking the next episode for ads"
             self.preparingAnnouncementGeneration += 1
         }
+        queue.onEpisodeMarkedPlayed = { [weak self] episodeID in
+            self?.handleEpisodeMarkedPlayed(episodeID)
+        }
 
         newEngine.onPlaybackEnded = { [weak self] in
             self?.handleEnginePlaybackEnded()
@@ -547,6 +568,7 @@ final class AppShellModel {
         nowPlayingPodcastTitle = podcastTitle
         nowPlayingFeedURL = feedURL
         isMiniPlayerVisible = true
+        refreshQueuePresentation()
         try? nowPlayingSessionStore.setActiveEpisodeID(episode.id)
         if let feedURL {
             try? podcastStore.touchLastHeard(feedURL: feedURL)
@@ -1000,6 +1022,14 @@ final class AppShellModel {
         queueCoordinator?.handlePlaybackEnded(episodeID: episodeID, duration: duration)
     }
 
+    private func handleEpisodeMarkedPlayed(_ episodeID: String) {
+        if settingsStore.autoDeleteAfterPlayedEnabled {
+            removeDownloadAndPreparation(episodeID: episodeID)
+        } else {
+            refreshQueuePresentation()
+        }
+    }
+
     private func resolveSmartNextEpisodeID(
         endedEpisodeID: String,
         skipToNextShow: Bool
@@ -1057,18 +1087,27 @@ final class AppShellModel {
 
     func addAndPrepare(episodeID: String) {
         guard podcastStore.episodeLookup(id: episodeID) != nil else { return }
+        if resumeStore.isPlayed(episodeID) {
+            try? resumeStore.resetForReplay(episodeID)
+        }
         try? queueStore.add(episodeID)
         didStartPreparationForCurrentSession = true
         scheduleWarmForComingUp()
+        refreshQueuePresentation()
     }
 
     func moveUpNext(episodeID: String, to index: Int) {
         try? queueStore.move(episodeID, toIndex: index)
         scheduleWarmForComingUp()
+        refreshQueuePresentation()
+    }
+
+    func moveUpNextToTop(episodeID: String) {
+        moveUpNext(episodeID: episodeID, to: 0)
     }
 
     func removeFromUpNext(episodeID: String) {
-        let wasReady = queueEpisodePresentation(for: episodeID)?.isReadyOffline == true
+        let wasReady = isReadyOffline(episodeID)
         try? queueStore.remove(episodeID)
         if !wasReady {
             warmPlanner?.removeJob(episodeID: episodeID)
@@ -1078,6 +1117,7 @@ final class AppShellModel {
             }
         }
         scheduleWarmForComingUp()
+        refreshQueuePresentation()
     }
 
     func removeDownloadAndPreparation(episodeID: String) {
@@ -1088,6 +1128,76 @@ final class AppShellModel {
             try? downloadManager.deleteDownload(episodeID: episodeID)
         }
         scheduleWarmForComingUp()
+        refreshQueuePresentation()
+    }
+
+    func removeFromUpNextWithUndo(episodeID: String) -> QueueUndoSnapshot {
+        let snapshot = QueueUndoSnapshot(
+            episodeID: episodeID,
+            previousQueueIDs: queueStore.queueEpisodeIDs(),
+            previousPlayedState: resumeStore.isPlayed(episodeID),
+            previousPlaybackPosition: resumeStore.position(for: episodeID),
+            marksPlayed: false
+        )
+        removeFromUpNext(episodeID: episodeID)
+        return snapshot
+    }
+
+    func markPlayedWithUndo(episodeID: String) -> QueueUndoSnapshot {
+        let snapshot = QueueUndoSnapshot(
+            episodeID: episodeID,
+            previousQueueIDs: queueStore.queueEpisodeIDs(),
+            previousPlayedState: resumeStore.isPlayed(episodeID),
+            previousPlaybackPosition: resumeStore.position(for: episodeID),
+            marksPlayed: true
+        )
+        try? resumeStore.setPlayed(true, for: episodeID)
+        try? queueStore.remove(episodeID)
+        scheduleWarmForComingUp()
+        refreshQueuePresentation()
+        return snapshot
+    }
+
+    func restoreQueueMutation(_ snapshot: QueueUndoSnapshot) {
+        try? resumeStore.setPlayed(snapshot.previousPlayedState, for: snapshot.episodeID)
+        try? resumeStore.setPosition(snapshot.previousPlaybackPosition, for: snapshot.episodeID)
+        try? queueStore.restore(snapshot.previousQueueIDs)
+        didStartPreparationForCurrentSession = true
+        scheduleWarmForComingUp()
+        refreshQueuePresentation()
+    }
+
+    /// Called after the five-second Undo window for a manual Mark as Played.
+    func commitQueueMutation(_ snapshot: QueueUndoSnapshot) {
+        guard snapshot.marksPlayed, settingsStore.autoDeleteAfterPlayedEnabled else { return }
+        removeDownloadAndPreparation(episodeID: snapshot.episodeID)
+    }
+
+    /// Clears manual Up Next while retaining completed downloads. Returns the
+    /// exact prior order so the Queue tab can offer a short Undo window.
+    @discardableResult
+    func clearUpNext() -> [String] {
+        let ids = queueStore.queueEpisodeIDs()
+        for id in ids {
+            let wasReady = isReadyOffline(id)
+            if !wasReady {
+                warmPlanner?.removeJob(episodeID: id)
+                Task { [downloadManager] in
+                    await downloadManager.cancel(episodeID: id)
+                    try? downloadManager.deleteDownload(episodeID: id)
+                }
+            }
+        }
+        try? queueStore.clear()
+        scheduleWarmForComingUp()
+        return ids
+    }
+
+    func restoreUpNext(_ episodeIDs: [String]) {
+        try? queueStore.restore(episodeIDs)
+        didStartPreparationForCurrentSession = true
+        scheduleWarmForComingUp()
+        refreshQueuePresentation()
     }
 
     func playReadyEpisodeNow(_ episodeID: String) {
@@ -1103,16 +1213,9 @@ final class AppShellModel {
         scheduleWarmForComingUp()
     }
 
-    private func queueEpisodePresentation(for episodeID: String) -> QueueEpisodePresentation? {
-        guard let lookup = podcastStore.episodeLookup(id: episodeID) else { return nil }
-        let job = warmPlanner?.job(for: episodeID)
-        return QueueEpisodePresentation(
-            episodeID: episodeID,
-            title: lookup.episode.title,
-            podcastTitle: lookup.podcastTitle,
-            job: job,
-            isReadyOffline: warmPlanner?.isReadyOffline(episodeID: episodeID, feedURL: lookup.feedURL) == true
-        )
+    private func isReadyOffline(_ episodeID: String) -> Bool {
+        guard let lookup = podcastStore.episodeLookup(id: episodeID) else { return false }
+        return warmPlanner?.isReadyOffline(episodeID: episodeID, feedURL: lookup.feedURL) == true
     }
 
     private func scheduleWarmForComingUp() {
@@ -1125,6 +1228,10 @@ final class AppShellModel {
             manualQueueIDs: queueStore.queueEpisodeIDs(),
             predicted: smartPredictions
         )
+    }
+
+    private func refreshQueuePresentation() {
+        queuePresentationRevision &+= 1
     }
 
     /// Immediately switches to a tapped Up Next item, retaining the interrupted

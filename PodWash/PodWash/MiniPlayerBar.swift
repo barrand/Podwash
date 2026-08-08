@@ -11,6 +11,10 @@ import AVFoundation
 import SwiftUI
 
 struct MiniPlayerBar: View {
+    /// QueueStatusButton plus the playback controls, including a small scrolling
+    /// margin. The tab bar owns the seek bar below this card separately.
+    static let shellOverlayClearance: CGFloat = 112
+
     @Bindable var engine: PlaybackEngine
     let episodeTitle: String
     let podcastTitle: String
@@ -132,7 +136,9 @@ struct MiniPlayerBar: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .background(.bar)
+            // `.bar` is a translucent material. This player overlays scrolling
+            // content, so use the app's opaque surface instead.
+            .background(BrandTheme.surface)
         }
     }
 }

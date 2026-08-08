@@ -26,6 +26,7 @@ final class QueueCoordinator {
     /// autoplay must wait rather than starting an episode whose ad check is delayed.
     var resolveQueuedNext: ((_ queuedIDs: [String]) -> String?)?
     var onQueuedPreparationBlocked: (() -> Void)?
+    var onEpisodeMarkedPlayed: ((String) -> Void)?
 
     /// Wires queue + resume Core Data stores to an `EpisodePlaying` surface.
     /// Optional `sessionStore` updates the durable active episode on end / advance (ADR-027).
@@ -100,6 +101,7 @@ final class QueueCoordinator {
             } else {
                 try? resume.setPlayed(true, for: episodeID)
             }
+            onEpisodeMarkedPlayed?(episodeID)
         }
 
         let ids = queue.queueEpisodeIDs()

@@ -114,4 +114,19 @@ final class QueueTests: XCTestCase {
         XCTAssertEqual(queue.queueEpisodeIDs(), ["fixture-ep-003"])
         XCTAssertEqual(coordinator.currentEpisodeID, "fixture-ep-002")
     }
+
+    func testRestoreReinstatesExactManualOrderAfterClear() throws {
+        let persistence = harness.makeController()
+        let queue = QueueStore(context: persistence.viewContext)
+        try queue.add("fixture-ep-001")
+        try queue.add("fixture-ep-002")
+        try queue.add("fixture-ep-003")
+
+        let priorOrder = queue.queueEpisodeIDs()
+        try queue.clear()
+        XCTAssertTrue(queue.queueEpisodeIDs().isEmpty)
+
+        try queue.restore(priorOrder)
+        XCTAssertEqual(queue.queueEpisodeIDs(), priorOrder)
+    }
 }
