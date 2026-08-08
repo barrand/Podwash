@@ -10,7 +10,10 @@ record the owner, date, and evidence beside each check when it is done.
 - [x] **1.2** Set the intended marketing version and increment the build number
   from `1`. Release candidate: version `1.0`, build `2`.
 - [ ] **1.3** Confirm the Distribution signing certificate, provisioning profile, bundle ID,
-  and Release entitlements are correct for `com.barrandfarm.PodWash`.
+  and Release entitlements are correct for `com.barrandfarm.PodWash`. **Blocked
+  2026-08-08:** local signing has only an Apple Development identity and a
+  development profile; create/download an App Store distribution identity and
+  profile, then re-verify before archiving.
 - [ ] **1.4** Run the full verification suite, then Archive and Validate the Release build.
 - [ ] **1.5** Install the archive on a physical iPhone and test fresh install, playback,
   downloads, background audio, transcript follow, and offline behavior.
@@ -87,6 +90,10 @@ record the owner, date, and evidence beside each check when it is done.
 - Release-source prerequisite **1.1** is complete at clean, pushed commit
   `1ac191a`; it still needs full release verification before an archive is made.
 - Release version prerequisite **1.2** is complete: `1.0 (2)`.
+- Signing prerequisite **1.3** is blocked locally: the team and bundle ID are
+  correct, but no Apple Distribution identity/profile is installed. The checked-in
+  app entitlements file is intentionally empty; verify the archive's signed
+  entitlements after distribution signing is available.
 - The repository intentionally omits `GoogleService-Info.plist`; a production
   archive must supply it by a secure delivery process.
 - The project currently uses marketing version `1.0`, build `1`, and an iOS 26.1
