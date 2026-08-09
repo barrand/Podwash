@@ -20,8 +20,7 @@ final class QueueCoordinator {
     nonisolated(unsafe) private(set) var currentEpisodeID: String?
 
     /// Resolves the next smart-autoplay episode ID when the manual queue is empty.
-    /// `skipToNextShow` is true for the Next Show control (dismiss + exit binge).
-    var resolveSmartNext: ((_ endedEpisodeID: String, _ skipToNextShow: Bool) -> String?)?
+    var resolveSmartNext: ((_ endedEpisodeID: String) -> String?)?
     /// Selects the earliest fully prepared manual queue item. Returning nil means
     /// autoplay must wait rather than starting an episode whose ad check is delayed.
     var resolveQueuedNext: ((_ queuedIDs: [String]) -> String?)?
@@ -74,21 +73,21 @@ final class QueueCoordinator {
 
     /// AC2 entry: treat `episodeID` as finished; advance Up Next or smart autoplay.
     func handlePlaybackEnded(episodeID: String, duration: TimeInterval?) {
-        advance(from: episodeID, duration: duration, skipToNextShow: false, markPlayed: true)
+        advance(from: episodeID, duration: duration, markPlayed: true)
     }
 
-    /// ADR-029 Skip / Next Show: dismiss forever, exit binge, play next show.
-    func handleSkipToNextShow(episodeID: String, currentPosition: TimeInterval?) {
+    /// User-requested Next: retain the current episode's resume position and
+    /// advance through manual Up Next before considering smart autoplay.
+    func handleSkipToNext(episodeID: String, currentPosition: TimeInterval?) {
         if let currentPosition {
             try? resume.setPosition(currentPosition, for: episodeID)
         }
-        advance(from: episodeID, duration: nil, skipToNextShow: true, markPlayed: false)
+        advance(from: episodeID, duration: nil, markPlayed: false)
     }
 
     private func advance(
         from episodeID: String,
         duration: TimeInterval?,
-        skipToNextShow: Bool,
         markPlayed: Bool
     ) {
         if markPlayed {
@@ -105,7 +104,7 @@ final class QueueCoordinator {
         }
 
         let ids = queue.queueEpisodeIDs()
-        if !skipToNextShow, !ids.isEmpty {
+        if !ids.isEmpty {
             let nextID: String
             if let resolveQueuedNext {
                 guard let selected = resolveQueuedNext(ids) else {
@@ -124,7 +123,7 @@ final class QueueCoordinator {
             return
         }
 
-        if let nextID = resolveSmartNext?(episodeID, skipToNextShow) {
+        if let nextID = resolveSmartNext?(episodeID) {
             currentEpisodeID = nextID
             try? sessionStore?.setActiveEpisodeID(nextID)
             player?.play(episodeID: nextID)

@@ -218,7 +218,7 @@ struct AppShellView: View {
                 onExpand: { model.expandFullPlayer() },
                 onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
                 onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) },
-                onSkipToNextShow: { model.skipToNextShow() },
+                onSkipToNext: { model.skipToNextUp() },
                 onOpenPreparation: { selectedTab = .queue }
             )
             .onChange(of: model.preparingAnnouncementGeneration) { _, _ in
@@ -327,7 +327,10 @@ struct AppShellView: View {
             TranscriptView(
                 viewModel: viewModel,
                 playbackEngine: model.transcriptSheetPlaybackEngine,
-                openPlaybackPosition: model.transcriptSheetOpenPlaybackPosition
+                openPlaybackPosition: model.transcriptSheetOpenPlaybackPosition,
+                bottomControlClearance: showsMiniPlayerInTranscriptInset
+                    ? MiniPlayerBar.shellOverlayClearance
+                    : 0
             ) {
                 model.dismissTranscript()
             }
@@ -554,25 +557,10 @@ private struct TabBarAccessibilityConfigurator: UIViewRepresentable {
         if measuredHeight > 0, coordinator.tabBarHeight.wrappedValue != measuredHeight {
             coordinator.tabBarHeight.wrappedValue = measuredHeight
         }
-        guard let items = tabBar.items, items.count >= 2 else { return }
-        items[0].accessibilityIdentifier = "tabLibrary"
-        items[0].accessibilityLabel = "Library"
-        items[0].accessibilityHint = "Shows your subscribed podcasts."
-        items[1].accessibilityIdentifier = "tabDiscover"
-        items[1].accessibilityLabel = "Discover"
-        items[1].accessibilityHint = "Search and subscribe to podcasts."
-
-        // On recent iOS versions XCTest queries the private tab-bar button views
-        // rather than UITabBarItem. Use the public accessibility surface of those
-        // views too, keeping the visible Library and Discover controls addressable.
-        let controls = tabBar.subviews
-            .filter(\.isAccessibilityElement)
-            .sorted { $0.frame.minX < $1.frame.minX }
-        guard controls.count >= 2 else { return }
-        controls[0].accessibilityIdentifier = "tabLibrary"
-        controls[0].accessibilityLabel = "Library"
-        controls[1].accessibilityIdentifier = "tabDiscover"
-        controls[1].accessibilityLabel = "Discover"
+        // SwiftUI already gives each tab a listener-facing name through `tabItem`.
+        // Do not rewrite private UITabBar controls here: the shell has Library,
+        // Queue, and Discover, while an old two-tab mapper mislabeled Queue as
+        // Discover. XCTest now queries the native tab buttons by their labels.
     }
 
     private static func findTabBar(from view: UIView) -> UITabBar? {

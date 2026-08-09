@@ -40,7 +40,7 @@ final class NowPlayingSessionUITests: XCTestCase {
   @MainActor
   func testMiniPlayerRestoresPausedAfterRelaunch() throws {
     let app = launchApp(arguments: nowPlayingSessionArgs)
-    establishPausedSessionWithQueue(in: app, recordQueueSnapshot: false)
+    establishPausedSession(in: app)
 
     app.terminate()
 
@@ -98,7 +98,7 @@ final class NowPlayingSessionUITests: XCTestCase {
   @MainActor
   func testQueuePersistsWithRestoredSessionAfterRelaunch() throws {
     let app = launchApp(arguments: nowPlayingSessionArgs)
-    let snapshot = establishPausedSessionWithQueue(in: app, recordQueueSnapshot: true)
+    establishPausedSession(in: app, queueEpisodeID: queuedEpisodeID)
 
     app.terminate()
 
@@ -113,44 +113,16 @@ final class NowPlayingSessionUITests: XCTestCase {
     let miniPlayPause = element("miniPlayerPlayPause", in: relaunched)
     XCTAssertEqual(miniPlayPause.value as? String, "paused")
 
-    navigateToEpisodeList(relaunched)
-
-    let queueList = element("queueList", in: relaunched)
-    XCTAssertTrue(queueList.waitForExistence(timeout: fixtureTimeout))
-    XCTAssertEqual(
-      queueList.value as? String,
-      snapshot.queueListValue,
-      "queueList count must match pre-terminate snapshot"
-    )
-
-    let queueCell0 = element("queueCell_0", in: relaunched)
-    XCTAssertTrue(queueCell0.waitForExistence(timeout: fixtureTimeout))
-    XCTAssertEqual(
-      queueCell0.value as? String,
-      snapshot.queueCell0Value,
-      "queueCell_0 episode id must match pre-terminate snapshot"
-    )
-    XCTAssertEqual(
-      queueCell0.value as? String,
-      queuedEpisodeID,
-      "seeded queue must expose lib-0-fixture-ep-002 at index 0"
-    )
+    assertQueuedEpisodeVisible(in: relaunched, episodeID: queuedEpisodeID)
   }
 
-  // MARK: - Seed helper (slice-31-ux.md establishPausedSessionWithQueue)
+  // MARK: - Seed helper (slice-31-ux.md)
 
-  private struct QueueSnapshot {
-    let queueListValue: String
-    let queueCell0Value: String
-  }
-
-  @discardableResult
   @MainActor
-  private func establishPausedSessionWithQueue(
+  private func establishPausedSession(
     in app: XCUIApplication,
-    recordQueueSnapshot: Bool
-  ) -> QueueSnapshot {
-    _ = recordQueueSnapshot
+    queueEpisodeID: String? = nil
+  ) {
     waitForLibraryRoot(app)
     navigateToEpisodeList(app)
 
@@ -175,23 +147,19 @@ final class NowPlayingSessionUITests: XCTestCase {
       message: "miniPlayerPlayPause must report playing before seek"
     )
 
-    // Queue while the episode list is still the top chrome — full-player sheet
-    // otherwise covers `queueAddButton_1` (exists && !isHittable).
-    let queueAdd = app.buttons["queueAddButton_1"]
-    XCTAssertTrue(queueAdd.waitForExistence(timeout: fixtureTimeout))
-    tapQueueAddIfNeeded(queueAdd, in: app)
+    if let queueEpisodeID {
+      // Queue while the episode list is the top chrome, then prove the
+      // listener-visible Queue tab contains that exact episode before relaunch.
+      let queueAdd = app.buttons["queueAddButton_1"]
+      XCTAssertTrue(queueAdd.waitForExistence(timeout: fixtureTimeout))
+      tapQueueAddIfNeeded(queueAdd, in: app)
+      assertQueuedEpisodeVisible(in: app, episodeID: queueEpisodeID)
 
-    waitForAccessibilityValue(
-      "1",
-      identifier: "queueList",
-      in: app,
-      timeout: 2,
-      message: "queueList must report one queued episode"
-    )
-
-    let queueCell0 = element("queueCell_0", in: app)
-    XCTAssertTrue(queueCell0.waitForExistence(timeout: fixtureTimeout))
-    XCTAssertEqual(queueCell0.value as? String, queuedEpisodeID)
+      let libraryTab = app.tabBars.buttons["Library"]
+      XCTAssertTrue(libraryTab.waitForExistence(timeout: fixtureTimeout))
+      libraryTab.tap()
+      waitForLibraryRoot(app)
+    }
 
     tapMiniPlayerBar(app)
 
@@ -245,9 +213,6 @@ final class NowPlayingSessionUITests: XCTestCase {
     XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout))
     XCTAssertEqual(element("miniPlayerPlayPause", in: app).value as? String, "paused")
 
-    let listValue = element("queueList", in: app).value as? String ?? ""
-    let cellValue = queueCell0.value as? String ?? ""
-    return QueueSnapshot(queueListValue: listValue, queueCell0Value: cellValue)
   }
 
   // MARK: - Launch + query helpers
@@ -279,6 +244,23 @@ final class NowPlayingSessionUITests: XCTestCase {
     showCell.tap()
     let episodeList = element("episodeList", in: app)
     XCTAssertTrue(episodeList.waitForExistence(timeout: fixtureTimeout))
+  }
+
+  @MainActor
+  private func assertQueuedEpisodeVisible(in app: XCUIApplication, episodeID: String) {
+    let queueTab = app.tabBars.buttons["Queue"]
+    XCTAssertTrue(queueTab.waitForExistence(timeout: fixtureTimeout))
+    XCTAssertTrue(queueTab.isHittable, "Queue tab must remain tappable with mini-player visible")
+    queueTab.tap()
+
+    let queueRoot = element("queueTab", in: app)
+    XCTAssertTrue(queueRoot.waitForExistence(timeout: fixtureTimeout))
+    let queuedEpisode = element("queueEpisode_\(episodeID)", in: app)
+    XCTAssertTrue(queuedEpisode.waitForExistence(timeout: fixtureTimeout))
+    XCTAssertFalse(
+      element("queueEmpty", in: app).exists,
+      "Queue must show the seeded episode rather than its empty state."
+    )
   }
 
   @MainActor

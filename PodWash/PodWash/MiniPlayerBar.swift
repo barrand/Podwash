@@ -32,7 +32,7 @@ struct MiniPlayerBar: View {
     let onExpand: () -> Void
     let onTogglePlayPause: () -> Void
     let onSeekTo: (Double) -> Void
-    let onSkipToNextShow: () -> Void
+    let onSkipToNext: () -> Void
     let onOpenPreparation: () -> Void
 
     var body: some View {
@@ -98,14 +98,14 @@ struct MiniPlayerBar: View {
                             : ""
                     )
 
-                    Button(action: onSkipToNextShow) {
+                    Button(action: onSkipToNext) {
                         Image(systemName: "forward.end.fill")
                             .font(.body)
                             .frame(width: 36, height: 44)
                     }
-                    .accessibilityIdentifier("miniPlayerNextShow")
-                    .accessibilityLabel("Next show")
-                    .accessibilityHint("Skips to the next show and dismisses this episode from autoplay.")
+                    .accessibilityIdentifier("miniPlayerNext")
+                    .accessibilityLabel("Next")
+                    .accessibilityHint("Plays the next episode in Up Next.")
 
                     Button(action: onTogglePlayPause) {
                         Image(systemName: isAnalyzing ? "waveform" : (isPlaying ? "pause.fill" : "play.fill"))

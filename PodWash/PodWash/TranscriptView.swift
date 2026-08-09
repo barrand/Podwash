@@ -15,6 +15,8 @@ struct TranscriptView: View {
     var playbackEngine: PlaybackEngine? = nil
     /// Open-time resume seconds used when no live engine is available.
     var openPlaybackPosition: TimeInterval = 0
+    /// Space occupied by persistent playback chrome outside this view.
+    var bottomControlClearance: CGFloat = 0
     var onClose: (() -> Void)? = nil
 
     @State private var didInitialAlignment = false
@@ -50,7 +52,7 @@ struct TranscriptView: View {
                     // the recovery button race with its own scroll request.
                     .simultaneousGesture(
                         DragGesture(minimumDistance: 1)
-                            .onChanged { _ in noteUserScrollInteraction() }
+                            .onEnded { _ in noteUserScrollInteraction() }
                     )
                     .onAppear {
                         alignToLiveWordOnOpen(proxy: proxy)
@@ -185,7 +187,7 @@ struct TranscriptView: View {
         .accessibilityLabel("Follow transcript")
         .accessibilityHint("Scrolls to the current word and turns follow mode on.")
         .padding(.trailing, 16)
-        .padding(.bottom, 16)
+        .padding(.bottom, 16 + bottomControlClearance)
         .safeAreaPadding(.bottom)
     }
 
@@ -224,14 +226,6 @@ struct TranscriptView: View {
             Color.clear
                 .frame(width: 1, height: 1)
                 .accessibilityElement(children: .ignore)
-                .accessibilityIdentifier("transcript.followMode")
-                .accessibilityLabel("Transcript follow mode")
-                .accessibilityValue(isFollowModeOn ? "on" : "off")
-                .accessibilityHint("Whether the transcript scrolls with playback.")
-
-            Color.clear
-                .frame(width: 1, height: 1)
-                .accessibilityElement(children: .ignore)
                 .accessibilityIdentifier("transcript.activeWord")
                 .accessibilityLabel("Active transcript word")
                 .accessibilityValue("\(activeWordIndex)")
@@ -242,6 +236,7 @@ struct TranscriptView: View {
         .opacity(0.01)
         .allowsHitTesting(false)
     }
+
 }
 
 /// One direct LazyVStack child. Blocks preserve sentence timestamps and spacing

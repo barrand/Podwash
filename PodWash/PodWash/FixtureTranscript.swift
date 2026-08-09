@@ -11,12 +11,16 @@ enum FixtureTranscript {
     static let launchArgument = "-UITestFixtureTranscript"
     static let noCacheLaunchArgument = "-UITestFixtureTranscriptNoCache"
     static let longFollowLaunchArgument = "-UITestFixtureTranscriptLongFollow"
+    static let scrollFollowLaunchArgument = "-UITestFixtureTranscriptScrollFollow"
 
     static let wordCount = 24
     static let wordDuration = 2.5
     static let playbackPosition: TimeInterval = 30.0
     static let longFollowWordCount = 1_100
     static let longFollowPlaybackPosition: TimeInterval = 41 * 60
+    static let scrollFollowWordCount = 240
+    static let scrollFollowWordDuration = 1.0
+    static let scrollFollowPlaybackPosition: TimeInterval = 30.0
     static let unrelatedSkipStart = 35.0
     static let unrelatedSkipEnd = 42.5
 
@@ -24,6 +28,7 @@ enum FixtureTranscript {
         ProcessInfo.processInfo.arguments.contains { argument in
             argument == launchArgument
                 || argument == longFollowLaunchArgument
+                || argument == scrollFollowLaunchArgument
                 || (argument.hasSuffix("UITestFixtureTranscript")
                     && !argument.contains("NoCache"))
         }
@@ -31,6 +36,10 @@ enum FixtureTranscript {
 
     static var isLongFollowEnabled: Bool {
         ProcessInfo.processInfo.arguments.contains(longFollowLaunchArgument)
+    }
+
+    static var isScrollFollowEnabled: Bool {
+        ProcessInfo.processInfo.arguments.contains(scrollFollowLaunchArgument)
     }
 
     /// Dedicated negative mode: same library/intervals/resume, omit transcript file.
@@ -52,10 +61,14 @@ enum FixtureTranscript {
     }
 
     static func makeTranscript() -> [TimedWord] {
-        let count = isLongFollowEnabled ? longFollowWordCount : wordCount
+        let count = isLongFollowEnabled
+            ? longFollowWordCount
+            : (isScrollFollowEnabled ? scrollFollowWordCount : wordCount)
+        let duration = isScrollFollowEnabled ? scrollFollowWordDuration : wordDuration
         return (0 ..< count).map { index in
-            let start = Double(index) * wordDuration
-            return TimedWord(word: "w\(index)", start: start, end: start + wordDuration)
+            let start = Double(index) * duration
+            let text = isScrollFollowEnabled && index % 4 == 3 ? "w\(index)." : "w\(index)"
+            return TimedWord(word: text, start: start, end: start + duration)
         }
     }
 
@@ -91,7 +104,9 @@ enum FixtureTranscript {
         // Wipe any leftover transcript from a prior UITest launch (shared Application Support).
         try? transcriptCache.remove(episodeID: episodeID)
 
-        let position = isLongFollowEnabled ? longFollowPlaybackPosition : playbackPosition
+        let position = isLongFollowEnabled
+            ? longFollowPlaybackPosition
+            : (isScrollFollowEnabled ? scrollFollowPlaybackPosition : playbackPosition)
         try resumeStore.setPosition(position, for: episodeID)
 
         let targetWords = settingsStore.activeNormalizedTargetSet()

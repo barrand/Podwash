@@ -455,9 +455,11 @@ final class EpisodeTableViewCell: UITableViewCell {
 
         titleLabel.font = .preferredFont(forTextStyle: .body)
         titleLabel.numberOfLines = 2
+        titleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         dateLabel.font = .preferredFont(forTextStyle: .subheadline)
         dateLabel.textColor = .secondaryLabel
+        dateLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         badgeLabel.font = .preferredFont(forTextStyle: .caption2)
         badgeLabel.text = "Episode on"
@@ -620,15 +622,16 @@ final class EpisodeTableViewCell: UITableViewCell {
         accessoryStack.setContentHuggingPriority(.required, for: .horizontal)
         accessoryStack.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
 
-        // Pin accessories in contentView (not UITableView's accessoryView) so SwiftUI
-        // representable layout passes position controls on the trailing edge, not over titles.
+        // Pin accessories inside the cell's fixed margins. UITableView can temporarily
+        // expand contentView while resolving a self-sizing row; anchoring only to that
+        // width allowed the trailing download button to land beyond the visible cell.
         contentView.addSubview(textStack)
         contentView.addSubview(accessoryStack)
         textStack.translatesAutoresizingMaskIntoConstraints = false
         textStack.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        let textLeading = textStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16)
+        let textLeading = textStack.leadingAnchor.constraint(equalTo: layoutMarginsGuide.leadingAnchor)
         let textTrailing = textStack.trailingAnchor.constraint(equalTo: accessoryStack.leadingAnchor, constant: -8)
-        let accessoryTrailing = accessoryStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16)
+        let accessoryTrailing = accessoryStack.trailingAnchor.constraint(equalTo: layoutMarginsGuide.trailingAnchor)
         textLeading.priority = Self.deferredHorizontalPriority
         textTrailing.priority = Self.deferredHorizontalPriority
         accessoryTrailing.priority = Self.deferredHorizontalPriority
@@ -737,8 +740,11 @@ final class EpisodeTableViewCell: UITableViewCell {
         accessoryStack.accessibilityElementsHidden = false
         accessoryStack.isUserInteractionEnabled = true
         queueAddButton.isAccessibilityElement = true
-        downloadButton.isHidden = true
-        downloadButton.isAccessibilityElement = false
+        // Download is always a visible row action. Hiding it removes it from the
+        // stack's layout while its stale accessibility frame remains queryable,
+        // placing the apparent control beyond the cell's trailing edge.
+        downloadButton.isHidden = false
+        downloadButton.isAccessibilityElement = true
         transcriptButton.isAccessibilityElement = showsTranscript
 
         if onPlay != nil {

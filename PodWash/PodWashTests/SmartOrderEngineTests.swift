@@ -80,37 +80,6 @@ final class SmartOrderEngineTests: XCTestCase {
         XCTAssertFalse(peek[2].isBinge)
     }
 
-    func testSkipToNextShowExitsBingeAndDismisses() {
-        let shows = [
-            SmartOrderShow(
-                feedURL: feedSerial,
-                title: "Serial",
-                isBinge: true,
-                lastHeardAt: Date(timeIntervalSince1970: 50),
-                episodes: [
-                    ep("s2", title: "Ep2", pub: 200, played: false),
-                    ep("s3", title: "Ep3", pub: 300, played: false),
-                ]
-            ),
-            SmartOrderShow(
-                feedURL: feedA,
-                title: "Planet Money",
-                isBinge: false,
-                lastHeardAt: Date(timeIntervalSince1970: 10),
-                episodes: [ep("pm", title: "PM", pub: 500, played: false)],
-            ),
-        ]
-        let engine = SmartOrderEngine(activeBingeFeedURL: feedSerial)
-        let next = engine.nextEpisode(
-            shows: shows,
-            currentEpisodeID: "s2",
-            currentFeedURL: feedSerial,
-            skipToNextShow: true
-        )
-        // s2 dismissed in simulation; binge exited → LRP picks least-heard (Planet Money).
-        XCTAssertEqual(next?.episodeID, "pm")
-    }
-
     func testDismissedEpisodesNeverEligible() {
         let show = SmartOrderShow(
             feedURL: feedA,

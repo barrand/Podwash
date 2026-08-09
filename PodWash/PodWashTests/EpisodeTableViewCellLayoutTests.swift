@@ -62,6 +62,28 @@ final class EpisodeTableViewCellLayoutTests: XCTestCase {
         )
     }
 
+    func testAccessoriesStayInsideCellAtCompactWidths() {
+        for width: CGFloat in [320, 390, 402] {
+            let cell = makeConfiguredCell(showsTimeline: false)
+            EpisodeTableViewCellLayoutTesting.layoutAtContentWidth(Self.zeroLayoutWidth, cell: cell)
+            EpisodeTableViewCellLayoutTesting.layoutAtContentWidth(width, cell: cell)
+
+            let textStack = EpisodeTableViewCellLayoutTesting.textStack(in: cell)
+            let textFrame = textStack.convert(textStack.bounds, to: cell)
+            for accessory in [
+                EpisodeTableViewCellLayoutTesting.queueAddButton(in: cell),
+                EpisodeTableViewCellLayoutTesting.downloadButton(in: cell),
+            ] {
+                let frame = accessory.convert(accessory.bounds, to: cell)
+                XCTAssertEqual(frame.width, Self.accessoryButtonWidth, accuracy: 0.5)
+                XCTAssertEqual(frame.height, Self.accessoryButtonWidth, accuracy: 0.5)
+                XCTAssertGreaterThanOrEqual(frame.minX, 0, "Accessory begins outside a \(width)pt cell; cell=\(cell.bounds), contentFrame=\(cell.contentView.frame)")
+                XCTAssertLessThanOrEqual(frame.maxX, width, "Accessory ends outside a \(width)pt cell; cell=\(cell.bounds), contentFrame=\(cell.contentView.frame)")
+                XCTAssertFalse(frame.intersects(textFrame), "Accessory overlaps text in a \(width)pt cell")
+            }
+        }
+    }
+
     // MARK: - AC2: zero → phone width fills analysis timeline bar to host width
 
     func testTimelineBarFillsHostAfterZeroWidthLayout() {

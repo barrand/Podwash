@@ -94,7 +94,7 @@ final class AppShellModelSmartAutoplayTests: XCTestCase {
         }
         model.playEpisode(episode.episode, podcastTitle: episode.podcastTitle, feedURL: episode.feedURL)
 
-        let next = model.queueCoordinator?.resolveSmartNext?("a-1", false)
+        let next = model.queueCoordinator?.resolveSmartNext?("a-1")
         XCTAssertNil(next)
         model.stopAndDismissPlayer()
     }
@@ -116,39 +116,10 @@ final class AppShellModelSmartAutoplayTests: XCTestCase {
         }
         model.playEpisode(episode.episode, podcastTitle: episode.podcastTitle, feedURL: episode.feedURL)
 
-        let nextID = model.queueCoordinator?.resolveSmartNext?("a-1", false)
+        let nextID = model.queueCoordinator?.resolveSmartNext?("a-1")
         XCTAssertEqual(nextID, "b-1")
         XCTAssertTrue(model.isPreparingNextEpisode)
         XCTAssertEqual(model.preparingNextAnnouncement, "Preparing Show B")
-        model.stopAndDismissPlayer()
-    }
-
-    // MARK: - Skip dismiss
-
-    func testSkipToNextShowDismissesEpisodeForever() throws {
-        let persistence = harness.makeController()
-        try seedTwoShows(persistence: persistence)
-        try turnCleaningOff(persistence: persistence, feeds: [feedA, feedB])
-        try installLocalDownload(for: "a-1")
-        try installLocalDownload(for: "b-1")
-
-        let model = makeShell(persistence: persistence)
-        model.settingsStore.smartAutoplayEnabled = true
-
-        guard let episode = model.podcastStore.episodeLookup(id: "a-1") else {
-            return XCTFail("missing a-1")
-        }
-        model.playEpisode(episode.episode, podcastTitle: episode.podcastTitle, feedURL: episode.feedURL)
-        model.startPlaybackWhenReady()
-
-        model.skipToNextShow()
-
-        waitUntil(timeout: 3.0) {
-            model.nowPlayingEpisodeID == "b-1"
-                || model.podcastStore.isDismissedFromAutoplay(episodeID: "a-1")
-        }
-
-        XCTAssertTrue(model.podcastStore.isDismissedFromAutoplay(episodeID: "a-1"))
         model.stopAndDismissPlayer()
     }
 

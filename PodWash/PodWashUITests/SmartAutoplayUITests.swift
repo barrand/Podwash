@@ -52,7 +52,7 @@ final class SmartAutoplayUITests: XCTestCase {
         }
     }
 
-    func testNextShowControlExistsOnMiniPlayer() throws {
+    func testNextControlExistsOnMiniPlayer() throws {
         let app = XCUIApplication()
         app.launchArguments += [
             "-UITestFixtureLibrary",
@@ -76,8 +76,8 @@ final class SmartAutoplayUITests: XCTestCase {
         let mini = app.descendants(matching: .any)["miniPlayer"]
         XCTAssertTrue(mini.waitForExistence(timeout: 15))
 
-        let nextShow = app.buttons["miniPlayerNextShow"]
-        XCTAssertTrue(nextShow.waitForExistence(timeout: 8))
-        XCTAssertEqual(nextShow.label, "Next show")
+        let next = app.buttons["miniPlayerNext"]
+        XCTAssertTrue(next.waitForExistence(timeout: 8))
+        XCTAssertEqual(next.label, "Next")
     }
 }

@@ -23,6 +23,7 @@ final class TranscriptUITests: XCTestCase {
     private static let transcriptFixtureArg = "-UITestFixtureTranscript"
     private static let transcriptNoCacheArg = "-UITestFixtureTranscriptNoCache"
     private static let longFollowFixtureArg = "-UITestFixtureTranscriptLongFollow"
+    private static let scrollFollowFixtureArg = "-UITestFixtureTranscriptScrollFollow"
     private static let progressiveFixtureArg = "-UITestFixtureProgressivePlayback"
     private static let firstChunkProgressValue = 0.25
     private static let progressTolerance = 0.02
@@ -181,36 +182,78 @@ final class TranscriptUITests: XCTestCase {
 
     @MainActor
     func testManualScrollShowsFollowButtonAndSnapRestoresFollow() throws {
-        let app = launchTranscriptFixtureApp()
+        let app = launchScrollFollowTranscriptFixtureApp()
         startPlaybackAndOpenTranscript(app)
 
-        waitForAccessibilityValue(
-            "on",
-            identifier: "transcript.followMode",
-            in: app,
-            timeout: transcriptOpenTimeout,
-            message: "Follow mode must begin on."
-        )
-
         let transcript = element("transcript.view", in: app)
-        transcript.swipeUp()
-        waitForAccessibilityValue(
-            "off",
-            identifier: "transcript.followMode",
-            in: app,
-            timeout: transcriptOpenTimeout,
-            message: "A manual transcript scroll must suspend follow mode."
+        let miniPlayer = element("miniPlayer", in: app)
+        XCTAssertTrue(transcript.exists)
+        XCTAssertTrue(miniPlayer.exists)
+        XCTAssertFalse(element("transcript.snapToFollow", in: app).exists)
+
+        guard let initialIndex = activeWordIndex(in: app) else {
+            XCTFail("The scroll-follow fixture must expose an active word index.")
+            return
+        }
+        let initialWord = element("transcript.word_\(initialIndex)", in: app)
+        XCTAssertTrue(isVisible(initialWord, in: transcript, above: miniPlayer))
+
+        for _ in 0 ..< 3 where isVisible(initialWord, in: transcript, above: miniPlayer) {
+            transcript.swipeUp()
+        }
+        XCTAssertFalse(
+            isVisible(initialWord, in: transcript, above: miniPlayer),
+            "A real manual scroll must move the active word outside the viewport."
         )
 
         let snap = element("transcript.snapToFollow", in: app)
         XCTAssertTrue(waitForElementHittable(snap, timeout: transcriptOpenTimeout))
+        XCTAssertLessThanOrEqual(
+            snap.frame.maxY,
+            miniPlayer.frame.minY,
+            "The follow button must sit above, not behind, the mini-player."
+        )
         snap.tap()
-        waitForAccessibilityValue(
-            "on",
-            identifier: "transcript.followMode",
-            in: app,
-            timeout: transcriptOpenTimeout,
-            message: "Snap-to-follow must restore follow mode."
+
+        let disappeared = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: snap
+        )
+        XCTAssertEqual(XCTWaiter().wait(for: [disappeared], timeout: transcriptOpenTimeout), .completed)
+
+        guard let snappedIndex = activeWordIndex(in: app) else {
+            XCTFail("The active word index must remain available after snapping.")
+            return
+        }
+        let snappedWord = element("transcript.word_\(snappedIndex)", in: app)
+        XCTAssertTrue(
+            waitUntil(timeout: transcriptOpenTimeout) {
+                isVisible(snappedWord, in: transcript, above: miniPlayer)
+            },
+            "Snapping must return the current active word to the viewport."
+        )
+
+        let nextBlockStart = ((snappedIndex / 4) + 1) * 4
+        XCTAssertTrue(
+            waitUntil(timeout: 8) {
+                guard let liveIndex = activeWordIndex(in: app) else { return false }
+                return liveIndex >= nextBlockStart
+            },
+            "Live playback must advance into the next transcript render block."
+        )
+        XCTAssertFalse(snap.exists, "Following must remain on at the next render-block boundary.")
+
+        guard let followedIndex = activeWordIndex(in: app) else {
+            XCTFail("The active word index must advance with live playback.")
+            return
+        }
+        XCTAssertTrue(
+            isVisible(
+                element("transcript.word_\(followedIndex)", in: app),
+                in: transcript,
+                above: miniPlayer
+            ),
+            "The live active word must remain visible after following into the next block."
         )
     }
 
@@ -460,6 +503,15 @@ final class TranscriptUITests: XCTestCase {
     }
 
     @MainActor
+    private func launchScrollFollowTranscriptFixtureApp() -> XCUIApplication {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchArguments.append(Self.scrollFollowFixtureArg)
+        app.launch()
+        return app
+    }
+
+    @MainActor
     private func launchProgressiveFixtureApp() -> XCUIApplication {
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
@@ -589,6 +641,11 @@ final class TranscriptUITests: XCTestCase {
     }
 
     @MainActor
+    private func activeWordIndex(in app: XCUIApplication) -> Int? {
+        accessibilityValue(for: "transcript.activeWord", in: app).flatMap(Int.init)
+    }
+
+    @MainActor
     private func waitForAccessibilityValue(
         _ expected: String,
         identifier: String,
@@ -602,6 +659,28 @@ final class TranscriptUITests: XCTestCase {
         let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
         XCTAssertEqual(result, .completed, message)
         XCTAssertEqual(control.value as? String, expected)
+    }
+
+    @MainActor
+    private func isVisible(
+        _ element: XCUIElement,
+        in transcript: XCUIElement,
+        above miniPlayer: XCUIElement
+    ) -> Bool {
+        guard element.exists else { return false }
+        let visibleTop = transcript.frame.minY
+        let visibleBottom = min(transcript.frame.maxY, miniPlayer.frame.minY)
+        return element.frame.midY >= visibleTop && element.frame.midY <= visibleBottom
+    }
+
+    @MainActor
+    private func waitUntil(timeout: TimeInterval, condition: () -> Bool) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if condition() { return true }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        return condition()
     }
 
     @MainActor

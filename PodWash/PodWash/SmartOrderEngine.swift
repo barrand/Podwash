@@ -83,20 +83,16 @@ nonisolated struct SmartOrderEngine: Sendable {
     }
 
     /// Next episode after `currentEpisodeID` ends (or nil if nothing left).
-    /// - Parameter skipToNextShow: when true (Skip control), exit active binge and
-    ///   pick the next show in LRP rotation (not the next episode in-show).
     func nextEpisode(
         shows: [SmartOrderShow],
         currentEpisodeID: String?,
-        currentFeedURL: URL?,
-        skipToNextShow: Bool = false
+        currentFeedURL: URL?
     ) -> ComingUpItem? {
         peek(
             count: 1,
             shows: shows,
             currentEpisodeID: currentEpisodeID,
-            currentFeedURL: currentFeedURL,
-            skipToNextShow: skipToNextShow
+            currentFeedURL: currentFeedURL
         ).first
     }
 
@@ -105,8 +101,7 @@ nonisolated struct SmartOrderEngine: Sendable {
         count: Int,
         shows: [SmartOrderShow],
         currentEpisodeID: String?,
-        currentFeedURL: URL?,
-        skipToNextShow: Bool = false
+        currentFeedURL: URL?
     ) -> [ComingUpItem] {
         guard count > 0 else { return [] }
 
@@ -118,15 +113,8 @@ nonisolated struct SmartOrderEngine: Sendable {
             excludeIDs.insert(currentEpisodeID)
         }
 
-        // Simulate dismiss of current when skipping to next show.
-        if skipToNextShow, let currentEpisodeID {
-            working = Self.markDismissed(episodeID: currentEpisodeID, in: working)
-            bingeURL = nil
-        }
-
-        // Enter binge if current show is binge and we're not skipping away.
-        if !skipToNextShow,
-           let feedURL = currentFeedURL,
+        // Continue in a binge show when the just-finished episode belongs to it.
+        if let feedURL = currentFeedURL,
            let show = working.first(where: { $0.feedURL == feedURL }),
            show.isBinge {
             bingeURL = feedURL
@@ -194,30 +182,6 @@ nonisolated struct SmartOrderEngine: Sendable {
             feedURL: show.feedURL,
             isBinge: show.isBinge
         )
-    }
-
-    private static func markDismissed(episodeID: String, in shows: [SmartOrderShow]) -> [SmartOrderShow] {
-        shows.map { show in
-            var copy = show
-            copy = SmartOrderShow(
-                feedURL: show.feedURL,
-                title: show.title,
-                isBinge: show.isBinge,
-                lastHeardAt: show.lastHeardAt,
-                episodes: show.episodes.map { ep in
-                    guard ep.id == episodeID else { return ep }
-                    return SmartOrderEpisode(
-                        id: ep.id,
-                        title: ep.title,
-                        pubDate: ep.pubDate,
-                        isPlayed: ep.isPlayed,
-                        playbackPosition: ep.playbackPosition,
-                        dismissedFromAutoplay: true
-                    )
-                }
-            )
-            return copy
-        }
     }
 
     private static func touchLastHeard(

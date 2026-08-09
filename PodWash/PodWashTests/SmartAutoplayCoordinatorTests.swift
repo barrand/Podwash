@@ -33,7 +33,7 @@ final class SmartAutoplayCoordinatorTests: XCTestCase {
 
         let coordinator = QueueCoordinator(queue: queue, player: player, resume: resume)
         var smartCalled = false
-        coordinator.resolveSmartNext = { _, _ in
+        coordinator.resolveSmartNext = { _ in
             smartCalled = true
             return "smart-ep"
         }
@@ -52,8 +52,7 @@ final class SmartAutoplayCoordinatorTests: XCTestCase {
         let player = EpisodePlayingSpy()
 
         let coordinator = QueueCoordinator(queue: queue, player: player, resume: resume)
-        coordinator.resolveSmartNext = { _, skip in
-            XCTAssertFalse(skip)
+        coordinator.resolveSmartNext = { _ in
             return "smart-ep"
         }
 
@@ -61,30 +60,6 @@ final class SmartAutoplayCoordinatorTests: XCTestCase {
 
         player.waitForPlayCallCount(1, timeout: 1.0)
         XCTAssertEqual(player.playCalls[0].episodeID, "smart-ep")
-    }
-
-    func testSkipToNextShowRequestsSmartWithFlag() throws {
-        let persistence = harness.makeController()
-        let queue = QueueStore(context: persistence.viewContext)
-        let resume = ResumePositionStore(context: persistence.viewContext)
-        let player = EpisodePlayingSpy()
-
-        try queue.add("queued-ep")
-
-        let coordinator = QueueCoordinator(queue: queue, player: player, resume: resume)
-        var sawSkip = false
-        coordinator.resolveSmartNext = { _, skip in
-            sawSkip = skip
-            return "next-show-ep"
-        }
-
-        coordinator.handleSkipToNextShow(episodeID: "current-ep", currentPosition: 12)
-
-        player.waitForPlayCallCount(1, timeout: 1.0)
-        XCTAssertTrue(sawSkip)
-        // Skip bypasses manual queue (next show semantics).
-        XCTAssertEqual(player.playCalls[0].episodeID, "next-show-ep")
-        XCTAssertEqual(queue.queueEpisodeIDs(), ["queued-ep"])
     }
 
     func testBingeFlagPersistsAcrossReload() throws {

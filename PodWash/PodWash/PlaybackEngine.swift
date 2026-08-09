@@ -1014,8 +1014,8 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
 
     /// Drives a muted XCTest / UITest AVPlayer from wall clock so periodic time
     /// observers / `playback.elapsed` still advance when the host clock is frozen.
-    /// Does **not** write `currentTime` each tick — skip landing must stay pinned
-    /// in `[end − 0.1, end]` while the player continues (IntervalMuteSkip AC4).
+    /// Publish that clock through `currentTime`, except while a skip landing owns
+    /// the observable clock and must stay pinned in `[end − 0.1, end]`.
     private func tickSilenceWallClock() {
         guard wantsPlayback else { return }
         guard !silenceClockSuspended else { return }
@@ -1036,6 +1036,9 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         }
 
         lastStallSample = target
+        if !suppressCurrentTimeSample {
+            currentTime = target
+        }
         // Serialize seeks so each target can land (rapid cancel starves observers).
         guard !silenceSeekInFlight else {
             touchUI()

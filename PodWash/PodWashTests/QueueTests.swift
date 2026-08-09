@@ -115,6 +115,25 @@ final class QueueTests: XCTestCase {
         XCTAssertEqual(coordinator.currentEpisodeID, "fixture-ep-002")
     }
 
+    func testSkipToNextPlaysFirstUpNextEpisodeAndKeepsCurrentResumable() throws {
+        let persistence = harness.makeController()
+        let queue = QueueStore(context: persistence.viewContext)
+        let resume = ResumePositionStore(context: persistence.viewContext)
+        let player = EpisodePlayingSpy()
+
+        try queue.add("fixture-ep-002")
+        try queue.add("fixture-ep-003")
+
+        let coordinator = QueueCoordinator(queue: queue, player: player, resume: resume)
+        coordinator.handleSkipToNext(episodeID: "fixture-ep-001", currentPosition: 123.0)
+
+        player.waitForPlayCallCount(1, timeout: 1.0)
+        XCTAssertEqual(player.playCalls.map(\.episodeID), ["fixture-ep-002"])
+        XCTAssertEqual(queue.queueEpisodeIDs(), ["fixture-ep-003"])
+        XCTAssertEqual(coordinator.currentEpisodeID, "fixture-ep-002")
+        XCTAssertEqual(resume.position(for: "fixture-ep-001"), 123.0)
+    }
+
     func testRestoreReinstatesExactManualOrderAfterClear() throws {
         let persistence = harness.makeController()
         let queue = QueueStore(context: persistence.viewContext)

@@ -51,6 +51,10 @@ final class LibraryUITests: XCTestCase {
         app.descendants(matching: .any)[identifier]
     }
 
+    private func tab(_ label: String, in app: XCUIApplication) -> XCUIElement {
+        app.tabBars.buttons[label]
+    }
+
     private func waitForLibraryRoot(_ app: XCUIApplication, timeout: TimeInterval = 5) {
         let root = element("libraryRoot", in: app)
         XCTAssertTrue(root.waitForExistence(timeout: timeout), "libraryRoot must appear within \(timeout)s")
@@ -375,19 +379,37 @@ final class LibraryUITests: XCTestCase {
         XCTAssertTrue(settings.isHittable, "settingsButton must be hittable from Library tab")
     }
 
-    // MARK: - AC6: Discover tab entry
+    // MARK: - Native tabs stay listener-reachable with mini-player chrome
 
     @MainActor
-    func testDiscoverEntryFromLibrary() throws {
+    func testNativeTabsRouteAndRemainHittableWithMiniPlayer() throws {
         let app = launchLibraryApp()
         waitForLibraryRoot(app)
 
-        let discoverTab = element("tabDiscover", in: app)
+        let discoverTab = tab("Discover", in: app)
         XCTAssertTrue(discoverTab.waitForExistence(timeout: fixtureTimeout))
+        XCTAssertTrue(discoverTab.isHittable)
         discoverTab.tap()
 
         let discoverRoot = element("discoverRoot", in: app)
         XCTAssertTrue(discoverRoot.waitForExistence(timeout: fixtureTimeout), "discoverRoot must appear within \(fixtureTimeout)s")
+
+        let libraryTab = tab("Library", in: app)
+        XCTAssertTrue(libraryTab.waitForExistence(timeout: fixtureTimeout))
+        libraryTab.tap()
+        waitForLibraryRoot(app)
+
+        playFirstEpisodeAndWaitForMiniPlayer(app)
+        let miniPlayer = element("miniPlayer", in: app)
+        for name in ["Library", "Queue", "Discover"] {
+            let control = tab(name, in: app)
+            XCTAssertTrue(control.waitForExistence(timeout: fixtureTimeout), "\(name) tab must exist")
+            XCTAssertTrue(control.isHittable, "\(name) tab must remain hittable with mini-player visible")
+            XCTAssertFalse(control.frame.intersects(miniPlayer.frame), "\(name) must not overlap mini-player")
+        }
+
+        discoverTab.tap()
+        XCTAssertTrue(discoverRoot.waitForExistence(timeout: fixtureTimeout), "Discover must remain reachable with mini-player visible")
     }
 
     // MARK: - AC7: empty library prompts Discover navigation
@@ -422,28 +444,28 @@ final class LibraryUITests: XCTestCase {
         let miniPlayer = element("miniPlayer", in: app)
         XCTAssertTrue(miniPlayer.exists, "miniPlayer must remain visible while switching tabs")
 
-        let discoverTab = element("tabDiscover", in: app)
+        let discoverTab = tab("Discover", in: app)
         XCTAssertTrue(discoverTab.waitForExistence(timeout: fixtureTimeout))
-        waitForHittable(discoverTab, timeout: fixtureTimeout, message: "tabDiscover must be hittable with miniPlayer visible")
+        waitForHittable(discoverTab, timeout: fixtureTimeout, message: "Discover must be hittable with miniPlayer visible")
         discoverTab.tap()
 
         let discoverRoot = element("discoverRoot", in: app)
         XCTAssertTrue(
             discoverRoot.waitForExistence(timeout: fixtureTimeout),
-            "discoverRoot must appear within \(fixtureTimeout)s after tapping tabDiscover with miniPlayer visible"
+            "discoverRoot must appear within \(fixtureTimeout)s after tapping Discover with miniPlayer visible"
         )
 
         XCTAssertTrue(miniPlayer.exists, "miniPlayer must remain visible after switching to Discover")
 
-        let libraryTab = element("tabLibrary", in: app)
+        let libraryTab = tab("Library", in: app)
         XCTAssertTrue(libraryTab.waitForExistence(timeout: fixtureTimeout))
-        waitForHittable(libraryTab, timeout: fixtureTimeout, message: "tabLibrary must be hittable with miniPlayer visible")
+        waitForHittable(libraryTab, timeout: fixtureTimeout, message: "Library must be hittable with miniPlayer visible")
         libraryTab.tap()
 
         let libraryRoot = element("libraryRoot", in: app)
         XCTAssertTrue(
             libraryRoot.waitForExistence(timeout: fixtureTimeout),
-            "libraryRoot must appear within \(fixtureTimeout)s after tapping tabLibrary with miniPlayer visible"
+            "libraryRoot must appear within \(fixtureTimeout)s after tapping Library with miniPlayer visible"
         )
     }
 
@@ -455,12 +477,12 @@ final class LibraryUITests: XCTestCase {
         let miniPlayer = element("miniPlayer", in: app)
         XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout))
 
-        for (tabID, tabName) in [("tabDiscover", "tabDiscover"), ("tabLibrary", "tabLibrary")] {
-            let tab = element(tabID, in: app)
-            XCTAssertTrue(tab.waitForExistence(timeout: fixtureTimeout), "\(tabName) must exist with miniPlayer visible")
+        for tabName in ["Library", "Queue", "Discover"] {
+            let tabControl = tab(tabName, in: app)
+            XCTAssertTrue(tabControl.waitForExistence(timeout: fixtureTimeout), "\(tabName) must exist with miniPlayer visible")
 
             let miniFrame = miniPlayer.frame
-            let tabFrame = tab.frame
+            let tabFrame = tabControl.frame
             XCTAssertFalse(
                 miniFrame.intersects(tabFrame),
                 "\(tabName) frame must not intersect miniPlayer frame; miniPlayer=\(miniFrame) \(tabName)=\(tabFrame)"

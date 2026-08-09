@@ -479,6 +479,11 @@ with open(path, 'w', encoding='utf-8') as fh:
 
 if [ -d "$RESULT_BUNDLE" ]; then
     xcrun xcresulttool get test-results tests --path "$RESULT_BUNDLE" > "$RUN_DIR/tests.json" 2>/dev/null || true
+    mkdir -p "$RUN_DIR/attachments"
+    xcrun xcresulttool export attachments \
+        --path "$RESULT_BUNDLE" \
+        --output-path "$RUN_DIR/attachments" \
+        --only-failures >/dev/null 2>&1 || true
     /usr/bin/python3 -c '
 import json, pathlib, sys
 source, dest = map(pathlib.Path, sys.argv[1:])
@@ -488,17 +493,28 @@ except Exception:
     dest.write_text("No structured failure details available; inspect xcodebuild.log and result.xcresult.\n")
     raise SystemExit
 failures = []
+def failure_messages(node):
+    messages = []
+    for child in node.get("children", []):
+        if not isinstance(child, dict):
+            continue
+        if child.get("nodeType") == "Failure Message" and child.get("name"):
+            messages.append(str(child["name"]))
+        messages.extend(failure_messages(child))
+    return messages
+
 def walk(value):
-    if isinstance(value, dict):
-        status = str(value.get("testStatus", value.get("status", ""))).lower()
-        if "fail" in status:
-            name = value.get("name") or value.get("testIdentifier") or value.get("identifier") or "Unnamed failed test"
-            message = value.get("failureSummary") or value.get("failureMessage") or value.get("message") or ""
-            failures.append((str(name), str(message)))
-        for child in value.values(): walk(child)
-    elif isinstance(value, list):
-        for child in value: walk(child)
-walk(payload)
+    if isinstance(value, list):
+        for child in value:
+            walk(child)
+        return
+    if not isinstance(value, dict):
+        return
+    if value.get("nodeType") == "Test Case" and str(value.get("result", "")).lower() == "failed":
+        name = value.get("nodeIdentifier") or value.get("name") or "Unnamed failed test"
+        failures.append((str(name), " | ".join(failure_messages(value))))
+    walk(value.get("children", []))
+walk(payload.get("testNodes", payload))
 lines = ["# Verification failures", ""]
 if failures:
     for name, message in failures:

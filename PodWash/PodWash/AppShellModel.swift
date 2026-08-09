@@ -533,11 +533,8 @@ final class AppShellModel {
             sessionStore: nowPlayingSessionStore
         )
         queue.bindCurrentEpisode(episode.id)
-        queue.resolveSmartNext = { [weak self] endedID, skipToNextShow in
-            self?.resolveSmartNextEpisodeID(
-                endedEpisodeID: endedID,
-                skipToNextShow: skipToNextShow
-            )
+        queue.resolveSmartNext = { [weak self] endedID in
+            self?.resolveSmartNextEpisodeID(endedEpisodeID: endedID)
         }
         queue.resolveQueuedNext = { [weak self] ids in
             self?.firstReadyQueuedEpisode(in: ids)
@@ -989,11 +986,12 @@ final class AppShellModel {
         // Durable session id is intentionally retained (ADR-027 intake).
     }
 
-    /// Next Show control — dismiss current from autoplay and advance (ADR-029).
-    func skipToNextShow() {
+    /// Mini-player Next control: advances to the first episode in manual Up Next.
+    /// The interrupted episode remains resumable instead of being dismissed from autoplay.
+    func skipToNextUp() {
         guard let episodeID = nowPlayingEpisodeID else { return }
         let position = engine?.currentTime
-        queueCoordinator?.handleSkipToNextShow(
+        queueCoordinator?.handleSkipToNext(
             episodeID: episodeID,
             currentPosition: position
         )
@@ -1030,23 +1028,16 @@ final class AppShellModel {
     }
 
     private func resolveSmartNextEpisodeID(
-        endedEpisodeID: String,
-        skipToNextShow: Bool
+        endedEpisodeID: String
     ) -> String? {
         guard settingsStore.smartAutoplayEnabled else { return nil }
-
-        if skipToNextShow {
-            try? podcastStore.setDismissedFromAutoplay(true, episodeID: endedEpisodeID)
-            activeBingeFeedURL = nil
-        }
 
         var engine = SmartOrderEngine(activeBingeFeedURL: activeBingeFeedURL)
         let shows = podcastStore.smartOrderShows()
         guard let next = engine.nextEpisode(
             shows: shows,
             currentEpisodeID: endedEpisodeID,
-            currentFeedURL: nowPlayingFeedURL,
-            skipToNextShow: skipToNextShow
+            currentFeedURL: nowPlayingFeedURL
         ) else {
             return nil
         }
@@ -1712,6 +1703,9 @@ final class AppShellModel {
     }
 
     private func resolveAudioURL(for episode: Episode) -> URL? {
+        if FixtureTranscript.isScrollFollowEnabled {
+            return FixtureProgressivePlayback.bundledURL()
+        }
         if FixtureProgressivePlayback.isEnabled {
             return FixtureProgressivePlayback.bundledURL()
         }
