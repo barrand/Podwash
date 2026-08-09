@@ -13,9 +13,11 @@ record the owner, date, and evidence beside each check when it is done.
   and Release entitlements are correct for `com.barrandfarm.PodWash`. Completed
   2026-08-08: App Store validation succeeded with the paid team, matching bundle
   ID, production App Attest entitlement, and Firebase configuration.
-- [ ] **1.4** Run `scripts/release-verify.sh` from the clean release commit, retain its
+- [x] **1.4** Run `scripts/release-verify.sh` from the clean release commit, retain its
   `build/test-results/latest.md` evidence, then Archive and Validate the Release build.
-  Archive/validation completed 2026-08-08; a fresh full suite is still required.
+  Completed 2026-08-09: release verification passed 79/79 with zero skips or retries
+  (`verify-20260809-090316-93976`, 1233s) at `3a19cd1`; Organizer validated the
+  `1.0 (3)` Release archive successfully.
 - [ ] **1.5** Install the archive on a physical iPhone and test fresh install, playback,
   downloads, background audio, transcript follow, and offline behavior.
 - [ ] **1.6** Test real-world interruptions: lock screen and Control Center controls,
@@ -111,7 +113,9 @@ record the owner, date, and evidence beside each check when it is done.
 - Signing prerequisite **1.3** is complete: App Store validation succeeded. The
   archive's signed entitlements include production App Attest and the matching
   Firebase configuration.
+- Release verification prerequisite **1.4** is complete: build `1.0 (3)` passed the
+  release verification gate and Organizer validation on 2026-08-09.
 - The repository intentionally omits `GoogleService-Info.plist`; a production
   archive must supply it by a secure delivery process.
-- The project currently uses marketing version `1.0`, build `2`, and an iOS 26.1
+- The project currently uses marketing version `1.0`, build `3`, and an iOS 26.1
   deployment target.
