@@ -374,6 +374,7 @@ private struct WrappingTranscriptWordsLayout: Layout {
             if x > bounds.minX { x += horizontalSpacing }
             subview.place(
                 at: CGPoint(x: x, y: y),
+                anchor: .topLeading,
                 proposal: ProposedViewSize(width: size.width, height: size.height)
             )
             x += size.width

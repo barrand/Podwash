@@ -234,6 +234,22 @@ final class TranscriptUITests: XCTestCase {
     }
 
     @MainActor
+    func testParagraphTimestampDoesNotOverlapTranscriptWords() throws {
+        let app = launchTranscriptFixtureApp()
+        openTranscriptFromEpisodeRow(app)
+
+        let timestamp = element("transcript.paragraph_0.timestamp", in: app)
+        let firstWord = element("transcript.word_0", in: app)
+        XCTAssertTrue(timestamp.waitForExistence(timeout: transcriptOpenTimeout))
+        XCTAssertTrue(firstWord.waitForExistence(timeout: transcriptOpenTimeout))
+        XCTAssertLessThanOrEqual(
+            timestamp.frame.maxY,
+            firstWord.frame.minY,
+            "The first transcript row must start below its paragraph timestamp."
+        )
+    }
+
+    @MainActor
     func testAdjacentTranscriptWordsShareLine() throws {
         let app = launchTranscriptFixtureApp()
         openTranscriptFromEpisodeRow(app)
