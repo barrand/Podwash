@@ -78,7 +78,27 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.defaultPlaybackRate, 1.0, accuracy: rateTolerance)
         XCTAssertFalse(store.autoDownloadEnabled)
         XCTAssertFalse(store.autoDeleteAfterPlayedEnabled)
+        XCTAssertFalse(store.cloudTranscriptProcessingEnabled)
+        XCTAssertFalse(store.cloudTranscriptProcessingConsentPrompted)
+        XCTAssertFalse(store.cloudTranscriptProcessingConsentGranted)
+        XCTAssertFalse(store.canUseCloudTranscriptProcessing)
         XCTAssertTrue(store.customWords.isEmpty)
+    }
+
+    func testCloudTranscriptProcessingRequiresExplicitConsent() {
+        let store = makeStore()
+
+        store.cloudTranscriptProcessingEnabled = true
+        XCTAssertFalse(store.canUseCloudTranscriptProcessing)
+
+        store.cloudTranscriptProcessingConsentPrompted = true
+        store.cloudTranscriptProcessingConsentGranted = true
+        XCTAssertTrue(store.canUseCloudTranscriptProcessing)
+
+        store.cloudTranscriptProcessingEnabled = false
+        store.cloudTranscriptProcessingConsentGranted = false
+        let reloaded = SettingsStore(userDefaults: userDefaults)
+        XCTAssertFalse(reloaded.canUseCloudTranscriptProcessing)
     }
 
     // MARK: - AC2: category toggle updates composed target set

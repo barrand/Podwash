@@ -45,10 +45,13 @@ struct TranscriptView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .background(BrandTheme.surface)
-                    .onScrollPhaseChange { _, newPhase in
-                        guard newPhase == .interacting else { return }
-                        noteUserScrollInteraction()
-                    }
+                    // A real drag is the only thing that suspends following. Scroll
+                    // phase callbacks also report proxy-driven animation, which made
+                    // the recovery button race with its own scroll request.
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 1)
+                            .onChanged { _ in noteUserScrollInteraction() }
+                    )
                     .onAppear {
                         alignToLiveWordOnOpen(proxy: proxy)
                     }

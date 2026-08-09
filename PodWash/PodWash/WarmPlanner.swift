@@ -142,7 +142,7 @@ import Observation
         // Cloud-off is a supported local-clean mode. A partial cache record proves
         // local transcription/profanity analysis completed even though no ad result
         // should be required for automatic playback.
-        if !settingsStore.cloudTranscriptProcessingEnabled {
+        if !settingsStore.canUseCloudTranscriptProcessing {
             return intervalCache.loadRecord(episodeID: episodeID, targetWords: targets) != nil
         }
         return intervalCache.isAnalysisCompleted(episodeID: episodeID, targetWords: targets)

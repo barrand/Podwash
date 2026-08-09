@@ -119,6 +119,46 @@ final class SettingsUITests: XCTestCase {
         return app.descendants(matching: .any)["muteOverlayControl"]
     }
 
+    private func cloudAdDetectionToggle(in app: XCUIApplication) -> XCUIElement {
+        let asSwitch = app.switches["cloudTranscriptProcessingToggle"]
+        if asSwitch.exists { return asSwitch }
+        return app.descendants(matching: .any)["cloudTranscriptProcessingToggle"]
+    }
+
+    // MARK: - Cloud ad detection consent
+
+    @MainActor
+    func testCloudAdDetectionRequiresExplicitConsent() throws {
+        let app = launchSettingsApp()
+        waitForSettingsRoot(app)
+
+        let toggle = cloudAdDetectionToggle(in: app)
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        XCTAssertEqual(toggle.value as? String, "0", "Fresh install must not send transcripts by default")
+
+        toggle.tap()
+        let sheet = app.descendants(matching: .any)["cloudTranscriptConsentSheet"]
+        XCTAssertTrue(sheet.waitForExistence(timeout: 5), "Enabling ad checks must show the disclosure")
+        XCTAssertTrue(app.staticTexts["Check for ad content?"].exists)
+
+        app.buttons["cloudConsentDeclineButton"].tap()
+        XCTAssertFalse(sheet.exists)
+        XCTAssertEqual(
+            cloudAdDetectionToggle(in: app).value as? String,
+            "0",
+            "Declining must keep cloud transcript processing off"
+        )
+
+        cloudAdDetectionToggle(in: app).tap()
+        XCTAssertTrue(sheet.waitForExistence(timeout: 5))
+        app.buttons["cloudConsentEnableButton"].tap()
+        XCTAssertEqual(
+            cloudAdDetectionToggle(in: app).value as? String,
+            "1",
+            "Only explicit acceptance may enable cloud transcript processing"
+        )
+    }
+
     // MARK: - Slice 16: mute overlay control cycles off/beep/quack
 
     @MainActor

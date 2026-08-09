@@ -10,6 +10,8 @@ import XCTest
 
 final class NowPlayingSessionUITests: XCTestCase {
 
+  private let fixtureRunIdentifier = "now-playing-\(UUID().uuidString)"
+
   private let nowPlayingSessionArgs = [
     "-UITestFixtureLibrary",
     "-UITestFixtureNowPlayingSession",
@@ -253,6 +255,7 @@ final class NowPlayingSessionUITests: XCTestCase {
   @MainActor
   private func launchApp(arguments: [String]) -> XCUIApplication {
     let app = XCUIApplication()
+    app.launchEnvironment["PODWASH_UI_TEST_RUN_ID"] = fixtureRunIdentifier
     app.launchArguments.append(contentsOf: arguments)
     app.launch()
     return app

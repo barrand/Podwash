@@ -13,8 +13,9 @@ record the owner, date, and evidence beside each check when it is done.
   and Release entitlements are correct for `com.barrandfarm.PodWash`. Completed
   2026-08-08: App Store validation succeeded with the paid team, matching bundle
   ID, production App Attest entitlement, and Firebase configuration.
-- [ ] **1.4** Run the full verification suite, then Archive and Validate the Release build.
-  Archive/validation completed 2026-08-08; full suite still required.
+- [ ] **1.4** Run `scripts/release-verify.sh` from the clean release commit, retain its
+  `build/test-results/latest.md` evidence, then Archive and Validate the Release build.
+  Archive/validation completed 2026-08-08; a fresh full suite is still required.
 - [ ] **1.5** Install the archive on a physical iPhone and test fresh install, playback,
   downloads, background audio, transcript follow, and offline behavior.
 - [ ] **1.6** Test real-world interruptions: lock screen and Control Center controls,
@@ -34,6 +35,13 @@ record the owner, date, and evidence beside each check when it is done.
   alerts, and kill switch are live.
 - [ ] **2.3** Verify consent copy and behavior: cloud ad detection sends transcript text,
   never audio; opt-out remains functional.
+  - [ ] Implement a first-use, explicit opt-in before any timed transcript text is
+    shared with Gemini or another cloud provider. The disclosure must identify the
+    third-party AI service, state that audio is not uploaded, and offer a clear
+    decline path.
+  - [ ] Test that declining consent sends no transcript text, that core playback
+    remains available, and that withdrawing consent in Settings stops all future
+    cloud submissions.
 - [ ] **2.4** Confirm production error reporting, dashboards, alerts, and an owner for
   responding to service failures after launch.
 - [ ] **2.5** Remove or confirm exclusion of all debug-only diagnostics and connectivity
@@ -46,8 +54,14 @@ record the owner, date, and evidence beside each check when it is done.
 - [ ] **3.3** Complete App Store Connect App Privacy responses for PodWash and third-party
   services (Firebase, Cloud Run, Gemini), including transcript handling,
   anonymous installation identity, retention, consent withdrawal, and deletion.
+  - [ ] Validate every response against the final app build and actual provider
+    configuration, including Firebase Authentication/App Check, Cloud Run/Firestore
+    logs, Gemini data-use settings, and support email.
 - [ ] **3.4** Document the user data-deletion/contact process in the privacy policy and
   verify that the support contact can fulfill it.
+  - [ ] Define and test how a request can identify, delete, or explain the limits
+    of deletion for anonymous Firebase accounts, cloud records, provider logs, and
+    locally stored data.
 - [ ] **3.5** Run Xcode's privacy report and add/update an app privacy manifest if it
   identifies required-reason API declarations for PodWash code.
 - [ ] **3.6** Complete export-compliance questions for the release build; retain the
@@ -61,6 +75,11 @@ record the owner, date, and evidence beside each check when it is done.
   tax, and banking details are active if the app will be paid or offer purchases.
 - [ ] **4.3** Provide name, subtitle, description, keywords, category, age rating,
   pricing/availability, copyright, icon, and device screenshots.
+  - [ ] Finalize the fields in `docs/app-store-listing.md`, including legal developer
+    name, category, price, availability, age rating, and App Review notes.
+  - [ ] Prepare a stable release-build screenshot-capture flow with approved content;
+    capture the planned set on required iPhone and iPad device sizes after the final
+    Release/TestFlight build is available.
 - [ ] **4.4** Review the product page on each required device size; screenshots and copy
   must accurately reflect the shipped experience and any optional cloud feature.
 - [ ] **4.5** Add the Privacy Policy URL and Support URL in App Store Connect.
@@ -94,5 +113,5 @@ record the owner, date, and evidence beside each check when it is done.
   Firebase configuration.
 - The repository intentionally omits `GoogleService-Info.plist`; a production
   archive must supply it by a secure delivery process.
-- The project currently uses marketing version `1.0`, build `1`, and an iOS 26.1
+- The project currently uses marketing version `1.0`, build `2`, and an iOS 26.1
   deployment target.

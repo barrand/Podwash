@@ -69,8 +69,7 @@ final class AppShellModel {
     /// Episode awaiting download-before-play (channel cleaning on, no local file).
     private var pendingDownloadForPlayEpisodeID: String?
 
-    /// Legacy compatibility state for older tests. Cloud detection is now enabled by
-    /// default and the shell never blocks playback behind this disclosure.
+    /// Compatibility state for the cloud-ad-detection disclosure.
     var isCloudTranscriptConsentPresented = false
     private var pendingCloudConsentEpisode: Episode?
     private var pendingCloudConsentPodcastTitle = ""
@@ -760,7 +759,7 @@ final class AppShellModel {
                     unrelatedContent: unrelated,
                     audioURL: audioURL
                 )
-                if !settingsStore.cloudTranscriptProcessingEnabled {
+                if !settingsStore.canUseCloudTranscriptProcessing {
                     updateForegroundPreparation(
                         episodeID: episode.id,
                         stage: .ready,
@@ -801,6 +800,7 @@ final class AppShellModel {
     /// Accept the disclosure and resume the play request that triggered it.
     func enableCloudTranscriptProcessing() {
         settingsStore.cloudTranscriptProcessingConsentPrompted = true
+        settingsStore.cloudTranscriptProcessingConsentGranted = true
         settingsStore.cloudTranscriptProcessingEnabled = true
         isCloudTranscriptConsentPresented = false
         resumePendingCloudConsentPlay()
@@ -809,11 +809,10 @@ final class AppShellModel {
     /// Keep cloud analysis off without interrupting the already-created player session.
     func declineCloudTranscriptProcessing() {
         settingsStore.cloudTranscriptProcessingConsentPrompted = true
+        settingsStore.cloudTranscriptProcessingConsentGranted = false
         settingsStore.cloudTranscriptProcessingEnabled = false
         isCloudTranscriptConsentPresented = false
-        pendingCloudConsentEpisode = nil
-        pendingCloudConsentPodcastTitle = ""
-        pendingCloudConsentFeedURL = nil
+        resumePendingCloudConsentPlay()
     }
 
     private func resumePendingCloudConsentPlay() {
@@ -1072,7 +1071,9 @@ final class AppShellModel {
     }
 
     func refreshComingUp() {
-        guard settingsStore.smartAutoplayEnabled else {
+        guard settingsStore.smartAutoplayEnabled,
+              queueStore.queueEpisodeIDs().isEmpty
+        else {
             comingUpItems = []
             return
         }

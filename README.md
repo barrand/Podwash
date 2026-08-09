@@ -41,14 +41,20 @@ strongest legal posture.
 2. Select the shared `PodWash` scheme and an iOS Simulator target.
 3. Build and run (⌘R).
 
-Run the test suite the sanctioned way (dynamic simulator, result bundle, counts):
+Run verification through the sanctioned runner. Each invocation prints live phase
+updates and writes logs, an `.xcresult`, and a Markdown report under
+`build/test-results/` (the current result is `build/test-results/latest.md`).
 
 ```bash
-scripts/verify.sh                                      # full suite
-scripts/verify.sh -only-testing:PodWashTests/FooTests  # fast filtered loop
+scripts/verify.sh -only-testing:PodWashTests/FooTests  # focused local loop
+VERIFY_TIER=3a scripts/verify.sh                       # complete unit suite
+VERIFY_TIER=3b scripts/verify.sh                       # complete UI suite
+scripts/release-verify.sh                              # release test gate
 ```
 
-CI runs the full suite on every push (`.github/workflows/test.yml`).
+Set `VERIFY_VISIBLE_UI=1` for an opt-in Simulator foreground during focused UI
+diagnosis. Push CI runs build + unit tests; the complete unit/UI gate runs nightly,
+on manual dispatch, and immediately before a release.
 
 ## Project status
 

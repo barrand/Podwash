@@ -98,6 +98,16 @@ struct RootView: View {
         // stays visible-but-not-key; XCTest then synthesizes taps that miss UIKit
         // UISwitch controls (AnalysisProgressUITests recording: toggle stays off).
         .background(KeyWindowActivator())
+        .overlay(alignment: .topLeading) {
+            if FixtureRuntime.isFixtureLaunch, isFixtureReady {
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityIdentifier("fixture.ready")
+                    .accessibilityLabel("Fixture ready")
+                    .accessibilityValue(FixtureRuntime.runIdentifier)
+            }
+        }
         .task {
             await loadFixtureSkipOverrideIfNeeded()
             loadFixtureSettingsIfNeeded()
@@ -107,6 +117,27 @@ struct RootView: View {
             loadFixtureDiscoverIfNeeded()
             loadAppShellIfNeeded()
         }
+    }
+
+    private var isFixtureReady: Bool {
+        if FixtureSkipOverride.isEnabled || FixtureAudio.isEnabled {
+            return fixtureEngine != nil
+        }
+        if FixtureSettings.isEnabled {
+            return fixtureSettingsStore != nil
+        }
+        if FixtureBranding.isEnabled {
+            return fixtureEngine != nil && fixtureSettingsStore != nil
+        }
+        if FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled
+            || FixtureCleaningSummary.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch {
+            return fixtureFeedViewModel != nil && fixtureAnalysisViewModel != nil
+                && fixtureDownloadManager != nil && queueStore != nil
+        }
+        if FixtureDiscover.isEnabled {
+            return discoverViewModel != nil
+        }
+        return appShellModel != nil
     }
 
     private func loadFixtureSkipOverrideIfNeeded() async {

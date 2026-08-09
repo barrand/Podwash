@@ -135,6 +135,7 @@ final class ProductionAnalysisWiringTests: XCTestCase {
     /// Wiring tests drive `playEpisode` without UI, so fixtures must already be past that gate.
     private func applyCloudConsentAlreadyDecided(_ store: SettingsStore, enabled: Bool = true) {
         store.cloudTranscriptProcessingConsentPrompted = true
+        store.cloudTranscriptProcessingConsentGranted = enabled
         store.cloudTranscriptProcessingEnabled = enabled
     }
 

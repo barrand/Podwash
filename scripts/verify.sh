@@ -27,7 +27,8 @@
 #
 # Behavior:
 #   - Resolves an available iPhone simulator dynamically (no hardcoded device names).
-#   - Writes a timestamped .xcresult bundle under build/test-results/ (gitignored).
+#   - Writes a self-contained timestamped run directory under build/test-results/
+#     (raw Xcode log, live status, .xcresult and final report).
 #   - Retries flaky unit-test failures once (-retry-tests-on-failure -test-iterations 2)
 #     when the run is unit-only (no PodWashUITests in args). Full tier-3 includes UITests
 #     in the suite but not in argv, so retries historically applied — set VERIFY_NO_RETRY=1
@@ -182,10 +183,47 @@ esac
 
 # ---------------------------------------------------------------------- run --
 STAMP=$(date +%Y%m%d-%H%M%S)
-RESULT_BUNDLE="$RESULTS_DIR/verify-$STAMP.xcresult"
-mkdir -p "$RESULTS_DIR"
+RUN_ID="verify-$STAMP-$$"
+RUN_DIR="$RESULTS_DIR/$RUN_ID"
+RESULT_BUNDLE="$RUN_DIR/result.xcresult"
+RAW_LOG="$RUN_DIR/xcodebuild.log"
+STATUS_JSON="$RUN_DIR/status.json"
+STATUS_MD="$RUN_DIR/status.md"
+LATEST_JSON="$RESULTS_DIR/latest.json"
+LATEST_MD="$RESULTS_DIR/latest.md"
+mkdir -p "$RUN_DIR"
 DESTINATION="platform=iOS Simulator,name=$SIM_NAME"
 VERIFY_T0=$(date +%s)
+
+write_status() {
+    _phase=$1
+    _detail=${2:-}
+    _elapsed=$(( $(date +%s) - VERIFY_T0 ))
+    /usr/bin/python3 -c '
+import json, sys
+path, latest, run_id, phase, detail, elapsed, bundle, log = sys.argv[1:]
+payload = {"run_id": run_id, "phase": phase, "detail": detail,
+           "elapsed_s": int(elapsed), "result_bundle": bundle,
+           "raw_log": log, "complete": phase in ("passed", "failed")}
+for target in (path, latest):
+    with open(target, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2)
+        fh.write("\\n")
+' "$STATUS_JSON" "$LATEST_JSON" "$RUN_ID" "$_phase" "$_detail" "$_elapsed" "$RESULT_BUNDLE" "$RAW_LOG"
+    {
+        echo "# PodWash verification status"
+        echo
+        echo "- Run: \`$RUN_ID\`"
+        echo "- Phase: **$_phase**"
+        echo "- Elapsed: ${_elapsed}s"
+        [ -n "$_detail" ] && echo "- Detail: $_detail"
+        echo "- Raw log: \`$RAW_LOG\`"
+        echo "- Result bundle: \`$RESULT_BUNDLE\`"
+    } > "$STATUS_MD"
+    cp "$STATUS_MD" "$LATEST_MD"
+}
+
+write_status "starting" "resolving simulator and test selection"
 
 # Expand env test ids into -only-testing: flags (word-split on whitespace).
 ONLY_FLAGS=""
@@ -197,10 +235,17 @@ if [ -n "$ENV_ONLY_TESTING" ]; then
     done
 fi
 
+echo "verify.sh: RUN $RUN_ID"
+echo "verify.sh: artifacts: $RUN_DIR"
 echo "verify.sh: scheme=$SCHEME simulator=\"$SIM_NAME\" tier=$TIER_LABEL action=$XCODE_ACTION filtered=$FILTERED"
 echo "verify.sh: derivedData=$DERIVED_DATA"
 if [ "$XCODE_ACTION" != "build-for-testing" ]; then
     echo "verify.sh: result bundle: $RESULT_BUNDLE"
+fi
+
+if [ "${VERIFY_VISIBLE_UI:-0}" = "1" ]; then
+    echo "verify.sh: visible UI diagnostics requested; foregrounding Simulator."
+    open -a Simulator >/dev/null 2>&1 || true
 fi
 
 # Retry flaky unit failures once. UITest filters never retry. Full tier-3 used
@@ -272,9 +317,11 @@ if [ "${VERIFY_SKIP_BOOT:-0}" != "1" ] && command -v xcrun >/dev/null 2>&1; then
 fi
 VERIFY_BOOT_S=$(( $(date +%s) - VERIFY_T_BOOT0 ))
 echo "verify.sh: boot_s=$VERIFY_BOOT_S"
+write_status "running" "simulator ready; xcodebuild starting"
 
 VERIFY_T_XC0=$(date +%s)
 set +e
+# Keep full Xcode output in the artifact while the terminal remains readable.
 # shellcheck disable=SC2086
 if [ "$XCODE_ACTION" = "build-for-testing" ]; then
     xcodebuild "$XCODE_ACTION" \
@@ -282,9 +329,8 @@ if [ "$XCODE_ACTION" = "build-for-testing" ]; then
         -scheme "$SCHEME" \
         -destination "$DESTINATION" \
         -derivedDataPath "$DERIVED_DATA" \
-        -quiet \
         $ONLY_FLAGS \
-        "$@"
+        "$@" >"$RAW_LOG" 2>&1 &
 else
     xcodebuild "$XCODE_ACTION" \
         -project "$PROJECT" \
@@ -293,10 +339,23 @@ else
         -derivedDataPath "$DERIVED_DATA" \
         -resultBundlePath "$RESULT_BUNDLE" \
         $RETRY_FLAGS \
-        -quiet \
         $ONLY_FLAGS \
-        "$@"
+        "$@" >"$RAW_LOG" 2>&1 &
 fi
+XC_PID=$!
+HEARTBEAT=0
+while kill -0 "$XC_PID" 2>/dev/null; do
+    sleep 15
+    HEARTBEAT=$((HEARTBEAT + 15))
+    CURRENT=$(grep -E 'Test Case .+ (started|passed|failed)|Testing started|Testing failed|Testing completed' "$RAW_LOG" 2>/dev/null | tail -n 1 || true)
+    [ -z "$CURRENT" ] && CURRENT="xcodebuild running"
+    echo "verify.sh: heartbeat elapsed=$(( $(date +%s) - VERIFY_T0 ))s — $CURRENT"
+    write_status "running" "$CURRENT"
+    if [ "$HEARTBEAT" -eq 180 ]; then
+        echo "verify.sh: ATTENTION — no completion after 3 minutes; inspect $RAW_LOG" >&2
+    fi
+done
+wait "$XC_PID"
 XC_EXIT=$?
 set -e
 VERIFY_T1=$(date +%s)
@@ -346,9 +405,11 @@ if [ "$FILTERED" -eq 1 ] && [ "$TIER_LABEL" != "3a" ] && [ "$TIER_LABEL" != "3b"
     echo "  NOTE: filtered run — ship gate still requires FULL suite green (tier 3)."
 fi
 echo "================================================"
+write_status "parsing" "extracting test summary"
 # Persist phase timing for Floor / factory diagnostics.
 echo "{\"tier\":\"$TIER_LABEL\",\"elapsed_s\":$VERIFY_ELAPSED,\"action\":\"$XCODE_ACTION\",\"filtered\":$FILTERED,\"exit\":$XC_EXIT,\"phases\":{\"boot_s\":$VERIFY_BOOT_S,\"xcodebuild_s\":$VERIFY_XCODEBUILD_S,\"parse_s\":$VERIFY_PARSE_S}}" \
-    > "$RESULTS_DIR/verify-timing-latest.json" 2>/dev/null || true
+    > "$RUN_DIR/timing.json" 2>/dev/null || true
+cp "$RUN_DIR/timing.json" "$RESULTS_DIR/verify-timing-latest.json" 2>/dev/null || true
 
 FINAL_EXIT=$XC_EXIT
 if [ -n "$SKIPPED" ] && [ "$SKIPPED" -gt 0 ]; then
@@ -415,5 +476,47 @@ with open(path, 'w', encoding='utf-8') as fh:
     json.dump(payload, fh, indent=2)
     fh.write('\n')
 " 2>/dev/null || true
+
+if [ -d "$RESULT_BUNDLE" ]; then
+    xcrun xcresulttool get test-results tests --path "$RESULT_BUNDLE" > "$RUN_DIR/tests.json" 2>/dev/null || true
+    /usr/bin/python3 -c '
+import json, pathlib, sys
+source, dest = map(pathlib.Path, sys.argv[1:])
+try:
+    payload = json.loads(source.read_text())
+except Exception:
+    dest.write_text("No structured failure details available; inspect xcodebuild.log and result.xcresult.\n")
+    raise SystemExit
+failures = []
+def walk(value):
+    if isinstance(value, dict):
+        status = str(value.get("testStatus", value.get("status", ""))).lower()
+        if "fail" in status:
+            name = value.get("name") or value.get("testIdentifier") or value.get("identifier") or "Unnamed failed test"
+            message = value.get("failureSummary") or value.get("failureMessage") or value.get("message") or ""
+            failures.append((str(name), str(message)))
+        for child in value.values(): walk(child)
+    elif isinstance(value, list):
+        for child in value: walk(child)
+walk(payload)
+lines = ["# Verification failures", ""]
+if failures:
+    for name, message in failures:
+        lines.append(f"- **{name}**" + (f": {message}" if message else ""))
+else:
+    lines.append("No individual failed test records were parsed. Inspect `tests.json` and `xcodebuild.log`.")
+dest.write_text("\n".join(lines) + "\n")
+' "$RUN_DIR/tests.json" "$RUN_DIR/failures.md" || true
+fi
+
+FINAL_PHASE="passed"
+[ "$FINAL_EXIT" -ne 0 ] && FINAL_PHASE="failed"
+write_status "$FINAL_PHASE" "exit=$FINAL_EXIT total=${TOTAL:-?} passed=${PASSED:-?} failed=${FAILED:-?} skipped=${SKIPPED:-?}"
+{
+    cat "$STATUS_MD"
+    echo "- Failure digest: \`$RUN_DIR/failures.md\`"
+    echo "- Rerun: \`VERIFY_TIER=$TIER_LABEL scripts/verify.sh $*\`"
+} > "$RUN_DIR/report.md"
+cp "$RUN_DIR/report.md" "$LATEST_MD"
 
 exit "$FINAL_EXIT"

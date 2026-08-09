@@ -8,7 +8,8 @@ on:
     - cron: "0 3 * * *"
 
 jobs:
-  # Full fast suite on every push — this is the dark-factory gate.
+  # Fast push gate: build plus units. UI tests run on the nightly/manual gate
+  # and the explicit local release gate so normal iteration stays responsive.
   test:
     if: github.event_name != 'schedule'
     runs-on: macos-26
@@ -47,18 +48,21 @@ jobs:
       - name: Setup ASR models
         run: scripts/setup-asr-models.sh
 
-      - name: Run full test suite
-        run: scripts/verify.sh
+      - name: Build for testing
+        run: VERIFY_TIER=0 VERIFY_NO_RETRY=1 scripts/verify.sh
 
-      - name: Upload result bundle
+      - name: Run unit suite
+        run: VERIFY_TIER=3a VERIFY_NO_RETRY=1 scripts/verify.sh
+
+      - name: Upload verification evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: xcresult
-          path: build/test-results/*.xcresult
+          name: verification-evidence
+          path: build/test-results/
           if-no-files-found: ignore
 
-  # Nightly / manual job for @slow tests (ASR benchmarks, long-audio fixtures).
+  # Nightly/manual complete fast gate plus @slow tests (ASR benchmarks, long-audio fixtures).
   # Stub until the slow target exists (Slice 05); VERIFY_ALLOW_SKIPS=1 because
   # slow suites may XCTSkip on hardware constraints — this leniency NEVER
   # applies to the fast gate above.
@@ -77,6 +81,9 @@ jobs:
       - name: Setup ASR models
         run: scripts/setup-asr-models.sh
 
+      - name: Run complete unit and UI suites
+        run: scripts/release-verify.sh
+
       - name: Run slow suite (no-op until PodWashSlowTests exists)
         run: |
           if xcodebuild -list -project PodWash/PodWash.xcodeproj | grep -q PodWashSlowTests; then
@@ -84,3 +91,11 @@ jobs:
           else
             echo "PodWashSlowTests target not present yet - skipping (stub)."
           fi
+
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-evidence
+          path: build/test-results/
+          if-no-files-found: ignore

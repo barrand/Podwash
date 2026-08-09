@@ -29,6 +29,7 @@ nonisolated final class SettingsStore: @unchecked Sendable {
         static let unrelatedContentEnabled = "podwash.settings.unrelatedContentEnabled"
         static let cloudTranscriptProcessingEnabled = "podwash.settings.cloudTranscriptProcessingEnabled"
         static let cloudTranscriptProcessingConsentPrompted = "podwash.settings.cloudTranscriptProcessingConsentPrompted"
+        static let cloudTranscriptProcessingConsentGranted = "podwash.settings.cloudTranscriptProcessingConsentGranted"
         static let unrelatedContentAction = "podwash.settings.unrelatedContentAction"
         static let muteOverlayMode = "podwash.settings.muteOverlayMode"
         static let smartAutoplayEnabled = "podwash.settings.smartAutoplayEnabled"
@@ -43,6 +44,7 @@ nonisolated final class SettingsStore: @unchecked Sendable {
             unrelatedContentEnabled,
             cloudTranscriptProcessingEnabled,
             cloudTranscriptProcessingConsentPrompted,
+            cloudTranscriptProcessingConsentGranted,
             unrelatedContentAction,
             muteOverlayMode,
             smartAutoplayEnabled,
@@ -78,13 +80,21 @@ nonisolated final class SettingsStore: @unchecked Sendable {
     var unrelatedContentEnabled: Bool {
         didSet { userDefaults.set(unrelatedContentEnabled, forKey: Keys.unrelatedContentEnabled) }
     }
-    /// Cloud ad detection is enabled by default; listeners can still opt out in Settings.
+    /// Cloud ad detection remains off until the listener explicitly enables it.
     var cloudTranscriptProcessingEnabled: Bool {
         didSet { userDefaults.set(cloudTranscriptProcessingEnabled, forKey: Keys.cloudTranscriptProcessingEnabled) }
     }
-    /// Deprecated compatibility bit retained for existing defaults migrations.
+    /// Records that the listener has seen the cloud-ad-detection disclosure.
     var cloudTranscriptProcessingConsentPrompted: Bool {
         didSet { userDefaults.set(cloudTranscriptProcessingConsentPrompted, forKey: Keys.cloudTranscriptProcessingConsentPrompted) }
+    }
+    /// Separate from the UI toggle so no transcript can leave the device before
+    /// the listener explicitly accepts the disclosure.
+    var cloudTranscriptProcessingConsentGranted: Bool {
+        didSet { userDefaults.set(cloudTranscriptProcessingConsentGranted, forKey: Keys.cloudTranscriptProcessingConsentGranted) }
+    }
+    var canUseCloudTranscriptProcessing: Bool {
+        cloudTranscriptProcessingEnabled && cloudTranscriptProcessingConsentGranted
     }
     /// Action for unrelated-content intervals when enabled. Fresh default: skip.
     var unrelatedContentAction: SettingsCleaningAction {
@@ -150,12 +160,20 @@ nonisolated final class SettingsStore: @unchecked Sendable {
         if userDefaults.object(forKey: Keys.cloudTranscriptProcessingEnabled) != nil {
             cloudTranscriptProcessingEnabled = userDefaults.bool(forKey: Keys.cloudTranscriptProcessingEnabled)
         } else {
-            cloudTranscriptProcessingEnabled = true
+            cloudTranscriptProcessingEnabled = false
         }
         if userDefaults.object(forKey: Keys.cloudTranscriptProcessingConsentPrompted) != nil {
             cloudTranscriptProcessingConsentPrompted = userDefaults.bool(forKey: Keys.cloudTranscriptProcessingConsentPrompted)
         } else {
-            cloudTranscriptProcessingConsentPrompted = true
+            cloudTranscriptProcessingConsentPrompted = false
+        }
+        // This new value deliberately defaults to false for existing installs too:
+        // earlier builds did not present the current disclosure, so their saved
+        // toggle value cannot stand in for explicit consent.
+        if userDefaults.object(forKey: Keys.cloudTranscriptProcessingConsentGranted) != nil {
+            cloudTranscriptProcessingConsentGranted = userDefaults.bool(forKey: Keys.cloudTranscriptProcessingConsentGranted)
+        } else {
+            cloudTranscriptProcessingConsentGranted = false
         }
 
         if let raw = userDefaults.string(forKey: Keys.unrelatedContentAction),

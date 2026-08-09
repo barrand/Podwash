@@ -6,6 +6,8 @@
 	<string>PodWash</string>
 	<key>PodWashCloudAdEndpoint</key>
 	<string>https://podwash-gemini-155728924073.us-central1.run.app</string>
+	<key>PodWashBuildStamp</key>
+	<string>26.1.1.0.00.00</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

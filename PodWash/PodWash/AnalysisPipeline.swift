@@ -86,7 +86,7 @@ final class AnalysisPipeline: @unchecked Sendable {
         artifactStore: EpisodeAnalysisArtifactStore = .applicationSupport,
         cloudAdDetector: any CloudAdSpanDetecting = CloudAdSpanClient(
             configuration: .applicationDefault(consentGranted: {
-                SettingsStore().cloudTranscriptProcessingEnabled
+                SettingsStore().canUseCloudTranscriptProcessing
             })
         )
     ) {
@@ -270,6 +270,25 @@ final class AnalysisPipeline: @unchecked Sendable {
                 end: $0.end,
                 action: profanityAction,
                 source: .profanity
+            )
+        }
+
+        // Progressive playback must receive the first usable profanity schedule
+        // before optional cloud segmentation finishes. This keeps the first chunk
+        // protected and lets playback begin without waiting on the network.
+        if onPartialIntervals != nil, duration > 0 {
+            let processedEnd = min(AnalysisChunking.chunkSize, duration)
+            let partial = Self.projectPlaybackIntervals(
+                union: profanity.filter { $0.start < processedEnd },
+                profanityAction: profanityAction,
+                unrelatedContent: unrelatedContent
+            )
+            await emitPartialIntervals(
+                partial,
+                snapshot: AnalysisChunking.inFlightSnapshot(
+                    duration: duration,
+                    processedEnd: processedEnd
+                )
             )
         }
 

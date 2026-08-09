@@ -13,6 +13,8 @@ struct SettingsView: View {
 
     @Bindable var store: SettingsStore
     @State private var customWordDraft = ""
+    @State private var isCloudConsentPresented = false
+    @State private var enableSkipAdsAfterConsent = false
     #if DEBUG
     @State private var isCloudProbeRunning = false
     @State private var cloudProbeResult: String?
@@ -72,6 +74,12 @@ struct SettingsView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("settingsRoot")
         .accessibilityLabel("Settings")
+        .sheet(isPresented: $isCloudConsentPresented) {
+            CloudAdDetectionConsentSheet(
+                onEnable: enableCloudAdDetection,
+                onNotNow: declineCloudAdDetection
+            )
+        }
     }
 
     // MARK: - Sections
@@ -142,7 +150,7 @@ struct SettingsView: View {
             Text("Ads")
                 .font(.headline)
 
-            Toggle(isOn: $store.unrelatedContentEnabled) {
+            Toggle(isOn: skipAdsBinding) {
                 Text("Skip ads")
             }
             .padding(.vertical, 2)
@@ -153,7 +161,7 @@ struct SettingsView: View {
             .accessibilityValue(store.unrelatedContentEnabled ? "1" : "0")
             .accessibilityHint("Skips or mutes segments that seem like ads.")
 
-            Toggle(isOn: $store.cloudTranscriptProcessingEnabled) {
+            Toggle(isOn: cloudAdDetectionBinding) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Use cloud ad detection")
                     Text("Sends the text from your on-device transcript—not audio—to identify ads.")
@@ -166,7 +174,7 @@ struct SettingsView: View {
             .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
             .accessibilityIdentifier("cloudTranscriptProcessingToggle")
             .accessibilityLabel("Use cloud ad detection")
-            .accessibilityValue(store.cloudTranscriptProcessingEnabled ? "1" : "0")
+            .accessibilityValue(store.canUseCloudTranscriptProcessing ? "1" : "0")
 
             if store.unrelatedContentEnabled {
                 Button(action: cycleUnrelatedContentAction) {
@@ -188,6 +196,63 @@ struct SettingsView: View {
                 .accessibilityHint("Chooses skip or mute for ad segments.")
             }
         }
+    }
+
+    private var skipAdsBinding: Binding<Bool> {
+        Binding(
+            get: { store.unrelatedContentEnabled },
+            set: { enabled in
+                guard enabled else {
+                    store.unrelatedContentEnabled = false
+                    return
+                }
+                guard store.canUseCloudTranscriptProcessing else {
+                    enableSkipAdsAfterConsent = true
+                    isCloudConsentPresented = true
+                    return
+                }
+                store.unrelatedContentEnabled = true
+            }
+        )
+    }
+
+    private var cloudAdDetectionBinding: Binding<Bool> {
+        Binding(
+            get: { store.canUseCloudTranscriptProcessing },
+            set: { enabled in
+                guard enabled else {
+                    // Withdrawing this setting also revokes the prior consent.
+                    store.cloudTranscriptProcessingEnabled = false
+                    store.cloudTranscriptProcessingConsentGranted = false
+                    return
+                }
+                guard !store.canUseCloudTranscriptProcessing else { return }
+                enableSkipAdsAfterConsent = false
+                isCloudConsentPresented = true
+            }
+        )
+    }
+
+    private func enableCloudAdDetection() {
+        store.cloudTranscriptProcessingConsentPrompted = true
+        store.cloudTranscriptProcessingConsentGranted = true
+        store.cloudTranscriptProcessingEnabled = true
+        if enableSkipAdsAfterConsent {
+            store.unrelatedContentEnabled = true
+        }
+        enableSkipAdsAfterConsent = false
+        isCloudConsentPresented = false
+    }
+
+    private func declineCloudAdDetection() {
+        store.cloudTranscriptProcessingConsentPrompted = true
+        store.cloudTranscriptProcessingConsentGranted = false
+        store.cloudTranscriptProcessingEnabled = false
+        if enableSkipAdsAfterConsent {
+            store.unrelatedContentEnabled = false
+        }
+        enableSkipAdsAfterConsent = false
+        isCloudConsentPresented = false
     }
 
     private var wordCategoriesSection: some View {
@@ -445,7 +510,7 @@ struct SettingsView: View {
     }
 
     private func runCloudConnectivityProbe() {
-        guard store.cloudTranscriptProcessingEnabled else {
+        guard store.canUseCloudTranscriptProcessing else {
             cloudProbeResult = "Enable Use cloud ad detection first."
             return
         }
@@ -543,6 +608,56 @@ struct SettingsView: View {
         case "racialSlurs": return "Includes or excludes racial slur cleaning."
         default: return "Includes or excludes this category."
         }
+    }
+}
+
+/// First-use explanation for the optional cloud feature. The wording is kept
+/// deliberately direct: listeners decide before any transcript text is shared.
+private struct CloudAdDetectionConsentSheet: View {
+    let onEnable: () -> Void
+    let onNotNow: () -> Void
+
+    private let privacyPolicyURL = URL(string: "https://podwash-support.web.app/privacy")!
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Image(systemName: "waveform.badge.magnifyingglass")
+                .font(.system(size: 34, weight: .medium))
+                .foregroundStyle(Color.accentColor)
+                .accessibilityHidden(true)
+
+            Text("Check for ad content?")
+                .font(.title2.weight(.bold))
+
+            Text("PodWash can look for likely ad breaks. To do that, it sends the text from an on-device transcript and its timestamps to Gemini. It never sends the podcast audio.")
+                .foregroundStyle(.secondary)
+
+            Text("This is optional. You can turn cloud ad detection off at any time in Settings.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            Link("Read the Privacy Policy", destination: privacyPolicyURL)
+                .font(.footnote.weight(.semibold))
+
+            Spacer(minLength: 0)
+
+            Button("Turn on ad checks", action: onEnable)
+                .buttonStyle(.borderedProminent)
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("cloudConsentEnableButton")
+
+            Button("Not now", action: onNotNow)
+                .buttonStyle(.bordered)
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("cloudConsentDeclineButton")
+        }
+        .padding(24)
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+        .interactiveDismissDisabled()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("cloudTranscriptConsentSheet")
+        .accessibilityLabel("Cloud ad detection")
     }
 }
 

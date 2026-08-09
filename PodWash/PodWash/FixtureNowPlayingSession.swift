@@ -10,8 +10,6 @@ import Foundation
 enum FixtureNowPlayingSession {
     static let launchArgument = "-UITestFixtureNowPlayingSession"
     static let preserveLaunchArgument = "-UITestFixtureNowPlayingSessionPreserve"
-    /// Stable temp-SQLite key shared by both launches of the relaunch UITest.
-    static let persistenceIdentifier = "uitest-now-playing-session"
     /// UX pinned restore position (discrete seek +15 from start).
     static let pinnedRestorePositionSeconds: TimeInterval = 15.0
 
