@@ -32,6 +32,13 @@ final class AppShellModel {
         let feedURL: URL?
         let audioURL: URL
     }
+
+    /// A value-only handoff for consent-triggered downloads. Never retain a UIKit
+    /// controller, IndexPath, or callback across sheet presentation/dismissal.
+    private struct PendingCloudConsentDownload {
+        let episodeID: String
+        let remoteURL: URL
+    }
     let persistence: PersistenceController
     let podcastStore: PodcastStore
     let queueStore: QueueStore
@@ -74,6 +81,7 @@ final class AppShellModel {
     private var pendingCloudConsentEpisode: Episode?
     private var pendingCloudConsentPodcastTitle = ""
     private var pendingCloudConsentFeedURL: URL?
+    private var pendingCloudConsentDownload: PendingCloudConsentDownload?
 
     private var playbackProgressHandlerID: UUID?
 
@@ -799,6 +807,7 @@ final class AppShellModel {
         settingsStore.cloudTranscriptProcessingConsentPrompted = true
         settingsStore.cloudTranscriptProcessingConsentGranted = true
         settingsStore.cloudTranscriptProcessingEnabled = true
+        settingsStore.unrelatedContentEnabled = true
         isCloudTranscriptConsentPresented = false
         resumePendingCloudConsentPlay()
     }
@@ -808,11 +817,17 @@ final class AppShellModel {
         settingsStore.cloudTranscriptProcessingConsentPrompted = true
         settingsStore.cloudTranscriptProcessingConsentGranted = false
         settingsStore.cloudTranscriptProcessingEnabled = false
+        settingsStore.unrelatedContentEnabled = false
         isCloudTranscriptConsentPresented = false
         resumePendingCloudConsentPlay()
     }
 
     private func resumePendingCloudConsentPlay() {
+        let download = pendingCloudConsentDownload
+        pendingCloudConsentDownload = nil
+        if let download {
+            startDownloadAfterCloudConsent(download)
+        }
         guard let episode = pendingCloudConsentEpisode else { return }
         let title = pendingCloudConsentPodcastTitle
         let feedURL = pendingCloudConsentFeedURL
@@ -820,6 +835,39 @@ final class AppShellModel {
         pendingCloudConsentPodcastTitle = ""
         pendingCloudConsentFeedURL = nil
         playEpisode(episode, podcastTitle: title, feedURL: feedURL)
+    }
+
+    /// Shows first-use disclosure before a manual download. The deferred work is
+    /// represented only by episode data, avoiding a stale table-controller callback.
+    @discardableResult
+    func requestCloudConsentBeforeDownload(for episode: Episode) -> Bool {
+        guard !settingsStore.cloudTranscriptProcessingConsentPrompted,
+              let remoteURL = episode.audioURL
+        else { return false }
+        pendingCloudConsentDownload = PendingCloudConsentDownload(
+            episodeID: episode.id,
+            remoteURL: remoteURL
+        )
+        isCloudTranscriptConsentPresented = true
+        return true
+    }
+
+    private func startDownloadAfterCloudConsent(_ pending: PendingCloudConsentDownload) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await downloadManager.download(
+                    episodeID: pending.episodeID,
+                    from: pending.remoteURL
+                ) { [weak self] _ in
+                    self?.refreshQueuePresentation()
+                }
+            } catch {
+                // DownloadManager records its own failure state; handler listeners
+                // refresh the episode row without retaining that row here.
+                self.refreshQueuePresentation()
+            }
+        }
     }
 
     func toggleMiniPlayerPlayPause() {

@@ -14,6 +14,8 @@ struct PodcastDetailView: View {
     var queueStore: QueueStore
     /// Slice 23 — episode row tap starts playback in the app shell (nil in exclusive fixtures).
     var onPlayEpisode: ((Episode) -> Void)? = nil
+    /// Returns true when the shell has taken ownership of the consent-gated download.
+    var onRequestCloudConsentBeforeDownload: ((Episode) -> Bool)? = nil
     /// Switch immediately to a tapped Up Next item while preserving the current episode.
     var onPlayQueuedEpisode: ((String) -> Void)? = nil
     /// Queue an explicit listener-selected episode and begin preparation.

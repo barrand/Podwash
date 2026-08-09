@@ -176,6 +176,12 @@ struct AppShellView: View {
         .sheet(item: rootTranscriptSheetItem) { _ in
             transcriptSheetContent
         }
+        .sheet(isPresented: $model.isCloudTranscriptConsentPresented) {
+            CloudAdDetectionConsentSheet(
+                onEnable: { model.enableCloudTranscriptProcessing() },
+                onNotNow: { model.declineCloudTranscriptProcessing() }
+            )
+        }
         .background(TabBarAccessibilityConfigurator(tabBarHeight: $tabBarHeight))
         .task {
             model.restoreNowPlayingSessionIfNeeded()
@@ -492,6 +498,7 @@ private struct LibraryPodcastDetailView: View {
                         feedURL: summary.feedURL
                     )
                 },
+                onRequestCloudConsentBeforeDownload: { model.requestCloudConsentBeforeDownload(for: $0) },
                 onPlayQueuedEpisode: { model.playQueuedEpisodeNow($0) },
                 onAddAndPrepare: { model.addAndPrepare(episodeID: $0) },
                 transcriptExists: { model.transcriptExists(for: $0) },

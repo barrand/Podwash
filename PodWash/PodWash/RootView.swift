@@ -158,8 +158,9 @@ struct RootView: View {
     }
 
     private func loadFixtureSettingsIfNeeded() {
-        guard FixtureSettings.isEnabled, fixtureSettingsStore == nil else { return }
+        guard FixtureSettings.isEnabled || FixtureSettings.shouldResetOnLaunch else { return }
         FixtureSettings.prepareFreshDefaults()
+        guard FixtureSettings.isEnabled, fixtureSettingsStore == nil else { return }
         fixtureSettingsStore = SettingsStore()
     }
 

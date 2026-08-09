@@ -139,7 +139,7 @@ final class SettingsUITests: XCTestCase {
         toggle.tap()
         let sheet = app.descendants(matching: .any)["cloudTranscriptConsentSheet"]
         XCTAssertTrue(sheet.waitForExistence(timeout: 5), "Enabling ad checks must show the disclosure")
-        XCTAssertTrue(app.staticTexts["Check for ad content?"].exists)
+        XCTAssertTrue(app.staticTexts["Do you want PodWash to automatically skip ads?"].exists)
 
         app.buttons["cloudConsentDeclineButton"].tap()
         XCTAssertFalse(sheet.exists)

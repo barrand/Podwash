@@ -26,9 +26,11 @@ enum BrandTheme {
     static let surfaceGreen: Double = 0.078
     static let surfaceBlue: Double = 0.098
 
-    static let onPrimaryRed: Double = 1.0
-    static let onPrimaryGreen: Double = 1.0
-    static let onPrimaryBlue: Double = 1.0
+    // The primary teal is too light for white text (3.3:1). Use the surface
+    // ink so labels on a primary-filled control meet the 4.5:1 text target.
+    static let onPrimaryRed: Double = surfaceRed
+    static let onPrimaryGreen: Double = surfaceGreen
+    static let onPrimaryBlue: Double = surfaceBlue
 
     static let onSurfaceRed: Double = 0.910
     static let onSurfaceGreen: Double = 0.918

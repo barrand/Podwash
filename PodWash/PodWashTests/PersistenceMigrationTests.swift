@@ -134,4 +134,19 @@ final class PersistenceMigrationTests: XCTestCase {
 
         XCTAssertEqual(downloadStore.state(for: "fixture-ep-001"), .downloaded)
     }
+
+    func testDownloadStateStoreAndWrapperReleaseWithoutTaskLocalDeinitAbort() throws {
+        // This scoped release reproduces the owner-lifetime boundary from the
+        // captured crash. Both classes require explicit nonisolated deinits while
+        // running under MainActor XCTest's TaskLocal executor context.
+        autoreleasepool {
+            let persistence = PersistenceController.inMemory()
+            let store = DownloadStateStore(context: persistence.viewContext, retaining: persistence)
+            let wrapper = InMemoryDownloadStateStore(backing: store)
+
+            wrapper.setState(.downloaded, for: "lifecycle-episode")
+            XCTAssertEqual(wrapper.state(for: "lifecycle-episode"), .downloaded)
+            XCTAssertEqual(wrapper.downloadedEpisodeIDs(), ["lifecycle-episode"])
+        }
+    }
 }

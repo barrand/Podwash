@@ -67,13 +67,37 @@ final class BrandThemeTests: XCTestCase {
         assertComponent(BrandTheme.surfaceGreen, 0.078, name: "surface.green")
         assertComponent(BrandTheme.surfaceBlue, 0.098, name: "surface.blue")
 
-        assertComponent(BrandTheme.onPrimaryRed, 1.0, name: "onPrimary.red")
-        assertComponent(BrandTheme.onPrimaryGreen, 1.0, name: "onPrimary.green")
-        assertComponent(BrandTheme.onPrimaryBlue, 1.0, name: "onPrimary.blue")
+        assertComponent(BrandTheme.onPrimaryRed, 0.059, name: "onPrimary.red")
+        assertComponent(BrandTheme.onPrimaryGreen, 0.078, name: "onPrimary.green")
+        assertComponent(BrandTheme.onPrimaryBlue, 0.098, name: "onPrimary.blue")
 
         assertComponent(BrandTheme.onSurfaceRed, 0.910, name: "onSurface.red")
         assertComponent(BrandTheme.onSurfaceGreen, 0.918, name: "onSurface.green")
         assertComponent(BrandTheme.onSurfaceBlue, 0.929, name: "onSurface.blue")
+    }
+
+    func testPrimaryFilledControlTextMeetsWCAGAAContrast() {
+        let contrast = contrastRatio(
+            foreground: (BrandTheme.onPrimaryRed, BrandTheme.onPrimaryGreen, BrandTheme.onPrimaryBlue),
+            background: (BrandTheme.primaryRed, BrandTheme.primaryGreen, BrandTheme.primaryBlue)
+        )
+
+        XCTAssertGreaterThanOrEqual(contrast, 4.5, "Primary button text must meet WCAG AA contrast")
+    }
+
+    private func contrastRatio(
+        foreground: (Double, Double, Double),
+        background: (Double, Double, Double)
+    ) -> Double {
+        func luminance(_ color: (Double, Double, Double)) -> Double {
+            func linear(_ component: Double) -> Double {
+                component <= 0.04045 ? component / 12.92 : pow((component + 0.055) / 1.055, 2.4)
+            }
+            return 0.2126 * linear(color.0) + 0.7152 * linear(color.1) + 0.0722 * linear(color.2)
+        }
+        let first = luminance(foreground)
+        let second = luminance(background)
+        return (max(first, second) + 0.05) / (min(first, second) + 0.05)
     }
 
     // MARK: - AC2: AccentColor asset matches BrandTheme.primary

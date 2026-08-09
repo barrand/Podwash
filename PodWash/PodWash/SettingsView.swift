@@ -237,9 +237,7 @@ struct SettingsView: View {
         store.cloudTranscriptProcessingConsentPrompted = true
         store.cloudTranscriptProcessingConsentGranted = true
         store.cloudTranscriptProcessingEnabled = true
-        if enableSkipAdsAfterConsent {
-            store.unrelatedContentEnabled = true
-        }
+        store.unrelatedContentEnabled = true
         enableSkipAdsAfterConsent = false
         isCloudConsentPresented = false
     }
@@ -493,7 +491,7 @@ struct SettingsView: View {
             Button(isCloudProbeRunning ? "Testing cloud…" : "Test cloud ad detection") {
                 runCloudConnectivityProbe()
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(BrandPrimaryButtonStyle())
             .disabled(isCloudProbeRunning)
             .accessibilityIdentifier("debugCloudConnectivityProbe")
 
@@ -613,51 +611,92 @@ struct SettingsView: View {
 
 /// First-use explanation for the optional cloud feature. The wording is kept
 /// deliberately direct: listeners decide before any transcript text is shared.
-private struct CloudAdDetectionConsentSheet: View {
+struct CloudAdDetectionConsentSheet: View {
     let onEnable: () -> Void
     let onNotNow: () -> Void
 
     private let privacyPolicyURL = URL(string: "https://podwash-support.web.app/privacy")!
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Image(systemName: "waveform.badge.magnifyingglass")
-                .font(.system(size: 34, weight: .medium))
-                .foregroundStyle(Color.accentColor)
-                .accessibilityHidden(true)
+        VStack(spacing: 20) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Do you want PodWash to automatically skip ads?")
+                        .font(.title2.weight(.bold))
+                        .fixedSize(horizontal: false, vertical: true)
 
-            Text("Check for ad content?")
-                .font(.title2.weight(.bold))
+                    Text("PodWash can look for likely ad breaks. To do that, it sends the text from an on-device transcript and its timestamps to Gemini. It never sends the podcast audio.")
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
 
-            Text("PodWash can look for likely ad breaks. To do that, it sends the text from an on-device transcript and its timestamps to Gemini. It never sends the podcast audio.")
-                .foregroundStyle(.secondary)
+                    Text("This is optional. You can turn cloud ad detection off at any time in Settings.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
 
-            Text("This is optional. You can turn cloud ad detection off at any time in Settings.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                    Link("Read the Privacy Policy", destination: privacyPolicyURL)
+                        .font(.footnote.weight(.semibold))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
-            Link("Read the Privacy Policy", destination: privacyPolicyURL)
-                .font(.footnote.weight(.semibold))
-
-            Spacer(minLength: 0)
-
-            Button("Turn on ad checks", action: onEnable)
-                .buttonStyle(.borderedProminent)
+            Button("Turn On Ad Skips", action: onEnable)
+                .buttonStyle(BrandPrimaryButtonStyle())
                 .frame(maxWidth: .infinity)
                 .accessibilityIdentifier("cloudConsentEnableButton")
 
             Button("Not now", action: onNotNow)
-                .buttonStyle(.bordered)
+                .buttonStyle(BrandSecondaryButtonStyle())
                 .frame(maxWidth: .infinity)
                 .accessibilityIdentifier("cloudConsentDeclineButton")
         }
         .padding(24)
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("cloudTranscriptConsentSheet")
-        .accessibilityLabel("Cloud ad detection")
+        .accessibilityLabel("Automatic ad skips")
+    }
+}
+
+/// Primary actions use the brand teal with an explicit semantic foreground.
+/// SwiftUI's `.borderedProminent` style uses a white label for the app tint,
+/// which does not meet text contrast requirements for this teal.
+private struct BrandPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body.weight(.semibold))
+            .foregroundStyle(BrandTheme.onPrimary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                BrandTheme.primary.opacity(isEnabled ? (configuration.isPressed ? 0.78 : 1) : 0.55),
+                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+/// Secondary actions align with the primary action without competing with it.
+private struct BrandSecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body.weight(.semibold))
+            .foregroundStyle(BrandTheme.onSurface)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                BrandTheme.primary.opacity(configuration.isPressed ? 0.14 : 0.08),
+                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(BrandTheme.primary, lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 

@@ -16,6 +16,7 @@ struct EpisodeListView: View {
     var onQueueChanged: () -> Void
     var onAddAndPrepare: ((String) -> Void)? = nil
     var onPlayEpisode: ((Episode) -> Void)? = nil
+    var onRequestCloudConsentBeforeDownload: ((Episode) -> Bool)? = nil
     var transcriptExists: ((String) -> Bool)? = nil
     var onViewTranscript: ((String) -> Void)? = nil
     var transcriptAffordanceGeneration: Int = 0
@@ -33,6 +34,7 @@ struct EpisodeListView: View {
             onQueueChanged: onQueueChanged,
             onAddAndPrepare: onAddAndPrepare,
             onPlayEpisode: onPlayEpisode,
+            onRequestCloudConsentBeforeDownload: onRequestCloudConsentBeforeDownload,
             transcriptExists: transcriptExists,
             onViewTranscript: onViewTranscript,
             transcriptAffordanceGeneration: transcriptAffordanceGeneration,
@@ -50,6 +52,7 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
     var onQueueChanged: () -> Void
     var onAddAndPrepare: ((String) -> Void)?
     var onPlayEpisode: ((Episode) -> Void)?
+    var onRequestCloudConsentBeforeDownload: ((Episode) -> Bool)?
     var transcriptExists: ((String) -> Bool)?
     var onViewTranscript: ((String) -> Void)?
     /// Explicit input so SwiftUI always calls `updateUIViewController` after backfill.
@@ -65,6 +68,7 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
             onQueueChanged: onQueueChanged,
             onAddAndPrepare: onAddAndPrepare,
             onPlayEpisode: onPlayEpisode,
+            onRequestCloudConsentBeforeDownload: onRequestCloudConsentBeforeDownload,
             transcriptExists: transcriptExists,
             onViewTranscript: onViewTranscript,
             cleaningSummary: cleaningSummary
@@ -80,6 +84,7 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
             onQueueChanged: onQueueChanged,
             onAddAndPrepare: onAddAndPrepare,
             onPlayEpisode: onPlayEpisode,
+            onRequestCloudConsentBeforeDownload: onRequestCloudConsentBeforeDownload,
             transcriptExists: transcriptExists,
             onViewTranscript: onViewTranscript,
             transcriptAffordanceGeneration: transcriptAffordanceGeneration,
@@ -96,6 +101,7 @@ private final class EpisodeTableViewController: UITableViewController {
     private var onQueueChanged: () -> Void
     private var onAddAndPrepare: ((String) -> Void)?
     private var onPlayEpisode: ((Episode) -> Void)?
+    private var onRequestCloudConsentBeforeDownload: ((Episode) -> Bool)?
     private var transcriptExists: ((String) -> Bool)?
     private var onViewTranscript: ((String) -> Void)?
     private var cleaningSummary: ((String) -> EpisodeCleaningSummary?)?
@@ -109,6 +115,7 @@ private final class EpisodeTableViewController: UITableViewController {
         onQueueChanged: @escaping () -> Void,
         onAddAndPrepare: ((String) -> Void)?,
         onPlayEpisode: ((Episode) -> Void)?,
+        onRequestCloudConsentBeforeDownload: ((Episode) -> Bool)?,
         transcriptExists: ((String) -> Bool)?,
         onViewTranscript: ((String) -> Void)?,
         cleaningSummary: ((String) -> EpisodeCleaningSummary?)?
@@ -120,6 +127,7 @@ private final class EpisodeTableViewController: UITableViewController {
         self.onQueueChanged = onQueueChanged
         self.onAddAndPrepare = onAddAndPrepare
         self.onPlayEpisode = onPlayEpisode
+        self.onRequestCloudConsentBeforeDownload = onRequestCloudConsentBeforeDownload
         self.transcriptExists = transcriptExists
         self.onViewTranscript = onViewTranscript
         self.cleaningSummary = cleaningSummary
@@ -166,6 +174,7 @@ private final class EpisodeTableViewController: UITableViewController {
         onQueueChanged: @escaping () -> Void,
         onAddAndPrepare: ((String) -> Void)?,
         onPlayEpisode: ((Episode) -> Void)?,
+        onRequestCloudConsentBeforeDownload: ((Episode) -> Bool)?,
         transcriptExists: ((String) -> Bool)?,
         onViewTranscript: ((String) -> Void)?,
         transcriptAffordanceGeneration: Int = 0,
@@ -179,6 +188,7 @@ private final class EpisodeTableViewController: UITableViewController {
         self.onQueueChanged = onQueueChanged
         self.onAddAndPrepare = onAddAndPrepare
         self.onPlayEpisode = onPlayEpisode
+        self.onRequestCloudConsentBeforeDownload = onRequestCloudConsentBeforeDownload
         self.transcriptExists = transcriptExists
         self.onViewTranscript = onViewTranscript
         self.transcriptAffordanceGeneration = transcriptAffordanceGeneration
@@ -309,6 +319,9 @@ private final class EpisodeTableViewController: UITableViewController {
                     // Never silently no-op — show failed affordance so the user can retry.
                     self.downloadManager.markFailed(episodeID: episode.id)
                     self.refreshDownloadDisplayOnVisibleRows()
+                    return
+                }
+                if self.onRequestCloudConsentBeforeDownload?(episode) == true {
                     return
                 }
                 // Fixture downloads complete synchronously on the main actor — run
