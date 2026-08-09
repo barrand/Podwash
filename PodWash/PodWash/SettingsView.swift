@@ -8,6 +8,9 @@
 import SwiftUI
 
 struct SettingsView: View {
+    private static let privacyPolicyURL = URL(string: "https://podwash-support.web.app/privacy")!
+    private static let supportURL = URL(string: "https://podwash-support.web.app/support")!
+
     @Bindable var store: SettingsStore
     @State private var customWordDraft = ""
     #if DEBUG
@@ -39,6 +42,7 @@ struct SettingsView: View {
                     wordCategoriesSection
                     customWordsSection
                     episodeBehaviorSection
+                    privacyAndSupportSection
                     playbackDiagnosticsSection
                     #if DEBUG
                     cloudConnectivityProbeSection
@@ -329,6 +333,49 @@ struct SettingsView: View {
             .accessibilityLabel("Auto-delete after played")
             .accessibilityValue(store.autoDeleteAfterPlayedEnabled ? "1" : "0")
         }
+    }
+
+    /// Public links live in Settings alongside the controls that govern cloud
+    /// processing. This keeps the Privacy Policy easy to find in-app (Apple
+    /// requires it) and gives listeners a direct support path.
+    private var privacyAndSupportSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Privacy & Support")
+                .font(.headline)
+
+            Text("Learn how PodWash handles information or get help.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Link(destination: Self.privacyPolicyURL) {
+                settingsLinkRow(title: "Privacy Policy", icon: "hand.raised")
+            }
+            .accessibilityIdentifier("privacyPolicyLink")
+            .accessibilityLabel("Privacy Policy")
+            .accessibilityHint("Opens the PodWash Privacy Policy in your browser.")
+
+            Link(destination: Self.supportURL) {
+                settingsLinkRow(title: "Contact Support", icon: "questionmark.circle")
+            }
+            .accessibilityIdentifier("supportLink")
+            .accessibilityLabel("Contact Support")
+            .accessibilityHint("Opens the PodWash support page in your browser.")
+        }
+    }
+
+    private func settingsLinkRow(title: String, icon: String) -> some View {
+        HStack {
+            Label(title, systemImage: icon)
+            Spacer()
+            Image(systemName: "arrow.up.right")
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+        .contentShape(Rectangle())
     }
 
     private var playbackDiagnosticsSection: some View {
