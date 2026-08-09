@@ -210,6 +210,26 @@ final class TranscriptViewModelTests: XCTestCase {
         )
     }
 
+    func testListenedClassificationAdvancesWithLivePlayhead() {
+        let transcript = Self.syntheticTenWordTranscript()
+
+        XCTAssertTrue(
+            TranscriptViewModel.isListened(
+                word: transcript[6],
+                skippedAd: false,
+                playhead: 14.0
+            ),
+            "The word ending at the live playhead must turn grey without reopening the transcript."
+        )
+        XCTAssertFalse(
+            TranscriptViewModel.isListened(
+                word: transcript[7],
+                skippedAd: false,
+                playhead: 14.0
+            )
+        )
+    }
+
     // MARK: - Synthetic fixture (slice-26 fixture table)
 
     /// 10 words, 2.0 s each: word[i] = [2i, 2i+2) seconds.

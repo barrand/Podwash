@@ -1,4 +1,6 @@
-# ADR-021 — Progressive playback + super seek bar
+# ADR-021 — Progressive playback + super seek bar (Superseded)
+
+> Superseded by terminal playback readiness. Progressive chunk playback, processed-frontier seeking, and in-flight player seek bars were removed; this document is retained only as historical context.
 
 | Field | Value |
 |-------|-------|

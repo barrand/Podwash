@@ -21,7 +21,7 @@
 | Decision | Choice |
 |----------|--------|
 | **App display name** | **PodWash** — `CFBundleDisplayName` and `BrandTheme.approvedDisplayName` = **`"PodWash"`** (exact, case-sensitive) |
-| **Brand color palette** | **Approved (v1):** primary `#2A9D8F` (r **0.165**, g **0.616**, b **0.561**); accent `#E9C46A` (r **0.914**, g **0.769**, b **0.416**); surface `#0F1419` (r **0.059**, g **0.078**, b **0.098**); on-primary `#FFFFFF` (r **1.0**, g **1.0**, b **1.0**); on-surface `#E8EAED` (r **0.910**, g **0.918**, b **0.929**) |
+| **Brand color palette** | **Approved (v1):** primary `#2A9D8F` (r **0.165**, g **0.616**, b **0.561**); accent `#E9C46A` (r **0.914**, g **0.769**, b **0.416**); surface `#0F1419` (r **0.059**, g **0.078**, b **0.098**); on-primary `#0F1419` (r **0.059**, g **0.078**, b **0.098**); on-surface `#E8EAED` (r **0.910**, g **0.918**, b **0.929**) |
 | **Logo / App Icon** | **Option A — soap bubble + headphones**; source draft: `assets/podwash-logo-option-a-bubble-headphones.png` → committed into `AppIcon.appiconset` (1024 marketing + required idioms) |
 | **Theme mode** | **Dark theme only** — `preferredColorScheme(.dark)` at root; no light mode; no appearance toggle in settings |
 
@@ -68,7 +68,7 @@ Establish a minimal, testable brand system (display name, App Icon, semantic col
 | `primary` | `#2A9D8F` | r **0.165**, g **0.616**, b **0.561** | Main brand color; key CTAs; `AccentColor` asset |
 | `accent` | `#E9C46A` | r **0.914**, g **0.769**, b **0.416** | Secondary highlight |
 | `surface` | `#0F1419` | r **0.059**, g **0.078**, b **0.098** | Screen background / chrome |
-| `onPrimary` | `#FFFFFF` | r **1.0**, g **1.0**, b **1.0** | Text/icon on primary-filled controls |
+| `onPrimary` | `#0F1419` | r **0.059**, g **0.078**, b **0.098** | Text/icon on primary-filled controls |
 | `onSurface` | `#E8EAED` | r **0.910**, g **0.918**, b **0.929** | Primary body text on dark surface |
 | `approvedDisplayName` | — | **`"PodWash"`** | Home screen + in-app wordmark label |
 
@@ -106,7 +106,7 @@ Establish a minimal, testable brand system (display name, App Icon, semantic col
 
 Automatable only. Thresholds use user-approved pinned values from **Product decisions** once resolved. **XCTSkip is not allowed on core ACs** — a mapped test that cannot run must fail.
 
-- [ ] 1. Unit test (`BrandTheme`): `primary` sRGB **(0.165, 0.616, 0.561)**; `accent` **(0.914, 0.769, 0.416)**; `surface` **(0.059, 0.078, 0.098)**; `onPrimary` **(1.0, 1.0, 1.0)**; `onSurface` **(0.910, 0.918, 0.929)** — each channel ± **0.001**.
+- [ ] 1. Unit test (`BrandTheme`): `primary` sRGB **(0.165, 0.616, 0.561)**; `accent` **(0.914, 0.769, 0.416)**; `surface` **(0.059, 0.078, 0.098)**; `onPrimary` **(0.059, 0.078, 0.098)**; `onSurface` **(0.910, 0.918, 0.929)** — each channel ± **0.001**.
 - [ ] 2. Unit test (`BrandTheme` + asset catalog): `AccentColor` resolved `UIColor` sRGB components match `BrandTheme.primary` ± **0.001** per channel (read catalog color in test bundle or via `UIColor(named:)` in app target test).
 - [ ] 3. Structural test (`Bundle.main`): `CFBundleDisplayName` equals **`"PodWash"`** and `BrandTheme.approvedDisplayName == "PodWash"` (exact `String` match, case-sensitive).
 - [ ] 4. Structural test (AppIcon): `AppIcon.appiconset/Contents.json` lists an **`ios-marketing`** entry with **1024×1024** PNG present on disk; file size **> 1024** bytes (guards empty placeholder).

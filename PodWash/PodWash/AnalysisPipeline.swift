@@ -66,7 +66,6 @@ final class AnalysisPipeline: @unchecked Sendable {
     var onProgress: AnalysisProgressHandler?
     /// `nonisolated(unsafe)`: cleared from `nonisolated deinit` without a MainActor TaskLocal hop.
     nonisolated(unsafe) var onMainActorProgress: MainActorAnalysisProgressHandler?
-    var onPartialIntervals: AnalysisPartialIntervalsHandler?
     /// Emits immediately before transcript text is submitted for cloud ad detection.
     /// Kept separate from timeline progress so UI never pretends this is ASR work.
     var onCloudAdDetectionStarted: (@Sendable () -> Void)?
@@ -159,17 +158,7 @@ final class AnalysisPipeline: @unchecked Sendable {
     ) async throws -> [CensorInterval] {
         lastCloudAdDetectionOutcome = nil
         let audioDuration = await Self.resolveDuration(audioURL: audioURL)
-        // Progressive + injected short fixtures: pad horizon to ≥ one chunk so AC8’s
-        // first-chunk frontier (`processedEnd >= 30`) is observable on 5 s sine audio.
-        let duration: Double
-        if onPartialIntervals != nil,
-           injectedTranscript != nil,
-           audioDuration > 0,
-           audioDuration < AnalysisChunking.chunkSize {
-            duration = AnalysisChunking.chunkSize
-        } else {
-            duration = audioDuration
-        }
+        let duration = audioDuration
 
         let cachedRecord = cache.loadRecord(episodeID: episode.id, targetWords: targetWords)
         let showInFlightProgress: Bool
@@ -270,25 +259,6 @@ final class AnalysisPipeline: @unchecked Sendable {
                 end: $0.end,
                 action: profanityAction,
                 source: .profanity
-            )
-        }
-
-        // Progressive playback must receive the first usable profanity schedule
-        // before optional cloud segmentation finishes. This keeps the first chunk
-        // protected and lets playback begin without waiting on the network.
-        if onPartialIntervals != nil, duration > 0 {
-            let processedEnd = min(AnalysisChunking.chunkSize, duration)
-            let partial = Self.projectPlaybackIntervals(
-                union: profanity.filter { $0.start < processedEnd },
-                profanityAction: profanityAction,
-                unrelatedContent: unrelatedContent
-            )
-            await emitPartialIntervals(
-                partial,
-                snapshot: AnalysisChunking.inFlightSnapshot(
-                    duration: duration,
-                    processedEnd: processedEnd
-                )
             )
         }
 
@@ -570,15 +540,6 @@ final class AnalysisPipeline: @unchecked Sendable {
         await MainActor.run {
             onMainActorProgress?(snapshot)
             onProgress?(snapshot)
-        }
-    }
-
-    private func emitPartialIntervals(
-        _ intervals: [CensorInterval],
-        snapshot: AnalysisProgressSnapshot
-    ) async {
-        await MainActor.run {
-            onPartialIntervals?(intervals, snapshot)
         }
     }
 

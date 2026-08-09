@@ -18,7 +18,7 @@ chrome. Product decisions (2026-07-10) are closed:
 |-----|-------|
 | Display name | **`PodWash`** (exact, case-sensitive) |
 | Theme mode | **Dark only** — `.preferredColorScheme(.dark)` at root; no light palette; no settings toggle |
-| Palette v1 | primary `#2A9D8F`, accent `#E9C46A`, surface `#0F1419`, onPrimary `#FFFFFF`, onSurface `#E8EAED` (sRGB in Decision §2) |
+| Palette v1 | primary `#2A9D8F`, accent `#E9C46A`, surface `#0F1419`, onPrimary `#0F1419`, onSurface `#E8EAED` (sRGB in Decision §2) |
 | App Icon | Option A — soap bubble + headphones → `AppIcon.appiconset` |
 
 Acceptance is structural (sRGB ± **0.001**, bundle string, catalog files) plus
@@ -89,9 +89,9 @@ enum BrandTheme {
     static let surfaceGreen: Double = 0.078
     static let surfaceBlue: Double = 0.098
 
-    static let onPrimaryRed: Double = 1.0
-    static let onPrimaryGreen: Double = 1.0
-    static let onPrimaryBlue: Double = 1.0
+    static let onPrimaryRed: Double = 0.059
+    static let onPrimaryGreen: Double = 0.078
+    static let onPrimaryBlue: Double = 0.098
 
     static let onSurfaceRed: Double = 0.910
     static let onSurfaceGreen: Double = 0.918

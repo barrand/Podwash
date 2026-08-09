@@ -483,7 +483,6 @@ final class NowPlayingSessionTests: XCTestCase {
 private final class CountingRestoreAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
   var calls = 0
   private(set) var analyzedEpisodeIDs: [String] = []
-  var onPartialIntervals: AnalysisPartialIntervalsHandler?
 
   func analyze(
     episode: EpisodeIdentity,

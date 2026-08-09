@@ -13,7 +13,6 @@ final class InstantEpisodeAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
     var onProgress: AnalysisProgressHandler?
     /// `nonisolated(unsafe)`: cleared from `nonisolated deinit` without a MainActor TaskLocal hop.
     nonisolated(unsafe) var onMainActorProgress: MainActorAnalysisProgressHandler?
-    var onPartialIntervals: AnalysisPartialIntervalsHandler?
 
     // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION
     // (boxed as `any EpisodeAnalyzing` in PlaybackCoordinator teardown).

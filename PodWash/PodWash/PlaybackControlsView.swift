@@ -12,13 +12,10 @@ import SwiftUI
 
 struct PlaybackControlsView: View {
     @Bindable var engine: PlaybackEngine
+    let readiness: AppShellModel.PlaybackReadiness
     /// When true, paint complete green + ad/mute overlays (ADR-030).
     let showsCompleteSeekBarPaint: Bool
-    /// In-flight overall analysis fraction; nil when progress chrome is hidden.
-    let analysisProgress: Double?
-    let isPreparingPlayback: Bool
     let episodeDuration: Double
-    let processedEnd: Double
     /// Applied / cached intervals for mute-marker + ad-band overlays (ADR-023 / ADR-030).
     let muteIntervals: [CensorInterval]
     let onTogglePlayPause: (() -> Void)?
@@ -27,24 +24,31 @@ struct PlaybackControlsView: View {
 
     @State private var sleepClock = SystemMonotonicClock()
 
+    /// The terminal seek-bar paint and transport must transition together. The
+    /// preparation task may still be unwinding after the terminal snapshot has
+    /// arrived, but that must not leave a completed episode showing a spinner.
+    static func showsAnalysisIndicator(
+        isPreparingPlayback: Bool,
+        isPlaybackRequested: Bool,
+        isSeekBarAnalysisComplete: Bool
+    ) -> Bool {
+        isPreparingPlayback && !isPlaybackRequested && !isSeekBarAnalysisComplete
+    }
+
     init(
         engine: PlaybackEngine,
+        readiness: AppShellModel.PlaybackReadiness = .ready,
         showsCompleteSeekBarPaint: Bool = false,
-        analysisProgress: Double? = nil,
-        isPreparingPlayback: Bool = false,
         episodeDuration: Double = 0,
-        processedEnd: Double = 0,
         muteIntervals: [CensorInterval] = [],
         onTogglePlayPause: (() -> Void)? = nil,
         onSeekTo: ((Double) -> Void)? = nil,
         onSeekBy: ((Double) -> Void)? = nil
     ) {
         self.engine = engine
+        self.readiness = readiness
         self.showsCompleteSeekBarPaint = showsCompleteSeekBarPaint
-        self.analysisProgress = analysisProgress
-        self.isPreparingPlayback = isPreparingPlayback
         self.episodeDuration = episodeDuration
-        self.processedEnd = processedEnd
         self.muteIntervals = muteIntervals
         self.onTogglePlayPause = onTogglePlayPause
         self.onSeekTo = onSeekTo
@@ -58,11 +62,12 @@ struct PlaybackControlsView: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.25)) { _ in
             let _ = engine.uiRefreshToken
-            let isPlaying = engine.avPlayer.timeControlStatus == .playing
-            let isAnalyzing = isPreparingPlayback && !isPlaying
+            // AVPlayer may briefly report `.waitingToPlayAtSpecifiedRate` during
+            // normal playback. Render transport intent rather than that volatile
+            // status so the control cannot flash between Pause and Analyzing.
+            let isPlaying = engine.isPlaybackRequested
             let elapsedSeconds = engine.avPlayer.currentTime().seconds
             let duration = episodeDuration > 0 ? episodeDuration : engine.duration
-            let frontier = processedEnd > 0 ? processedEnd : duration
             let remainingSeconds = SuperSeekBarModel.remaining(
                 elapsed: elapsedSeconds,
                 duration: duration
@@ -79,23 +84,13 @@ struct PlaybackControlsView: View {
                 : nil
 
             VStack(spacing: 24) {
-                VStack(spacing: 4) {
-                    if let analysisProgress {
-                        ProgressView(value: analysisProgress, total: 1.0)
-                            .tint(BrandTheme.primary)
-                            .accessibilityElement(children: .ignore)
-                            .accessibilityIdentifier("playback.analysisProgress")
-                            .accessibilityLabel("Analysis progress")
-                            .accessibilityValue(String(format: "%.4f", analysisProgress))
-                            .accessibilityHint("Overall progress of episode cleaning analysis.")
-                    }
-
+                if readiness == .ready {
+                    VStack(spacing: 4) {
                     SuperSeekBarView(
                         showsCompleteContentTrack: showCompletePaint,
                         adBands: adBands,
                         elapsed: elapsedSeconds,
                         duration: duration,
-                        processedEnd: frontier,
                         muteMarkers: muteMarkers,
                         muteMarkerCountForAccessibility: muteMarkerCountForAccessibility,
                         barHeight: AnalysisTimelineModel.fullPlayerTimelineHeight,
@@ -109,6 +104,7 @@ struct PlaybackControlsView: View {
                         }
                     )
                     .frame(maxWidth: .infinity)
+                    }
                 }
 
                 HStack {
@@ -126,7 +122,10 @@ struct PlaybackControlsView: View {
                         .accessibilityLabel("Remaining time")
                         .accessibilityValue(secondsAccessibilityValue(remainingSeconds))
                 }
+                .opacity(readiness == .ready ? 1 : 0)
+                .accessibilityHidden(readiness != .ready)
 
+                if readiness == .ready {
                 HStack(spacing: 32) {
                     Button(action: { seekBy(-15) }) {
                         Image(systemName: "gobackward.15")
@@ -136,15 +135,13 @@ struct PlaybackControlsView: View {
                     .accessibilityLabel("Seek back 15 seconds")
 
                     Button(action: togglePlayPause) {
-                        Image(systemName: isAnalyzing ? "waveform" : (isPlaying ? "pause.circle.fill" : "play.circle.fill"))
+                        Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
                             .font(.system(size: 56))
                             .foregroundStyle(BrandTheme.primary)
-                            .symbolEffect(.variableColor.iterative, isActive: isAnalyzing)
                     }
                     .accessibilityIdentifier("playback.playPause")
-                    .accessibilityLabel(isAnalyzing ? "Analyzing" : (isPlaying ? "Pause" : "Play"))
-                    .accessibilityValue(isAnalyzing ? "analyzing" : (isPlaying ? "playing" : "paused"))
-                    .accessibilityHint(isAnalyzing ? "Playback starts when analysis finishes." : "")
+                    .accessibilityLabel(isPlaying ? "Pause" : "Play")
+                    .accessibilityValue(isPlaying ? "playing" : "paused")
 
                     Button(action: { seekBy(15) }) {
                         Image(systemName: "goforward.15")
@@ -152,6 +149,9 @@ struct PlaybackControlsView: View {
                     }
                     .accessibilityIdentifier("playback.seekForward15")
                     .accessibilityLabel("Seek forward 15 seconds")
+                }
+                } else {
+                    preparationStatus
                 }
                 // Brand accent sentinel (ADR-019 §4) — sibling of transport row; ids unchanged.
                 Color.clear
@@ -162,6 +162,7 @@ struct PlaybackControlsView: View {
                     .accessibilityValue("brandPrimary")
                     .allowsHitTesting(false)
 
+                if readiness == .ready {
                 HStack(spacing: 24) {
                     Button(action: { engine.cycleRate() }) {
                         Text(engine.rateAccessibilityValue + "×")
@@ -186,6 +187,7 @@ struct PlaybackControlsView: View {
                         Text(sleepTimerVisibleLabel)
                             .accessibilityIdentifier(sleepTimerVisibleLabel)
                     }
+                }
                 }
             }
             .padding()
@@ -228,9 +230,6 @@ struct PlaybackControlsView: View {
             onTogglePlayPause()
             return
         }
-        if isPreparingPlayback && !engine.isPlaying {
-            return
-        }
         if engine.isPlaying {
             engine.pause()
         } else {
@@ -245,12 +244,22 @@ struct PlaybackControlsView: View {
         }
         let current = engine.avPlayer.currentTime().seconds
         let duration = episodeDuration > 0 ? episodeDuration : engine.duration
-        let frontier = processedEnd > 0 ? processedEnd : duration
-        let clamped = SuperSeekBarModel.clampedSeek(
-            requested: current + delta,
-            processedEnd: frontier
-        )
-        engine.seek(to: clamped)
+        engine.seek(to: min(max(0, current + delta), duration))
+    }
+
+    @ViewBuilder
+    private var preparationStatus: some View {
+        VStack(spacing: 12) {
+            if readiness == .preparing {
+                ProgressView()
+                Text("Preparing clean playback")
+                    .accessibilityIdentifier("playback.preparing")
+            } else {
+                Text("Preparation needs attention")
+                    .accessibilityIdentifier("playback.preparationFailed")
+            }
+        }
+        .foregroundStyle(.secondary)
     }
 
     private func secondsAccessibilityValue(_ seconds: TimeInterval) -> String {

@@ -1,4 +1,6 @@
-# Slice 25 — Progressive playback + super seek bar (Skipper-style)
+# Slice 25 — Progressive playback + super seek bar (Superseded)
+
+> Historical record only. Playback now waits for terminal analysis and schedule application; preparation has no seek bar or partial-play state.
 
 | Field | Value |
 |-------|-------|

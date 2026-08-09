@@ -27,7 +27,7 @@ Engineer applies tokens from `BrandTheme`; UX pins **where** each token appears.
 | `primary` (`#2A9D8F`) | Play/Pause control icon tint in `PlaybackControlsView`; mirrors `AccentColor` asset |
 | `accent` (`#E9C46A`) | Reserved for secondary highlights — **not** AC-mapped in UI tests this slice |
 | `surface` (`#0F1419`) | Screen / shell background (`BrandingChromeView`, `AppShellView`, list chrome) |
-| `onPrimary` (`#FFFFFF`) | Icon on primary-filled controls (if any filled primary buttons are added later) |
+| `onPrimary` (`#0F1419`) | Icon on primary-filled controls (if any filled primary buttons are added later) |
 | `onSurface` (`#E8EAED`) | Primary body text on dark surfaces (wordmark, labels) |
 | `approvedDisplayName` | Exact string **`PodWash`** — wordmark label and `CFBundleDisplayName` |
 

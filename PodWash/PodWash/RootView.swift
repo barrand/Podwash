@@ -306,7 +306,7 @@ struct RootView: View {
                 podcastStore: model.podcastStore,
                 cleaningStore: model.cleaningStore
             )
-        } else if FixtureLibrary.isEnabled || FixtureProgressivePlayback.isEnabled {
+        } else if FixtureLibrary.isEnabled {
             try? FixtureLibrary.prepareSeededStore(model.podcastStore)
             if FixtureNowPlayingSession.isEnabled {
                 // Fixed-id store may retain queue/session from a prior UITest run.
@@ -316,8 +316,7 @@ struct RootView: View {
             // Seed runs after AppShellModel's launch migrate — re-apply defaults-on so
             // LibraryAnalysisTimeline + Download UITests enter download-before-play.
             try? model.cleaningStore.migrateAllChannelsCleaningAndUnrelatedOnIfNeeded()
-            if FixtureProgressivePlayback.isEnabled
-                || FixtureLibraryAnalysisTimeline.isEnabled
+            if FixtureLibraryAnalysisTimeline.isEnabled
                 || FixtureDownload.isEnabled {
                 // Cleaning on for every seeded feed so Library cell_0 play enters prepare.
                 for summary in model.podcastStore.allSubscriptions() {
@@ -330,10 +329,6 @@ struct RootView: View {
                         enabled: true
                     )
                 }
-            }
-            if FixtureProgressivePlayback.isEnabled {
-                // Ensure no leftover terminal transcript from a prior Transcript UITest (AC9).
-                FixtureTranscript.clearSeededTranscripts(podcastStore: model.podcastStore)
             }
         } else if FixtureLibrary.isEmptyEnabled {
             try? FixtureLibrary.prepareEmptyStore(model.podcastStore)

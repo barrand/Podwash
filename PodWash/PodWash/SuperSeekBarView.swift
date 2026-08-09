@@ -16,7 +16,6 @@ struct SuperSeekBarView: View {
     let adBands: [AdBand]
     let elapsed: Double
     let duration: Double
-    let processedEnd: Double
     /// Precomputed mute markers for paint; empty while in flight / cleaning off.
     let muteMarkers: [MuteMarker]
     /// When non-nil, emit complete `adBands:…,muteMarkers:M` AX (complete bars only).
@@ -32,7 +31,6 @@ struct SuperSeekBarView: View {
         adBands: [AdBand] = [],
         elapsed: Double,
         duration: Double,
-        processedEnd: Double,
         muteMarkers: [MuteMarker] = [],
         muteMarkerCountForAccessibility: Int? = nil,
         barHeight: CGFloat = AnalysisTimelineModel.fullPlayerTimelineHeight,
@@ -43,7 +41,6 @@ struct SuperSeekBarView: View {
         self.adBands = adBands
         self.elapsed = elapsed
         self.duration = duration
-        self.processedEnd = processedEnd
         self.muteMarkers = muteMarkers
         self.muteMarkerCountForAccessibility = muteMarkerCountForAccessibility
         self.barHeight = barHeight
@@ -90,11 +87,7 @@ struct SuperSeekBarView: View {
                     .onEnded { value in
                         let fraction = min(1, max(0, value.location.x / width))
                         let requested = fraction * duration
-                        let clamped = SuperSeekBarModel.clampedSeek(
-                            requested: requested,
-                            processedEnd: processedEnd
-                        )
-                        onSeek(clamped)
+                        onSeek(requested)
                     }
             )
         }
@@ -103,7 +96,7 @@ struct SuperSeekBarView: View {
         .accessibilityIdentifier(accessibilityIdentifier)
         .accessibilityLabel("Playback position")
         .accessibilityHint(
-            "Tap to seek within analyzed audio. Seeks past unscanned audio move to the analyzed frontier. When analysis is complete, skipped ad regions appear as yellow bands and profanity mute regions as red marks on the bar."
+            "Tap to seek. Skipped ad regions appear as yellow bands and profanity mute regions as red marks on the bar when available."
         )
         .modifier(SuperSeekBarAccessibilityValueModifier(value: accessibilityValueString))
     }

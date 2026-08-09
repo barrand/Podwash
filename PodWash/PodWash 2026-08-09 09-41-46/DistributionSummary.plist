@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PodWash.ipa</key>
+	<array>
+		<dict>
+			<key>architectures</key>
+			<array>
+				<string>arm64</string>
+			</array>
+			<key>buildNumber</key>
+			<string>3</string>
+			<key>certificate</key>
+			<dict>
+				<key>SHA1</key>
+				<string>4C5BC8F6AD5276730E01002C62D210E7B1ECFD3C</string>
+				<key>dateExpires</key>
+				<string>8/8/27</string>
+				<key>type</key>
+				<string>Cloud Managed Apple Distribution</string>
+			</dict>
+			<key>entitlements</key>
+			<dict>
+				<key>application-identifier</key>
+				<string>TW8PRJC365.com.barrandfarm.PodWash</string>
+				<key>com.apple.developer.devicecheck.appattest-environment</key>
+				<string>production</string>
+				<key>com.apple.developer.team-identifier</key>
+				<string>TW8PRJC365</string>
+				<key>get-task-allow</key>
+				<false/>
+			</dict>
+			<key>name</key>
+			<string>PodWash.app</string>
+			<key>profile</key>
+			<dict>
+				<key>UUID</key>
+				<string>789c68ff-00e3-4f8b-8ead-f9d1129bce87</string>
+				<key>dateExpires</key>
+				<string>8/8/27</string>
+				<key>name</key>
+				<string>iOS Team Ad Hoc Provisioning Profile: com.barrandfarm.PodWash</string>
+			</dict>
+			<key>team</key>
+			<dict>
+				<key>id</key>
+				<string>TW8PRJC365</string>
+				<key>name</key>
+				<string>Bryce Barrand</string>
+			</dict>
+			<key>versionNumber</key>
+			<string>1.0</string>
+		</dict>
+	</array>
+</dict>
+</plist>

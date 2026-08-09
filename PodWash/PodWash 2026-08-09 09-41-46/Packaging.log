@@ -1,0 +1,851 @@
+2026-08-09 15:41:25 +0000  Initial pipeline context: <IDEDistributionProcessingPipelineContext: 0xb69bca400; archive(resolved)="<IDEArchive: 0xb32b2c150>", distributionTask(resolved)="2", distributionDestination(resolved)="1", distributionMethod(resolved)="<IDEDistributionMethodiOSAdHoc: 0xb36a91f40>", team(resolved)="<IDEProvisioningDisambiguatableBasicTeam: 0xb54c26d40; teamID='TW8PRJC365', teamName='Bryce Barrand', teamType='Individual', username='barrand@gmail.com', isFreeProvisioningTeam='0'>">
+	Chain (16, self inclusive):
+	<IDEDistributionProcessingPipelineContext: 0xb69bca400; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="<IDEDistributionMethodiOSAdHoc: 0xb36a91f40>", team="<IDEProvisioningDisambiguatableBasicTeam: 0xb54c26d40; teamID='TW8PRJC365', teamName='Bryce Barrand', teamType='Individual', username='barrand@gmail.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionProcessingPipelineContext: 0xb693c8c00; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="<IDEDistributionMethodiOSAdHoc: 0xb36a91f40>", team="<IDEProvisioningDisambiguatableBasicTeam: 0xb54c26d40; teamID='TW8PRJC365', teamName='Bryce Barrand', teamType='Individual', username='barrand@gmail.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0xb32b46580; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="<IDEDistributionMethodiOSAdHoc: 0xb36a91f40>", team="<IDEProvisioningDisambiguatableBasicTeam: 0xb54c26d40; teamID='TW8PRJC365', teamName='Bryce Barrand', teamType='Individual', username='barrand@gmail.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0xb43d83c00; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="<IDEDistributionMethodiOSAdHoc: 0xb36a91f40>", team="<IDEProvisioningDisambiguatableBasicTeam: 0xb54c26d40; teamID='TW8PRJC365', teamName='Bryce Barrand', teamType='Individual', username='barrand@gmail.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0xb43d81900; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="<IDEDistributionMethodiOSAdHoc: 0xb36a91f40>", team="<IDEProvisioningDisambiguatableBasicTeam: 0xb54c26d40; teamID='TW8PRJC365', teamName='Bryce Barrand', teamType='Individual', username='barrand@gmail.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0xb31432f80; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="<IDEDistributionMethodiOSAdHoc: 0xb36a91f40>", team="<IDEProvisioningDisambiguatableBasicTeam: 0xb54c26d40; teamID='TW8PRJC365', teamName='Bryce Barrand', teamType='Individual', username='barrand@gmail.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0xb32b0f980; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="<IDEDistributionMethodiOSAdHoc: 0xb36a91f40>", team="<IDEProvisioningDisambiguatableBasicTeam: 0xb54c26d40; teamID='TW8PRJC365', teamName='Bryce Barrand', teamType='Individual', username='barrand@gmail.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0xb32b0e580; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="<IDEDistributionMethodiOSAdHoc: 0xb36a91f40>", team="<IDEProvisioningDisambiguatableBasicTeam: 0xb54c26d40; teamID='TW8PRJC365', teamName='Bryce Barrand', teamType='Individual', username='barrand@gmail.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0xb4bb02580; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="<IDEDistributionMethodiOSAdHoc: 0xb36a91f40>", team="<IDEProvisioningDisambiguatableBasicTeam: 0xb54c26d40; teamID='TW8PRJC365', teamName='Bryce Barrand', teamType='Individual', username='barrand@gmail.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0xb3143cc80; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="<IDEDistributionMethodiOSAdHoc: 0xb36a91f40>", team="(null)">
+	<IDEDistributionContext: 0xb31459680; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="<IDEDistributionMethodiOSAdHoc: 0xb36a91f40>", team="(null)">
+	<IDEDistributionContext: 0xb31458780; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="<IDEDistributionMethodiOSAdHoc: 0xb36a91f40>", team="(null)">
+	<IDEDistributionContext: 0xb31458000; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="<IDEDistributionMethodiOSAdHoc: 0xb36a91f40>", team="(null)">
+	<IDEDistributionContext: 0xb31458500; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="(null)", team="(null)">
+	<IDEDistributionContext: 0xb3143d400; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="(null)", team="(null)">
+	<IDEDistributionContext: 0xb3143e080; archive = "<IDEArchive: 0xb32b2c150>", distributionMethod="(null)", team="(null)">
+</IDEDistributionProcessingPipelineContext: 0xb69bca400>
+2026-08-09 15:41:25 +0000  Processing step: IDEDistributionCreateDestRootStep
+2026-08-09 15:41:25 +0000  Processing step: IDEDistributionCopyItemStep
+2026-08-09 15:41:25 +0000  Running /usr/bin/ditto '-V' '/Users/bbarrand/Library/Developer/Xcode/Archives/2026-08-09/PodWash 8-9-26, 9.29 AM.xcarchive/Products/Applications/PodWash.app' '/var/folders/3z/pz23wsy17q151lj56rfhdsmm0000gp/T/XcodeDistPipeline.~~~REqV0n/Root/Payload/PodWash.app'
+2026-08-09 15:41:25 +0000  >>> Copying /Users/bbarrand/Library/Developer/Xcode/Archives/2026-08-09/PodWash 8-9-26, 9.29 AM.xcarchive/Products/Applications/PodWash.app 
+2026-08-09 15:41:25 +0000  copying file ./_CodeSignature/CodeResources ... 
+2026-08-09 15:41:25 +0000  19813 bytes for ./_CodeSignature/CodeResources
+2026-08-09 15:41:25 +0000  copying file ./PodWash.momd/VersionInfo.plist ... 
+2026-08-09 15:41:25 +0000  475 bytes for ./PodWash.momd/VersionInfo.plist
+2026-08-09 15:41:25 +0000  copying file ./PodWash.momd/PodWash.mom ... 
+2026-08-09 15:41:25 +0000  5250 bytes for ./PodWash.momd/PodWash.mom
+2026-08-09 15:41:25 +0000  copying file ./PodWash.momd/PodWash.omo ... 
+2026-08-09 15:41:25 +0000  10560 bytes for ./PodWash.momd/PodWash.omo
+2026-08-09 15:41:25 +0000  copying file ./quack.wav ... 
+2026-08-09 15:41:25 +0000  13308 bytes for ./quack.wav
+2026-08-09 15:41:25 +0000  copying file ./Firebase_FirebaseCore.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:25 +0000  855 bytes for ./Firebase_FirebaseCore.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:25 +0000  copying file ./Firebase_FirebaseCore.bundle/Info.plist ... 
+2026-08-09 15:41:25 +0000  694 bytes for ./Firebase_FirebaseCore.bundle/Info.plist
+2026-08-09 15:41:25 +0000  copying file ./GTMSessionFetcher_GTMSessionFetcherCore.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:25 +0000  598 bytes for ./GTMSessionFetcher_GTMSessionFetcherCore.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:25 +0000  copying file ./GTMSessionFetcher_GTMSessionFetcherCore.bundle/Info.plist ... 
+2026-08-09 15:41:25 +0000  724 bytes for ./GTMSessionFetcher_GTMSessionFetcherCore.bundle/Info.plist
+2026-08-09 15:41:25 +0000  copying file ./asr-model-pin.txt ... 
+2026-08-09 15:41:25 +0000  23 bytes for ./asr-model-pin.txt
+2026-08-09 15:41:25 +0000  copying file ./beep.wav ... 
+2026-08-09 15:41:25 +0000  44178 bytes for ./beep.wav
+2026-08-09 15:41:25 +0000  copying file ./sample_feed.xml ... 
+2026-08-09 15:41:25 +0000  3155 bytes for ./sample_feed.xml
+2026-08-09 15:41:25 +0000  copying file ./PodWash ... 
+2026-08-09 15:41:25 +0000  5207744 bytes for ./PodWash
+2026-08-09 15:41:25 +0000  copying file ./second_feed.xml ... 
+2026-08-09 15:41:25 +0000  902 bytes for ./second_feed.xml
+2026-08-09 15:41:25 +0000  copying file ./test-clip.m4a ... 
+2026-08-09 15:41:25 +0000  195975 bytes for ./test-clip.m4a
+2026-08-09 15:41:25 +0000  copying file ./AppIcon60x60@2x.png ... 
+2026-08-09 15:41:25 +0000  9280 bytes for ./AppIcon60x60@2x.png
+2026-08-09 15:41:25 +0000  copying file ./GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:25 +0000  478 bytes for ./GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:25 +0000  copying file ./GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle/Info.plist ... 
+2026-08-09 15:41:25 +0000  746 bytes for ./GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle/Info.plist
+2026-08-09 15:41:25 +0000  copying file ./GoogleUtilities_GoogleUtilities-NSData.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:25 +0000  478 bytes for ./GoogleUtilities_GoogleUtilities-NSData.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:25 +0000  copying file ./GoogleUtilities_GoogleUtilities-NSData.bundle/Info.plist ... 
+2026-08-09 15:41:25 +0000  720 bytes for ./GoogleUtilities_GoogleUtilities-NSData.bundle/Info.plist
+2026-08-09 15:41:25 +0000  copying file ./stub_episode_audio.bin ... 
+2026-08-09 15:41:25 +0000  1024 bytes for ./stub_episode_audio.bin
+2026-08-09 15:41:25 +0000  copying file ./progressive-120s.m4a ... 
+2026-08-09 15:41:25 +0000  746260 bytes for ./progressive-120s.m4a
+2026-08-09 15:41:25 +0000  copying file ./Firebase_FirebaseCoreInternal.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:25 +0000  855 bytes for ./Firebase_FirebaseCoreInternal.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:25 +0000  copying file ./Firebase_FirebaseCoreInternal.bundle/Info.plist ... 
+2026-08-09 15:41:25 +0000  710 bytes for ./Firebase_FirebaseCoreInternal.bundle/Info.plist
+2026-08-09 15:41:25 +0000  copying file ./Firebase_FirebaseAuth.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:25 +0000  2102 bytes for ./Firebase_FirebaseAuth.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:25 +0000  copying file ./Firebase_FirebaseAuth.bundle/Info.plist ... 
+2026-08-09 15:41:25 +0000  694 bytes for ./Firebase_FirebaseAuth.bundle/Info.plist
+2026-08-09 15:41:25 +0000  copying file ./GoogleUtilities_GoogleUtilities-Logger.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:25 +0000  478 bytes for ./GoogleUtilities_GoogleUtilities-Logger.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:25 +0000  copying file ./GoogleUtilities_GoogleUtilities-Logger.bundle/Info.plist ... 
+2026-08-09 15:41:25 +0000  720 bytes for ./GoogleUtilities_GoogleUtilities-Logger.bundle/Info.plist
+2026-08-09 15:41:25 +0000  copying file ./GoogleUtilities_GoogleUtilities-Reachability.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:25 +0000  478 bytes for ./GoogleUtilities_GoogleUtilities-Reachability.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:25 +0000  copying file ./GoogleUtilities_GoogleUtilities-Reachability.bundle/Info.plist ... 
+2026-08-09 15:41:25 +0000  732 bytes for ./GoogleUtilities_GoogleUtilities-Reachability.bundle/Info.plist
+2026-08-09 15:41:25 +0000  copying file ./GoogleService-Info.plist ... 
+2026-08-09 15:41:25 +0000  507 bytes for ./GoogleService-Info.plist
+2026-08-09 15:41:25 +0000  copying file ./itunes_search_response.json ... 
+2026-08-09 15:41:25 +0000  613 bytes for ./itunes_search_response.json
+2026-08-09 15:41:25 +0000  copying file ./openai_whisper-bundled/config.json ... 
+2026-08-09 15:41:25 +0000  1454 bytes for ./openai_whisper-bundled/config.json
+2026-08-09 15:41:25 +0000  copying file ./openai_whisper-bundled/AudioEncoder.mlmodelc/weights/weight.bin ... 
+2026-08-09 15:41:26 +0000  41189632 bytes for ./openai_whisper-bundled/AudioEncoder.mlmodelc/weights/weight.bin
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/AudioEncoder.mlmodelc/metadata.json ... 
+2026-08-09 15:41:26 +0000  1863 bytes for ./openai_whisper-bundled/AudioEncoder.mlmodelc/metadata.json
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/AudioEncoder.mlmodelc/model.mil ... 
+2026-08-09 15:41:26 +0000  579125 bytes for ./openai_whisper-bundled/AudioEncoder.mlmodelc/model.mil
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/AudioEncoder.mlmodelc/model.mlmodel ... 
+2026-08-09 15:41:26 +0000  79853 bytes for ./openai_whisper-bundled/AudioEncoder.mlmodelc/model.mlmodel
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/AudioEncoder.mlmodelc/coremldata.bin ... 
+2026-08-09 15:41:26 +0000  347 bytes for ./openai_whisper-bundled/AudioEncoder.mlmodelc/coremldata.bin
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/AudioEncoder.mlmodelc/analytics/coremldata.bin ... 
+2026-08-09 15:41:26 +0000  243 bytes for ./openai_whisper-bundled/AudioEncoder.mlmodelc/analytics/coremldata.bin
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/generation_config.json ... 
+2026-08-09 15:41:26 +0000  982 bytes for ./openai_whisper-bundled/generation_config.json
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/MelSpectrogram.mlmodelc/weights/weight.bin ... 
+2026-08-09 15:41:26 +0000  354080 bytes for ./openai_whisper-bundled/MelSpectrogram.mlmodelc/weights/weight.bin
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/MelSpectrogram.mlmodelc/metadata.json ... 
+2026-08-09 15:41:26 +0000  1848 bytes for ./openai_whisper-bundled/MelSpectrogram.mlmodelc/metadata.json
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/MelSpectrogram.mlmodelc/model.mil ... 
+2026-08-09 15:41:26 +0000  10176 bytes for ./openai_whisper-bundled/MelSpectrogram.mlmodelc/model.mil
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/MelSpectrogram.mlmodelc/coremldata.bin ... 
+2026-08-09 15:41:26 +0000  328 bytes for ./openai_whisper-bundled/MelSpectrogram.mlmodelc/coremldata.bin
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/MelSpectrogram.mlmodelc/analytics/coremldata.bin ... 
+2026-08-09 15:41:26 +0000  243 bytes for ./openai_whisper-bundled/MelSpectrogram.mlmodelc/analytics/coremldata.bin
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/TextDecoder.mlmodelc/weights/weight.bin ... 
+2026-08-09 15:41:26 +0000  104121136 bytes for ./openai_whisper-bundled/TextDecoder.mlmodelc/weights/weight.bin
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/TextDecoder.mlmodelc/metadata.json ... 
+2026-08-09 15:41:26 +0000  4753 bytes for ./openai_whisper-bundled/TextDecoder.mlmodelc/metadata.json
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/TextDecoder.mlmodelc/model.mil ... 
+2026-08-09 15:41:26 +0000  200444 bytes for ./openai_whisper-bundled/TextDecoder.mlmodelc/model.mil
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/TextDecoder.mlmodelc/model.mlmodel ... 
+2026-08-09 15:41:26 +0000  160348 bytes for ./openai_whisper-bundled/TextDecoder.mlmodelc/model.mlmodel
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/TextDecoder.mlmodelc/coremldata.bin ... 
+2026-08-09 15:41:26 +0000  633 bytes for ./openai_whisper-bundled/TextDecoder.mlmodelc/coremldata.bin
+2026-08-09 15:41:26 +0000  copying file ./openai_whisper-bundled/TextDecoder.mlmodelc/analytics/coremldata.bin ... 
+2026-08-09 15:41:26 +0000  243 bytes for ./openai_whisper-bundled/TextDecoder.mlmodelc/analytics/coremldata.bin
+2026-08-09 15:41:26 +0000  copying file ./Promises_FBLPromises.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:26 +0000  373 bytes for ./Promises_FBLPromises.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:26 +0000  copying file ./Promises_FBLPromises.bundle/Info.plist ... 
+2026-08-09 15:41:26 +0000  684 bytes for ./Promises_FBLPromises.bundle/Info.plist
+2026-08-09 15:41:26 +0000  copying file ./GoogleUtilities_GoogleUtilities-Network.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:26 +0000  856 bytes for ./GoogleUtilities_GoogleUtilities-Network.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:26 +0000  copying file ./GoogleUtilities_GoogleUtilities-Network.bundle/Info.plist ... 
+2026-08-09 15:41:26 +0000  722 bytes for ./GoogleUtilities_GoogleUtilities-Network.bundle/Info.plist
+2026-08-09 15:41:26 +0000  copying file ./Assets.car ... 
+2026-08-09 15:41:26 +0000  223304 bytes for ./Assets.car
+2026-08-09 15:41:26 +0000  copying file ./AppIcon76x76@2x~ipad.png ... 
+2026-08-09 15:41:26 +0000  12689 bytes for ./AppIcon76x76@2x~ipad.png
+2026-08-09 15:41:26 +0000  copying file ./Firebase_FirebaseCoreExtension.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:26 +0000  478 bytes for ./Firebase_FirebaseCoreExtension.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:26 +0000  copying file ./Firebase_FirebaseCoreExtension.bundle/Info.plist ... 
+2026-08-09 15:41:26 +0000  712 bytes for ./Firebase_FirebaseCoreExtension.bundle/Info.plist
+2026-08-09 15:41:26 +0000  copying file ./GoogleUtilities_GoogleUtilities-UserDefaults.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:26 +0000  911 bytes for ./GoogleUtilities_GoogleUtilities-UserDefaults.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:26 +0000  copying file ./GoogleUtilities_GoogleUtilities-UserDefaults.bundle/Info.plist ... 
+2026-08-09 15:41:26 +0000  732 bytes for ./GoogleUtilities_GoogleUtilities-UserDefaults.bundle/Info.plist
+2026-08-09 15:41:26 +0000  copying file ./itunes_popular_response.json ... 
+2026-08-09 15:41:26 +0000  906 bytes for ./itunes_popular_response.json
+2026-08-09 15:41:26 +0000  copying file ./GoogleUtilities_GoogleUtilities-Environment.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:26 +0000  855 bytes for ./GoogleUtilities_GoogleUtilities-Environment.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:26 +0000  copying file ./GoogleUtilities_GoogleUtilities-Environment.bundle/Info.plist ... 
+2026-08-09 15:41:26 +0000  730 bytes for ./GoogleUtilities_GoogleUtilities-Environment.bundle/Info.plist
+2026-08-09 15:41:26 +0000  copying file ./progressive-120s.provenance.md ... 
+2026-08-09 15:41:26 +0000  303 bytes for ./progressive-120s.provenance.md
+2026-08-09 15:41:26 +0000  copying file ./embedded.mobileprovision ... 
+2026-08-09 15:41:26 +0000  12617 bytes for ./embedded.mobileprovision
+2026-08-09 15:41:26 +0000  copying file ./Info.plist ... 
+2026-08-09 15:41:26 +0000  3823 bytes for ./Info.plist
+2026-08-09 15:41:26 +0000  copying file ./PkgInfo ... 
+2026-08-09 15:41:26 +0000  8 bytes for ./PkgInfo
+2026-08-09 15:41:26 +0000  /usr/bin/ditto exited with 0
+2026-08-09 15:41:26 +0000  Processing step: IDEDistributionEmbedProfileStep
+2026-08-09 15:41:26 +0000  Processing step: IDEDistributionInfoPlistStep
+2026-08-09 15:41:26 +0000  Skipping step: IDEDistributionInfoPlistStep because it said so
+2026-08-09 15:41:26 +0000  Processing step: IDEDistributionAppThinningPlistStep
+2026-08-09 15:41:26 +0000  Skipping step: IDEDistributionAppThinningPlistStep because it said so
+2026-08-09 15:41:26 +0000  Processing step: IDEDistributionSymbolsStep
+2026-08-09 15:41:26 +0000  Skipping step: IDEDistributionSymbolsStep because it said so
+2026-08-09 15:41:26 +0000  Processing step: IDEDistributionAppThinningStep
+2026-08-09 15:41:26 +0000  Skipping step: IDEDistributionAppThinningStep because it said so
+2026-08-09 15:41:26 +0000  Processing step: IDEDistributionArchThinningStep
+2026-08-09 15:41:26 +0000  Archs to thin for item /Users/bbarrand/Library/Developer/Xcode/Archives/2026-08-09/PodWash 8-9-26, 9.29 AM.xcarchive/Products/Applications/PodWash.app are []
+2026-08-09 15:41:26 +0000  Processing step: IDEDistributionODRStep
+2026-08-09 15:41:26 +0000  Processing step: IDEDistributionStripXattrsStep
+2026-08-09 15:41:26 +0000  Skipping stripping extended attributes because the codesign step will strip them.
+2026-08-09 15:41:26 +0000  Processing step: IDEDistributionCodesignStep
+2026-08-09 15:41:26 +0000  Entitlements for <IDEDistributionItem: 0xb3157dda0; bundleID='com.barrandfarm.PodWash', path='<DVTFilePath:0xb34b37060:'/Users/bbarrand/Library/Developer/Xcode/Archives/2026-08-09/PodWash 8-9-26, 9.29 AM.xcarchive/Products/Applications/PodWash.app'>', codeSigningInfo='<_DVTCodeSigningInformation_Path: 0xb3157e0a0; isSigned='1', isAdHocSigned='0', signingCertificate='<DVTSigningCertificate: 0xb6a25eb80; name='Apple Development: barrand@gmail.com (L34T74YT8Y)', hash='82FDAD873AEFEA4EDA1E05F3413E152E75BAD76E', serialNumber='71FE5EC0F148032E7C01A9A025927598', certificateKinds='(
+    "1.2.840.113635.100.6.1.12",
+    "1.2.840.113635.100.6.1.2"
+), issueDate='2025-11-15 06:03:14 +0000''>', entitlements='{
+    "application-identifier" = "TW8PRJC365.com.barrandfarm.PodWash";
+    "com.apple.developer.devicecheck.appattest-environment" = production;
+    "com.apple.developer.team-identifier" = TW8PRJC365;
+    "get-task-allow" = 1;
+}', teamID='TW8PRJC365', identifier='com.barrandfarm.PodWash', executablePath='<DVTFilePath:0xb34b37000:'/Users/bbarrand/Library/Developer/Xcode/Archives/2026-08-09/PodWash 8-9-26, 9.29 AM.xcarchive/Products/Applications/PodWash.app/PodWash'>', hardenedRuntime='0'>'>: {
+    "application-identifier" = "TW8PRJC365.com.barrandfarm.PodWash";
+    "com.apple.developer.devicecheck.appattest-environment" = production;
+    "com.apple.developer.team-identifier" = TW8PRJC365;
+    "get-task-allow" = 0;
+}
+2026-08-09 15:41:26 +0000  Associated App Clip Identifiers Filter: Skipping because "com.apple.developer.associated-appclip-app-identifiers" is not present
+2026-08-09 15:41:26 +0000  Entitlements for <IDEDistributionItem: 0xb3157dda0; bundleID='com.barrandfarm.PodWash', path='<DVTFilePath:0xb34b37060:'/Users/bbarrand/Library/Developer/Xcode/Archives/2026-08-09/PodWash 8-9-26, 9.29 AM.xcarchive/Products/Applications/PodWash.app'>', codeSigningInfo='<_DVTCodeSigningInformation_Path: 0xb3157e0a0; isSigned='1', isAdHocSigned='0', signingCertificate='<DVTSigningCertificate: 0xb6a25ec40; name='Apple Development: barrand@gmail.com (L34T74YT8Y)', hash='82FDAD873AEFEA4EDA1E05F3413E152E75BAD76E', serialNumber='71FE5EC0F148032E7C01A9A025927598', certificateKinds='(
+    "1.2.840.113635.100.6.1.12",
+    "1.2.840.113635.100.6.1.2"
+), issueDate='2025-11-15 06:03:14 +0000''>', entitlements='{
+    "application-identifier" = "TW8PRJC365.com.barrandfarm.PodWash";
+    "com.apple.developer.devicecheck.appattest-environment" = production;
+    "com.apple.developer.team-identifier" = TW8PRJC365;
+    "get-task-allow" = 1;
+}', teamID='TW8PRJC365', identifier='com.barrandfarm.PodWash', executablePath='<DVTFilePath:0xb34b37000:'/Users/bbarrand/Library/Developer/Xcode/Archives/2026-08-09/PodWash 8-9-26, 9.29 AM.xcarchive/Products/Applications/PodWash.app/PodWash'>', hardenedRuntime='0'>'> are: {
+    "application-identifier" = "TW8PRJC365.com.barrandfarm.PodWash";
+    "com.apple.developer.devicecheck.appattest-environment" = production;
+    "com.apple.developer.team-identifier" = TW8PRJC365;
+    "get-task-allow" = 0;
+}
+2026-08-09 15:41:26 +0000  Writing entitlements for <IDEDistributionItem: 0xb3157dda0; bundleID='com.barrandfarm.PodWash', path='<DVTFilePath:0xb34b37060:'/Users/bbarrand/Library/Developer/Xcode/Archives/2026-08-09/PodWash 8-9-26, 9.29 AM.xcarchive/Products/Applications/PodWash.app'>', codeSigningInfo='<_DVTCodeSigningInformation_Path: 0xb3157e0a0; isSigned='1', isAdHocSigned='0', signingCertificate='<DVTSigningCertificate: 0xb6a25ec40; name='Apple Development: barrand@gmail.com (L34T74YT8Y)', hash='82FDAD873AEFEA4EDA1E05F3413E152E75BAD76E', serialNumber='71FE5EC0F148032E7C01A9A025927598', certificateKinds='(
+    "1.2.840.113635.100.6.1.12",
+    "1.2.840.113635.100.6.1.2"
+), issueDate='2025-11-15 06:03:14 +0000''>', entitlements='{
+    "application-identifier" = "TW8PRJC365.com.barrandfarm.PodWash";
+    "com.apple.developer.devicecheck.appattest-environment" = production;
+    "com.apple.developer.team-identifier" = TW8PRJC365;
+    "get-task-allow" = 1;
+}', teamID='TW8PRJC365', identifier='com.barrandfarm.PodWash', executablePath='<DVTFilePath:0xb34b37000:'/Users/bbarrand/Library/Developer/Xcode/Archives/2026-08-09/PodWash 8-9-26, 9.29 AM.xcarchive/Products/Applications/PodWash.app/PodWash'>', hardenedRuntime='0'>'> to: /var/folders/3z/pz23wsy17q151lj56rfhdsmm0000gp/T/XcodeDistPipeline.~~~REqV0n/entitlements~~~33bIyY
+2026-08-09 15:41:26 +0000  invoking codesign: <NSConcreteTask: 0xb6a9c7840; launchPath='/usr/bin/codesign', arguments='(
+    "-f",
+    "-s",
+    "-",
+    "--signature-size",
+    16000,
+    "--entitlements",
+    "/var/folders/3z/pz23wsy17q151lj56rfhdsmm0000gp/T/XcodeDistPipeline.~~~REqV0n/entitlements~~~33bIyY",
+    "--requirements",
+    "=designated => anchor apple generic and identifier \"com.barrandfarm.PodWash\" and certificate leaf[subject.CN] = \"Apple Distribution: Bryce Barrand (TW8PRJC365)\" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */",
+    "--preserve-metadata=identifier,flags,runtime,launch-constraints,library-constraints",
+    "--omit-adhoc-flag",
+    "--team-identifier",
+    TW8PRJC365,
+    "--generate-entitlement-der",
+    "--strip-disallowed-xattrs",
+    "-vvv",
+    "/var/folders/3z/pz23wsy17q151lj56rfhdsmm0000gp/T/XcodeDistPipeline.~~~REqV0n/Root/Payload/PodWash.app"
+)'>
+2026-08-09 15:41:26 +0000  codesign output: /var/folders/3z/pz23wsy17q151lj56rfhdsmm0000gp/T/XcodeDistPipeline.~~~REqV0n/Root/Payload/PodWash.app: replacing existing signature
+/var/folders/3z/pz23wsy17q151lj56rfhdsmm0000gp/T/XcodeDistPipeline.~~~REqV0n/Root/Payload/PodWash.app: signed app bundle with Mach-O thin (arm64) [com.barrandfarm.PodWash]
+2026-08-09 15:41:26 +0000  Remote code signing '/var/folders/3z/pz23wsy17q151lj56rfhdsmm0000gp/T/XcodeDistPipeline.~~~REqV0n/Root/Payload/PodWash.app' with signature slices '[<DVTCodeSignatureSlice: 0xb625f63a0; architecture='arm64', cmsDigest='<DVTCodeSignatureHash: 0xb6aa4efe0; digestAlgorithmDescription='sha256', cdHashHexEncoded='c95bba029f1c6362fea7d3e161de66cc2ea5d2148063fdc7a2c66cbca9d146ab'>', codeSignatureHashes='{(
+    <DVTCodeSignatureHash: 0xb6aa4e8a0; digestAlgorithmDescription='sha256', cdHashHexEncoded='c95bba029f1c6362fea7d3e161de66cc2ea5d2148063fdc7a2c66cbca9d146ab'>
+)}', cmsHexEncoded=''>]' and configuration 'RemoteSigningToolConfiguration(path: <DVTFilePath:0xb3157df20:'/var/folders/3z/pz23wsy17q151lj56rfhdsmm0000gp/T/XcodeDistPipeline.~~~REqV0n/Root/Payload/PodWash.app'>, signingCertificate: <DVTSigningCertificate: 0xb6a9e4c00; name='Apple Distribution: Bryce Barrand (TW8PRJC365)', hash='4C5BC8F6AD5276730E01002C62D210E7B1ECFD3C', serialNumber='22E32ED7CA0B80C906E905E55FB1A08F', certificateKinds='(
+    "1.2.840.113635.100.6.1.7",
+    "1.2.840.113635.100.6.1.4"
+), issueDate='2026-08-08 20:31:59 +0000''>, session: <DVTServicesAccountBasedSession: 0xb32f297a0; account='<DVTAppleIDBasedDeveloperAccount: 0xb53953a00; username='barrand@gmail.com'>'>, team: <DVTPortalTeam: 0xb637cfa00; name='Bryce Barrand', teamID='TW8PRJC365', type='Individual', memberships='(
+    "<DVTPortalMembership: 0xb597a6400; programs='{(\n    <DVTPortalProgram: 0xb5225e300; <DVTPortalProgram: 0xb5225e300; identifier='Xcode.Portal.Program.iOS'>>\n)}'>",
+    "<DVTPortalMembership: 0xb597a5bf0; programs='{(\n    <DVTPortalProgram: 0xb5221c0a0; <DVTPortalProgram: 0xb5221c0a0; identifier='Xcode.Portal.Program.Mac'>>\n)}'>"
+)'>, codeResourcesDictionary: [AnyHashable("files2"): {
+    "AppIcon60x60@2x.png" =     {
+        hash2 = {length = 32, bytes = 0x4a1cb26a 45e0840a 0f1e5762 488afadc ... a8924541 6cb03572 };
+    };
+    "AppIcon76x76@2x~ipad.png" =     {
+        hash2 = {length = 32, bytes = 0x585e0d8e b7370381 1628b633 b625b621 ... 381d8a73 2ffc150f };
+    };
+    "Assets.car" =     {
+        hash2 = {length = 32, bytes = 0xdf5a2d93 3dc3408e bbd3c674 8a9d7286 ... 1002bebf 3c1c2f22 };
+    };
+    "Firebase_FirebaseAuth.bundle/Info.plist" =     {
+        hash2 = {length = 32, bytes = 0xccc867db deecafdd c7fbda99 75783a75 ... 649afbd3 e4a934c7 };
+    };
+    "Firebase_FirebaseAuth.bundle/PrivacyInfo.xcprivacy" =     {
+        hash2 = {length = 32, bytes = 0x04c162ea fa49b2ce d0663231 a89cc9f5 ... 719b5da0 608aefd5 };
+    };
+    "Firebase_FirebaseCore.bundle/Info.plist" =     {
+        hash2 = {length = 32, bytes = 0xc16e644b 7188cf1d 1bc2419d b8ed825b ... d5ad50ca 04f4fa2b };
+    };
+    "Firebase_FirebaseCore.bundle/PrivacyInfo.xcprivacy" =     {
+        hash2 = {length = 32, bytes = 0x11e31f5f 6b60e80e bd590154 9fce5043 ... 945000b4 05306c3f };
+    };
+    "Firebase_FirebaseCoreExtension.bundle/Info.plist" =     {
+        hash2 = {length = 32, bytes = 0x6fea3013 477348cf e868204a 1cc2a2e8 ... 8427eeb0 e43e4d71 };
+    };
+    "Firebase_FirebaseCoreExtension.bundle/PrivacyInfo.xcprivacy" =     {
+        hash2 = {length = 32, bytes = 0x1377ecce dff8f832 0f78040e 9c9d3e17 ... f0ef17be 44197c7a };
+    };
+    "Firebase_FirebaseCoreInternal.bundle/Info.plist" =     {
+        hash2 = {length = 32, bytes = 0xf37d8aa6 aa50372b f963a928 6ceaa15b ... f4c2074e 8052f34d };
+    };
+    "Firebase_FirebaseCoreInternal.bundle/PrivacyInfo.xcprivacy" =     {
+        hash2 = {length = 32, bytes = 0x5b7fe979 423dede3 e08afc29 a42f00f6 ... 97742358 63eed3ef };
+    };
+    "GTMSessionFetcher_GTMSessionFetcherCore.bundle/Info.plist" =     {
+        hash2 = {length = 32, bytes = 0xa4fe3688 4adda79e 902e0e24 cea41559 ... c24bbfa2 398f19d2 };
+    };
+    "GTMSessionFetcher_GTMSessionFetcherCore.bundle/PrivacyInfo.xcprivacy" =     {
+        hash2 = {length = 32, bytes = 0x3e4a93cb e86acef7 dd7e063a 28c84999 ... 37c1e8b0 e1b54686 };
+    };
+    "GoogleService-Info.plist" =     {
+        hash2 = {length = 32, bytes = 0x30dc1a16 0e8ea529 8990092c 29c4c34a ... 91c11c7e 07e58787 };
+    };
+    "GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle/Info.plist" =     {
+        hash2 = {length = 32, bytes = 0x6e9378dd 2ca3eae4 6d9fb482 d061e51d ... f6e44ba1 a8588eed };
+    };
+    "GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle/PrivacyInfo.xcprivacy" =     {
+        hash2 = {length = 32, bytes = 0x1377ecce dff8f832 0f78040e 9c9d3e17 ... f0ef17be 44197c7a };
+    };
+    "GoogleUtilities_GoogleUtilities-Environment.bundle/Info.plist" =     {
+        hash2 = {length = 32, bytes = 0x56271d47 4b82953d b28c23db 751a0448 ... 87ab835b ab88ab6a };
+    };
+    "GoogleUtilities_GoogleUtilities-Environment.bundle/PrivacyInfo.xcprivacy" =     {
+        hash2 = {length = 32, bytes = 0xb08273d6 87379394 792f71c9 4c108361 ... 058980f4 44cfb3d4 };
+    };
+    "GoogleUtilities_GoogleUtilities-Logger.bundle/Info.plist" =     {
+        hash2 = {length = 32, bytes = 0xa8fb7865 7a7552e4 b1e5fe30 5574140e ... 54397fc2 7a8b0d54 };
+    };
+    "GoogleUtilities_GoogleUtilities-Logger.bundle/PrivacyInfo.xcprivacy" =     {
+        hash2 = {length = 32, bytes = 0x1377ecce dff8f832 0f78040e 9c9d3e17 ... f0ef17be 44197c7a };
+    };
+    "GoogleUtilities_GoogleUtilities-NSData.bundle/Info.plist" =     {
+        hash2 = {length = 32, bytes = 0x097eb7ab cf32daba 54f1107c af13fcb1 ... 1c49ca66 6b95ac52 };
+    };
+    "GoogleUtilities_GoogleUtilities-NSData.bundle/PrivacyInfo.xcprivacy" =     {
+        hash2 = {length = 32, bytes = 0x1377ecce dff8f832 0f78040e 9c9d3e17 ... f0ef17be 44197c7a };
+    };
+    "GoogleUtilities_GoogleUtilities-Network.bundle/Info.plist" =     {
+        hash2 = {length = 32, bytes = 0xfeaa8de3 59dd4931 fca271a1 ba4ad66b ... f34a6e17 35fa0767 };
+    };
+    "GoogleUtilities_GoogleUtilities-Network.bundle/PrivacyInfo.xcprivacy" =     {
+        hash2 = {length = 32, bytes = 0x0ac00a0b 7eff0079 dce252e2 9ab41d71 ... a110cef5 c62970e1 };
+    };
+    "GoogleUtilities_GoogleUtilities-Reachability.bundle/Info.plist" =     {
+        hash2 = {length = 32, bytes = 0x2ceb54af c6b92fe6 bb51191a 78b13759 ... 0b3fc876 7e835437 };
+    };
+    "GoogleUtilities_GoogleUtilities-Reachability.bundle/PrivacyInfo.xcprivacy" =     {
+        hash2 = {length = 32, bytes = 0x1377ecce dff8f832 0f78040e 9c9d3e17 ... f0ef17be 44197c7a };
+    };
+    "GoogleUtilities_GoogleUtilities-UserDefaults.bundle/Info.plist" =     {
+        hash2 = {length = 32, bytes = 0x0748d239 2a80869a 676ffdfe 0d16a913 ... 0d57634d 2e6ed8a7 };
+    };
+    "GoogleUtilities_GoogleUtilities-UserDefaults.bundle/PrivacyInfo.xcprivacy" =     {
+        hash2 = {length = 32, bytes = 0xfac507c5 10aba788 4e805fb5 feff1a8a ... 927a2bdf aa7130b4 };
+    };
+    "PodWash.momd/PodWash.mom" =     {
+        hash2 = {length = 32, bytes = 0xd86eede7 a203ecbd d699bb40 84ed4d29 ... 36ec6c8f a6730b7d };
+    };
+    "PodWash.momd/PodWash.omo" =     {
+        hash2 = {length = 32, bytes = 0xa1ac923e 270ccb1d 52a7b5a2 89b41693 ... 620c33f5 f44170ad };
+    };
+    "PodWash.momd/VersionInfo.plist" =     {
+        hash2 = {length = 32, bytes = 0x57e6be1c e656c67c 970334a4 b50bb0bd ... ef9e1e21 3c12c0b1 };
+    };
+    "Promises_FBLPromises.bundle/Info.plist" =     {
+        hash2 = {length = 32, bytes = 0xf42f126d efffdec8 6fe6c3b0 8524a7f0 ... f1798684 cb49392c };
+    };
+    "Promises_FBLPromises.bundle/PrivacyInfo.xcprivacy" =     {
+        hash2 = {length = 32, bytes = 0x74b0cd72 fc23c1ef 302f22ee 2753f618 ... d0632b52 4fb8acea };
+    };
+    "asr-model-pin.txt" =     {
+        hash2 = {length = 32, bytes = 0x2a168eaa 2b270e57 2997ee32 12ee7ebb ... 30224987 2512fe67 };
+    };
+    "beep.wav" =     {
+        hash2 = {length = 32, bytes = 0x829c72ec f71387cb 684e86f9 eeb98a86 ... 92966480 23a8cfa3 };
+    };
+    "embedded.mobileprovision" =     {
+        hash2 = {length = 32, bytes = 0xff684adc 0273b248 ba8fdee1 288e03cf ... a56bb022 6a99121d };
+    };
+    "itunes_popular_response.json" =     {
+        hash2 = {length = 32, bytes = 0xf18ff861 9a6dc93b c3f03205 cee545ff ... 909a57fb 9015d7c9 };
+    };
+    "itunes_search_response.json" =     {
+        hash2 = {length = 32, bytes = 0x73cad6e3 19a6f47f 55b0d472 18f8ce76 ... 15d83cbc 9fdbc66e };
+    };
+    "openai_whisper-bundled/AudioEncoder.mlmodelc/analytics/coremldata.bin" =     {
+        hash2 = {length = 32, bytes = 0xc4e096b2 abd561f0 0b9b6984 01df3fbe ... cb4e1995 680e827e };
+    };
+    "openai_whisper-bundled/AudioEncoder.mlmodelc/coremldata.bin" =     {
+        hash2 = {length = 32, bytes = 0xe3169806 38e2099e 83cb1a93 b903717d ... 113764c3 767696ba };
+    };
+    "openai_whisper-bundled/AudioEncoder.mlmodelc/metadata.json" =     {
+        hash2 = {length = 32, bytes = 0xd6785fae 31c3f86d 60058c14 c79902f7 ... 3fe78b9c 34867fce };
+    };
+    "openai_whisper-bundled/AudioEncoder.mlmodelc/model.mil" =     {
+        hash2 = {length = 32, bytes = 0xdc74813e 26fce790 fe22a33d cef8be53 ... b677f5e0 7dcf9138 };
+    };
+    "openai_whisper-bundled/AudioEncoder.mlmodelc/model.mlmodel" =     {
+        hash2 = {length = 32, bytes = 0x1d42038f 84b508da 5ce9b953 302387ff ... b7651090 02b6080e };
+    };
+    "openai_whisper-bundled/AudioEncoder.mlmodelc/weights/weight.bin" =     {
+        hash2 = {length = 32, bytes = 0x74f15e6d 2f7694af 54e90227 cbf22fd6 ... a909967b 16edc1c7 };
+    };
+    "openai_whisper-bundled/MelSpectrogram.mlmodelc/analytics/coremldata.bin" =     {
+        hash2 = {length = 32, bytes = 0x7f77e645 7285248f 99cd7aa3 fd4cc2ef ... c53abe1f 95785d07 };
+    };
+    "openai_whisper-bundled/MelSpectrogram.mlmodelc/coremldata.bin" =     {
+        hash2 = {length = 32, bytes = 0xdabdc5aa 69f6ef4d 97dc9499 f5c30514 ... a5a64713 63c71662 };
+    };
+    "openai_whisper-bundled/MelSpectrogram.mlmodelc/metadata.json" =     {
+        hash2 = {length = 32, bytes = 0x66a60d0b abfcae56 6910a6d6 99471efd ... e16989ca 4d6729d3 };
+    };
+    "openai_whisper-bundled/MelSpectrogram.mlmodelc/model.mil" =     {
+        hash2 = {length = 32, bytes = 0xb8063d8e 57c11347 2ac7c2d2 48e44383 ... 884ac406 b997a374 };
+    };
+    "openai_whisper-bundled/MelSpectrogram.mlmodelc/weights/weight.bin" =     {
+        hash2 = {length = 32, bytes = 0xee77f9b6 7765f7ab c33f1637 4081b238 ... 241950c5 a2e5d6c1 };
+    };
+    "openai_whisper-bundled/TextDecoder.mlmodelc/analytics/coremldata.bin" =     {
+        hash2 = {length = 32, bytes = 0xe870aac5 de88676c 1ad93cb3 939f257e ... 686398eb ecafdb8d };
+    };
+    "openai_whisper-bundled/TextDecoder.mlmodelc/coremldata.bin" =     {
+        hash2 = {length = 32, bytes = 0x4b23ff9d 9fe376f2 b86f9cf5 5af32185 ... 510fbad4 90c0db43 };
+    };
+    "openai_whisper-bundled/TextDecoder.mlmodelc/metadata.json" =     {
+        hash2 = {length = 32, bytes = 0xda9be60f d96a1393 8445fd58 9a54bf56 ... fb79537d df67d10c };
+    };
+    "openai_whisper-bundled/TextDecoder.mlmodelc/model.mil" =     {
+        hash2 = {length = 32, bytes = 0xe380edc7 0b68dc1e 06c1ae19 aaa8fd5f ... 1ce5648c fb3ed3ce };
+    };
+    "openai_whisper-bundled/TextDecoder.mlmodelc/model.mlmodel" =     {
+        hash2 = {length = 32, bytes = 0x72f1214f 7c8b26e4 67dd8233 572eaa5c ... 4c289f9f c8c4f401 };
+    };
+    "openai_whisper-bundled/TextDecoder.mlmodelc/weights/weight.bin" =     {
+        hash2 = {length = 32, bytes = 0x4649599b d2d97f87 ffc716e6 da2f61a0 ... edc3d4bf 66fb6221 };
+    };
+    "openai_whisper-bundled/config.json" =     {
+        hash2 = {length = 32, bytes = 0xab227792 56bdb966 a5dc4f03 3cb9ac64 ... 8655c8ad 2a5ea700 };
+    };
+    "openai_whisper-bundled/generation_config.json" =     {
+        hash2 = {length = 32, bytes = 0xea4714d2 f89ab6de 18c6dead 99c10fbe ... 9d4d7889 140d70b5 };
+    };
+    "progressive-120s.m4a" =     {
+        hash2 = {length = 32, bytes = 0x84b1ccce cf769953 fd328fe4 8c8525c7 ... b26f00a3 35705599 };
+    };
+    "progressive-120s.provenance.md" =     {
+        hash2 = {length = 32, bytes = 0xd33d5f7f 2d8df83c 86b475f1 de69ddb6 ... 842f5e78 c503728e };
+    };
+    "quack.wav" =     {
+        hash2 = {length = 32, bytes = 0xd3c54cec 0bfe317e 05368b8b a1a1a7ce ... 3127b647 89234674 };
+    };
+    "sample_feed.xml" =     {
+        hash2 = {length = 32, bytes = 0x8d6c2fb8 98e735b8 595f684b d2cdfa0e ... 88f5eca4 686944ef };
+    };
+    "second_feed.xml" =     {
+        hash2 = {length = 32, bytes = 0xd47ee91a 36246b50 1d05b96c d3f4dce1 ... 9ae86ab6 5a84ca61 };
+    };
+    "stub_episode_audio.bin" =     {
+        hash2 = {length = 32, bytes = 0x785b0751 fc2c53dc 14a4ce3d 800e69ef ... 58afe09c 242c26c9 };
+    };
+    "test-clip.m4a" =     {
+        hash2 = {length = 32, bytes = 0xbcc7fb3c 7b29f2b7 feafdfd3 fcc10d9f ... 83a69639 c38385bb };
+    };
+}, AnyHashable("files"): {
+    "AppIcon60x60@2x.png" = {length = 20, bytes = 0x6e1edfc3770f719d1d5dbcfb6d648cda32db74f8};
+    "AppIcon76x76@2x~ipad.png" = {length = 20, bytes = 0xaba5d790ab79490ac455c0b7044884d2a7263c14};
+    "Assets.car" = {length = 20, bytes = 0x03bf1e1eeb349fd6aa97c770ad52b778583888ee};
+    "Firebase_FirebaseAuth.bundle/Info.plist" = {length = 20, bytes = 0x9e7f2312dc2e0b1c192dc48a3c5197cc03818e0d};
+    "Firebase_FirebaseAuth.bundle/PrivacyInfo.xcprivacy" = {length = 20, bytes = 0xf1c43fad24bb5d1f28853b92011dbb9906f5c225};
+    "Firebase_FirebaseCore.bundle/Info.plist" = {length = 20, bytes = 0x57e0b0246d269f5bcead4ee58e53a6240e5ab272};
+    "Firebase_FirebaseCore.bundle/PrivacyInfo.xcprivacy" = {length = 20, bytes = 0xb1ad8e84596a742232cfda15edf51d0ca5b314bd};
+    "Firebase_FirebaseCoreExtension.bundle/Info.plist" = {length = 20, bytes = 0x6ccfadc98741e7a5bd3febf2c5115a297c1cec75};
+    "Firebase_FirebaseCoreExtension.bundle/PrivacyInfo.xcprivacy" = {length = 20, bytes = 0xea20654845b3ac3eb3a2e1f1e0da9e0e18ca4864};
+    "Firebase_FirebaseCoreInternal.bundle/Info.plist" = {length = 20, bytes = 0x59ad6c666b303d86d0cd026e1c95caf2716cca4e};
+    "Firebase_FirebaseCoreInternal.bundle/PrivacyInfo.xcprivacy" = {length = 20, bytes = 0x89fa1386ba9b6eaa0b1b8ca302bb8c41169fd03c};
+    "GTMSessionFetcher_GTMSessionFetcherCore.bundle/Info.plist" = {length = 20, bytes = 0x30637b5ce4d0f76509667d440da73f8dfe0e4968};
+    "GTMSessionFetcher_GTMSessionFetcherCore.bundle/PrivacyInfo.xcprivacy" = {length = 20, bytes = 0x1aa780324c1b70d41e1b42b8a90850876bc7847a};
+    "GoogleService-Info.plist" = {length = 20, bytes = 0x8988a80634fe4668887995f5fee21aa1b8a325c0};
+    "GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle/Info.plist" = {length = 20, bytes = 0xa124f92e1dcf8bed87f36f73b8ca21935df7c33c};
+    "GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle/PrivacyInfo.xcprivacy" = {length = 20, bytes = 0xea20654845b3ac3eb3a2e1f1e0da9e0e18ca4864};
+    "GoogleUtilities_GoogleUtilities-Environment.bundle/Info.plist" = {length = 20, bytes = 0x4435384d6b960f880a8bbfc5a47aac8b3c22059f};
+    "GoogleUtilities_GoogleUtilities-Environment.bundle/PrivacyInfo.xcprivacy" = {length = 20, bytes = 0xe9110a6c9eb555e246c445607c282a0335967c0e};
+    "GoogleUtilities_GoogleUtilities-Logger.bundle/Info.plist" = {length = 20, bytes = 0x1c1492d429d56197be70042acb3ae9c8e06beace};
+    "GoogleUtilities_GoogleUtilities-Logger.bundle/PrivacyInfo.xcprivacy" = {length = 20, bytes = 0xea20654845b3ac3eb3a2e1f1e0da9e0e18ca4864};
+    "GoogleUtilities_GoogleUtilities-NSData.bundle/Info.plist" = {length = 20, bytes = 0xb0683b59184af839aa6ee0fa66d66bd39987a1ec};
+    "GoogleUtilities_GoogleUtilities-NSData.bundle/PrivacyInfo.xcprivacy" = {length = 20, bytes = 0xea20654845b3ac3eb3a2e1f1e0da9e0e18ca4864};
+    "GoogleUtilities_GoogleUtilities-Network.bundle/Info.plist" = {length = 20, bytes = 0x643eb657d327d31588789dd399977a461e3dabf7};
+    "GoogleUtilities_GoogleUtilities-Network.bundle/PrivacyInfo.xcprivacy" = {length = 20, bytes = 0x2531984134a4b89eee19f0f549f8d04eade78329};
+    "GoogleUtilities_GoogleUtilities-Reachability.bundle/Info.plist" = {length = 20, bytes = 0xc3985567e182628a8085f7875ad1c721fe95c14a};
+    "GoogleUtilities_GoogleUtilities-Reachability.bundle/PrivacyInfo.xcprivacy" = {length = 20, bytes = 0xea20654845b3ac3eb3a2e1f1e0da9e0e18ca4864};
+    "GoogleUtilities_GoogleUtilities-UserDefaults.bundle/Info.plist" = {length = 20, bytes = 0xd93dd1caa91917f709021c3eceaff0800096408c};
+    "GoogleUtilities_GoogleUtilities-UserDefaults.bundle/PrivacyInfo.xcprivacy" = {length = 20, bytes = 0x83b32ef44e72420af8c63e65bb85e8b37b8ca6d4};
+    "Info.plist" = {length = 20, bytes = 0xf00b8c5338bd4083512a99f5827e5af1e7e3d7fe};
+    PkgInfo = {length = 20, bytes = 0x9f9eea0cfe2d65f2c3d6b092e375b40782d08f31};
+    "PodWash.momd/PodWash.mom" = {length = 20, bytes = 0xea984336b778535573ac36f1dd82ce60ee0ba8dd};
+    "PodWash.momd/PodWash.omo" = {length = 20, bytes = 0x00116649bad0bdf41fc29e77eea7ed49e078a42a};
+    "PodWash.momd/VersionInfo.plist" = {length = 20, bytes = 0xb8f4ad3fbb3ffc053c7492e494927a230779444b};
+    "Promises_FBLPromises.bundle/Info.plist" = {length = 20, bytes = 0xc6e43bd43658daaced3ed441b53218bc9ea86440};
+    "Promises_FBLPromises.bundle/PrivacyInfo.xcprivacy" = {length = 20, bytes = 0x65a8e7bc4b3f318452dd7e133cb0210568bc99ce};
+    "asr-model-pin.txt" = {length = 20, bytes = 0x67d90400156f46c0bd4523c4747bf6488db0a739};
+    "beep.wav" = {length = 20, bytes = 0xb73d79fbe49c215ff55ee89aa16bc049812c6bab};
+    "embedded.mobileprovision" = {length = 20, bytes = 0xae3636273eaa1b58309c1c8c6d7a3afed28913d2};
+    "itunes_popular_response.json" = {length = 20, bytes = 0x3494a28d3e26d8ffe2685999aa733b8348010164};
+    "itunes_search_response.json" = {length = 20, bytes = 0x4dd76f377d8a24c6540c401bda97a079613986d7};
+    "openai_whisper-bundled/AudioEncoder.mlmodelc/analytics/coremldata.bin" = {length = 20, bytes = 0xc6edc03feb7786088599d76c9d22b2462c514517};
+    "openai_whisper-bundled/AudioEncoder.mlmodelc/coremldata.bin" = {length = 20, bytes = 0x54a9b0e47d072ac27b10c0d68e42700a5a222d76};
+    "openai_whisper-bundled/AudioEncoder.mlmodelc/metadata.json" = {length = 20, bytes = 0x7a4378e7e50addc53d941014588e2d370ec1ec49};
+    "openai_whisper-bundled/AudioEncoder.mlmodelc/model.mil" = {length = 20, bytes = 0x26902a19715ff0b85e02fe397c08316d5bcc6b83};
+    "openai_whisper-bundled/AudioEncoder.mlmodelc/model.mlmodel" = {length = 20, bytes = 0xb87f9e609c76d7d5f77034c574e1b83c4b1bfd29};
+    "openai_whisper-bundled/AudioEncoder.mlmodelc/weights/weight.bin" = {length = 20, bytes = 0xb8e76659079b06a44df0ad7faaf9b76f6ed8ac3f};
+    "openai_whisper-bundled/MelSpectrogram.mlmodelc/analytics/coremldata.bin" = {length = 20, bytes = 0x45278dd0138aa2c9f4e32a0ea924b978c1c6e115};
+    "openai_whisper-bundled/MelSpectrogram.mlmodelc/coremldata.bin" = {length = 20, bytes = 0xeeed99e2b0a5b9714fa51b714b3198b9184069bb};
+    "openai_whisper-bundled/MelSpectrogram.mlmodelc/metadata.json" = {length = 20, bytes = 0xffc5e9c3dd190332faf182040149fd7261e290fa};
+    "openai_whisper-bundled/MelSpectrogram.mlmodelc/model.mil" = {length = 20, bytes = 0x8c7118bee1f88e9dc082fe5873c658f5742cbccf};
+    "openai_whisper-bundled/MelSpectrogram.mlmodelc/weights/weight.bin" = {length = 20, bytes = 0x14ced6764e350c6c16abbedd0282b83fd94f422b};
+    "openai_whisper-bundled/TextDecoder.mlmodelc/analytics/coremldata.bin" = {length = 20, bytes = 0x605dd106b710ce630f49ff7c92f128611de1d93e};
+    "openai_whisper-bundled/TextDecoder.mlmodelc/coremldata.bin" = {length = 20, bytes = 0x9e18e3bec0a3243256587ee2b5ad4981c63b89c4};
+    "openai_whisper-bundled/TextDecoder.mlmodelc/metadata.json" = {length = 20, bytes = 0x50ce2fdfa3e73bfd27bdbb8d0da90a1c6d21d5e7};
+    "openai_whisper-bundled/TextDecoder.mlmodelc/model.mil" = {length = 20, bytes = 0x393f749934a6a83ed5bb09d7f19a33129a04a4c0};
+    "openai_whisper-bundled/TextDecoder.mlmodelc/model.mlmodel" = {length = 20, bytes = 0xe22a35d92b6c1a2ea794cca02e1ea9adcc49c7ea};
+    "openai_whisper-bundled/TextDecoder.mlmodelc/weights/weight.bin" = {length = 20, bytes = 0xcb2cc24c97dad803cce95bd2e1af6f4142a9e6ba};
+    "openai_whisper-bundled/config.json" = {length = 20, bytes = 0x1fea39dd4d89e3df8b8d4f2c072f925eaaf495a0};
+    "openai_whisper-bundled/generation_config.json" = {length = 20, bytes = 0xffa9594a256ee9994172b6e7fc268d018b2c9c6e};
+    "progressive-120s.m4a" = {length = 20, bytes = 0x3859a3a8f9791c25afbde2d03be1e4129c606a83};
+    "progressive-120s.provenance.md" = {length = 20, bytes = 0xe6182f3e162bcb9cd8af5821b90d67565e57775e};
+    "quack.wav" = {length = 20, bytes = 0xec81e82cbe4bacbed8248fb71c4bde4cdcf8c750};
+    "sample_feed.xml" = {length = 20, bytes = 0x6d668a2003e0c729b0500bd2088b767498dff9e9};
+    "second_feed.xml" = {length = 20, bytes = 0x0ba9df3b15df112aceba3e1403cdcf89eee8be5e};
+    "stub_episode_audio.bin" = {length = 20, bytes = 0x5b00669c480d5cffbdfa8bdba99561160f2d1b77};
+    "test-clip.m4a" = {length = 20, bytes = 0x6b66358a5cea134307dc6631886e9e3b03315623};
+}, AnyHashable("rules"): {
+    "^.*" = 1;
+    "^.*\\.lproj/" =     {
+        optional = 1;
+        weight = 1000;
+    };
+    "^.*\\.lproj/locversion.plist$" =     {
+        omit = 1;
+        weight = 1100;
+    };
+    "^Base\\.lproj/" =     {
+        weight = 1010;
+    };
+    "^version.plist$" = 1;
+}, AnyHashable("rules2"): {
+    ".*\\.dSYM($|/)" =     {
+        weight = 11;
+    };
+    "^(.*/)?\\.DS_Store$" =     {
+        omit = 1;
+        weight = 2000;
+    };
+    "^.*" = 1;
+    "^.*\\.lproj/" =     {
+        optional = 1;
+        weight = 1000;
+    };
+    "^.*\\.lproj/locversion.plist$" =     {
+        omit = 1;
+        weight = 1100;
+    };
+    "^Base\\.lproj/" =     {
+        weight = 1010;
+    };
+    "^Info\\.plist$" =     {
+        omit = 1;
+        weight = 20;
+    };
+    "^PkgInfo$" =     {
+        omit = 1;
+        weight = 20;
+    };
+    "^embedded\\.provisionprofile$" =     {
+        weight = 20;
+    };
+    "^version\\.plist$" =     {
+        weight = 20;
+    };
+}], enableSignatureValidation: true, logAspect: <DVTLogAspect:0xb3157de00:IDEDistributionPipeline:level=verbose(3):effective-level=verbose(3)>)'
+2026-08-09 15:41:26 +0000  Sending request E7C120AD-ADEF-4580-80AD-2C70DF516EDC to <https://developerservices2.apple.com/services/v1/certificates> for session <DVTServicesAccountBasedSession: 0xb32f297a0; account='<DVTAppleIDBasedDeveloperAccount: 0xb53953a00; username='barrand@gmail.com'>'>.
+Method: POST
+
+Headers:
+{
+    Accept = "application/vnd.api+json";
+    "Accept-Encoding" = "gzip, deflate";
+    "Content-Length" = 113;
+    "Content-Type" = "application/vnd.api+json";
+    DSESSIONID = 1rpr8agec2cpvp3ujq48nf0fa3sfpolvto55241vogpche0deopq;
+    "User-Agent" = Xcode;
+    "X-Apple-App-Info" = "com.apple.gs.xcode.auth";
+    "X-Apple-GS-Token" = "AAAABLwIAAAAAGp3gCMRDWdzLnhjb2RlLmF1dGi9AAeBqBoYP3sEOUJR/GXOwJ0sPK4ov+GLEGiSeQq24pSjJyPwoDBr0wxK/4f6HxFqXfn2rfu0WI8rtoQvXzA6M69HDZgIErJoLEmnqdcj2MB7y1h4SYcxfXi8Y8SYC5ZF4/gLRjg8sfIw4okVovyUc2cnDEyh";
+    "X-Apple-I-Identity-Id" = "001459-10-e4699a88-a8ea-473d-a248-c673f8f75672";
+    "X-HTTP-Method-Override" = GET;
+    "X-MMe-Client-Info" = "<Mac16,8> <macOS;26.6;25G72> <com.apple.AuthKit/1 (com.apple.dt.Xcode/24455)>";
+    "X-Mme-Device-Id" = "156306C6-333B-55FF-8F00-CD9899E6C505";
+    "X-Xcode-Version" = "26.1.1 (17B100)";
+}
+
+Payload:
+{"urlEncodedQueryParams":"teamId=TW8PRJC365&filter%5BserialNumber%5D=22E32ED7CA0B80C906E905E55FB1A08F&limit=200"}
+2026-08-09 15:41:26 +0000  Received response for E7C120AD-ADEF-4580-80AD-2C70DF516EDC @ <https://developerservices2.apple.com/services/v1/certificates>. Code = 0
+2026-08-09 15:41:26 +0000  Response payload: {
+  "data" : [ {
+    "type" : "certificates",
+    "id" : "93HT9GW6FN",
+    "attributes" : {
+      "requesterEmail" : "barrand@gmail.com",
+      "serialNumber" : "22E32ED7CA0B80C906E905E55FB1A08F",
+      "certificateContent" : "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",
+      "displayName" : "Bryce Barrand",
+      "requesterLastName" : "Barrand",
+      "csrContent" : null,
+      "machineName" : null,
+      "platform" : null,
+      "requesterFirstName" : "Bryce",
+      "machineId" : null,
+      "name" : "Apple Distribution: Bryce Barrand",
+      "responseId" : "0c1de239-9163-401d-bfb9-cb21d8d93058",
+      "expirationDate" : "2027-08-08T20:31:58.000+00:00",
+      "certificateType" : "DISTRIBUTION_MANAGED"
+    },
+    "links" : {
+      "self" : "https://developerservices2.apple.com:443/services/v1/certificates/93HT9GW6FN"
+    }
+  } ],
+  "links" : {
+    "self" : "https://developerservices2.apple.com:443/services/v1/certificates?filter%5BserialNumber%5D=22E32ED7CA0B80C906E905E55FB1A08F&limit=200"
+  },
+  "meta" : {
+    "paging" : {
+      "total" : 1,
+      "limit" : 200
+    }
+  }
+}
+
+2026-08-09 15:41:26 +0000  Sending request 7C269816-D0E7-47BF-9C82-5A4224AC9B7B to <https://developerservices3.apple.com/services/v1/batch> for session <DVTServicesAccountBasedSession: 0xb32f297a0; account='<DVTAppleIDBasedDeveloperAccount: 0xb53953a00; username='barrand@gmail.com'>'>.
+Method: POST
+
+Headers:
+{
+    Accept = "application/vnd.api+json";
+    "Accept-Encoding" = "gzip, deflate";
+    "Content-Length" = 488;
+    "Content-Type" = "application/vnd.api+json";
+    DSESSIONID = 1rpr8agec2cpvp3ujq48nf0fa3sfpolvto55241vogpche0deopq;
+    "User-Agent" = Xcode;
+    "X-Apple-App-Info" = "com.apple.gs.xcode.auth";
+    "X-Apple-GS-Token" = "AAAABLwIAAAAAGp3gCMRDWdzLnhjb2RlLmF1dGi9AAeBqBoYP3sEOUJR/GXOwJ0sPK4ov+GLEGiSeQq24pSjJyPwoDBr0wxK/4f6HxFqXfn2rfu0WI8rtoQvXzA6M69HDZgIErJoLEmnqdcj2MB7y1h4SYcxfXi8Y8SYC5ZF4/gLRjg8sfIw4okVovyUc2cnDEyh";
+    "X-Apple-I-Identity-Id" = "001459-10-e4699a88-a8ea-473d-a248-c673f8f75672";
+    "X-MMe-Client-Info" = "<Mac16,8> <macOS;26.6;25G72> <com.apple.AuthKit/1 (com.apple.dt.Xcode/24455)>";
+    "X-Mme-Device-Id" = "156306C6-333B-55FF-8F00-CD9899E6C505";
+    "X-Xcode-Version" = "26.1.1 (17B100)";
+}
+
+Payload:
+{"data":{"type":"batch","attributes":{"resourceList":[{"data":{"relationships":{"certificate":{"data":{"id":"93HT9GW6FN","type":"certificates"}},"bundleId":{"data":{"id":"8PGK7G73JR","type":"bundleIds"}}},"attributes":{"name":"0","digestHash":"C95BBA029F1C6362FEA7D3E161DE66CC2EA5D2148063FDC7A2C66CBCA9D146AB","cdHashSha256":"C95BBA029F1C6362FEA7D3E161DE66CC2EA5D2148063FDC7A2C66CBCA9D146AB","teamId":"TW8PRJC365"},"type":"codeSignatures"}}],"resourceVersion":"1","teamId":"TW8PRJC365"}}}
+2026-08-09 15:41:27 +0000  Received response for 7C269816-D0E7-47BF-9C82-5A4224AC9B7B @ <https://developerservices3.apple.com/services/v1/batch>. Code = 0
+2026-08-09 15:41:27 +0000  Response payload: {
+  "data" : {
+    "type" : "batch",
+    "id" : "6f5f099a-39ec-4f32-ae01-3a34df524080",
+    "attributes" : {
+      "responseId" : "6f5f099a-39ec-4f32-ae01-3a34df524080",
+      "resourceList" : [ {
+        "type" : "codeSignatures",
+        "id" : "20e33824-1ceb-415f-8565-4f18d1effefc",
+        "attributes" : {
+          "digestHash" : "C95BBA029F1C6362FEA7D3E161DE66CC2EA5D2148063FDC7A2C66CBCA9D146AB",
+          "cdHashSha256" : "C95BBA029F1C6362FEA7D3E161DE66CC2EA5D2148063FDC7A2C66CBCA9D146AB",
+          "signature" : "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",
+          "name" : "0",
+          "responseId" : "6f5f099a-39ec-4f32-ae01-3a34df524080",
+          "cmsSignature" : "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",
+          "timestamp" : false
+        },
+        "relationships" : {
+          "bundleId" : {
+            "data" : {
+              "type" : "bundleIds",
+              "id" : "8PGK7G73JR"
+            },
+            "links" : {
+              "self" : {
+                "href" : "https://developerservices3.apple.com:443/services/v1/codeSignatures/20e33824-1ceb-415f-8565-4f18d1effefc/relationships/bundleId"
+              },
+              "related" : {
+                "href" : "https://developerservices3.apple.com:443/services/v1/codeSignatures/20e33824-1ceb-415f-8565-4f18d1effefc/bundleId"
+              }
+            }
+          },
+          "certificate" : {
+            "data" : {
+              "type" : "certificates",
+              "id" : "93HT9GW6FN"
+            },
+            "links" : {
+              "self" : {
+                "href" : "https://developerservices3.apple.com:443/services/v1/codeSignatures/20e33824-1ceb-415f-8565-4f18d1effefc/relationships/certificate"
+              },
+              "related" : {
+                "href" : "https://developerservices3.apple.com:443/services/v1/codeSignatures/20e33824-1ceb-415f-8565-4f18d1effefc/certificate"
+              }
+            }
+          }
+        },
+        "links" : {
+          "self" : {
+            "href" : "https://developerservices3.apple.com:443/services/v1/codeSignatures/20e33824-1ceb-415f-8565-4f18d1effefc"
+          }
+        }
+      } ],
+      "resourceVersion" : "1"
+    },
+    "links" : {
+      "self" : "https://developerservices3.apple.com:443/services/v1/batch/6f5f099a-39ec-4f32-ae01-3a34df524080"
+    }
+  },
+  "links" : {
+    "self" : "https://developerservices3.apple.com:443/services/v1/batch"
+  }
+}
+
+2026-08-09 15:41:27 +0000  Remote signature for /var/folders/3z/pz23wsy17q151lj56rfhdsmm0000gp/T/XcodeDistPipeline.~~~REqV0n/Root/Payload/PodWash.app (arch: arm64) is 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
+2026-08-09 15:41:27 +0000  invoking codesign: <NSConcreteTask: 0xb6a9c77a0; launchPath='/usr/bin/codesign', arguments='(
+    "-e",
+    "--edit-cms",
+    "/var/folders/3z/pz23wsy17q151lj56rfhdsmm0000gp/T/cms~~~ENX1Lc",
+    "/var/folders/3z/pz23wsy17q151lj56rfhdsmm0000gp/T/XcodeDistPipeline.~~~REqV0n/Root/Payload/PodWash.app"
+)'>
+2026-08-09 15:41:27 +0000  codesign output: 
+2026-08-09 15:41:27 +0000  Processing step: IDEDistributionZipODRItemStep
+2026-08-09 15:41:27 +0000  Skipping step: IDEDistributionZipODRItemStep because it said so
+2026-08-09 15:41:27 +0000  Processing step: IDEDistributionCreateIPAStep
+2026-08-09 15:41:27 +0000  Running /usr/bin/ditto '-V' '-c' '-k' '--norsrc' '/var/folders/3z/pz23wsy17q151lj56rfhdsmm0000gp/T/XcodeDistPipeline.~~~REqV0n/Root' '/var/folders/3z/pz23wsy17q151lj56rfhdsmm0000gp/T/XcodeDistPipeline.~~~REqV0n/Packages/PodWash.ipa'
+2026-08-09 15:41:27 +0000  >>> Copying /var/folders/3z/pz23wsy17q151lj56rfhdsmm0000gp/T/XcodeDistPipeline.~~~REqV0n/Root 
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/_CodeSignature/CodeResources ... 
+2026-08-09 15:41:27 +0000  19813 bytes for ./Payload/PodWash.app/_CodeSignature/CodeResources
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/PodWash.momd/VersionInfo.plist ... 
+2026-08-09 15:41:27 +0000  475 bytes for ./Payload/PodWash.app/PodWash.momd/VersionInfo.plist
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/PodWash.momd/PodWash.mom ... 
+2026-08-09 15:41:27 +0000  5250 bytes for ./Payload/PodWash.app/PodWash.momd/PodWash.mom
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/PodWash.momd/PodWash.omo ... 
+2026-08-09 15:41:27 +0000  10560 bytes for ./Payload/PodWash.app/PodWash.momd/PodWash.omo
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/quack.wav ... 
+2026-08-09 15:41:27 +0000  13308 bytes for ./Payload/PodWash.app/quack.wav
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/Firebase_FirebaseCore.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:27 +0000  855 bytes for ./Payload/PodWash.app/Firebase_FirebaseCore.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/Firebase_FirebaseCore.bundle/Info.plist ... 
+2026-08-09 15:41:27 +0000  694 bytes for ./Payload/PodWash.app/Firebase_FirebaseCore.bundle/Info.plist
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/GTMSessionFetcher_GTMSessionFetcherCore.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:27 +0000  598 bytes for ./Payload/PodWash.app/GTMSessionFetcher_GTMSessionFetcherCore.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/GTMSessionFetcher_GTMSessionFetcherCore.bundle/Info.plist ... 
+2026-08-09 15:41:27 +0000  724 bytes for ./Payload/PodWash.app/GTMSessionFetcher_GTMSessionFetcherCore.bundle/Info.plist
+copying file ./Payload/PodWash.app/asr-model-pin.txt ... 
+2026-08-09 15:41:27 +0000  23 bytes for ./Payload/PodWash.app/asr-model-pin.txt
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/beep.wav ... 
+2026-08-09 15:41:27 +0000  44178 bytes for ./Payload/PodWash.app/beep.wav
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/sample_feed.xml ... 
+2026-08-09 15:41:27 +0000  3155 bytes for ./Payload/PodWash.app/sample_feed.xml
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/PodWash ... 
+2026-08-09 15:41:27 +0000  5205744 bytes for ./Payload/PodWash.app/PodWash
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/second_feed.xml ... 
+902 bytes for ./Payload/PodWash.app/second_feed.xml
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/test-clip.m4a ... 
+2026-08-09 15:41:27 +0000  195975 bytes for ./Payload/PodWash.app/test-clip.m4a
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/AppIcon60x60@2x.png ... 
+2026-08-09 15:41:27 +0000  9280 bytes for ./Payload/PodWash.app/AppIcon60x60@2x.png
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:27 +0000  478 bytes for ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle/Info.plist ... 
+2026-08-09 15:41:27 +0000  746 bytes for ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-AppDelegateSwizzler.bundle/Info.plist
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-NSData.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:27 +0000  478 bytes for ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-NSData.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-NSData.bundle/Info.plist ... 
+2026-08-09 15:41:27 +0000  720 bytes for ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-NSData.bundle/Info.plist
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/stub_episode_audio.bin ... 
+2026-08-09 15:41:27 +0000  1024 bytes for ./Payload/PodWash.app/stub_episode_audio.bin
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/progressive-120s.m4a ... 
+2026-08-09 15:41:27 +0000  746260 bytes for ./Payload/PodWash.app/progressive-120s.m4a
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/Firebase_FirebaseCoreInternal.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:27 +0000  855 bytes for ./Payload/PodWash.app/Firebase_FirebaseCoreInternal.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/Firebase_FirebaseCoreInternal.bundle/Info.plist ... 
+2026-08-09 15:41:27 +0000  710 bytes for ./Payload/PodWash.app/Firebase_FirebaseCoreInternal.bundle/Info.plist
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/Firebase_FirebaseAuth.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:27 +0000  2102 bytes for ./Payload/PodWash.app/Firebase_FirebaseAuth.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/Firebase_FirebaseAuth.bundle/Info.plist ... 
+2026-08-09 15:41:27 +0000  694 bytes for ./Payload/PodWash.app/Firebase_FirebaseAuth.bundle/Info.plist
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Logger.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:27 +0000  478 bytes for ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Logger.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Logger.bundle/Info.plist ... 
+2026-08-09 15:41:27 +0000  720 bytes for ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Logger.bundle/Info.plist
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Reachability.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:27 +0000  478 bytes for ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Reachability.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Reachability.bundle/Info.plist ... 
+2026-08-09 15:41:27 +0000  732 bytes for ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Reachability.bundle/Info.plist
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/GoogleService-Info.plist ... 
+2026-08-09 15:41:27 +0000  507 bytes for ./Payload/PodWash.app/GoogleService-Info.plist
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/itunes_search_response.json ... 
+2026-08-09 15:41:27 +0000  613 bytes for ./Payload/PodWash.app/itunes_search_response.json
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/config.json ... 
+2026-08-09 15:41:27 +0000  1454 bytes for ./Payload/PodWash.app/openai_whisper-bundled/config.json
+2026-08-09 15:41:27 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/AudioEncoder.mlmodelc/weights/weight.bin ... 
+2026-08-09 15:41:29 +0000  41189632 bytes for ./Payload/PodWash.app/openai_whisper-bundled/AudioEncoder.mlmodelc/weights/weight.bin
+2026-08-09 15:41:29 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/AudioEncoder.mlmodelc/metadata.json ... 
+2026-08-09 15:41:29 +0000  1863 bytes for ./Payload/PodWash.app/openai_whisper-bundled/AudioEncoder.mlmodelc/metadata.json
+2026-08-09 15:41:29 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/AudioEncoder.mlmodelc/model.mil ... 
+2026-08-09 15:41:29 +0000  579125 bytes for ./Payload/PodWash.app/openai_whisper-bundled/AudioEncoder.mlmodelc/model.mil
+2026-08-09 15:41:29 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/AudioEncoder.mlmodelc/model.mlmodel ... 
+2026-08-09 15:41:29 +0000  79853 bytes for ./Payload/PodWash.app/openai_whisper-bundled/AudioEncoder.mlmodelc/model.mlmodel
+2026-08-09 15:41:29 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/AudioEncoder.mlmodelc/coremldata.bin ... 
+2026-08-09 15:41:29 +0000  347 bytes for ./Payload/PodWash.app/openai_whisper-bundled/AudioEncoder.mlmodelc/coremldata.bin
+2026-08-09 15:41:29 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/AudioEncoder.mlmodelc/analytics/coremldata.bin ... 
+2026-08-09 15:41:29 +0000  243 bytes for ./Payload/PodWash.app/openai_whisper-bundled/AudioEncoder.mlmodelc/analytics/coremldata.bin
+2026-08-09 15:41:29 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/generation_config.json ... 
+2026-08-09 15:41:29 +0000  982 bytes for ./Payload/PodWash.app/openai_whisper-bundled/generation_config.json
+2026-08-09 15:41:29 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/MelSpectrogram.mlmodelc/weights/weight.bin ... 
+2026-08-09 15:41:29 +0000  354080 bytes for ./Payload/PodWash.app/openai_whisper-bundled/MelSpectrogram.mlmodelc/weights/weight.bin
+2026-08-09 15:41:29 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/MelSpectrogram.mlmodelc/metadata.json ... 
+2026-08-09 15:41:29 +0000  1848 bytes for ./Payload/PodWash.app/openai_whisper-bundled/MelSpectrogram.mlmodelc/metadata.json
+2026-08-09 15:41:29 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/MelSpectrogram.mlmodelc/model.mil ... 
+2026-08-09 15:41:29 +0000  10176 bytes for ./Payload/PodWash.app/openai_whisper-bundled/MelSpectrogram.mlmodelc/model.mil
+2026-08-09 15:41:29 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/MelSpectrogram.mlmodelc/coremldata.bin ... 
+2026-08-09 15:41:29 +0000  328 bytes for ./Payload/PodWash.app/openai_whisper-bundled/MelSpectrogram.mlmodelc/coremldata.bin
+2026-08-09 15:41:29 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/MelSpectrogram.mlmodelc/analytics/coremldata.bin ... 
+2026-08-09 15:41:29 +0000  243 bytes for ./Payload/PodWash.app/openai_whisper-bundled/MelSpectrogram.mlmodelc/analytics/coremldata.bin
+2026-08-09 15:41:29 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/TextDecoder.mlmodelc/weights/weight.bin ... 
+2026-08-09 15:41:33 +0000  104121136 bytes for ./Payload/PodWash.app/openai_whisper-bundled/TextDecoder.mlmodelc/weights/weight.bin
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/TextDecoder.mlmodelc/metadata.json ... 
+2026-08-09 15:41:33 +0000  4753 bytes for ./Payload/PodWash.app/openai_whisper-bundled/TextDecoder.mlmodelc/metadata.json
+copying file ./Payload/PodWash.app/openai_whisper-bundled/TextDecoder.mlmodelc/model.mil ... 
+2026-08-09 15:41:33 +0000  200444 bytes for ./Payload/PodWash.app/openai_whisper-bundled/TextDecoder.mlmodelc/model.mil
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/TextDecoder.mlmodelc/model.mlmodel ... 
+2026-08-09 15:41:33 +0000  160348 bytes for ./Payload/PodWash.app/openai_whisper-bundled/TextDecoder.mlmodelc/model.mlmodel
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/TextDecoder.mlmodelc/coremldata.bin ... 
+2026-08-09 15:41:33 +0000  633 bytes for ./Payload/PodWash.app/openai_whisper-bundled/TextDecoder.mlmodelc/coremldata.bin
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/openai_whisper-bundled/TextDecoder.mlmodelc/analytics/coremldata.bin ... 
+2026-08-09 15:41:33 +0000  243 bytes for ./Payload/PodWash.app/openai_whisper-bundled/TextDecoder.mlmodelc/analytics/coremldata.bin
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/Promises_FBLPromises.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:33 +0000  373 bytes for ./Payload/PodWash.app/Promises_FBLPromises.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/Promises_FBLPromises.bundle/Info.plist ... 
+2026-08-09 15:41:33 +0000  684 bytes for ./Payload/PodWash.app/Promises_FBLPromises.bundle/Info.plist
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Network.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:33 +0000  856 bytes for ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Network.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Network.bundle/Info.plist ... 
+2026-08-09 15:41:33 +0000  722 bytes for ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Network.bundle/Info.plist
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/Assets.car ... 
+2026-08-09 15:41:33 +0000  223304 bytes for ./Payload/PodWash.app/Assets.car
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/AppIcon76x76@2x~ipad.png ... 
+2026-08-09 15:41:33 +0000  12689 bytes for ./Payload/PodWash.app/AppIcon76x76@2x~ipad.png
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/Firebase_FirebaseCoreExtension.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:33 +0000  478 bytes for ./Payload/PodWash.app/Firebase_FirebaseCoreExtension.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/Firebase_FirebaseCoreExtension.bundle/Info.plist ... 
+2026-08-09 15:41:33 +0000  712 bytes for ./Payload/PodWash.app/Firebase_FirebaseCoreExtension.bundle/Info.plist
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-UserDefaults.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:33 +0000  911 bytes for ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-UserDefaults.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-UserDefaults.bundle/Info.plist ... 
+2026-08-09 15:41:33 +0000  732 bytes for ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-UserDefaults.bundle/Info.plist
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/itunes_popular_response.json ... 
+2026-08-09 15:41:33 +0000  906 bytes for ./Payload/PodWash.app/itunes_popular_response.json
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Environment.bundle/PrivacyInfo.xcprivacy ... 
+2026-08-09 15:41:33 +0000  855 bytes for ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Environment.bundle/PrivacyInfo.xcprivacy
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Environment.bundle/Info.plist ... 
+2026-08-09 15:41:33 +0000  730 bytes for ./Payload/PodWash.app/GoogleUtilities_GoogleUtilities-Environment.bundle/Info.plist
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/progressive-120s.provenance.md ... 
+2026-08-09 15:41:33 +0000  303 bytes for ./Payload/PodWash.app/progressive-120s.provenance.md
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/embedded.mobileprovision ... 
+2026-08-09 15:41:33 +0000  12653 bytes for ./Payload/PodWash.app/embedded.mobileprovision
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/Info.plist ... 
+2026-08-09 15:41:33 +0000  3823 bytes for ./Payload/PodWash.app/Info.plist
+2026-08-09 15:41:33 +0000  copying file ./Payload/PodWash.app/PkgInfo ... 
+2026-08-09 15:41:33 +0000  8 bytes for ./Payload/PodWash.app/PkgInfo
+2026-08-09 15:41:33 +0000  /usr/bin/ditto exited with 0
+2026-08-09 15:41:33 +0000  Processing step: IDEDistributionAppStoreInformationStep
+2026-08-09 15:41:33 +0000  Skipping step: IDEDistributionAppStoreInformationStep because it said so
+2026-08-09 15:41:33 +0000  Processing step: IDEDistributionGenerateProcessedDistributionItems
+2026-08-09 15:41:33 +0000  IDEDistributionItem init <DVTFilePath:0xb3157df20:'/var/folders/3z/pz23wsy17q151lj56rfhdsmm0000gp/T/XcodeDistPipeline.~~~REqV0n/Root/Payload/PodWash.app'>
+2026-08-09 15:41:33 +0000  Processing step: IDEDistributionCreateManifestStep

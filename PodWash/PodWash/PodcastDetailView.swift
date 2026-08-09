@@ -76,6 +76,7 @@ struct PodcastDetailView: View {
                 onQueueChanged: { queueRevision += 1 },
                 onAddAndPrepare: onAddAndPrepare,
                 onPlayEpisode: onPlayEpisode,
+                onRequestCloudConsentBeforeDownload: onRequestCloudConsentBeforeDownload,
                 transcriptExists: transcriptExists,
                 onViewTranscript: onViewTranscript,
                 transcriptAffordanceGeneration: transcriptAffordanceGeneration,
@@ -207,7 +208,7 @@ struct PodcastDetailView: View {
                         .accessibilityHidden(true)
 
                     if let description = feed.description, !isCompactHeight {
-                        Text(description)
+                        Text(HTMLDescriptionText.attributedString(from: description))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)

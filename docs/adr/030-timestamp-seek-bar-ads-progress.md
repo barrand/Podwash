@@ -1,4 +1,6 @@
-# ADR-030 — Timestamp seek-bar ads + analysis progress chrome
+# ADR-030 — Timestamp seek-bar ads + analysis progress chrome (Superseded in part)
+
+> The in-flight player progress and frontier-clamp portions are superseded by terminal playback readiness. Completed timestamp ad bands remain supported.
 
 | Field | Value |
 |-------|-------|

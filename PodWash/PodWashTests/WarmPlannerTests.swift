@@ -297,7 +297,6 @@ final class WarmPlannerTests: XCTestCase {
 @MainActor
 final class CountingEpisodeAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
     private(set) var analyzeCallCount = 0
-    nonisolated(unsafe) var onPartialIntervals: AnalysisPartialIntervalsHandler?
     nonisolated deinit {}
 
     func analyze(
@@ -323,7 +322,6 @@ final class CountingEpisodeAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
 final class FlakyThenSucceedAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
     private let failuresBeforeSuccess: Int
     private(set) var attemptCount = 0
-    nonisolated(unsafe) var onPartialIntervals: AnalysisPartialIntervalsHandler?
     nonisolated deinit {}
 
     init(failuresBeforeSuccess: Int) {
@@ -357,7 +355,6 @@ final class FlakyThenSucceedAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
 @MainActor
 final class SlowEpisodeAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
     private let delayMilliseconds: Int
-    nonisolated(unsafe) var onPartialIntervals: AnalysisPartialIntervalsHandler?
     nonisolated deinit {}
 
     init(delayMilliseconds: Int) {

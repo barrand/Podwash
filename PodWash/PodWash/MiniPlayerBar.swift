@@ -16,16 +16,14 @@ struct MiniPlayerBar: View {
     static let shellOverlayClearance: CGFloat = 112
 
     @Bindable var engine: PlaybackEngine
+    let readiness: AppShellModel.PlaybackReadiness
     let episodeTitle: String
     let podcastTitle: String
     let showsCompleteSeekBarPaint: Bool
-    let analysisProgress: Double?
-    let isPreparingPlayback: Bool
     let isPreparingNextEpisode: Bool
     let preparingNextAnnouncement: String?
     let queuePresentation: QueuePresentation
     let episodeDuration: Double
-    let processedEnd: Double
     let muteIntervals: [CensorInterval]
     /// The tab shell can host this below the player controls, immediately above its tab bar.
     let showsSuperSeekBar: Bool
@@ -38,11 +36,10 @@ struct MiniPlayerBar: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.25)) { _ in
             let _ = engine.uiRefreshToken
-            let isPlaying = engine.isPlaying
-            let isAnalyzing = (isPreparingPlayback || isPreparingNextEpisode) && !isPlaying
+            // Keep the transport state stable while AVPlayer temporarily waits.
+            let isPlaying = engine.isPlaybackRequested
             let elapsedSeconds = engine.avPlayer.currentTime().seconds
             let duration = episodeDuration > 0 ? episodeDuration : engine.duration
-            let frontier = processedEnd > 0 ? processedEnd : duration
             let showCompletePaint = showsCompleteSeekBarPaint
             let adBands = showCompletePaint
                 ? SuperSeekBarModel.adBands(from: muteIntervals, duration: duration)
@@ -71,7 +68,17 @@ struct MiniPlayerBar: View {
                                     .font(.subheadline)
                                     .fontWeight(.semibold)
                                     .lineLimit(1)
-                                if isPreparingNextEpisode, let preparingNextAnnouncement {
+                                if readiness == .preparing {
+                                    Text("Preparing clean playback")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .accessibilityIdentifier("miniPlayer.preparing")
+                                } else if readiness == .failed {
+                                    Text("Preparation needs attention")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .accessibilityIdentifier("miniPlayer.preparationFailed")
+                                } else if isPreparingNextEpisode, let preparingNextAnnouncement {
                                     Text(preparingNextAnnouncement)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
@@ -98,7 +105,7 @@ struct MiniPlayerBar: View {
                             : ""
                     )
 
-                    Button(action: onSkipToNext) {
+                    if readiness == .ready { Button(action: onSkipToNext) {
                         Image(systemName: "forward.end.fill")
                             .font(.body)
                             .frame(width: 36, height: 44)
@@ -106,31 +113,35 @@ struct MiniPlayerBar: View {
                     .accessibilityIdentifier("miniPlayerNext")
                     .accessibilityLabel("Next")
                     .accessibilityHint("Plays the next episode in Up Next.")
+                    }
 
-                    Button(action: onTogglePlayPause) {
-                        Image(systemName: isAnalyzing ? "waveform" : (isPlaying ? "pause.fill" : "play.fill"))
+                    if readiness == .ready { Button(action: onTogglePlayPause) {
+                        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                             .font(.title3)
                             .frame(width: 44, height: 44)
-                            .symbolEffect(.variableColor.iterative, isActive: isAnalyzing)
                     }
                     .accessibilityIdentifier("miniPlayerPlayPause")
-                    .accessibilityLabel(isAnalyzing ? "Analyzing" : (isPlaying ? "Pause" : "Play"))
-                    .accessibilityValue(isAnalyzing ? "analyzing" : (isPlaying ? "playing" : "paused"))
-                    .accessibilityHint(isAnalyzing ? "Playback starts when analysis finishes." : "")
+                    .accessibilityLabel(isPlaying ? "Pause" : "Play")
+                    .accessibilityValue(isPlaying ? "playing" : "paused")
+                    } else if readiness == .preparing {
+                        ProgressView()
+                            .controlSize(.small)
+                            .frame(width: 44, height: 44)
+                            .accessibilityIdentifier("miniPlayer.preparingProgress")
+                            .accessibilityLabel("Preparing clean playback")
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
 
-                if showsSuperSeekBar {
+                if showsSuperSeekBar && readiness == .ready {
                     MiniPlayerSeekBar(
                         showsCompleteContentTrack: showCompletePaint,
                         adBands: adBands,
                         elapsed: elapsedSeconds,
                         duration: duration,
-                        processedEnd: frontier,
                         muteMarkers: muteMarkers,
                         muteMarkerCountForAccessibility: muteMarkerCountForAccessibility,
-                        analysisProgress: analysisProgress,
                         onSeekTo: onSeekTo
                     )
                 }
@@ -150,30 +161,17 @@ struct MiniPlayerSeekBar: View {
     let adBands: [AdBand]
     let elapsed: Double
     let duration: Double
-    let processedEnd: Double
     let muteMarkers: [MuteMarker]
     let muteMarkerCountForAccessibility: Int?
-    let analysisProgress: Double?
     let onSeekTo: (Double) -> Void
 
     var body: some View {
         VStack(spacing: 4) {
-            if let analysisProgress {
-                ProgressView(value: analysisProgress, total: 1.0)
-                    .tint(BrandTheme.primary)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityIdentifier("miniPlayer.analysisProgress")
-                    .accessibilityLabel("Analysis progress")
-                    .accessibilityValue(String(format: "%.4f", analysisProgress))
-                    .accessibilityHint("Overall progress of episode cleaning analysis.")
-            }
-
             SuperSeekBarView(
                 showsCompleteContentTrack: showsCompleteContentTrack,
                 adBands: adBands,
                 elapsed: elapsed,
                 duration: duration,
-                processedEnd: processedEnd,
                 muteMarkers: muteMarkers,
                 muteMarkerCountForAccessibility: muteMarkerCountForAccessibility,
                 barHeight: AnalysisTimelineModel.miniPlayerTimelineHeight,

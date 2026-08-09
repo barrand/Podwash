@@ -40,7 +40,6 @@ struct PodWashApp: App {
                 identifier: "uitest-library-empty-\(UUID().uuidString)"
             )
         } else if FixtureLibrary.isEnabled
-                    || FixtureProgressivePlayback.isEnabled
                     || FixtureTranscript.isAnyEnabled
                     || FixtureMuteMarkers.isAnyEnabled
                     || FixturePrerollAdBands.isAnyEnabled {

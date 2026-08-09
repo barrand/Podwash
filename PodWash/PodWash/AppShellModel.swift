@@ -26,6 +26,12 @@ final class AppShellModel {
         case inProgress
     }
 
+    enum PlaybackReadiness: Equatable {
+        case ready
+        case preparing
+        case failed
+    }
+
     private struct RestoredAnalysisContext {
         let episode: Episode
         let podcastTitle: String
@@ -55,23 +61,21 @@ final class AppShellModel {
     /// Multiplexes analyzer progress to shell + episode-row view models.
     private(set) var analysisProgressRelay: AnalysisProgressRelay
 
-    /// Latest progress for the mini-player timeline (nil when no playback analysis).
+    /// Terminal analysis snapshot used for completed seek-bar paint.
     private(set) var playbackAnalysisSnapshot: AnalysisProgressSnapshot?
 
     /// Episode currently driving the mini-player session.
     private(set) var nowPlayingEpisodeID: String?
 
-    /// When true, relay progress updates `playbackAnalysisSnapshot`.
-    private var acceptingPlaybackProgress = false
-
-    /// True while `preparePlayback` is running for the current episode.
-    private(set) var isPreparingPlayback = false
+    /// The only listener-facing gate for transport and seek controls.
+    private(set) var playbackReadiness: PlaybackReadiness = .ready
+    var isPreparingPlayback: Bool { playbackReadiness == .preparing }
     private(set) var analysisRecoveryState: AnalysisRecoveryState = .notNeeded
     private var restoredAnalysisContext: RestoredAnalysisContext?
     private var stagedRefreshIntervals: ([CensorInterval], [CensorInterval], UnrelatedContentOptions, URL)?
 
-    /// User tapped play while analysis was still preparing; start once ready.
-    private var pendingPlayAfterPrepare = false
+    private var playbackPreparationTask: Task<Void, Never>?
+    private var playbackPreparationRequestID = 0
 
     /// Episode awaiting download-before-play (channel cleaning on, no local file).
     private var pendingDownloadForPlayEpisodeID: String?
@@ -82,8 +86,6 @@ final class AppShellModel {
     private var pendingCloudConsentPodcastTitle = ""
     private var pendingCloudConsentFeedURL: URL?
     private var pendingCloudConsentDownload: PendingCloudConsentDownload?
-
-    private var playbackProgressHandlerID: UUID?
 
     /// Observes deferred NoCache transcript backfill so episode/full-player affordances refresh.
     /// `nonisolated(unsafe)`: removed from `nonisolated deinit` without a MainActor hop.
@@ -106,7 +108,6 @@ final class AppShellModel {
         fixtureLibraryModeForTesting
             ?? (FixtureLibrary.isEnabled
                 || FixtureLibrary.isEmptyEnabled
-                || FixtureProgressivePlayback.isEnabled
                 || FixtureTranscript.isAnyEnabled
                 || FixtureMuteMarkers.isAnyEnabled
                 || FixturePrerollAdBands.isAnyEnabled)
@@ -220,9 +221,6 @@ final class AppShellModel {
     @ObservationIgnored private var warmPlanner: WarmPlanner?
     private var didStartPreparationForCurrentSession = false
 
-    /// Spoken / AX announcement generation for Preparing fallback.
-    private(set) var preparingAnnouncementGeneration = 0
-
     init(
         persistence: PersistenceController,
         remoteCommands: RemoteCommandCoordinator,
@@ -279,13 +277,6 @@ final class AppShellModel {
             self?.refreshQueuePresentation()
         }
 
-        playbackProgressHandlerID = analysisProgressRelay.addHandler { [weak self] snapshot in
-            guard let self, self.acceptingPlaybackProgress else { return }
-            self.playbackAnalysisSnapshot = snapshot
-            if snapshot.processedEnd >= snapshot.episodeDuration {
-                self.acceptingPlaybackProgress = false
-            }
-        }
         let knownEpisodeIDs = podcastStore.allSubscriptions().flatMap {
             podcastStore.subscription(forFeedURL: $0.feedURL)?.episodes.map(\.id) ?? []
         }
@@ -331,32 +322,13 @@ final class AppShellModel {
     /// Full-player timeline colors — same nil contract as mini (ADR-030).
     var fullPlayerTimelineColors: [TimelineSegmentColor]? { nil }
 
-    /// Complete seek-bar paint (green + timestamp yellow + mute red) when analysis finished.
+    /// Completed analysis adds ad/mute paint; cleaning-off playback remains unannotated.
     var isPlayerSeekBarAnalysisComplete: Bool {
         guard let snapshot = playbackAnalysisSnapshot else { return false }
         return snapshot.processedEnd >= snapshot.episodeDuration
     }
 
-    /// Overall analysis progress while in flight; `nil` when complete / no snapshot.
-    var analysisProgressFraction: Double? {
-        guard let snapshot = playbackAnalysisSnapshot else { return nil }
-        guard snapshot.processedEnd < snapshot.episodeDuration else { return nil }
-        return SuperSeekBarModel.analysisProgress(
-            processedEnd: snapshot.processedEnd,
-            duration: snapshot.episodeDuration
-        )
-    }
-
-    /// Seek frontier for the super seek bar (processedEnd while in flight; duration when complete / cleaning off).
-    var superSeekProcessedEnd: Double {
-        guard let snapshot = playbackAnalysisSnapshot else {
-            return engine?.duration ?? 0
-        }
-        if snapshot.processedEnd >= snapshot.episodeDuration {
-            return snapshot.episodeDuration
-        }
-        return snapshot.processedEnd
-    }
+    var canShowPlayerSeekBar: Bool { playbackReadiness == .ready }
 
     /// Episode duration for seek bar math — prefers analysis snapshot (120 s fixture) over asset.
     var superSeekDuration: Double {
@@ -366,25 +338,21 @@ final class AppShellModel {
         return engine?.duration ?? 0
     }
 
-    /// Clamped seek used by mini + full super seek bars and ±15 transport.
-    func seekClampedToProcessedFrontier(to seconds: Double) {
+    func seekReadyPlayback(to seconds: Double) {
         applyStagedRefreshIfNeeded()
-        let frontier = superSeekProcessedEnd > 0
-            ? superSeekProcessedEnd
-            : (engine?.duration ?? seconds)
-        let clamped = SuperSeekBarModel.clampedSeek(requested: seconds, processedEnd: frontier)
-        engine?.seek(to: clamped)
+        let duration = engine?.duration ?? seconds
+        engine?.seek(to: min(max(0, seconds), duration))
         // Seek-while-paused must still land in ResumePositionStore (ADR-027 flush budget).
         if engine?.isPlaying != true {
             flushPlaybackPosition()
         }
     }
 
-    func seekClampedToProcessedFrontier(by delta: Double) {
+    func seek(by delta: Double) {
         // Prefer the engine's observable clock — AVPlayer may still report 0/NaN while
         // the item loads, which would wipe a paused restore / pinned seek target.
         let current = engine?.currentTime ?? 0
-        seekClampedToProcessedFrontier(to: current + delta)
+        seekReadyPlayback(to: current + delta)
     }
 
     /// Library / detail entry: resolve audio, prepare engine + coordinators, show mini-player paused.
@@ -505,6 +473,7 @@ final class AppShellModel {
             chosen: audioURL
         )
 
+        invalidatePlaybackPreparation()
         clearPlaybackAnalysisProgress()
 
         // Tear down the prior session before installing a new engine. LibraryEpisodePlayer
@@ -551,7 +520,6 @@ final class AppShellModel {
             guard let self else { return }
             self.isPreparingNextEpisode = true
             self.preparingNextAnnouncement = "Still checking the next episode for ads"
-            self.preparingAnnouncementGeneration += 1
         }
         queue.onEpisodeMarkedPlayed = { [weak self] episodeID in
             self?.handleEpisodeMarkedPlayed(episodeID)
@@ -600,6 +568,7 @@ final class AppShellModel {
         // Cold-start restore must stay paused without kicking prepare → play races (ADR-027).
         if !startAnalysis {
             PlaybackDiagnostics.info("playEpisode skip prepare — restore path")
+            playbackReadiness = .ready
             return
         }
 
@@ -607,11 +576,12 @@ final class AppShellModel {
         // except when a player-timeline / progressive / mute-marker UITest fixture is active.
         if isFixtureLibraryMode,
            !FixtureLibraryAnalysisTimeline.isEnabled,
-           !FixtureProgressivePlayback.isEnabled,
            !FixtureTranscript.isNoCacheEnabled,
            !FixtureMuteMarkers.isAnyEnabled,
            !FixturePrerollAdBands.isAnyEnabled {
             PlaybackDiagnostics.info("playEpisode skip prepare — fixture library mode")
+            playbackReadiness = .ready
+            newEngine.play()
             return
         }
 
@@ -621,6 +591,8 @@ final class AppShellModel {
             PlaybackDiagnostics.info(
                 "playEpisode skip prepare cleaning=\(cleaningApplies) localFile=\(isLocalFile)"
             )
+            playbackReadiness = .ready
+            newEngine.play()
             return
         }
 
@@ -635,8 +607,8 @@ final class AppShellModel {
         let injected = injectedTranscriptForTesting
             ?? (FixtureTranscript.isNoCacheEnabled ? FixtureTranscript.makeTranscript() : nil)
 
-        acceptingPlaybackProgress = true
-        isPreparingPlayback = true
+        playbackReadiness = .preparing
+        let requestID = playbackPreparationRequestID
         foregroundPreparationJob = AnalysisJob(
             episodeID: episode.id,
             title: episode.title,
@@ -651,12 +623,13 @@ final class AppShellModel {
             cleaning: cleaningApplies,
             localFile: isLocalFile
         )
-        Task { @MainActor in
+        playbackPreparationTask = Task { @MainActor [weak self, weak coordinator] in
+            guard let self, let coordinator, self.isCurrentPlaybackPreparation(requestID, episodeID: episode.id) else { return }
             let cloudObserverID: UUID?
             if let pipeline = self.episodeAnalyzer as? AnalysisPipeline {
                 cloudObserverID = pipeline.addCloudAdDetectionObserver(started: { [weak self] in
                     Task { @MainActor in
-                        guard let self else { return }
+                        guard let self, self.isCurrentPlaybackPreparation(requestID, episodeID: episode.id) else { return }
                         self.updateForegroundPreparation(
                             episodeID: episode.id,
                             stage: .checkingAds
@@ -665,7 +638,7 @@ final class AppShellModel {
                 }, finished: { [weak self] outcome in
                     Task { @MainActor in
                         guard case let .failed(category) = outcome else { return }
-                        guard let self else { return }
+                        guard let self, self.isCurrentPlaybackPreparation(requestID, episodeID: episode.id) else { return }
                         self.updateForegroundPreparation(
                             episodeID: episode.id,
                             stage: Self.isRetryableCloudFailure(category) ? .adCheckDelayed : .needsAttention,
@@ -682,18 +655,14 @@ final class AppShellModel {
                     pipeline.removeCloudAdDetectionObserver(cloudObserverID)
                 }
             }
-            let duration = await resolvedEpisodeDuration(audioURL: audioURL)
-            if duration > 0 {
-                playbackAnalysisSnapshot = AnalysisTimelineModel.startSnapshot(duration: duration)
-            }
-
             defer {
-                acceptingPlaybackProgress = false
-                isPreparingPlayback = false
-                isPreparingNextEpisode = false
-                preparingNextAnnouncement = nil
-                if transcriptExists(for: episode.id) {
-                    transcriptAffordanceGeneration += 1
+                if self.isCurrentPlaybackPreparation(requestID, episodeID: episode.id) {
+                    self.playbackPreparationTask = nil
+                    self.isPreparingNextEpisode = false
+                    self.preparingNextAnnouncement = nil
+                }
+                if self.transcriptExists(for: episode.id) {
+                    self.transcriptAffordanceGeneration += 1
                 } else if FixtureTranscript.isNoCacheEnabled {
                     // Deferred NoCache backfill stores off the prepare path (AC7).
                     // Poll so task-020's episode.viewTranscript refresh does not
@@ -710,15 +679,9 @@ final class AppShellModel {
                         }
                     }
                 }
-                let shouldPlay = pendingPlayAfterPrepare
-                pendingPlayAfterPrepare = false
-                if shouldPlay, engine?.isPlaying != true {
-                    engine?.play()
-                    startQueuePreparationIfNeeded()
-                }
             }
             do {
-                try await coordinator.preparePlaybackProgressive(
+                try await coordinator.preparePlayback(
                     episode: EpisodeIdentity(id: episode.id),
                     audioURL: audioURL,
                     targetWords: targetWords,
@@ -730,16 +693,10 @@ final class AppShellModel {
                         showDescription: feedURL.flatMap { podcastStore.feedDescription(feedURL: $0) } ?? "",
                         episodeTitle: episode.title,
                         episodeDescription: episode.showNotes ?? ""
-                    ),
-                    onChunkReady: { [weak self] in
-                        guard let self else { return }
-                        guard self.pendingPlayAfterPrepare else { return }
-                        self.pendingPlayAfterPrepare = false
-                        self.engine?.play()
-                        self.startQueuePreparationIfNeeded()
-                    }
+                    )
                 )
-                let (playbackIntervals, analysisUnion) = reconcilePlaybackIntervals(
+                guard self.isCurrentPlaybackPreparation(requestID, episodeID: episode.id), !Task.isCancelled else { return }
+                let (playbackIntervals, analysisUnion) = self.reconcilePlaybackIntervals(
                     profanityAction: action,
                     unrelatedContent: unrelated,
                     pipelineIntervals: coordinator.cachedIntervals,
@@ -752,36 +709,51 @@ final class AppShellModel {
                         unrelatedContent: unrelated
                     )
                 }
+                if let pipeline = self.episodeAnalyzer as? AnalysisPipeline,
+                   case let .failed(category)? = pipeline.lastCloudAdDetectionOutcome {
+                    self.playbackReadiness = .failed
+                    self.updateForegroundPreparation(
+                        episodeID: episode.id,
+                        stage: Self.isRetryableCloudFailure(category) ? .adCheckDelayed : .needsAttention,
+                        detail: Self.foregroundDetail(for: category),
+                        cloudFailure: category
+                    )
+                    return
+                }
                 PlaybackDiagnostics.logPreparePlaybackEnd(
                     episodeID: episode.id,
                     intervals: playbackIntervals,
                     union: analysisUnion,
                     error: nil
                 )
-                await publishTerminalPlaybackAnalysisSnapshot(
+                await self.publishTerminalPlaybackAnalysisSnapshot(
                     intervals: playbackIntervals,
                     analysisUnion: analysisUnion,
                     unrelatedContent: unrelated,
                     audioURL: audioURL
                 )
-                if !settingsStore.canUseCloudTranscriptProcessing {
-                    updateForegroundPreparation(
+                if !self.settingsStore.canUseCloudTranscriptProcessing {
+                    self.updateForegroundPreparation(
                         episodeID: episode.id,
                         stage: .ready,
                         detail: "Ad checks are off"
                     )
                 } else if let pipeline = self.episodeAnalyzer as? AnalysisPipeline,
                    case let .failed(category)? = pipeline.lastCloudAdDetectionOutcome {
-                    updateForegroundPreparation(
+                    self.updateForegroundPreparation(
                         episodeID: episode.id,
                         stage: Self.isRetryableCloudFailure(category) ? .adCheckDelayed : .needsAttention,
                         detail: Self.foregroundDetail(for: category),
                         cloudFailure: category
                     )
                 } else {
-                    updateForegroundPreparation(episodeID: episode.id, stage: .ready)
+                    self.updateForegroundPreparation(episodeID: episode.id, stage: .ready)
                 }
+                self.playbackReadiness = .ready
+                self.engine?.play()
+                self.startQueuePreparationIfNeeded()
             } catch {
+                guard self.isCurrentPlaybackPreparation(requestID, episodeID: episode.id), !Task.isCancelled else { return }
                 PlaybackDiagnostics.logPreparePlaybackEnd(
                     episodeID: episode.id,
                     intervals: coordinator.cachedIntervals,
@@ -789,10 +761,11 @@ final class AppShellModel {
                     error: error
                 )
                 PlaybackDiagnostics.error(
-                    "Analysis did not finish — playback will be uncleaned until you replay this episode."
+                    "Analysis did not finish — playback remains blocked until preparation succeeds."
                 )
+                self.playbackReadiness = .failed
                 let category = CloudAdDetectionFailureCategory.classify(error)
-                updateForegroundPreparation(
+                self.updateForegroundPreparation(
                     episodeID: episode.id,
                     stage: Self.isRetryableCloudFailure(category) ? .adCheckDelayed : .needsAttention,
                     detail: Self.foregroundDetail(for: category),
@@ -871,7 +844,7 @@ final class AppShellModel {
     }
 
     func toggleMiniPlayerPlayPause() {
-        let willPlay = !(engine?.isPlaying ?? false)
+        let willPlay = !(engine?.isPlaybackRequested ?? false)
         PlaybackDiagnostics.logMiniPlayerToggle(
             willPlay: willPlay,
             enginePresent: engine != nil
@@ -880,25 +853,20 @@ final class AppShellModel {
             PlaybackDiagnostics.warning("miniPlayer toggle ignored — engine nil")
             return
         }
-        if engine.isPlaying {
+        if engine.isPlaybackRequested {
             engine.pause()
             flushPlaybackPosition()
         } else if analysisRecoveryState == .missingArtifacts {
-            pendingPlayAfterPrepare = true
             startRestoredRecoveryIfNeeded()
         } else if analysisRecoveryState == .refreshAvailable {
             applyStagedRefreshIfNeeded()
             engine.play()
             startQueuePreparationIfNeeded()
             startRestoredRecoveryIfNeeded()
-        } else if isPreparingPlayback {
-            if playbackCoordinator?.canStartPlayback == true {
-                engine.play()
-                startQueuePreparationIfNeeded()
-            } else {
-                pendingPlayAfterPrepare = true
-                PlaybackDiagnostics.info("miniPlayer play queued — waiting for analysis")
-            }
+        } else if playbackReadiness == .preparing {
+            PlaybackDiagnostics.info("miniPlayer play ignored — preparation is active")
+        } else if playbackReadiness == .failed {
+            PlaybackDiagnostics.info("miniPlayer play ignored — preparation needs attention")
         } else {
             applyStagedRefreshIfNeeded()
             engine.play()
@@ -911,16 +879,10 @@ final class AppShellModel {
         startRestoredRecoveryIfNeeded()
     }
 
-    /// Starts playback when allowed, or queues play until analysis finishes.
+    /// Starts playback only after the terminal preparation state is ready.
     func startPlaybackWhenReady() {
-        if isPreparingPlayback {
-            if playbackCoordinator?.canStartPlayback == true {
-                engine?.play()
-                startQueuePreparationIfNeeded()
-            } else {
-                pendingPlayAfterPrepare = true
-                PlaybackDiagnostics.info("playback queued — analysis in flight")
-            }
+        guard playbackReadiness == .ready else {
+            PlaybackDiagnostics.info("playback blocked — preparation is not ready")
             return
         }
         engine?.play()
@@ -1008,6 +970,7 @@ final class AppShellModel {
     }
 
     func stopAndDismissPlayer() {
+        invalidatePlaybackPreparation()
         flushPlaybackPosition()
         engine?.pause()
         engine?.onUnrelatedContentSkip = nil
@@ -1100,7 +1063,6 @@ final class AppShellModel {
             isPreparingNextEpisode = true
             preparingNextAnnouncement =
                 "Preparing \(next.podcastTitle)"
-            preparingAnnouncementGeneration += 1
         } else {
             isPreparingNextEpisode = false
             preparingNextAnnouncement = nil
@@ -1473,7 +1435,7 @@ final class AppShellModel {
         else { return }
         let hadPriorResult = analysisRecoveryState == .refreshAvailable
         analysisRecoveryState = .inProgress
-        isPreparingPlayback = !hadPriorResult
+        if !hadPriorResult { playbackReadiness = .preparing }
         foregroundPreparationJob = AnalysisJob(
             episodeID: context.episode.id,
             title: context.episode.title,
@@ -1490,7 +1452,9 @@ final class AppShellModel {
         Task { @MainActor [weak self, weak coordinator] in
             guard let self, let coordinator else { return }
             defer {
-                self.isPreparingPlayback = false
+                if !hadPriorResult, self.playbackReadiness == .preparing {
+                    self.playbackReadiness = .failed
+                }
                 if self.transcriptExists(for: context.episode.id) {
                     self.transcriptAffordanceGeneration += 1
                 }
@@ -1510,7 +1474,7 @@ final class AppShellModel {
                     self.updateForegroundPreparation(episodeID: context.episode.id, stage: .ready)
                     self.analysisRecoveryState = .notNeeded
                 } else {
-                    try await coordinator.preparePlaybackProgressive(
+                    try await coordinator.preparePlayback(
                         episode: EpisodeIdentity(id: context.episode.id),
                         audioURL: context.audioURL,
                         targetWords: targets,
@@ -1522,12 +1486,7 @@ final class AppShellModel {
                             showDescription: context.feedURL.flatMap { self.podcastStore.feedDescription(feedURL: $0) } ?? "",
                             episodeTitle: context.episode.title,
                             episodeDescription: context.episode.showNotes ?? ""
-                        ),
-                        onChunkReady: { [weak self] in
-                            guard let self, self.pendingPlayAfterPrepare else { return }
-                            self.pendingPlayAfterPrepare = false
-                            self.engine?.play()
-                        }
+                        )
                     )
                     await self.publishTerminalPlaybackAnalysisSnapshot(
                         intervals: coordinator.cachedIntervals,
@@ -1537,8 +1496,11 @@ final class AppShellModel {
                     )
                     self.updateForegroundPreparation(episodeID: context.episode.id, stage: .ready)
                     self.analysisRecoveryState = .notNeeded
+                    self.playbackReadiness = .ready
+                    self.engine?.play()
                 }
             } catch {
+                if !hadPriorResult { self.playbackReadiness = .failed }
                 self.analysisRecoveryState = hadPriorResult ? .refreshAvailable : .missingArtifacts
                 self.updateForegroundPreparation(
                     episodeID: context.episode.id,
@@ -1639,10 +1601,18 @@ final class AppShellModel {
     }
 
     private func clearPlaybackAnalysisProgress() {
-        acceptingPlaybackProgress = false
-        isPreparingPlayback = false
-        pendingPlayAfterPrepare = false
+        playbackReadiness = .ready
         playbackAnalysisSnapshot = nil
+    }
+
+    private func invalidatePlaybackPreparation() {
+        playbackPreparationRequestID &+= 1
+        playbackPreparationTask?.cancel()
+        playbackPreparationTask = nil
+    }
+
+    private func isCurrentPlaybackPreparation(_ requestID: Int, episodeID: String) -> Bool {
+        requestID == playbackPreparationRequestID && nowPlayingEpisodeID == episodeID
     }
 
     /// Pins the terminal colored timeline for player chrome after analysis completes.
@@ -1752,10 +1722,7 @@ final class AppShellModel {
 
     private func resolveAudioURL(for episode: Episode) -> URL? {
         if FixtureTranscript.isScrollFollowEnabled {
-            return FixtureProgressivePlayback.bundledURL()
-        }
-        if FixtureProgressivePlayback.isEnabled {
-            return FixtureProgressivePlayback.bundledURL()
+            return FixtureAudio.bundledURL()
         }
         if FixturePrerollAdBands.isAnyEnabled {
             return FixturePrerollAdBands.bundledURL()

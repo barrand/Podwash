@@ -23,6 +23,9 @@ struct TranscriptView: View {
     @State private var isFollowModeOn = true
     @State private var lastFollowedBlockIndex: Int?
     @State private var activeWordIndex: Int = 0
+    /// The live clock used for the listened (grey) treatment. Keeping this in
+    /// state makes the visible words update with the same cadence as karaoke.
+    @State private var playbackPosition: TimeInterval = 0
 
     var body: some View {
         NavigationStack {
@@ -38,7 +41,8 @@ struct TranscriptView: View {
                                     block: block,
                                     words: viewModel.words,
                                     paragraphs: viewModel.paragraphs,
-                                    activeWordIndex: activeWordIndex
+                                    activeWordIndex: activeWordIndex,
+                                    playbackPosition: playbackPosition
                                 )
                                 .id(block.id)
                             }
@@ -82,14 +86,19 @@ struct TranscriptView: View {
         .background {
             TimelineView(.periodic(from: .now, by: 0.25)) { _ in
                 let _ = playbackEngine?.uiRefreshToken
+                let position = livePlayheadSeconds
                 let index = computedActiveWordIndex
                 Color.clear
                     .accessibilityHidden(true)
                     .onChange(of: index) { _, newIndex in
                         activeWordIndex = newIndex
                     }
+                    .onChange(of: position) { _, newPosition in
+                        playbackPosition = newPosition
+                    }
                     .onAppear {
                         activeWordIndex = index
+                        playbackPosition = position
                     }
             }
         }
@@ -206,7 +215,7 @@ struct TranscriptView: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityIdentifier("transcript.listenedCount")
                 .accessibilityLabel("Listened word count")
-                .accessibilityValue("\(viewModel.listenedCount)")
+                .accessibilityValue("\(listenedCountAtLivePlayhead)")
 
             Color.clear
                 .frame(width: 1, height: 1)
@@ -237,6 +246,18 @@ struct TranscriptView: View {
         .allowsHitTesting(false)
     }
 
+    private var listenedCountAtLivePlayhead: Int {
+        viewModel.words.reduce(into: 0) { count, display in
+            if TranscriptViewModel.isListened(
+                word: display.word,
+                skippedAd: display.skippedAd,
+                playhead: playbackPosition
+            ) {
+                count += 1
+            }
+        }
+    }
+
 }
 
 /// One direct LazyVStack child. Blocks preserve sentence timestamps and spacing
@@ -246,6 +267,7 @@ private struct TranscriptRenderBlockView: View {
     let words: [TranscriptWordDisplay]
     let paragraphs: [TranscriptParagraph]
     var activeWordIndex: Int = -1
+    var playbackPosition: TimeInterval = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -282,7 +304,12 @@ private struct TranscriptRenderBlockView: View {
                         .accessibilityValue(accessibilityValue(for: display, isActive: isActive))
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            // A render block is measured independently by LazyVStack. Give the
+            // wrapping layout the ScrollView's concrete width during that
+            // measurement, rather than letting its first pass use an
+            // unconstrained proposal. Otherwise it reports a one-line height
+            // and a following block can be placed over its wrapped last line.
+            .containerRelativeFrame(.horizontal, count: 1, span: 1, spacing: 0, alignment: .leading)
         }
         .padding(.bottom, block.endsParagraph ? 12 : 0)
     }
@@ -298,7 +325,7 @@ private struct TranscriptRenderBlockView: View {
         if display.skippedAd {
             return BrandTheme.accent
         }
-        if display.listened {
+        if isListened(display) {
             return BrandTheme.onSurface.opacity(0.6)
         }
         return BrandTheme.onSurface
@@ -308,13 +335,21 @@ private struct TranscriptRenderBlockView: View {
         var parts: [String] = []
         if display.skippedAd {
             parts.append("skippedAd")
-        } else if display.listened {
+        } else if isListened(display) {
             parts.append("listened")
         }
         if isActive {
             parts.append("active")
         }
         return parts.joined(separator: ",")
+    }
+
+    private func isListened(_ display: TranscriptWordDisplay) -> Bool {
+        TranscriptViewModel.isListened(
+            word: display.word,
+            skippedAd: display.skippedAd,
+            playhead: playbackPosition
+        )
     }
 }
 

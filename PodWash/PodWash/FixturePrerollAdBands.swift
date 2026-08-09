@@ -53,7 +53,7 @@ enum FixturePrerollAdBands {
     }
 
     static func bundledURL(in bundle: Bundle = .main) -> URL? {
-        FixtureProgressivePlayback.bundledURL(in: bundle)
+        FixtureAudio.bundledURL(in: bundle)
     }
 
     /// Seeds Library + channel cleaning on for immediate-complete preroll UITests.

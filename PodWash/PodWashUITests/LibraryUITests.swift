@@ -412,6 +412,30 @@ final class LibraryUITests: XCTestCase {
         XCTAssertTrue(discoverRoot.waitForExistence(timeout: fixtureTimeout), "Discover must remain reachable with mini-player visible")
     }
 
+    @MainActor
+    func testTabsRemainHittableWhilePlaybackPrepares() throws {
+        let app = launchLibraryApp(extraArguments: libraryPlayerAnalysisTimelineArgs)
+        navigateToEpisodeList(app)
+        ensureChannelCleaningOn(in: app)
+
+        let episodeCell = element("episodeCell_0", in: app)
+        XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
+        episodeCell.tap()
+
+        let preparing = element("miniPlayer.preparing", in: app)
+        XCTAssertTrue(
+            preparing.waitForExistence(timeout: fixtureTimeout),
+            "The mini-player must show its preparing status before terminal analysis completes"
+        )
+
+        for name in ["Library", "Queue", "Discover"] {
+            let control = tab(name, in: app)
+            XCTAssertTrue(control.waitForExistence(timeout: fixtureTimeout), "\(name) tab must exist while preparing")
+            XCTAssertTrue(control.isHittable, "\(name) tab must remain tappable while preparing")
+            XCTAssertFalse(control.frame.intersects(preparing.frame), "\(name) must not overlap preparation chrome")
+        }
+    }
+
     // MARK: - AC7: empty library prompts Discover navigation
 
     @MainActor

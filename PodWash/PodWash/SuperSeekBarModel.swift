@@ -2,9 +2,9 @@
 //  SuperSeekBarModel.swift
 //  PodWash
 //
-//  Slice 25 — Pure playhead / remaining / frontier-clamp math (ADR-021 §2, §6).
+//  Slice 25 — Pure playhead / remaining math.
 //  Slice 27 — Mute marker filter + normalize + AX suffix (ADR-023 §3, §5).
-//  Slice 33 — Timestamp ad bands + analysis progress (ADR-030 §3, §5).
+//  Slice 33 — Timestamp ad bands.
 //
 
 import Foundation
@@ -32,11 +32,6 @@ nonisolated enum SuperSeekBarModel {
     /// max(0, duration − elapsed); UI formats whole seconds for `playback.remaining`.
     static func remaining(elapsed: Double, duration: Double) -> Double {
         max(0, duration - elapsed)
-    }
-
-    /// Clamp requested seek into [0, processedEnd] (AC7: 90 → 60 when frontier 60).
-    static func clampedSeek(requested: Double, processedEnd: Double) -> Double {
-        min(max(0, requested), max(0, processedEnd))
     }
 
     /// Intervals with `source == .profanity` && `action == .mute`, normalized by duration.
@@ -74,12 +69,6 @@ nonisolated enum SuperSeekBarModel {
         return bands.sorted { $0.startNormalized < $1.startNormalized }
     }
 
-    /// `processedEnd / duration` clamped to [0, 1]; `0` when `duration <= 0`.
-    static func analysisProgress(processedEnd: Double, duration: Double) -> Double {
-        guard duration > 0 else { return 0 }
-        return min(1, max(0, processedEnd / duration))
-    }
-
     /// Complete-bar AX: `adBands:N,<start>-<end>…,muteMarkers:M` (ADR-030 §5).
     static func accessibilityValue(
         adBands: [AdBand],
@@ -95,11 +84,4 @@ nonisolated enum SuperSeekBarModel {
         return tokens.joined(separator: ",")
     }
 
-    /// Formats analysis progress for AX (`0.0000`–`1.0000`, 4 decimal places).
-    static func analysisProgressAccessibilityValue(
-        processedEnd: Double,
-        duration: Double
-    ) -> String {
-        String(format: "%.4f", analysisProgress(processedEnd: processedEnd, duration: duration))
-    }
 }

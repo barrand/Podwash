@@ -24,7 +24,6 @@ final class SteppedEpisodeAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
     /// Preferred UI sink: invoked on the main actor before each paced wait.
     /// `nonisolated(unsafe)`: cleared from `nonisolated deinit` without a MainActor TaskLocal hop.
     nonisolated(unsafe) var onMainActorProgress: MainActorAnalysisProgressHandler?
-    var onPartialIntervals: AnalysisPartialIntervalsHandler?
 
     // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION.
     nonisolated deinit {}
@@ -90,12 +89,7 @@ final class SteppedEpisodeAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
             await MainActor.run {
                 onMainActorProgress?(snapshot)
                 onProgress?(snapshot)
-                onPartialIntervals?(union, snapshot)
             }
-            // Progressive prepare installs `onPartialIntervals` as Task { @MainActor };
-            // yield so canStartPlayback / schedule apply land before the paced hold
-            // (UITests poll play + first-chunk AX during that window).
-            await Task.yield()
             if let freezeAt = freezeAtProcessedEnd,
                abs(snapshot.processedEnd - freezeAt) < 0.01,
                index < snapshots.count - 1 {

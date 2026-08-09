@@ -124,6 +124,12 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         player.timeControlStatus == .playing
     }
 
+    /// Stable user intent, unlike `isPlaying`, which can briefly be false while
+    /// AVPlayer changes between playing and waiting.
+    var isPlaybackRequested: Bool {
+        wantsPlayback
+    }
+
     /// Accessibility value for the speed control (`"0.75"` … `"3.0"`).
     var rateAccessibilityValue: String {
         Self.accessibilityValue(for: selectedRate)

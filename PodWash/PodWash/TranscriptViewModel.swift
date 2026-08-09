@@ -73,7 +73,11 @@ struct TranscriptViewModel: Equatable, Sendable {
                 word.start < interval.end && word.end > interval.start
             }
             let skippedAd = overlapsSkip
-            let listened = !skippedAd && word.end <= playbackPosition
+            let listened = isListened(
+                word: word,
+                skippedAd: skippedAd,
+                playhead: playbackPosition
+            )
             if skippedAd { skippedAdCount += 1 }
             if listened { listenedCount += 1 }
             return TranscriptWordDisplay(
@@ -134,6 +138,17 @@ struct TranscriptViewModel: Equatable, Sendable {
         }
 
         return 0
+    }
+
+    /// A word becomes listened when playback reaches its exclusive end. This is
+    /// shared by the open-time snapshot and the live transcript renderer so the
+    /// grey history stays aligned with the current playhead.
+    static func isListened(
+        word: TimedWord,
+        skippedAd: Bool,
+        playhead: TimeInterval
+    ) -> Bool {
+        !skippedAd && word.end <= playhead
     }
 
     private static func scrollAnchor(

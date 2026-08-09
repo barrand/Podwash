@@ -26,18 +26,10 @@ final class PlaybackCoordinator {
     private(set) var currentAction: CensorAction = .mute
     private(set) var unrelatedContentEnabled: Bool = false
     private(set) var unrelatedContentAction: CensorAction = .skip
-    /// Progressive prepare: true after first playable chunk (ADR-021 §4).
-    private(set) var canStartPlayback: Bool = false
-    /// Progressive prepare: latest chunk frontier in seconds.
-    private(set) var processedEnd: Double = 0
-
     /// Intervals last projected onto `PlaybackEngine` (post enablement / action remap).
     var appliedPlaybackIntervals: [CensorInterval] {
         lastScheduledIntervals
     }
-
-    /// Serializes progressive partial schedule applies (task-022 intro catch-up race).
-    private var partialApplyChain: Task<Void, Never>?
 
     init(
         pipeline: any EpisodeAnalyzing,
@@ -104,8 +96,6 @@ final class PlaybackCoordinator {
         injectedTranscript: [TimedWord]? = nil,
         segmentationContext: SegmentationContext = .empty
     ) async throws {
-        canStartPlayback = false
-        processedEnd = 0
         if let analysisPipeline = pipeline as? AnalysisPipeline {
             analysisPipeline.segmentationContext = segmentationContext
         }
@@ -127,184 +117,6 @@ final class PlaybackCoordinator {
         }
         await applySchedule(intervals: intervals)
         cachedIntervals = intervals
-        processedEnd = max(processedEnd, intervals.map(\.end).max() ?? 0)
-        canStartPlayback = true
-    }
-
-    /// Cold progressive path: applies partial schedules as chunks complete;
-    /// sets `canStartPlayback` after the first chunk without waiting for terminal analyze.
-    func preparePlaybackProgressive(
-        episode: EpisodeIdentity,
-        audioURL: URL,
-        targetWords: Set<String>,
-        action: CensorAction = .mute,
-        unrelatedContent: UnrelatedContentOptions = UnrelatedContentOptions(),
-        injectedTranscript: [TimedWord]? = nil,
-        segmentationContext: SegmentationContext = .empty,
-        onChunkReady: (@MainActor () -> Void)? = nil
-    ) async throws {
-        canStartPlayback = false
-        processedEnd = 0
-        cachedIntervals = []
-        currentAction = action
-        unrelatedContentEnabled = unrelatedContent.enabled
-        unrelatedContentAction = unrelatedContent.action
-        if let analysisPipeline = pipeline as? AnalysisPipeline {
-            analysisPipeline.segmentationContext = segmentationContext
-        }
-
-        let chunkReadyGate = OnceFlag()
-        partialApplyChain = nil
-        let installation = installPartialIntervalsHandler { [weak self] intervals, snapshot in
-            // Callers emit from `MainActor.run` — enqueue the chain Task synchronously so
-            // `partialApplyChain` is visible before the next yield/sleep (task-022 intro skip).
-            // Off-main (defensive): hop without assumeIsolated SIGABRT.
-            guard let self else { return }
-            if Thread.isMainThread {
-                MainActor.assumeIsolated {
-                    self.enqueueProgressivePartial(
-                        intervals: intervals,
-                        snapshot: snapshot,
-                        chunkReadyGate: chunkReadyGate,
-                        onChunkReady: onChunkReady
-                    )
-                }
-            } else {
-                Task { @MainActor [weak self] in
-                    self?.enqueueProgressivePartial(
-                        intervals: intervals,
-                        snapshot: snapshot,
-                        chunkReadyGate: chunkReadyGate,
-                        onChunkReady: onChunkReady
-                    )
-                }
-            }
-        }
-        defer {
-            installation.restore()
-            partialApplyChain = nil
-        }
-
-        let intervals = try await pipeline.analyze(
-            episode: episode,
-            audioURL: audioURL,
-            targetWords: targetWords,
-            injectedTranscript: injectedTranscript,
-            profanityAction: action,
-            unrelatedContent: unrelatedContent
-        )
-        // Wait for chained partial applies before terminal schedule (task-022).
-        await partialApplyChain?.value
-        if let analysisPipeline = pipeline as? AnalysisPipeline {
-            lastAnalysisUnion = analysisPipeline.lastAnalysisUnion
-        } else {
-            lastAnalysisUnion = Self.analysisUnion(from: pipeline, projected: intervals)
-        }
-        await applySchedule(intervals: intervals)
-        cachedIntervals = intervals
-        if snapshotProcessedEndHint(from: intervals) > processedEnd {
-            processedEnd = snapshotProcessedEndHint(from: intervals)
-        }
-        if !canStartPlayback {
-            canStartPlayback = true
-            if chunkReadyGate.mark() {
-                onChunkReady?()
-            }
-        }
-    }
-
-    /// Installs `onPartialIntervals` on concrete analyzer types (same pattern as
-    /// `AnalysisProgressRelay`) so the protocol-extension no-op setter cannot
-    /// swallow progressive callbacks through an `any EpisodeAnalyzing` existential.
-    private func installPartialIntervalsHandler(
-        _ handler: @escaping AnalysisPartialIntervalsHandler
-    ) -> PartialHandlerInstallation {
-        if let analysisPipeline = pipeline as? AnalysisPipeline {
-            let previous = analysisPipeline.onPartialIntervals
-            analysisPipeline.onPartialIntervals = { intervals, snapshot in
-                previous?(intervals, snapshot)
-                handler(intervals, snapshot)
-            }
-            return PartialHandlerInstallation {
-                analysisPipeline.onPartialIntervals = previous
-            }
-        }
-        if let stepped = pipeline as? SteppedEpisodeAnalyzer {
-            let previous = stepped.onPartialIntervals
-            stepped.onPartialIntervals = { intervals, snapshot in
-                previous?(intervals, snapshot)
-                handler(intervals, snapshot)
-            }
-            return PartialHandlerInstallation {
-                stepped.onPartialIntervals = previous
-            }
-        }
-        if let instant = pipeline as? InstantEpisodeAnalyzer {
-            let previous = instant.onPartialIntervals
-            instant.onPartialIntervals = { intervals, snapshot in
-                previous?(intervals, snapshot)
-                handler(intervals, snapshot)
-            }
-            return PartialHandlerInstallation {
-                instant.onPartialIntervals = previous
-            }
-        }
-        // Test doubles with a real stored property (e.g. ProgressiveSteppedTestAnalyzer).
-        let previous = pipeline.onPartialIntervals
-        pipeline.onPartialIntervals = { intervals, snapshot in
-            previous?(intervals, snapshot)
-            handler(intervals, snapshot)
-        }
-        return PartialHandlerInstallation { [weak self] in
-            self?.pipeline.onPartialIntervals = previous
-        }
-    }
-
-    private func enqueueProgressivePartial(
-        intervals: [CensorInterval],
-        snapshot: AnalysisProgressSnapshot,
-        chunkReadyGate: OnceFlag,
-        onChunkReady: (@MainActor () -> Void)?
-    ) {
-        let previous = partialApplyChain
-        partialApplyChain = Task { @MainActor in
-            await previous?.value
-            await self.handleProgressivePartial(
-                intervals: intervals,
-                snapshot: snapshot,
-                chunkReadyGate: chunkReadyGate,
-                onChunkReady: onChunkReady
-            )
-        }
-    }
-
-    private func handleProgressivePartial(
-        intervals: [CensorInterval],
-        snapshot: AnalysisProgressSnapshot,
-        chunkReadyGate: OnceFlag,
-        onChunkReady: (@MainActor () -> Void)?
-    ) async {
-        processedEnd = snapshot.processedEnd
-        cachedIntervals = intervals
-        if let pipeline = pipeline as? AnalysisPipeline {
-            lastAnalysisUnion = pipeline.lastAnalysisUnion
-        } else {
-            lastAnalysisUnion = Self.analysisUnion(from: pipeline, projected: intervals)
-        }
-        await applySchedule(intervals: intervals)
-        let ready = snapshot.processedEnd >= AnalysisChunking.chunkSize
-            || snapshot.processedEnd >= snapshot.episodeDuration
-        guard ready else { return }
-        if !canStartPlayback {
-            canStartPlayback = true
-        }
-        if chunkReadyGate.mark() {
-            onChunkReady?()
-        }
-    }
-
-    private func snapshotProcessedEndHint(from intervals: [CensorInterval]) -> Double {
-        intervals.map(\.end).max() ?? 0
     }
 
     /// Remaps **profanity** intervals only. Does not call `analyze`.
@@ -388,24 +200,4 @@ final class PlaybackCoordinator {
     // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION
     // (XCTest teardown otherwise SIGABRT via swift_task_deinitOnExecutorImpl).
     nonisolated deinit {}
-}
-
-/// One-shot gate for progressive `onChunkReady` (Sendable across partial callbacks).
-private final class OnceFlag: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value = false
-
-    /// Returns `true` the first time only.
-    func mark() -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        if value { return false }
-        value = true
-        return true
-    }
-}
-
-/// Restores a prior `onPartialIntervals` handler after progressive prepare.
-private struct PartialHandlerInstallation {
-    let restore: () -> Void
 }

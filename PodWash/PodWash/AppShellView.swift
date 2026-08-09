@@ -39,7 +39,6 @@ struct AppShellView: View {
 
         let useStubbedNetwork = FixtureLibrary.usesInMemoryPersistence
             || FixtureTranscript.usesInMemoryPersistence
-            || FixtureProgressivePlayback.isEnabled
             || FixtureMuteMarkers.isAnyEnabled
             || FixturePrerollAdBands.isAnyEnabled
         let searchClient = useStubbedNetwork
@@ -130,15 +129,13 @@ struct AppShellView: View {
                 NavigationStack {
                     PlaybackControlsView(
                         engine: engine,
+                        readiness: model.playbackReadiness,
                         showsCompleteSeekBarPaint: model.isPlayerSeekBarAnalysisComplete,
-                        analysisProgress: model.analysisProgressFraction,
-                        isPreparingPlayback: model.isPreparingPlayback,
                         episodeDuration: model.superSeekDuration,
-                        processedEnd: model.superSeekProcessedEnd,
                         muteIntervals: model.nowPlayingMuteIntervals,
                         onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
-                        onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) },
-                        onSeekBy: { model.seekClampedToProcessedFrontier(by: $0) }
+                        onSeekTo: { model.seekReadyPlayback(to: $0) },
+                        onSeekBy: { model.seek(by: $0) }
                     )
                         .toolbar {
                             ToolbarItem(placement: .topBarTrailing) {
@@ -209,33 +206,35 @@ struct AppShellView: View {
         VStack(spacing: 0) {
             MiniPlayerBar(
                 engine: engine,
+                readiness: model.playbackReadiness,
                 episodeTitle: model.nowPlayingEpisodeTitle,
                 podcastTitle: model.nowPlayingPodcastTitle,
                 showsCompleteSeekBarPaint: model.isPlayerSeekBarAnalysisComplete,
-                analysisProgress: model.analysisProgressFraction,
-                isPreparingPlayback: model.isPreparingPlayback,
                 isPreparingNextEpisode: model.isPreparingNextEpisode,
                 preparingNextAnnouncement: model.preparingNextAnnouncement,
                 queuePresentation: model.queuePresentation,
                 episodeDuration: model.superSeekDuration,
-                processedEnd: model.superSeekProcessedEnd,
                 muteIntervals: model.nowPlayingMuteIntervals,
                 showsSuperSeekBar: !reservesTabBarClearance,
                 onExpand: { model.expandFullPlayer() },
                 onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
-                onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) },
+                onSeekTo: { model.seekReadyPlayback(to: $0) },
                 onSkipToNext: { model.skipToNextUp() },
                 onOpenPreparation: { selectedTab = .queue }
             )
-            .onChange(of: model.preparingAnnouncementGeneration) { _, _ in
-                if let text = model.preparingNextAnnouncement {
-                    PreparingSpeech.announce(text)
-                }
-            }
             if reservesTabBarClearance {
                 // iOS 26 TabView bottom inset overlaps the tab bar unless we reserve its height.
-                // The Super Seek Bar belongs in that reservation, immediately above the tabs.
-                shellMiniPlayerSeekBar(engine: engine)
+                // Keep that reservation even while preparation hides the seek bar,
+                // otherwise the mini-player covers the Library / Queue / Discover tabs.
+                Group {
+                    if model.canShowPlayerSeekBar {
+                        // The Super Seek Bar belongs in this reservation, immediately above the tabs.
+                        shellMiniPlayerSeekBar(engine: engine)
+                    } else {
+                        Color.clear
+                            .allowsHitTesting(false)
+                    }
+                }
                 .frame(height: tabBarHeight, alignment: .top)
                 // This reservation shares the tab bar's space; leave its unused
                 // portion clear so UIKit can render the tab controls.
@@ -286,11 +285,9 @@ struct AppShellView: View {
                 adBands: miniPlayerAdBands(for: engine),
                 elapsed: engine.avPlayer.currentTime().seconds,
                 duration: miniPlayerDuration(for: engine),
-                processedEnd: miniPlayerProcessedEnd(for: engine),
                 muteMarkers: miniPlayerMuteMarkers(for: engine),
                 muteMarkerCountForAccessibility: miniPlayerMuteMarkerCount(for: engine),
-                analysisProgress: model.analysisProgressFraction,
-                onSeekTo: { model.seekClampedToProcessedFrontier(to: $0) }
+                onSeekTo: { model.seekReadyPlayback(to: $0) }
             )
         }
         // Only the seek-bar strip itself overlays tab content. Do not paint the
@@ -300,11 +297,6 @@ struct AppShellView: View {
 
     private func miniPlayerDuration(for engine: PlaybackEngine) -> Double {
         model.superSeekDuration > 0 ? model.superSeekDuration : engine.duration
-    }
-
-    private func miniPlayerProcessedEnd(for engine: PlaybackEngine) -> Double {
-        let duration = miniPlayerDuration(for: engine)
-        return model.superSeekProcessedEnd > 0 ? model.superSeekProcessedEnd : duration
     }
 
     private func miniPlayerAdBands(for engine: PlaybackEngine) -> [AdBand] {
