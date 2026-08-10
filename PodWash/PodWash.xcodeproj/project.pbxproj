@@ -11,6 +11,7 @@
 		AC9000010000000000000001 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = AC9000040000000000000001 /* FirebaseAuth */; };
 		AC9000020000000000000001 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = AC9000050000000000000001 /* FirebaseAppCheck */; };
 		AC9000030000000000000001 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = AC9000060000000000000001 /* FirebaseCore */; };
+		E33E79D1302A8121007C2B0D /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = E33E79D0302A8121007C2B0D /* FirebaseCrashlytics */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -94,6 +95,7 @@
 			files = (
 				90184D50562F5B7749D2C408 /* WhisperKit in Frameworks */,
 				AC9000010000000000000001 /* FirebaseAuth in Frameworks */,
+				E33E79D1302A8121007C2B0D /* FirebaseCrashlytics in Frameworks */,
 				AC9000020000000000000001 /* FirebaseAppCheck in Frameworks */,
 				AC9000030000000000000001 /* FirebaseCore in Frameworks */,
 			);
@@ -173,6 +175,7 @@
 				E3E16DCE2FFF1BCC00E398A5 /* Resources */,
 				AC2400000000000000000001 /* Copy Bundled Whisper Model */,
 				AC0800000000000000000001 /* Inject Build Stamp */,
+				E33E79D2302A8121007C2B0D /* Upload Crashlytics dSYMs */,
 			);
 			buildRules = (
 			);
@@ -187,6 +190,7 @@
 				AC9000040000000000000001 /* FirebaseAuth */,
 				AC9000050000000000000001 /* FirebaseAppCheck */,
 				AC9000060000000000000001 /* FirebaseCore */,
+				E33E79D0302A8121007C2B0D /* FirebaseCrashlytics */,
 			);
 			productName = PodWash;
 			productReference = E3E16DD02FFF1BCC00E398A5 /* PodWash.app */;
@@ -361,6 +365,30 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${SRCROOT}/../scripts/copy-bundled-whisper-model.sh\"\n";
 		};
+		E33E79D2302A8121007C2B0D /* Upload Crashlytics dSYMs */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 0;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)",
+				"$(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)/Contents/Resources/DWARF/$(PRODUCT_NAME)",
+				"$(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)/Contents/Info.plist",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
+			);
+			name = "Upload Crashlytics dSYMs";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -479,6 +507,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = com.barrandfarm.PodWash;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -515,6 +544,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = com.barrandfarm.PodWash;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -815,6 +845,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AC9000070000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseCore;
+		};
+		E33E79D0302A8121007C2B0D /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AC9000070000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
