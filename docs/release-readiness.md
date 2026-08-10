@@ -13,8 +13,10 @@ record the owner, date, and evidence beside each check when it is done.
   and Release entitlements are correct for `com.barrandfarm.PodWash`. Completed
   2026-08-08: App Store validation succeeded with the paid team, matching bundle
   ID, production App Attest entitlement, and Firebase configuration.
-- [ ] **1.4** Run `scripts/release-verify.sh` from the clean release commit, retain its
+- [x] **1.4** Run `scripts/release-verify.sh` from the clean release commit, retain its
   `build/test-results/latest.md` evidence, then Archive and Validate the Release build.
+  Completed 2026-08-10: commit `c8bf449`; verification passed (248 unit and 69 UI
+  tests, zero failures/skips), and the Release archive validated successfully.
 - [ ] **1.5** Install the archive on a physical iPhone and test fresh install, playback,
   downloads, background audio, transcript follow, and offline behavior.
 - [ ] **1.6** Test real-world interruptions: lock screen and Control Center controls,
@@ -101,17 +103,17 @@ record the owner, date, and evidence beside each check when it is done.
 - [ ] **5.3** After release, monitor crashes, backend health, App Review messages, and
   early support reports; decide whether to pause phased release or ship a fix.
 
-## Current state (2026-08-09)
+## Current state (2026-08-10)
 
 - `main` includes the transcript follow-along (`a51b06a`) and queue redesign
   (`82e86c5`) work intended for the 1.0 release.
 - The new product, matching, and UI changes have a clean release-source commit;
-  version `1.0 (4)` is the new candidate. Prerequisite **1.4** remains.
+  version `1.0 (4)` has passed release verification and Archive validation.
 - Signing prerequisite **1.3** is complete: App Store validation succeeded. The
   archive's signed entitlements include production App Attest and the matching
   Firebase configuration.
-- The prior verification and Organizer validation apply only to build `1.0 (3)`
-  at `3a19cd1`; they do not cover the new candidate.
+- The current verification and Organizer validation cover build `1.0 (4)` at
+  `c8bf449`.
 - The repository intentionally omits `GoogleService-Info.plist`; a production
   archive must supply it by a secure delivery process.
 - The project currently uses marketing version `1.0`, build `4`, and an iOS 26.1
