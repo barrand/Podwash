@@ -38,13 +38,14 @@ record the owner, date, and evidence beside each check when it is done.
 - [ ] **2.2** Verify Firebase Anonymous Auth, production App Attest, and Cloud Run work in
   a Release/TestFlight build. Confirm App Check enforcement and backend quotas,
   alerts, and kill switch are live.
-- [ ] **2.3** Verify consent copy and behavior: cloud ad detection sends transcript text,
-  never audio; opt-out remains functional.
-  - [ ] Implement a first-use, explicit opt-in before any timed transcript text is
+- [x] **2.3** Verify consent copy and behavior: cloud ad detection sends transcript text,
+  never audio; opt-out remains functional. Completed 2026-08-10: Release-build
+  practical testing verified decline, opt-in, and Settings opt-out behavior.
+  - [x] Implement a first-use, explicit opt-in before any timed transcript text is
     shared with Gemini or another cloud provider. The disclosure must identify the
     third-party AI service, state that audio is not uploaded, and offer a clear
     decline path.
-  - [ ] Test that declining consent sends no transcript text, that core playback
+  - [x] Test that declining consent sends no transcript text, that core playback
     remains available, and that withdrawing consent in Settings stops all future
     cloud submissions.
 - [ ] **2.4** Confirm production error reporting, dashboards, alerts, and an owner for
