@@ -7,8 +7,8 @@ record the owner, date, and evidence beside each check when it is done.
 
 - [x] **1.1** Identify a clean, reviewed release commit. Do not archive while
   unrelated local changes are present. Current candidate: latest commit on `main`.
-- [ ] **1.2** Set the intended marketing version and increment the build number
-  for the new release candidate.
+- [x] **1.2** Set the intended marketing version and increment the build number
+  for the new release candidate. Completed 2026-08-09: version `1.0`, build `4`.
 - [x] **1.3** Confirm the Distribution signing certificate, provisioning profile, bundle ID,
   and Release entitlements are correct for `com.barrandfarm.PodWash`. Completed
   2026-08-08: App Store validation succeeded with the paid team, matching bundle
@@ -105,8 +105,8 @@ record the owner, date, and evidence beside each check when it is done.
 
 - `main` includes the transcript follow-along (`a51b06a`) and queue redesign
   (`82e86c5`) work intended for the 1.0 release.
-- The new product, matching, and UI changes have a clean release-source commit.
-  Prerequisites **1.2** and **1.4** must be completed for the new candidate.
+- The new product, matching, and UI changes have a clean release-source commit;
+  version `1.0 (4)` is the new candidate. Prerequisite **1.4** remains.
 - Signing prerequisite **1.3** is complete: App Store validation succeeded. The
   archive's signed entitlements include production App Attest and the matching
   Firebase configuration.
@@ -114,5 +114,5 @@ record the owner, date, and evidence beside each check when it is done.
   at `3a19cd1`; they do not cover the new candidate.
 - The repository intentionally omits `GoogleService-Info.plist`; a production
   archive must supply it by a secure delivery process.
-- The project currently uses marketing version `1.0`, build `3`, and an iOS 26.1
-  deployment target; increment the build number when preparing the new candidate.
+- The project currently uses marketing version `1.0`, build `4`, and an iOS 26.1
+  deployment target.
