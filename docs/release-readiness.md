@@ -27,8 +27,9 @@ record the owner, date, and evidence beside each check when it is done.
 - [x] **1.7** Test accessibility in the Release build: VoiceOver labels and order, Dynamic
   Type, contrast, and transcript controls including follow/recenter. Completed
   2026-08-10: practical accessibility pass on iPhone 17 Pro, iOS 26.5.2.
-- [ ] **1.8** Review the iOS 26.1 deployment target and confirm that device/OS coverage is
-  intentional.
+- [x] **1.8** Review the iOS 26.1 deployment target and confirm that device/OS coverage is
+  intentional. Completed 2026-08-10: iPhone and iPad on iOS 26.1+ are the intended
+  support matrix.
 
 ## 2. Production cloud service
 
