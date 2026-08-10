@@ -13,7 +13,7 @@ import AVFoundation
 import Foundation
 
 extension Notification.Name {
-    /// Posted after a deferred NoCache transcript backfill write (UITest AC7 / Task 020).
+    /// Posted after a NoCache transcript backfill write (UITest AC7 / Task 020).
     static let podwashTranscriptBackfillDidStore = Notification.Name(
         "com.barrandfarm.PodWash.transcriptBackfillDidStore"
     )
@@ -434,26 +434,12 @@ final class AnalysisPipeline: @unchecked Sendable {
                 duration: duration
             )
         }
-        // UITest NoCache: store off the prepare critical path so AC7 can expand the
-        // full player and assert `playback.viewTranscript` absent. Task 020 still
-        // observes the affordance once the deferred write lands (≤ backfill wait).
-        // 8 s keeps AC7's full-player expand window clear of the write; task-020
-        // waits 10 s and polls generation after prepare (see AppShellModel).
-        if FixtureTranscript.isNoCacheEnabled {
-            let episodeID = episode.id
-            let cache = transcriptCache
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(8))
-                try? cache.store(transcript, episodeID: episodeID)
-                NotificationCenter.default.post(
-                    name: .podwashTranscriptBackfillDidStore,
-                    object: nil,
-                    userInfo: [PodWashTranscriptBackfillUserInfoKey.episodeID: episodeID]
-                )
-            }
-            return
-        }
         try transcriptCache.store(transcript, episodeID: episode.id)
+        NotificationCenter.default.post(
+            name: .podwashTranscriptBackfillDidStore,
+            object: nil,
+            userInfo: [PodWashTranscriptBackfillUserInfoKey.episodeID: episode.id]
+        )
     }
 
     /// Runs ASR while emitting time-based timeline progress (ADR-018 §6 — not Whisper chunk truth).

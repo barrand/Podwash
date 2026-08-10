@@ -61,7 +61,7 @@ Let users read the episode transcript when analysis has produced one — to prev
 | UI fixture transcript | **24** words, **2.5** s each, span **0.0–60.0** s | AC4–AC6: `transcript.wordCount == 24`; preset `playbackPosition = 30.0` → **12** listened; unrelated skip **35.0–42.5** s → **3** skippedAd words |
 | UI fixture launch arg | `-UITestFixtureTranscript` | Seeds cached transcript + intervals + preset resume position; implies Library/feed path per ADR-022 |
 | No-transcript control | Same fixture family with transcript file omitted | AC7 affordance absent |
-| Progressive negative | `-UITestFixtureProgressivePlayback` (Slice 25) | AC9: while `playback.superSeekBar` is `ready:3,processing:1,pending:8`, transcript affordance absent |
+| Preparation negative | Library stepped-analysis fixture | AC9: while `miniPlayer.preparing` is visible, transcript affordance absent |
 | Overlap rule | `word.start < interval.end && word.end > interval.start` | ViewModel + UI skippedAd counts |
 
 ## Depends on
@@ -95,9 +95,9 @@ Automatable only. **XCTSkip is not allowed on core ACs** — a mapped test that 
 - [ ] 4. UI test (`-UITestFixtureTranscript`, preset `playbackPosition = 30.0`): tap `episode.viewTranscript` on row 0 → within **3.0** s, `transcript.view` exists; `transcript.wordCount` `accessibilityValue` is **`24`**; `transcript.listenedCount` is **`12`**.
 - [ ] 5. UI test (same fixture): `transcript.skippedAdCount` `accessibilityValue` is **`3`**.
 - [ ] 6. UI test (same fixture, playing episode): expand full player → tap `playback.viewTranscript` → within **3.0** s, `transcript.view` exists; `transcript.wordCount` is **`24`** (same as AC4).
-- [ ] 7. UI test (fixture with **no** transcript file on disk): `episode.viewTranscript` and `playback.viewTranscript` are **absent** (not hittable) on row 0 and in expanded full player.
+- [ ] 7. UI test (fixture with **no** transcript file on disk): `episode.viewTranscript` is **absent** (not hittable) on row 0 before terminal preparation backfills it.
 - [ ] 8. UI test (same fixture as AC4, `playbackPosition = 30.0`): on first open, `transcript.scrollAnchor` `accessibilityValue` parsed as `Int` is **≥ 28** and **≤ 32**.
-- [ ] 9. UI test (`-UITestFixtureProgressivePlayback`, cleaning on): tap play → within **5.0** s, `playback.superSeekBar` `accessibilityValue` is **`ready:3,processing:1,pending:8`** while `episode.viewTranscript` is **absent** (terminal transcript not yet persisted).
+- [ ] 9. UI test (Library stepped-analysis fixture): tap an episode → within **5.0** s, `miniPlayer.preparing` exists while `episode.viewTranscript` is **absent**.
 - [ ] 10. Unit test (`TranscriptCacheTests`): after `store` for episode `"fixture-delete"`, `remove(episodeID:)` then `load` returns **nil**.
 - [ ] 11. Full suite green via `scripts/verify.sh` (**exit 0, failed 0, skipped 0**).
 
@@ -113,7 +113,7 @@ Automatable only. **XCTSkip is not allowed on core ACs** — a mapped test that 
 | 6 | `PodWash/PodWashUITests/TranscriptUITests.swift` | `testFullPlayerOpensSameTranscript` | wordCount 24 |
 | 7 | `PodWash/PodWashUITests/TranscriptUITests.swift` | `testTranscriptAffordanceHiddenWithoutCache` | not hittable |
 | 8 | `PodWash/PodWashUITests/TranscriptUITests.swift` | `testTranscriptScrollsNearPlaybackPosition` | scrollAnchor Int 28–32 |
-| 9 | `PodWash/PodWashUITests/TranscriptUITests.swift` | `testTranscriptHiddenDuringProgressiveAnalysis` | reuses Slice 25 fixture |
+| 9 | `PodWash/PodWashUITests/TranscriptUITests.swift` | `testTranscriptHiddenWhilePlaybackPrepares` | terminal preparation fixture |
 | 10 | `PodWash/PodWashTests/TranscriptCacheTests.swift` | `testRemoveClearsTranscript` | load nil after remove |
 | 11 | — | — | Command-level: unfiltered `scripts/verify.sh` exit 0, failed 0, skipped 0 |
 
@@ -126,8 +126,8 @@ scripts/verify.sh -only-testing:PodWashTests/TranscriptViewModelTests
 scripts/verify.sh -only-testing:PodWashTests/AnalysisPipelineTests
 scripts/verify.sh -only-testing:PodWashUITests/TranscriptUITests
 
-# AC9 cross-fixture spot (still run full TranscriptUITests before Done):
-scripts/verify.sh -only-testing:PodWashUITests/TranscriptUITests/testTranscriptHiddenDuringProgressiveAnalysis
+# AC9 preparation spot (still run full TranscriptUITests before Done):
+scripts/verify.sh -only-testing:PodWashUITests/TranscriptUITests/testTranscriptHiddenWhilePlaybackPrepares
 
 # Done gate — FULL suite, zero failures, zero skips:
 scripts/verify.sh

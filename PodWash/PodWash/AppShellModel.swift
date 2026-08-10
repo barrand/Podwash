@@ -668,21 +668,6 @@ final class AppShellModel {
                 }
                 if self.transcriptExists(for: episode.id) {
                     self.transcriptAffordanceGeneration += 1
-                } else if FixtureTranscript.isNoCacheEnabled {
-                    // Deferred NoCache backfill stores off the prepare path (AC7).
-                    // Poll so task-020's episode.viewTranscript refresh does not
-                    // depend solely on NotificationCenter delivery under UITest.
-                    let episodeID = episode.id
-                    Task { @MainActor [weak self] in
-                        for _ in 0..<24 {
-                            try? await Task.sleep(for: .milliseconds(500))
-                            guard let self else { return }
-                            if self.transcriptExists(for: episodeID) {
-                                self.transcriptAffordanceGeneration += 1
-                                return
-                            }
-                        }
-                    }
                 }
             }
             do {
@@ -1727,7 +1712,7 @@ final class AppShellModel {
 
     private func resolveAudioURL(for episode: Episode) -> URL? {
         if FixtureTranscript.isScrollFollowEnabled {
-            return FixtureAudio.bundledURL()
+            return FixtureTranscript.scrollFollowAudioURL()
         }
         if FixturePrerollAdBands.isAnyEnabled {
             return FixturePrerollAdBands.bundledURL()

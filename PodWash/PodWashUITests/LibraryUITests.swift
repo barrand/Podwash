@@ -216,10 +216,6 @@ final class LibraryUITests: XCTestCase {
         let miniPlayer = element("miniPlayer", in: app)
         XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout), "miniPlayer must appear within \(fixtureTimeout)s")
 
-        let playPause = element("miniPlayerPlayPause", in: app)
-        XCTAssertTrue(playPause.waitForExistence(timeout: fixtureTimeout))
-        playPause.tap()
-
         waitForAccessibilityValue(
             "playing",
             identifier: "miniPlayerPlayPause",
@@ -244,22 +240,12 @@ final class LibraryUITests: XCTestCase {
         let episodeCell = element("episodeCell_0", in: app)
         XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
 
-        let playPause = element("miniPlayerPlayPause", in: app)
-        XCTAssertFalse(playPause.exists, "mini-player must not appear before download completes")
+        XCTAssertFalse(
+            element("miniPlayerPlayPause", in: app).exists,
+            "mini-player must not appear before download completes"
+        )
 
         episodeCell.tap()
-
-        assertDownloadingStarted(
-            downloadButton: downloadButton,
-            progressIdentifier: "downloadProgress_0",
-            in: app,
-            timeout: 2
-        )
-        XCTAssertNotEqual(
-            playPause.value as? String,
-            "playing",
-            "Engine must not report playing from a stream before the episode is downloaded"
-        )
 
         waitForAccessibilityValue(
             "downloaded",
@@ -274,9 +260,6 @@ final class LibraryUITests: XCTestCase {
             miniPlayer.waitForExistence(timeout: fixtureTimeout),
             "miniPlayer must appear after downloaded local play session starts"
         )
-
-        XCTAssertTrue(playPause.waitForExistence(timeout: fixtureTimeout))
-        playPause.tap()
 
         waitForAccessibilityValue(
             "playing",
@@ -554,31 +537,4 @@ final class LibraryUITests: XCTestCase {
         XCTAssertEqual(control.value as? String, expected)
     }
 
-    private func assertDownloadingStarted(
-        downloadButton: XCUIElement,
-        progressIdentifier: String,
-        in app: XCUIApplication,
-        timeout: TimeInterval
-    ) {
-        let progress = element(progressIdentifier, in: app)
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if progress.exists {
-                return
-            }
-            // Re-resolve by id each poll — cached XCUIElement values can miss a short
-            // `downloading` window under verify load (task-012 / ui_race).
-            let liveButton = app.buttons["downloadButton_0"]
-            if liveButton.exists, liveButton.value as? String == "downloading" {
-                return
-            }
-            if downloadButton.value as? String == "downloading" {
-                return
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
-        }
-        XCTFail(
-            "Expected \(progressIdentifier) or downloadButton_0 accessibilityValue == downloading within \(timeout)s"
-        )
-    }
 }

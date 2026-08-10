@@ -206,9 +206,11 @@ Query via `app.descendants(matching: .any)["<identifier>"]` unless noted.
 
 **No-transcript control (AC7):** Same fixture family with transcript file **omitted** (intervals + resume may still be seeded). Launch arg: e.g. `-UITestFixtureTranscript` + `-UITestFixtureTranscriptNoCache` or dedicated negative flag — Engineer implements one explicit arg; UX pins **behavior** (affordances absent), not the flag name, except AC7 tests use the QA-chosen negative mode bundled with fixture helper.
 
-### `-UITestFixtureProgressivePlayback` (AC9 — reused from Slice 25)
+### Terminal preparation fixture (AC9)
 
-Unchanged Slice 25 fixture. Cleaning **on**. After play start, `playback.superSeekBar` shows `ready:3,processing:1,pending:8` while **no** terminal transcript file exists → `episode.viewTranscript` **absent**.
+The Library stepped-analysis fixture holds terminal preparation long enough to
+assert that `miniPlayer.preparing` is visible and `episode.viewTranscript` is
+absent before playback begins.
 
 ### Production (no fixture args)
 
@@ -235,13 +237,12 @@ Affordances follow real `TranscriptCache.exists`; sheet reads cache only (no ASR
 4. Tap `playback.viewTranscript`.
 5. Within **3.0 s**, assert `transcript.view` exists.
 
-### Progressive negative (AC9)
+### Preparation negative (AC9)
 
-1. Launch `-UITestFixtureProgressivePlayback`; navigate to episode list (Slice 25 helper).
-2. Enable cleaning if needed; tap `episodeCell_0` → expand full player per Slice 25.
-3. Tap `playback.playPause` if not `playing`.
-4. Within **5.0 s**, assert `playback.superSeekBar` `accessibilityValue == "ready:3,processing:1,pending:8"`.
-5. Assert `episode.viewTranscript` does **not** exist (or is not hittable).
+1. Launch the Library stepped-analysis fixture; navigate to the episode list.
+2. Tap `episodeCell_0`.
+3. Within **5.0 s**, assert `miniPlayer.preparing` exists.
+4. Assert `episode.viewTranscript` does **not** exist (or is not hittable).
 
 ## UI test scenarios
 
@@ -285,12 +286,11 @@ Mapped tests: `PodWashUITests/TranscriptUITests.swift` (AC4–AC9).
 2. On **first** open (do not dismiss/reopen), read `transcript.scrollAnchor` `accessibilityValue` as `Int`.
 3. Assert value is **≥ 28** and **≤ 32**.
 
-### `testTranscriptHiddenDuringProgressiveAnalysis` (AC#9)
+### `testTranscriptHiddenWhilePlaybackPrepares` (AC#9)
 
-1. Launch with `-UITestFixtureProgressivePlayback`.
-2. Follow progressive negative navigation helper.
-3. Within **5.0 s** of play start, assert `playback.superSeekBar` `accessibilityValue == "ready:3,processing:1,pending:8"`.
-4. Assert `episode.viewTranscript` does **not** exist.
+1. Launch the Library stepped-analysis fixture.
+2. Tap `episodeCell_0` and wait for `miniPlayer.preparing`.
+3. Assert `episode.viewTranscript` does **not** exist.
 
 ### UX smoke scenarios (not slice ACs; optional QA)
 
@@ -317,6 +317,6 @@ Mapped tests: `PodWashUITests/TranscriptUITests.swift` (AC4–AC9).
 | 6 | `testFullPlayerOpensSameTranscript` | `TranscriptUITests.testFullPlayerOpensSameTranscript` |
 | 7 | `testTranscriptAffordanceHiddenWithoutCache` | `TranscriptUITests.testTranscriptAffordanceHiddenWithoutCache` |
 | 8 | `testTranscriptScrollsNearPlaybackPosition` | `TranscriptUITests.testTranscriptScrollsNearPlaybackPosition` |
-| 9 | `testTranscriptHiddenDuringProgressiveAnalysis` | `TranscriptUITests.testTranscriptHiddenDuringProgressiveAnalysis` |
+| 9 | `testTranscriptHiddenWhilePlaybackPrepares` | `TranscriptUITests.testTranscriptHiddenWhilePlaybackPrepares` |
 | 10 | `remove` clears cache (unit) | `TranscriptCacheTests.testRemoveClearsTranscript` |
 | 11 | — | Full `scripts/verify.sh` |

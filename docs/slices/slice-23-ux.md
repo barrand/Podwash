@@ -225,7 +225,7 @@ Steps 2–4 are the AC#2 assertion. Launch must **not** include `-UITestFixtureF
 1. **Launch** — `-UITestFixtureLibrary`; tap `libraryCell_0`; wait for `episodeList`.
 2. **Play episode** — tap `episodeCell_0`.
 3. **Mini-player** — within **5 s**, assert `miniPlayer` exists.
-4. **Play** — tap `miniPlayerPlayPause`; within **5 s**, assert `miniPlayerPlayPause` `accessibilityValue == "playing"`.
+4. **Auto-play** — within **5 s**, assert `miniPlayerPlayPause` `accessibilityValue == "playing"`.
 
 Step 4 is the AC#4 timing assertion (Slice 03 play-state contract).
 

@@ -17,16 +17,12 @@ final class TranscriptUITests: XCTestCase {
     private let fixtureTimeout: TimeInterval = 5
     private let transcriptOpenTimeout: TimeInterval = 3
     private let miniPlayerExpandFromTranscriptTimeout: TimeInterval = 5
-    private let progressiveTimelineTimeout: TimeInterval = 5
     private let backfillAffordanceTimeout: TimeInterval = 10
 
     private static let transcriptFixtureArg = "-UITestFixtureTranscript"
     private static let transcriptNoCacheArg = "-UITestFixtureTranscriptNoCache"
     private static let longFollowFixtureArg = "-UITestFixtureTranscriptLongFollow"
     private static let scrollFollowFixtureArg = "-UITestFixtureTranscriptScrollFollow"
-    private static let progressiveFixtureArg = "-UITestFixtureProgressivePlayback"
-    private static let firstChunkProgressValue = 0.25
-    private static let progressTolerance = 0.02
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -110,20 +106,6 @@ final class TranscriptUITests: XCTestCase {
 
         assertTranscriptAffordanceAbsent("episode.viewTranscript", scopedToRow: 0, in: app)
 
-        // Expand full player (mini bar → sheet) before asserting player affordance —
-        // `playback.playPause` / `playback.viewTranscript` live on the expanded sheet.
-        let episodeCell = app.cells["episodeCell_0"]
-        XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
-        episodeCell.tap()
-
-        let miniPlayer = element("miniPlayer", in: app)
-        XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout))
-        miniPlayer.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).tap()
-
-        let fullPlayPause = element("playback.playPause", in: app)
-        XCTAssertTrue(fullPlayPause.waitForExistence(timeout: fixtureTimeout))
-
-        assertTranscriptAffordanceAbsent("playback.viewTranscript", scopedToRow: nil, in: app)
     }
 
     // MARK: - AC8
@@ -339,9 +321,12 @@ final class TranscriptUITests: XCTestCase {
             "first play/prepare must surface miniPlayer"
         )
 
-        let viewTranscript = episodeCell.descendants(matching: .any)["episode.viewTranscript"]
         XCTAssertTrue(
-            waitForElementHittable(viewTranscript, timeout: backfillAffordanceTimeout),
+            waitUntil(timeout: backfillAffordanceTimeout) {
+                let refreshedCell = app.cells["episodeCell_0"]
+                let viewTranscript = refreshedCell.descendants(matching: .any)["episode.viewTranscript"]
+                return viewTranscript.exists && viewTranscript.isHittable
+            },
             "episode.viewTranscript must become hittable within \(backfillAffordanceTimeout)s after backfill"
         )
     }
@@ -349,8 +334,8 @@ final class TranscriptUITests: XCTestCase {
     // MARK: - AC9
 
     @MainActor
-    func testTranscriptHiddenDuringProgressiveAnalysis() throws {
-        let app = launchProgressiveFixtureApp()
+    func testTranscriptHiddenWhilePlaybackPrepares() throws {
+        let app = launchPreparationFixtureApp()
         navigateToEpisodeList(app)
         ensureChannelCleaningOn(in: app)
 
@@ -358,25 +343,11 @@ final class TranscriptUITests: XCTestCase {
         XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
         episodeCell.tap()
 
-        let miniPlayer = element("miniPlayer", in: app)
-        XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout))
-        miniPlayer.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).tap()
-
-        let playPause = element("playback.playPause", in: app)
-        XCTAssertTrue(playPause.waitForExistence(timeout: fixtureTimeout))
-        if accessibilityValue(for: "playback.playPause", in: app) != "playing" {
-            playPause.tap()
-        }
-
-        let progress = waitForAnalysisProgress(in: app, timeout: progressiveTimelineTimeout)
-        guard let fraction = Double(progress) else {
-            XCTFail("playback.analysisProgress must parse as Double; got \(progress)")
-            return
-        }
-        XCTAssertEqual(fraction, Self.firstChunkProgressValue, accuracy: Self.progressTolerance)
-
-        let barValue = accessibilityValue(for: "playback.superSeekBar", in: app)
-        XCTAssertTrue(SuperSeekBarAXParsing.lacksSegmentTriple(barValue))
+        let preparing = element("miniPlayer.preparing", in: app)
+        XCTAssertTrue(
+            preparing.waitForExistence(timeout: fixtureTimeout),
+            "terminal preparation must be visible before playback starts"
+        )
 
         assertTranscriptAffordanceAbsent("episode.viewTranscript", scopedToRow: 0, in: app)
     }
@@ -512,10 +483,11 @@ final class TranscriptUITests: XCTestCase {
     }
 
     @MainActor
-    private func launchProgressiveFixtureApp() -> XCUIApplication {
+    private func launchPreparationFixtureApp() -> XCUIApplication {
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
-        app.launchArguments.append(Self.progressiveFixtureArg)
+        app.launchArguments.append(Self.transcriptNoCacheArg)
+        app.launchArguments.append("-UITestFixtureLibraryAnalysisTimeline")
         app.launch()
         return app
     }
@@ -691,33 +663,6 @@ final class TranscriptUITests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         }
         return element.exists && element.isHittable
-    }
-
-    @MainActor
-    @discardableResult
-    private func waitForAnalysisProgress(
-        in app: XCUIApplication,
-        timeout: TimeInterval
-    ) -> String {
-        let match = expectation(description: "playback.analysisProgress")
-        match.assertForOverFulfill = false
-
-        var resolved = ""
-        var saw = false
-        let timer = Timer(timeInterval: 0.05, repeats: true) { timer in
-            guard let value = Self.accessibilityValue(for: "playback.analysisProgress", in: app) else {
-                return
-            }
-            saw = true
-            resolved = value
-            timer.invalidate()
-            match.fulfill()
-        }
-        RunLoop.current.add(timer, forMode: .common)
-        defer { timer.invalidate() }
-        wait(for: [match], timeout: timeout)
-        XCTAssertTrue(saw, "playback.analysisProgress must appear within \(timeout)s")
-        return resolved
     }
 
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {

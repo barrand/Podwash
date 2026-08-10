@@ -106,6 +106,7 @@ private final class EpisodeTableViewController: UITableViewController {
     private var onViewTranscript: ((String) -> Void)?
     private var cleaningSummary: ((String) -> EpisodeCleaningSummary?)?
     private var transcriptAffordanceGeneration = 0
+    private var transcriptBackfillObserver: NSObjectProtocol?
 
     init(
         feed: PodcastFeed,
@@ -144,6 +145,23 @@ private final class EpisodeTableViewController: UITableViewController {
             guard let self else { return }
             self.refreshDownloadDisplayOnVisibleRows()
         }
+        transcriptBackfillObserver = NotificationCenter.default.addObserver(
+            forName: .podwashTranscriptBackfillDidStore,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self,
+                  let episodeID = notification.userInfo?[PodWashTranscriptBackfillUserInfoKey.episodeID] as? String,
+                  self.feed.episodes.contains(where: { $0.id == episodeID })
+            else { return }
+            self.refreshTranscriptDisplayOnVisibleRows()
+        }
+    }
+
+    deinit {
+        if let transcriptBackfillObserver {
+            NotificationCenter.default.removeObserver(transcriptBackfillObserver)
+        }
     }
 
     @available(*, unavailable)
@@ -181,6 +199,8 @@ private final class EpisodeTableViewController: UITableViewController {
         cleaningSummary: ((String) -> EpisodeCleaningSummary?)?
     ) {
         let feedChanged = self.feed != feed
+        let transcriptAffordanceChanged =
+            self.transcriptAffordanceGeneration != transcriptAffordanceGeneration
         self.feed = feed
         self.analysisViewModel = analysisViewModel
         self.downloadManager = downloadManager
@@ -206,7 +226,10 @@ private final class EpisodeTableViewController: UITableViewController {
             self.refreshDownloadDisplayOnVisibleRows()
         }
         applyListAccessibility()
-        if feedChanged {
+        if feedChanged || transcriptAffordanceChanged {
+            // A transcript button changes the cell's accessibility subtree. Reload
+            // rather than only mutating visible cells so UIKit publishes that new
+            // subtree immediately after the backfill write.
             tableView.reloadData()
         } else {
             // Only refresh analysis here. Download chrome is pushed via
@@ -215,8 +238,6 @@ private final class EpisodeTableViewController: UITableViewController {
             // surface before XCTest goes idle.
             refreshAnalysisDisplayOnVisibleRows()
             refreshQueueDisplayOnVisibleRows()
-            // `transcriptAffordanceGeneration` is an explicit representable input so
-            // SwiftUI invokes this update after task-020 backfill completes.
             refreshTranscriptDisplayOnVisibleRows()
         }
         layoutEpisodeTableIfReady()
@@ -790,6 +811,13 @@ final class EpisodeTableViewCell: UITableViewCell {
         transcriptButton.accessibilityIdentifier = showsTranscript ? "episode.viewTranscript" : nil
         transcriptButton.accessibilityLabel = showsTranscript ? "View transcript" : nil
         transcriptButton.accessibilityHint = showsTranscript ? "Shows the episode transcript." : nil
+        updateAccessibilityElements(
+            showsAnalysisTimeline: false,
+            showsCleaningSummary: !cleaningSummaryLabel.isHidden,
+            showsDownloadProgress: !downloadProgressAccessibilityHost.isHidden,
+            showsBadge: !badgeLabel.isHidden
+        )
+        setNeedsLayout()
     }
 
     func applyTranscriptAffordance(showsTranscript: Bool, onViewTranscript: (() -> Void)?) {

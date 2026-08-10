@@ -138,9 +138,8 @@ final class NowPlayingSessionUITests: XCTestCase {
 
     let miniPlayPause = element("miniPlayerPlayPause", in: app)
     XCTAssertTrue(miniPlayPause.waitForExistence(timeout: fixtureTimeout))
-    miniPlayPause.tap()
     waitForAccessibilityValue(
-      "playing",
+        "playing",
       identifier: "miniPlayerPlayPause",
       in: app,
       timeout: fixtureTimeout,

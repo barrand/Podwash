@@ -60,6 +60,16 @@ enum FixtureTranscript {
         isAnyEnabled
     }
 
+    /// The scroll-follow fixture resumes at 30 seconds and needs enough audio
+    /// remaining to cross a later transcript render block.
+    static func scrollFollowAudioURL(in bundle: Bundle = .main) -> URL? {
+        bundle.url(
+            forResource: "progressive-120s",
+            withExtension: "m4a",
+            subdirectory: "Fixtures/audio"
+        ) ?? bundle.url(forResource: "progressive-120s", withExtension: "m4a")
+    }
+
     static func makeTranscript() -> [TimedWord] {
         let count = isLongFollowEnabled
             ? longFollowWordCount
@@ -118,10 +128,6 @@ enum FixtureTranscript {
     }
 
     /// No-cache UITest / backfill path — real cache pipeline with deterministic ASR.
-    /// Store is deferred ~3 s off the prepare path under NoCache (see
-    /// `AnalysisPipeline.backfillMissingTranscript`) so AC7 can observe absent
-    /// affordances after full-player expand; Task 020 still sees the button
-    /// within its 10 s wait via `transcriptAffordanceGeneration` bump.
     static func makeAnalyzer() -> AnalysisPipeline {
         AnalysisPipeline(
             transcriber: FixtureTranscriptASR(),
