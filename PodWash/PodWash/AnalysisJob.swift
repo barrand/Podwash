@@ -7,6 +7,20 @@
 
 import Foundation
 
+/// Listener-facing copy for active preparation work. This deliberately stays
+/// approximate instead of implying a measured countdown the app does not have.
+enum PreparationStatusCopy {
+    static let roughDuration = "Usually a few minutes"
+    static let preparing = "Preparing clean playback · \(roughDuration)"
+    static let checkingAds = "Checking for ads · \(roughDuration)"
+
+    static func downloading(progress: Double?) -> String {
+        guard let progress else { return "Downloading · \(roughDuration)" }
+        let percent = Int((min(max(progress, 0), 1) * 100).rounded())
+        return "Downloading \(percent)% · \(roughDuration)"
+    }
+}
+
 enum AnalysisJobStage: String, Codable, CaseIterable, Sendable {
     case queued
     case downloading
@@ -25,6 +39,20 @@ enum AnalysisJobStage: String, Codable, CaseIterable, Sendable {
         case .ready: return "Ready"
         case .adCheckDelayed: return "Ad check delayed"
         case .needsAttention: return "Needs attention"
+        }
+    }
+
+    /// Rough duration is shown only while the job is actively doing work.
+    var listenerStatus: String {
+        switch self {
+        case .downloading:
+            return PreparationStatusCopy.downloading(progress: nil)
+        case .transcribing:
+            return PreparationStatusCopy.preparing
+        case .checkingAds:
+            return PreparationStatusCopy.checkingAds
+        case .queued, .ready, .adCheckDelayed, .needsAttention:
+            return userLabel
         }
     }
 }

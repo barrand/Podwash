@@ -23,10 +23,9 @@ enum QueueRowActivity: Equatable {
     var text: String {
         switch self {
         case .downloading(let progress):
-            guard let progress else { return "Downloading" }
-            return "Downloading \(Int((min(max(progress, 0), 1) * 100).rounded()))%"
-        case .preparing: return "Preparing clean playback"
-        case .checkingAds: return "Checking for ads"
+            return PreparationStatusCopy.downloading(progress: progress)
+        case .preparing: return PreparationStatusCopy.preparing
+        case .checkingAds: return PreparationStatusCopy.checkingAds
         case .delayed: return "Ad check delayed"
         case .needsAttention: return "Needs attention"
         }
@@ -35,6 +34,10 @@ enum QueueRowActivity: Equatable {
     var progress: Double? {
         if case .downloading(let progress) = self { return progress }
         return nil
+    }
+
+    var showsIndeterminateProgress: Bool {
+        self == .preparing || self == .checkingAds
     }
 }
 

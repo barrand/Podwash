@@ -64,4 +64,30 @@ final class WordMatcherTests: XCTestCase {
             "Expanded sWord seeds must include obfuscated sh1thole variant"
         )
     }
+
+    /// Exact membership remains intentional, so every supported inflection and
+    /// compound must be present in its category's shipped seed list.
+    func testCommonCurseVariantsMatchTheirCategoryTargetSet() {
+        let cases: [(categoryID: String, word: String)] = [
+            ("sWord", "shitless"),
+            ("sWord", "shitstorm"),
+            ("sWord", "shittiest"),
+            ("fWord", "fuckups"),
+            ("fWord", "unfuckingbelievable"),
+            ("dWord", "damndest"),
+            ("otherProfanity", "jackasses"),
+            ("otherProfanity", "dickwads"),
+            ("otherProfanity", "twatwaffles"),
+        ]
+
+        for testCase in cases {
+            let targets = WordMatcher.normalizedTargetSet(
+                WordCategories.words(for: testCase.categoryID)
+            )
+            XCTAssertTrue(
+                WordMatcher.matches(WordMatcher.normalize(testCase.word), in: targets),
+                "\(testCase.word) must be included in \(testCase.categoryID)"
+            )
+        }
+    }
 }

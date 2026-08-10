@@ -7,6 +7,21 @@ import XCTest
 @testable import PodWash
 
 final class QueuePresentationTests: XCTestCase {
+
+    func testPreparationActivitiesExposeRoughDurationAndCorrectIndicatorStyle() {
+        XCTAssertEqual(
+            QueueRowActivity.preparing.text,
+            "Preparing clean playback · Usually a few minutes"
+        )
+        XCTAssertTrue(QueueRowActivity.preparing.showsIndeterminateProgress)
+        XCTAssertTrue(QueueRowActivity.checkingAds.showsIndeterminateProgress)
+        XCTAssertFalse(QueueRowActivity.downloading(progress: 0.5).showsIndeterminateProgress)
+        XCTAssertEqual(
+            QueueRowActivity.downloading(progress: 0.5).text,
+            "Downloading 50% · Usually a few minutes"
+        )
+    }
+
     func testDownloadsExcludeNowPlayingPlayedAndManualQueue() {
         let input = QueuePresentationInput(
             manualQueueIDs: ["queued"],

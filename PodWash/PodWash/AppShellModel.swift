@@ -70,6 +70,11 @@ final class AppShellModel {
     /// The only listener-facing gate for transport and seek controls.
     private(set) var playbackReadiness: PlaybackReadiness = .ready
     var isPreparingPlayback: Bool { playbackReadiness == .preparing }
+
+    /// Listener-facing active-work copy for the mini and full player.
+    var preparationStatusText: String {
+        foregroundPreparationJob?.stage.listenerStatus ?? PreparationStatusCopy.preparing
+    }
     private(set) var analysisRecoveryState: AnalysisRecoveryState = .notNeeded
     private var restoredAnalysisContext: RestoredAnalysisContext?
     private var stagedRefreshIntervals: ([CensorInterval], [CensorInterval], UnrelatedContentOptions, URL)?

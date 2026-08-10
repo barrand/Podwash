@@ -195,6 +195,12 @@ private struct QueueEpisodeRow<MoreActions: View>: View {
                     .lineLimit(1)
                 if let progress = item.activity?.progress {
                     ProgressView(value: progress)
+                        .accessibilityIdentifier("queueActivityProgress_\(item.episodeID)")
+                } else if item.activity?.showsIndeterminateProgress == true {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityIdentifier("queueActivityProgress_\(item.episodeID)")
+                        .accessibilityLabel(item.activity?.text ?? "Preparing")
                 }
                 if item.activity == .delayed || item.activity == .needsAttention {
                     HStack {

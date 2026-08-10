@@ -130,6 +130,7 @@ struct AppShellView: View {
                     PlaybackControlsView(
                         engine: engine,
                         readiness: model.playbackReadiness,
+                        preparationStatusText: model.preparationStatusText,
                         showsCompleteSeekBarPaint: model.isPlayerSeekBarAnalysisComplete,
                         episodeDuration: model.superSeekDuration,
                         muteIntervals: model.nowPlayingMuteIntervals,
@@ -207,6 +208,7 @@ struct AppShellView: View {
             MiniPlayerBar(
                 engine: engine,
                 readiness: model.playbackReadiness,
+                preparationStatusText: model.preparationStatusText,
                 episodeTitle: model.nowPlayingEpisodeTitle,
                 podcastTitle: model.nowPlayingPodcastTitle,
                 showsCompleteSeekBarPaint: model.isPlayerSeekBarAnalysisComplete,

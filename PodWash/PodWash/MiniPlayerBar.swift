@@ -17,6 +17,7 @@ struct MiniPlayerBar: View {
 
     @Bindable var engine: PlaybackEngine
     let readiness: AppShellModel.PlaybackReadiness
+    let preparationStatusText: String
     let episodeTitle: String
     let podcastTitle: String
     let showsCompleteSeekBarPaint: Bool
@@ -69,7 +70,7 @@ struct MiniPlayerBar: View {
                                     .fontWeight(.semibold)
                                     .lineLimit(1)
                                 if readiness == .preparing {
-                                    Text("Preparing clean playback")
+                                    Text(preparationStatusText)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                         .accessibilityIdentifier("miniPlayer.preparing")
@@ -128,7 +129,7 @@ struct MiniPlayerBar: View {
                             .controlSize(.small)
                             .frame(width: 44, height: 44)
                             .accessibilityIdentifier("miniPlayer.preparingProgress")
-                            .accessibilityLabel("Preparing clean playback")
+                            .accessibilityLabel(preparationStatusText)
                     }
                 }
                 .padding(.horizontal, 16)

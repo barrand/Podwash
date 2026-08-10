@@ -427,12 +427,22 @@ final class LibraryUITests: XCTestCase {
             preparing.waitForExistence(timeout: fixtureTimeout),
             "The mini-player must show its preparing status before terminal analysis completes"
         )
+        let preparationFrame = preparing.frame
+        XCTAssertEqual(
+            preparing.label,
+            "Preparing clean playback · Usually a few minutes"
+        )
+        let preparingSpinner = element("miniPlayer.preparingProgress", in: app)
+        XCTAssertTrue(
+            preparingSpinner.exists,
+            "The mini-player must pair rough preparation timing with an active spinner"
+        )
 
         for name in ["Library", "Queue", "Discover"] {
             let control = tab(name, in: app)
             XCTAssertTrue(control.waitForExistence(timeout: fixtureTimeout), "\(name) tab must exist while preparing")
             XCTAssertTrue(control.isHittable, "\(name) tab must remain tappable while preparing")
-            XCTAssertFalse(control.frame.intersects(preparing.frame), "\(name) must not overlap preparation chrome")
+            XCTAssertFalse(control.frame.intersects(preparationFrame), "\(name) must not overlap preparation chrome")
         }
     }
 

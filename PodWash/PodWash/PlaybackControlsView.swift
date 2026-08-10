@@ -13,6 +13,7 @@ import SwiftUI
 struct PlaybackControlsView: View {
     @Bindable var engine: PlaybackEngine
     let readiness: AppShellModel.PlaybackReadiness
+    let preparationStatusText: String
     /// When true, paint complete green + ad/mute overlays (ADR-030).
     let showsCompleteSeekBarPaint: Bool
     let episodeDuration: Double
@@ -38,6 +39,7 @@ struct PlaybackControlsView: View {
     init(
         engine: PlaybackEngine,
         readiness: AppShellModel.PlaybackReadiness = .ready,
+        preparationStatusText: String = PreparationStatusCopy.preparing,
         showsCompleteSeekBarPaint: Bool = false,
         episodeDuration: Double = 0,
         muteIntervals: [CensorInterval] = [],
@@ -47,6 +49,7 @@ struct PlaybackControlsView: View {
     ) {
         self.engine = engine
         self.readiness = readiness
+        self.preparationStatusText = preparationStatusText
         self.showsCompleteSeekBarPaint = showsCompleteSeekBarPaint
         self.episodeDuration = episodeDuration
         self.muteIntervals = muteIntervals
@@ -252,7 +255,7 @@ struct PlaybackControlsView: View {
         VStack(spacing: 12) {
             if readiness == .preparing {
                 ProgressView()
-                Text("Preparing clean playback")
+                Text(preparationStatusText)
                     .accessibilityIdentifier("playback.preparing")
             } else {
                 Text("Preparation needs attention")

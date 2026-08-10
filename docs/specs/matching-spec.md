@@ -138,6 +138,12 @@ profanity (seed profile): fuck, fucked, fucker, fuckers, fucking, fucks,
 The prototype's default `TARGET_WORDS` equals the `harmless` profile — useful for
 building clean-language test fixtures.
 
+The app's selectable production categories extend these original seed profiles in
+`WordCategories.swift`. Because matching stays exact, each supported common
+inflection, compound, and transcript-style spelling is explicitly enumerated
+there; additions must include a regression test rather than relying on stemming
+or substring matching.
+
 ## 8. Hand-computed golden example (independent provenance)
 
 Computed by hand from Sections 3–6 on 2026-07-08. Any implementation that

@@ -6,18 +6,15 @@ record the owner, date, and evidence beside each check when it is done.
 ## 1. Release source and build
 
 - [x] **1.1** Identify a clean, reviewed release commit. Do not archive while
-  unrelated local changes are present. Current candidate: `3be5fe7` on `main`.
-- [x] **1.2** Set the intended marketing version and increment the build number
-  from `1`. Release candidate: version `1.0`, build `2`.
+  unrelated local changes are present. Current candidate: latest commit on `main`.
+- [ ] **1.2** Set the intended marketing version and increment the build number
+  for the new release candidate.
 - [x] **1.3** Confirm the Distribution signing certificate, provisioning profile, bundle ID,
   and Release entitlements are correct for `com.barrandfarm.PodWash`. Completed
   2026-08-08: App Store validation succeeded with the paid team, matching bundle
   ID, production App Attest entitlement, and Firebase configuration.
-- [x] **1.4** Run `scripts/release-verify.sh` from the clean release commit, retain its
+- [ ] **1.4** Run `scripts/release-verify.sh` from the clean release commit, retain its
   `build/test-results/latest.md` evidence, then Archive and Validate the Release build.
-  Completed 2026-08-09: release verification passed 79/79 with zero skips or retries
-  (`verify-20260809-090316-93976`, 1233s) at `3a19cd1`; Organizer validated the
-  `1.0 (3)` Release archive successfully.
 - [ ] **1.5** Install the archive on a physical iPhone and test fresh install, playback,
   downloads, background audio, transcript follow, and offline behavior.
 - [ ] **1.6** Test real-world interruptions: lock screen and Control Center controls,
@@ -104,18 +101,18 @@ record the owner, date, and evidence beside each check when it is done.
 - [ ] **5.3** After release, monitor crashes, backend health, App Review messages, and
   early support reports; decide whether to pause phased release or ship a fix.
 
-## Current state (2026-08-08)
+## Current state (2026-08-09)
 
 - `main` includes the transcript follow-along (`a51b06a`) and queue redesign
   (`82e86c5`) work intended for the 1.0 release.
-- Release-source prerequisite **1.1** is complete at release commit `3be5fe7`.
-- Release version prerequisite **1.2** is complete: `1.0 (2)`.
+- The new product, matching, and UI changes have a clean release-source commit.
+  Prerequisites **1.2** and **1.4** must be completed for the new candidate.
 - Signing prerequisite **1.3** is complete: App Store validation succeeded. The
   archive's signed entitlements include production App Attest and the matching
   Firebase configuration.
-- Release verification prerequisite **1.4** is complete: build `1.0 (3)` passed the
-  release verification gate and Organizer validation on 2026-08-09.
+- The prior verification and Organizer validation apply only to build `1.0 (3)`
+  at `3a19cd1`; they do not cover the new candidate.
 - The repository intentionally omits `GoogleService-Info.plist`; a production
   archive must supply it by a secure delivery process.
 - The project currently uses marketing version `1.0`, build `3`, and an iOS 26.1
-  deployment target.
+  deployment target; increment the build number when preparing the new candidate.

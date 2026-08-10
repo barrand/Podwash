@@ -29,6 +29,25 @@ final class AnalysisJobTests: XCTestCase {
         XCTAssertFalse(AnalysisJobStage.adCheckDelayed.userLabel.isEmpty)
     }
 
+    func testActivePreparationCopyUsesOneHonestRoughDuration() {
+        XCTAssertEqual(
+            AnalysisJobStage.transcribing.listenerStatus,
+            "Preparing clean playback · Usually a few minutes"
+        )
+        XCTAssertEqual(
+            AnalysisJobStage.checkingAds.listenerStatus,
+            "Checking for ads · Usually a few minutes"
+        )
+        XCTAssertEqual(
+            PreparationStatusCopy.downloading(progress: 0.42),
+            "Downloading 42% · Usually a few minutes"
+        )
+        XCTAssertEqual(AnalysisJobStage.queued.listenerStatus, "Waiting to prepare")
+        XCTAssertEqual(AnalysisJobStage.ready.listenerStatus, "Ready")
+        XCTAssertEqual(AnalysisJobStage.adCheckDelayed.listenerStatus, "Ad check delayed")
+        XCTAssertEqual(AnalysisJobStage.needsAttention.listenerStatus, "Needs attention")
+    }
+
     func testQueueDisplayPlacesReadyJobsFirstWithoutReorderingEitherGroup() {
         let jobs = [
             job(id: "preparing-first", stage: .checkingAds),
