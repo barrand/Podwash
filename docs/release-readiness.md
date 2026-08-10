@@ -17,13 +17,16 @@ record the owner, date, and evidence beside each check when it is done.
   `build/test-results/latest.md` evidence, then Archive and Validate the Release build.
   Completed 2026-08-10: commit `c8bf449`; verification passed (248 unit and 69 UI
   tests, zero failures/skips), and the Release archive validated successfully.
-- [ ] **1.5** Install the archive on a physical iPhone and test fresh install, playback,
-  downloads, background audio, transcript follow, and offline behavior.
-- [ ] **1.6** Test real-world interruptions: lock screen and Control Center controls,
+- [x] **1.5** Install the archive on a physical iPhone and test fresh install, playback,
+  downloads, background audio, transcript follow, and offline behavior. Completed
+  2026-08-10: practical smoke test passed on iPhone 17 Pro, iOS 26.5.2.
+- [x] **1.6** Test real-world interruptions: lock screen and Control Center controls,
   headphones, incoming calls, route changes, background/resume, low storage, and
-  loss/recovery of network connectivity.
-- [ ] **1.7** Test accessibility in the Release build: VoiceOver labels and order, Dynamic
-  Type, contrast, and transcript controls including follow/recenter.
+  loss/recovery of network connectivity. Completed 2026-08-10: practical interruption
+  testing passed on iPhone 17 Pro, iOS 26.5.2.
+- [x] **1.7** Test accessibility in the Release build: VoiceOver labels and order, Dynamic
+  Type, contrast, and transcript controls including follow/recenter. Completed
+  2026-08-10: practical accessibility pass on iPhone 17 Pro, iOS 26.5.2.
 - [ ] **1.8** Review the iOS 26.1 deployment target and confirm that device/OS coverage is
   intentional.
 
