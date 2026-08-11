@@ -20,8 +20,9 @@ record the owner, date, and evidence beside each check when it is done.
   Completed 2026-08-10 at `56d35a5`: 253 unit and 69 UI tests passed with zero
   failures/skips; the `1.0 (5)` archive passed Xcode's store validation and
   exported successfully for App Store distribution.
-- [ ] **1.5** Install the new archive on a physical iPhone and test fresh install, playback,
-  downloads, background audio, transcript follow, and offline behavior.
+- [x] **1.5** Install the new archive on a physical iPhone and test fresh install, playback,
+  downloads, background audio, transcript follow, and offline behavior. Completed
+  2026-08-10: physical-device smoke test passed for the `1.0 (5)` archive.
 - [ ] **1.6** Test real-world interruptions: lock screen and Control Center controls,
   headphones, incoming calls, route changes, background/resume, low storage, and
   loss/recovery of network connectivity.
