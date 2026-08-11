@@ -6,11 +6,11 @@ record the owner, date, and evidence beside each check when it is done.
 ## 1. Release source and build
 
 - [x] **1.1** Identify a clean, reviewed release commit. Do not archive while
-  unrelated local changes are present. Completed 2026-08-10: `76439b3`
+  unrelated local changes are present. Completed 2026-08-10: `2bf4305`
   (`release: prepare 1.0 candidate`).
-- [ ] **1.2** Set the intended marketing version and increment the build number
-  for the new release candidate. The previous candidate was version `1.0`, build
-  `4`; the next uploaded build must use a higher build number.
+- [x] **1.2** Set the intended marketing version and increment the build number
+  for the new release candidate. Completed 2026-08-10: version `1.0`, build `5`
+  in both PodWash Debug and Release configurations.
 - [x] **1.3** Confirm the Distribution signing certificate, provisioning profile, bundle ID,
   and Release entitlements are correct for `com.barrandfarm.PodWash`. Completed
   2026-08-08: App Store validation succeeded with the paid team, matching bundle
