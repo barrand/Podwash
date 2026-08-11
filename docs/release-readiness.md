@@ -37,8 +37,10 @@ record the owner, date, and evidence beside each check when it is done.
 
 ## 2. Production cloud service
 
-- [ ] **2.1** Add the production `GoogleService-Info.plist` to the archive target through
-  a secure, non-repository delivery process.
+- [x] **2.1** Add the production `GoogleService-Info.plist` to the archive target through
+  a secure, non-repository delivery process. Completed 2026-08-10: the local,
+  ignored configuration matched `com.barrandfarm.PodWash` and was bundled in the
+  `1.0 (5)` archive.
 - [ ] **2.2** Verify Firebase Anonymous Auth, production App Attest, and Cloud Run work in
   a Release/TestFlight build. Confirm App Check enforcement and backend quotas,
   alerts, and kill switch are live.
