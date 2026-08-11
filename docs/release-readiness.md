@@ -58,7 +58,9 @@ record the owner, date, and evidence beside each check when it is done.
     remains available, and that withdrawing consent in Settings stops all future
     cloud submissions.
 - [ ] **2.4** Confirm production error reporting, dashboards, alerts, and an owner for
-  responding to service failures after launch.
+  responding to service failures after launch. **Deferred by release owner on
+  2026-08-10; this is not an App Store submission blocker, but leaves launch
+  operations without a defined response path.**
 - [ ] **2.5** Remove or confirm exclusion of all debug-only diagnostics and connectivity
   probes from the release archive.
 
