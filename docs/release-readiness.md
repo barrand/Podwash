@@ -61,8 +61,10 @@ record the owner, date, and evidence beside each check when it is done.
   responding to service failures after launch. **Deferred by release owner on
   2026-08-10; this is not an App Store submission blocker, but leaves launch
   operations without a defined response path.**
-- [ ] **2.5** Remove or confirm exclusion of all debug-only diagnostics and connectivity
-  probes from the release archive.
+- [x] **2.5** Remove or confirm exclusion of all debug-only diagnostics and connectivity
+  probes from the release archive. Completed 2026-08-10: cloud connectivity probes
+  and cloud diagnostics are Debug-only; the visible Playback diagnostics section is
+  an intentional, release-owner-approved user support feature.
 
 ## 3. Privacy, legal, and compliance
 
