@@ -99,9 +99,16 @@ struct AppShellView: View {
                 )
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        // Keep the player above the UIKit-backed TabView rather than inserting it
+        // into the tab view's safe area. A safe-area inset can be painted above a
+        // UITabBar while remaining behind that controller's accessibility
+        // hierarchy, causing VoiceOver touch exploration to select content below
+        // the visible mini-player. The overlay is topmost for accessibility hit
+        // testing; its tab-bar reservation still leaves native tabs exposed.
+        .overlay(alignment: .bottom) {
             if showsMiniPlayerInShellInset, let engine = model.engine {
                 shellMiniPlayerBar(engine: engine, reservesTabBarClearance: true)
+                    .accessibilitySortPriority(1)
             }
         }
         // Content-tree Settings control (not ToolbarItem). iOS 26 nav-bar glass +
