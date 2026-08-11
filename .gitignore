@@ -51,6 +51,9 @@ fastlane/test_output
 *.xcconfig.local
 GoogleService-Info.plist
 
+# Firebase Hosting deployment cache
+.firebase/
+
 # Audio: large media ignored by default...
 *.m4a
 *.mp3
