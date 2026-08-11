@@ -68,8 +68,11 @@ record the owner, date, and evidence beside each check when it is done.
 
 ## 3. Privacy, legal, and compliance
 
-- [ ] **3.1** Publish a privacy policy and support page with current contact details.
-- [ ] **3.2** Add an easy-to-find in-app Privacy Policy link.
+- [x] **3.1** Publish a privacy policy and support page with current contact details.
+  Completed 2026-08-10: `https://podwash-support.web.app/privacy` and
+  `https://podwash-support.web.app/support` are live and return HTTP 200.
+- [x] **3.2** Add an easy-to-find in-app Privacy Policy link. Completed 2026-08-10:
+  Settings exposes Privacy Policy and Contact Support links to the live pages.
 - [ ] **3.3** Complete App Store Connect App Privacy responses for PodWash and third-party
   services (Firebase, Cloud Run, Gemini), including transcript handling,
   anonymous installation identity, retention, consent withdrawal, and deletion.
