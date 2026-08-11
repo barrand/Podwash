@@ -22,6 +22,8 @@ struct SuperSeekBarView: View {
     let muteMarkerCountForAccessibility: Int?
     let barHeight: CGFloat
     let accessibilityIdentifier: String
+    /// Preparation keeps the gray track visible, but it must not accept seeks.
+    let isInteractive: Bool
     let onSeek: (Double) -> Void
 
     private let minimumTickWidth: CGFloat = 2
@@ -35,6 +37,7 @@ struct SuperSeekBarView: View {
         muteMarkerCountForAccessibility: Int? = nil,
         barHeight: CGFloat = AnalysisTimelineModel.fullPlayerTimelineHeight,
         accessibilityIdentifier: String = "playback.superSeekBar",
+        isInteractive: Bool = true,
         onSeek: @escaping (Double) -> Void
     ) {
         self.showsCompleteContentTrack = showsCompleteContentTrack
@@ -45,6 +48,7 @@ struct SuperSeekBarView: View {
         self.muteMarkerCountForAccessibility = muteMarkerCountForAccessibility
         self.barHeight = barHeight
         self.accessibilityIdentifier = accessibilityIdentifier
+        self.isInteractive = isInteractive
         self.onSeek = onSeek
     }
 
@@ -82,6 +86,7 @@ struct SuperSeekBarView: View {
             }
             .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
+            .allowsHitTesting(isInteractive)
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onEnded { value in
@@ -96,7 +101,9 @@ struct SuperSeekBarView: View {
         .accessibilityIdentifier(accessibilityIdentifier)
         .accessibilityLabel("Playback position")
         .accessibilityHint(
-            "Tap to seek. Skipped ad regions appear as yellow bands and profanity mute regions as red marks on the bar when available."
+            isInteractive
+                ? "Tap to seek. Skipped ad regions appear as yellow bands and profanity mute regions as red marks on the bar when available."
+                : "Playback position will be available when preparation finishes."
         )
         .modifier(SuperSeekBarAccessibilityValueModifier(value: accessibilityValueString))
     }

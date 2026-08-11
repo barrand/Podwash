@@ -256,17 +256,10 @@ struct AppShellView: View {
             )
             if reservesTabBarClearance {
                 // iOS 26 TabView bottom inset overlaps the tab bar unless we reserve its height.
-                // Keep that reservation even while preparation hides the seek bar,
-                // otherwise the mini-player covers the Library / Queue / Discover tabs.
-                Group {
-                    if model.canShowPlayerSeekBar {
-                        // The Super Seek Bar belongs in this reservation, immediately above the tabs.
-                        shellMiniPlayerSeekBar(engine: engine)
-                    } else {
-                        Color.clear
-                            .allowsHitTesting(false)
-                    }
-                }
+                // The Super Seek Bar belongs in this reservation, immediately above the tabs.
+                // During preparation it remains a visible, non-interactive gray track so
+                // queue content cannot show through the player chrome.
+                shellMiniPlayerSeekBar(engine: engine)
                 .frame(height: tabBarHeight, alignment: .top)
                 // This reservation shares the tab bar's space; leave its unused
                 // portion clear so UIKit can render the tab controls.
@@ -319,6 +312,7 @@ struct AppShellView: View {
                 duration: miniPlayerDuration(for: engine),
                 muteMarkers: miniPlayerMuteMarkers(for: engine),
                 muteMarkerCountForAccessibility: miniPlayerMuteMarkerCount(for: engine),
+                isInteractive: model.playbackReadiness == .ready,
                 onSeekTo: { model.seekReadyPlayback(to: $0) }
             )
         }

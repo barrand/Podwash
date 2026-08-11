@@ -135,7 +135,7 @@ struct MiniPlayerBar: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
 
-                if showsSuperSeekBar && readiness == .ready {
+                if showsSuperSeekBar {
                     MiniPlayerSeekBar(
                         showsCompleteContentTrack: showCompletePaint,
                         adBands: adBands,
@@ -143,6 +143,7 @@ struct MiniPlayerBar: View {
                         duration: duration,
                         muteMarkers: muteMarkers,
                         muteMarkerCountForAccessibility: muteMarkerCountForAccessibility,
+                        isInteractive: readiness == .ready,
                         onSeekTo: onSeekTo
                     )
                 }
@@ -164,6 +165,7 @@ struct MiniPlayerSeekBar: View {
     let duration: Double
     let muteMarkers: [MuteMarker]
     let muteMarkerCountForAccessibility: Int?
+    let isInteractive: Bool
     let onSeekTo: (Double) -> Void
 
     var body: some View {
@@ -177,6 +179,7 @@ struct MiniPlayerSeekBar: View {
                 muteMarkerCountForAccessibility: muteMarkerCountForAccessibility,
                 barHeight: AnalysisTimelineModel.miniPlayerTimelineHeight,
                 accessibilityIdentifier: "miniPlayer.superSeekBar",
+                isInteractive: isInteractive,
                 onSeek: onSeekTo
             )
         }

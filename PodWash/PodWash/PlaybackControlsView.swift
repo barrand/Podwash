@@ -87,8 +87,7 @@ struct PlaybackControlsView: View {
                 : nil
 
             VStack(spacing: 24) {
-                if readiness == .ready {
-                    VStack(spacing: 4) {
+                VStack(spacing: 4) {
                     SuperSeekBarView(
                         showsCompleteContentTrack: showCompletePaint,
                         adBands: adBands,
@@ -98,6 +97,7 @@ struct PlaybackControlsView: View {
                         muteMarkerCountForAccessibility: muteMarkerCountForAccessibility,
                         barHeight: AnalysisTimelineModel.fullPlayerTimelineHeight,
                         accessibilityIdentifier: "playback.superSeekBar",
+                        isInteractive: readiness == .ready,
                         onSeek: { seconds in
                             if let onSeekTo {
                                 onSeekTo(seconds)
@@ -107,7 +107,6 @@ struct PlaybackControlsView: View {
                         }
                     )
                     .frame(maxWidth: .infinity)
-                    }
                 }
 
                 HStack {
