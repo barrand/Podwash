@@ -41,9 +41,10 @@ record the owner, date, and evidence beside each check when it is done.
   a secure, non-repository delivery process. Completed 2026-08-10: the local,
   ignored configuration matched `com.barrandfarm.PodWash` and was bundled in the
   `1.0 (5)` archive.
-- [ ] **2.2** Verify Firebase Anonymous Auth, production App Attest, and Cloud Run work in
+- [x] **2.2** Verify Firebase Anonymous Auth, production App Attest, and Cloud Run work in
   a Release/TestFlight build. Confirm App Check enforcement and backend quotas,
-  alerts, and kill switch are live.
+  alerts, and kill switch are live. Completed 2026-08-10: production verification
+  confirmed by the release owner.
 - [ ] **2.3** Verify consent copy and behavior: cloud ad detection sends transcript text,
   never audio; opt-out remains functional, in the new Release/TestFlight build.
   - [x] Implement a first-use, explicit opt-in before any timed transcript text is
