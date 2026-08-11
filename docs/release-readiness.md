@@ -45,8 +45,11 @@ record the owner, date, and evidence beside each check when it is done.
   a Release/TestFlight build. Confirm App Check enforcement and backend quotas,
   alerts, and kill switch are live. Completed 2026-08-10: production verification
   confirmed by the release owner.
-- [ ] **2.3** Verify consent copy and behavior: cloud ad detection sends transcript text,
+- [x] **2.3** Verify consent copy and behavior: cloud ad detection sends transcript text,
   never audio; opt-out remains functional, in the new Release/TestFlight build.
+  Completed 2026-08-10: physical-device verification passed for decline, opt-in,
+  and Settings withdrawal; core playback remained available after decline and
+  withdrawal prevented future cloud submissions.
   - [x] Implement a first-use, explicit opt-in before any timed transcript text is
     shared with Gemini or another cloud provider. The disclosure must identify the
     third-party AI service, state that audio is not uploaded, and offer a clear
