@@ -15,10 +15,11 @@ record the owner, date, and evidence beside each check when it is done.
   and Release entitlements are correct for `com.barrandfarm.PodWash`. Completed
   2026-08-08: App Store validation succeeded with the paid team, matching bundle
   ID, production App Attest entitlement, and Firebase configuration.
-- [ ] **1.4** Run `scripts/release-verify.sh` from the clean release commit, retain its
+- [x] **1.4** Run `scripts/release-verify.sh` from the clean release commit, retain its
   `build/test-results/latest.md` evidence, then Archive and Validate the Release build.
-  The 2026-08-10 rerun passed: 253 unit and 69 UI tests, with zero failures or
-  skips. Repeat this gate from the clean release commit, then archive and validate.
+  Completed 2026-08-10 at `56d35a5`: 253 unit and 69 UI tests passed with zero
+  failures/skips; the `1.0 (5)` archive passed Xcode's store validation and
+  exported successfully for App Store distribution.
 - [ ] **1.5** Install the new archive on a physical iPhone and test fresh install, playback,
   downloads, background audio, transcript follow, and offline behavior.
 - [ ] **1.6** Test real-world interruptions: lock screen and Control Center controls,
@@ -111,10 +112,14 @@ record the owner, date, and evidence beside each check when it is done.
 - The prior release candidate, `1.0 (4)` at `c8bf449`, passed its verification,
   archive validation, and device testing, but does not cover the current app changes.
 - The current working tree passed the complete 2026-08-10 release gate: 253 unit and
-  69 UI tests, zero failures/skips. Evidence is in
-  `build/test-results/verify-20260810-193510-89809`,
-  `build/test-results/verify-20260810-193542-90109`, and
-  `build/test-results/verify-20260810-193818-91353`.
+  69 UI tests, zero failures/skips. The final `1.0 (5)` candidate at `56d35a5`
+  has evidence in `build/test-results/verify-20260810-203455-6858`,
+  `build/test-results/verify-20260810-203527-7179`, and
+  `build/test-results/verify-20260810-203748-8168`.
+- Its Release archive is `build/archives/PodWash-1.0-5.xcarchive`; App Store export
+  is `build/export/PodWash-1.0-5/PodWash.ipa`. Export verified Cloud Managed Apple
+  Distribution signing, Store provisioning, production App Attest, and
+  `get-task-allow = false`.
 - The prior unit-test mismatch in
   `PodcastStoreMultiSubscriptionTests/testUnsubscribeRemovesOnlyRequestedSubscriptionAndReturnsItsEpisodeIDs()`
   was corrected so its expected subscription uses discovery metadata, which is the
