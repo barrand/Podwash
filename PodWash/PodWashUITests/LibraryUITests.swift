@@ -18,7 +18,9 @@ final class LibraryUITests: XCTestCase {
     private let goldenTitle0 = "Fixture Popular Alpha"
     private let goldenTitle1 = "Fixture Popular Beta"
 
-    private let fixtureTimeout: TimeInterval = 5
+    /// Full-suite Simulator startup can delay the first navigation transition.
+    /// Keep a generous bound so this fixture assertion does not race that launch.
+    private let fixtureTimeout: TimeInterval = 10
 
     /// Play-time analysis in Library shell — stepped analyzer pinned to terminal
     /// `adBands:0,muteMarkers:0` (parallel to `-UITestFixtureAnalysisTimeline`).

@@ -26,7 +26,9 @@ final class NowPlayingSessionUITests: XCTestCase {
   /// UX pinned restore position (FixtureNowPlayingSession.pinnedRestorePositionSeconds).
   private let pinnedPositionSeconds = 15
   private let relaunchMiniTimeout: TimeInterval = 10
-  private let fixtureTimeout: TimeInterval = 5
+  /// Restore fixtures include an initial playback transition that can take longer
+  /// under the complete UI suite than in isolation.
+  private let fixtureTimeout: TimeInterval = 10
 
   /// Library show 0, episode row 0 — independent of implementation (slice-31-ux.md).
   private let queuedEpisodeID = "lib-0-fixture-ep-002"
