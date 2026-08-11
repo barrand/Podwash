@@ -512,6 +512,44 @@ final class LibraryUITests: XCTestCase {
         }
     }
 
+    func testLibrarySwipeUnsubscribeCanBeCancelled() throws {
+        let app = launchLibraryApp()
+        waitForLibraryRoot(app)
+        let show = element("libraryCell_0", in: app)
+        XCTAssertTrue(show.waitForExistence(timeout: fixtureTimeout))
+        show.swipeLeft()
+
+        let unsubscribe = element("libraryUnsubscribe_0", in: app)
+        XCTAssertTrue(unsubscribe.waitForExistence(timeout: fixtureTimeout))
+        unsubscribe.tap()
+
+        let alert = app.alerts["Unsubscribe from \(goldenTitle0)?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: fixtureTimeout))
+        alert.buttons["Cancel"].tap()
+        XCTAssertTrue(show.waitForExistence(timeout: fixtureTimeout), "Cancel must retain the subscription")
+        XCTAssertTrue(element("libraryCell_1", in: app).exists)
+    }
+
+    func testDetailUnsubscribeDeletesOnlySelectedSubscription() throws {
+        let app = launchLibraryApp()
+        navigateToEpisodeList(app)
+        let actions = element("podcastActions", in: app)
+        XCTAssertTrue(actions.waitForExistence(timeout: fixtureTimeout))
+        actions.tap()
+        let unsubscribe = element("podcastUnsubscribe", in: app)
+        XCTAssertTrue(unsubscribe.waitForExistence(timeout: fixtureTimeout))
+        unsubscribe.tap()
+
+        let alert = app.alerts["Unsubscribe from \(goldenTitle0)?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: fixtureTimeout))
+        alert.buttons["Unsubscribe"].tap()
+
+        let remaining = element("libraryCell_0", in: app)
+        XCTAssertTrue(remaining.waitForExistence(timeout: fixtureTimeout))
+        XCTAssertEqual(remaining.label, goldenTitle1)
+        XCTAssertFalse(element("libraryCell_1", in: app).exists)
+    }
+
     private func waitForHittable(_ control: XCUIElement, timeout: TimeInterval, message: String) {
         let predicate = NSPredicate(format: "isHittable == true")
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: control)

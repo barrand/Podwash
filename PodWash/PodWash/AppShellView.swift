@@ -30,6 +30,7 @@ struct AppShellView: View {
     @State private var librarySettingsRoute: ShellSettingsRoute?
     @State private var discoverSettingsRoute: ShellSettingsRoute?
     @State private var libraryNavigationPath = NavigationPath()
+    @State private var unsubscribeConfirmation: PodcastSummary?
     /// Measured `UITabBar` height so the mini-player inset clears tab-bar hit targets (task-010).
     @State private var tabBarHeight: CGFloat = 54
 
@@ -179,6 +180,28 @@ struct AppShellView: View {
                 onEnable: { model.enableCloudTranscriptProcessing() },
                 onNotNow: { model.declineCloudTranscriptProcessing() }
             )
+        }
+        .alert(
+            "Unsubscribe from \(unsubscribeConfirmation?.title ?? \"this podcast\")?",
+            isPresented: Binding(
+                get: { unsubscribeConfirmation != nil },
+                set: { if !$0 { unsubscribeConfirmation = nil } }
+            )
+        ) {
+            Button("Unsubscribe", role: .destructive) {
+                guard let summary = unsubscribeConfirmation else { return }
+                unsubscribeConfirmation = nil
+                Task {
+                    await model.unsubscribe(feedURL: summary.feedURL)
+                    libraryViewModel.reload()
+                    libraryNavigationPath = NavigationPath()
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                unsubscribeConfirmation = nil
+            }
+        } message: {
+            Text("This removes its episodes from Up Next, deletes downloads and offline analysis from this device, and clears playback progress.")
         }
         .background(TabBarAccessibilityConfigurator(tabBarHeight: $tabBarHeight))
         .task {
@@ -393,10 +416,28 @@ struct AppShellView: View {
 
     private var libraryTab: some View {
         NavigationStack(path: $libraryNavigationPath) {
-            LibraryView(viewModel: libraryViewModel, onDiscover: { selectedTab = .discover })
+            LibraryView(
+                viewModel: libraryViewModel,
+                onDiscover: { selectedTab = .discover },
+                onRequestUnsubscribe: { unsubscribeConfirmation = $0 }
+            )
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(for: PodcastSummary.self) { summary in
                     LibraryPodcastDetailView(model: model, summary: summary)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Menu {
+                                    Button("Unsubscribe", systemImage: "minus.circle", role: .destructive) {
+                                        unsubscribeConfirmation = summary
+                                    }
+                                    .accessibilityIdentifier("podcastUnsubscribe")
+                                } label: {
+                                    Image(systemName: "ellipsis.circle")
+                                }
+                                .accessibilityIdentifier("podcastActions")
+                                .accessibilityLabel("Podcast actions")
+                            }
+                        }
                 }
                 .navigationDestination(item: $librarySettingsRoute) { _ in
                     SettingsView(store: model.settingsStore)

@@ -66,4 +66,22 @@ final class PodcastStoreMultiSubscriptionTests: XCTestCase {
         XCTAssertEqual(store.subscriptionCount, 1)
         XCTAssertEqual(store.subscription(forFeedURL: golden.feedURL)?.episodes.count, 5)
     }
+
+    func testUnsubscribeRemovesOnlyRequestedSubscriptionAndReturnsItsEpisodeIDs() throws {
+        let persistence = harness.makeController()
+        let store = PodcastStore(context: persistence.viewContext, retaining: persistence)
+        let parser = RSSParser()
+        let golden = try ITunesGoldenFixtures.popularResults()
+        let feedA = try parser.parse(data: try ITunesGoldenFixtures.rssPayload(for: golden[0].feedURL))
+        let feedB = try parser.parse(data: try ITunesGoldenFixtures.rssPayload(for: golden[1].feedURL))
+        try store.saveSubscription(from: golden[0], feed: feedA)
+        try store.saveSubscription(from: golden[1], feed: feedB)
+
+        let removedEpisodeIDs = try store.unsubscribe(feedURL: golden[0].feedURL)
+
+        XCTAssertEqual(Set(removedEpisodeIDs), Set(feedA.episodes.map(\.id)))
+        XCTAssertFalse(store.isSubscribed(feedURL: golden[0].feedURL))
+        XCTAssertEqual(store.subscriptionCount, 1)
+        XCTAssertEqual(store.subscription(forFeedURL: golden[1].feedURL), feedB)
+    }
 }

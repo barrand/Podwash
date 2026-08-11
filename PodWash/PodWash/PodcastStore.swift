@@ -103,6 +103,22 @@ nonisolated final class PodcastStore: @unchecked Sendable {
         }
     }
 
+    /// Deletes one subscription and its episode catalog, returning the episode IDs
+    /// so callers can finish device-local cleanup scoped to this show.
+    @discardableResult
+    func unsubscribe(feedURL: URL) throws -> [String] {
+        try context.performAndWait {
+            guard let podcast = self.fetchPodcast(feedURLString: feedURL.absoluteString) else {
+                return []
+            }
+            let episodeIDs = (podcast.episodes?.array as? [CDEpisode] ?? [])
+                .compactMap(\.id)
+            self.context.delete(podcast)
+            try self.context.save()
+            return episodeIDs
+        }
+    }
+
     func clear() throws {
         try context.performAndWait {
             try self.clearPodcastRows()

@@ -10,6 +10,7 @@ import SwiftUI
 struct LibraryView: View {
     @Bindable var viewModel: LibraryViewModel
     var onDiscover: () -> Void
+    var onRequestUnsubscribe: (PodcastSummary) -> Void
 
     var body: some View {
         Group {
@@ -40,6 +41,12 @@ struct LibraryView: View {
                 .accessibilityIdentifier("libraryCell_\(index)")
                 .accessibilityLabel(summary.title)
                 .accessibilityHint("Opens episodes for this podcast.")
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button("Unsubscribe", systemImage: "minus.circle", role: .destructive) {
+                        onRequestUnsubscribe(summary)
+                    }
+                    .accessibilityIdentifier("libraryUnsubscribe_\(index)")
+                }
             }
         }
         .listStyle(.plain)

@@ -987,6 +987,40 @@ final class AppShellModel {
         // Durable session id is intentionally retained (ADR-027 intake).
     }
 
+    /// Removes a subscription and every device-local artifact belonging to it.
+    /// This is async because active URLSession downloads must settle before their
+    /// Core Data episode rows are removed.
+    func unsubscribe(feedURL: URL) async {
+        guard let feed = podcastStore.subscription(forFeedURL: feedURL) else { return }
+        let episodeIDs = feed.episodes.map(\.id).filter { !$0.isEmpty }
+        let episodeIDSet = Set(episodeIDs)
+
+        let isPlayingTarget = nowPlayingFeedURL == feedURL
+            || nowPlayingEpisodeID.map(episodeIDSet.contains) == true
+        if isPlayingTarget {
+            stopAndDismissPlayer()
+            try? nowPlayingSessionStore.clear()
+        }
+        if transcriptSheetEpisodeID.map(episodeIDSet.contains) == true {
+            dismissTranscript()
+        }
+
+        for episodeID in episodeIDs {
+            try? queueStore.remove(episodeID)
+            warmPlanner?.removeJob(episodeID: episodeID)
+        }
+        refreshQueuePresentation()
+
+        for episodeID in episodeIDs {
+            await downloadManager.cancel(episodeID: episodeID)
+            try? downloadManager.deleteDownload(episodeID: episodeID)
+        }
+
+        _ = try? podcastStore.unsubscribe(feedURL: feedURL)
+        scheduleWarmForComingUp()
+        refreshQueuePresentation()
+    }
+
     /// Mini-player Next control: advances to the first episode in manual Up Next.
     /// The interrupted episode remains resumable instead of being dismissed from autoplay.
     func skipToNextUp() {
