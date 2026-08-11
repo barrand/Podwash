@@ -84,7 +84,7 @@ final class CloudConsentShellUITests: XCTestCase {
         let library = app.descendants(matching: .any)["libraryRoot"]
         XCTAssertTrue(library.waitForExistence(timeout: 10), "Seeded Library shell must launch")
 
-        let settingsButton = app.buttons["settingsButton"]
+        let settingsButton = app.tabBars.buttons["Settings"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))
         settingsButton.tap()
 
@@ -102,12 +102,7 @@ final class CloudConsentShellUITests: XCTestCase {
         XCTAssertEqual(app.switches["unrelatedContentToggle"].value as? String, "1")
         XCTAssertEqual(app.switches["cloudTranscriptProcessingToggle"].value as? String, "1")
 
-        let back = app.navigationBars.buttons["Back"]
-        if back.exists {
-            back.tap()
-        } else {
-            app.buttons["Back"].tap()
-        }
+        app.tabBars.buttons["Library"].tap()
         XCTAssertTrue(library.waitForExistence(timeout: 5), "Library shell must remain usable after dismissal")
     }
 }

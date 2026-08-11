@@ -23,6 +23,7 @@ final class TranscriptUITests: XCTestCase {
     private static let transcriptNoCacheArg = "-UITestFixtureTranscriptNoCache"
     private static let longFollowFixtureArg = "-UITestFixtureTranscriptLongFollow"
     private static let scrollFollowFixtureArg = "-UITestFixtureTranscriptScrollFollow"
+    private static let layoutStressFixtureArg = "-UITestFixtureTranscriptLayoutStress"
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -298,6 +299,39 @@ final class TranscriptUITests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testWrappedRowsStayInsideColumnAndClearNextTimestamp() throws {
+        let app = launchLayoutStressTranscriptFixtureApp()
+        openTranscriptFromEpisodeRow(app)
+
+        let transcript = element("transcript.view", in: app)
+        let oversizedWord = element("transcript.word_0", in: app)
+        let previousParagraphLastWord = element("transcript.word_7", in: app)
+        let nextTimestamp = element("transcript.paragraph_1.timestamp", in: app)
+        let nextParagraphFirstWord = element("transcript.word_8", in: app)
+        XCTAssertTrue(oversizedWord.waitForExistence(timeout: transcriptOpenTimeout))
+        XCTAssertTrue(previousParagraphLastWord.waitForExistence(timeout: transcriptOpenTimeout))
+        XCTAssertTrue(nextTimestamp.waitForExistence(timeout: transcriptOpenTimeout))
+        XCTAssertTrue(nextParagraphFirstWord.waitForExistence(timeout: transcriptOpenTimeout))
+
+        XCTAssertGreaterThanOrEqual(oversizedWord.frame.minX, transcript.frame.minX)
+        XCTAssertLessThanOrEqual(
+            oversizedWord.frame.maxX,
+            transcript.frame.maxX,
+            "An unbroken transcript token must wrap inside the visible transcript column."
+        )
+        XCTAssertLessThanOrEqual(
+            previousParagraphLastWord.frame.maxY,
+            nextTimestamp.frame.minY,
+            "Wrapped rows must contribute their full height before the next timestamp."
+        )
+        XCTAssertLessThanOrEqual(
+            nextTimestamp.frame.maxY,
+            nextParagraphFirstWord.frame.minY,
+            "The next paragraph words must begin below their timestamp."
+        )
+    }
+
     // MARK: - Task 020
 
     /// Fixture: interval cache seeded, transcript file omitted (`-UITestFixtureTranscriptNoCache`),
@@ -478,6 +512,15 @@ final class TranscriptUITests: XCTestCase {
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchArguments.append(Self.scrollFollowFixtureArg)
+        app.launch()
+        return app
+    }
+
+    @MainActor
+    private func launchLayoutStressTranscriptFixtureApp() -> XCUIApplication {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchArguments.append(Self.layoutStressFixtureArg)
         app.launch()
         return app
     }

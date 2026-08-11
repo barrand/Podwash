@@ -6,27 +6,26 @@ record the owner, date, and evidence beside each check when it is done.
 ## 1. Release source and build
 
 - [x] **1.1** Identify a clean, reviewed release commit. Do not archive while
-  unrelated local changes are present. Current candidate: latest commit on `main`.
-- [x] **1.2** Set the intended marketing version and increment the build number
-  for the new release candidate. Completed 2026-08-09: version `1.0`, build `4`.
+  unrelated local changes are present. Completed 2026-08-10: `76439b3`
+  (`release: prepare 1.0 candidate`).
+- [ ] **1.2** Set the intended marketing version and increment the build number
+  for the new release candidate. The previous candidate was version `1.0`, build
+  `4`; the next uploaded build must use a higher build number.
 - [x] **1.3** Confirm the Distribution signing certificate, provisioning profile, bundle ID,
   and Release entitlements are correct for `com.barrandfarm.PodWash`. Completed
   2026-08-08: App Store validation succeeded with the paid team, matching bundle
   ID, production App Attest entitlement, and Firebase configuration.
-- [x] **1.4** Run `scripts/release-verify.sh` from the clean release commit, retain its
+- [ ] **1.4** Run `scripts/release-verify.sh` from the clean release commit, retain its
   `build/test-results/latest.md` evidence, then Archive and Validate the Release build.
-  Completed 2026-08-10: commit `c8bf449`; verification passed (248 unit and 69 UI
-  tests, zero failures/skips), and the Release archive validated successfully.
-- [x] **1.5** Install the archive on a physical iPhone and test fresh install, playback,
-  downloads, background audio, transcript follow, and offline behavior. Completed
-  2026-08-10: practical smoke test passed on iPhone 17 Pro, iOS 26.5.2.
-- [x] **1.6** Test real-world interruptions: lock screen and Control Center controls,
+  The 2026-08-10 rerun passed: 253 unit and 69 UI tests, with zero failures or
+  skips. Repeat this gate from the clean release commit, then archive and validate.
+- [ ] **1.5** Install the new archive on a physical iPhone and test fresh install, playback,
+  downloads, background audio, transcript follow, and offline behavior.
+- [ ] **1.6** Test real-world interruptions: lock screen and Control Center controls,
   headphones, incoming calls, route changes, background/resume, low storage, and
-  loss/recovery of network connectivity. Completed 2026-08-10: practical interruption
-  testing passed on iPhone 17 Pro, iOS 26.5.2.
-- [x] **1.7** Test accessibility in the Release build: VoiceOver labels and order, Dynamic
-  Type, contrast, and transcript controls including follow/recenter. Completed
-  2026-08-10: practical accessibility pass on iPhone 17 Pro, iOS 26.5.2.
+  loss/recovery of network connectivity.
+- [ ] **1.7** Test accessibility in the Release build: VoiceOver labels and order, Dynamic
+  Type, contrast, and transcript controls including follow/recenter.
 - [x] **1.8** Review the iOS 26.1 deployment target and confirm that device/OS coverage is
   intentional. Completed 2026-08-10: iPhone and iPad on iOS 26.1+ are the intended
   support matrix.
@@ -38,9 +37,8 @@ record the owner, date, and evidence beside each check when it is done.
 - [ ] **2.2** Verify Firebase Anonymous Auth, production App Attest, and Cloud Run work in
   a Release/TestFlight build. Confirm App Check enforcement and backend quotas,
   alerts, and kill switch are live.
-- [x] **2.3** Verify consent copy and behavior: cloud ad detection sends transcript text,
-  never audio; opt-out remains functional. Completed 2026-08-10: Release-build
-  practical testing verified decline, opt-in, and Settings opt-out behavior.
+- [ ] **2.3** Verify consent copy and behavior: cloud ad detection sends transcript text,
+  never audio; opt-out remains functional, in the new Release/TestFlight build.
   - [x] Implement a first-use, explicit opt-in before any timed transcript text is
     shared with Gemini or another cloud provider. The disclosure must identify the
     third-party AI service, state that audio is not uploaded, and offer a clear
@@ -110,10 +108,20 @@ record the owner, date, and evidence beside each check when it is done.
 
 ## Current state (2026-08-10)
 
-- `main` includes the transcript follow-along (`a51b06a`) and queue redesign
-  (`82e86c5`) work intended for the 1.0 release.
-- The new product, matching, and UI changes have a clean release-source commit;
-  version `1.0 (4)` has passed release verification and Archive validation.
+- The prior release candidate, `1.0 (4)` at `c8bf449`, passed its verification,
+  archive validation, and device testing, but does not cover the current app changes.
+- The current working tree passed the complete 2026-08-10 release gate: 253 unit and
+  69 UI tests, zero failures/skips. Evidence is in
+  `build/test-results/verify-20260810-193510-89809`,
+  `build/test-results/verify-20260810-193542-90109`, and
+  `build/test-results/verify-20260810-193818-91353`.
+- The prior unit-test mismatch in
+  `PodcastStoreMultiSubscriptionTests/testUnsubscribeRemovesOnlyRequestedSubscriptionAndReturnsItsEpisodeIDs()`
+  was corrected so its expected subscription uses discovery metadata, which is the
+  documented `saveSubscription` behavior.
+- Create a clean release commit, increment the build number, rerun the complete
+  release gate, archive/validate, and repeat device, interruption, accessibility,
+  and cloud-consent checks.
 - Signing prerequisite **1.3** is complete: App Store validation succeeded. The
   archive's signed entitlements include production App Attest and the matching
   Firebase configuration.

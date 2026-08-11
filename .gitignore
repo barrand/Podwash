@@ -19,6 +19,8 @@ xcuserdata/
 *.ipa
 *.dSYM.zip
 *.dSYM
+# Local Xcode Organizer exports, e.g. `PodWash 2026-08-10 08-08-58/`.
+PodWash/PodWash 20*/
 
 # Swift Package Manager
 .build/

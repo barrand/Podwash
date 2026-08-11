@@ -290,6 +290,9 @@ private struct TranscriptRenderBlockView: View {
                         // Keep the text metrics identical as the active word
                         // changes; karaoke is a highlight, not a layout change.
                         .font(.body)
+                        // A malformed ASR token or URL must wrap inside the
+                        // transcript column instead of widening the flow layout.
+                        .fixedSize(horizontal: false, vertical: true)
                         .foregroundStyle(foreground(for: display))
                         .background {
                             if isActive {
@@ -304,12 +307,7 @@ private struct TranscriptRenderBlockView: View {
                         .accessibilityValue(accessibilityValue(for: display, isActive: isActive))
                 }
             }
-            // A render block is measured independently by LazyVStack. Give the
-            // wrapping layout the ScrollView's concrete width during that
-            // measurement, rather than letting its first pass use an
-            // unconstrained proposal. Otherwise it reports a one-line height
-            // and a following block can be placed over its wrapped last line.
-            .containerRelativeFrame(.horizontal, count: 1, span: 1, spacing: 0, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.bottom, block.endsParagraph ? 12 : 0)
     }
@@ -359,56 +357,85 @@ private struct WrappingTranscriptWordsLayout: Layout {
     var verticalSpacing: CGFloat
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        guard !subviews.isEmpty else { return .zero }
-
-        let maxWidth = proposal.width ?? .infinity
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowHeight: CGFloat = 0
-        var totalWidth: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            let nextX = x == 0 ? size.width : x + horizontalSpacing + size.width
-            if x > 0, nextX > maxWidth {
-                totalWidth = max(totalWidth, x - horizontalSpacing)
-                x = 0
-                y += rowHeight + verticalSpacing
-                rowHeight = 0
-            }
-            if x > 0 { x += horizontalSpacing }
-            x += size.width
-            rowHeight = max(rowHeight, size.height)
-        }
-
-        totalWidth = max(totalWidth, x)
-        return CGSize(width: totalWidth, height: y + rowHeight)
+        geometry(for: proposal.width, subviews: subviews).size
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        guard !subviews.isEmpty else { return }
+        let layout = geometry(for: bounds.width, subviews: subviews)
+        for (subview, frame) in zip(subviews, layout.frames) {
+            subview.place(
+                at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: frame.width, height: frame.height)
+            )
+        }
+    }
 
-        let maxWidth = bounds.width
-        var x = bounds.minX
-        var y = bounds.minY
+    private func geometry(for proposedWidth: CGFloat?, subviews: Subviews) -> TranscriptFlowGeometry {
+        let containerWidth = proposedWidth.flatMap { width in
+            width.isFinite ? max(0, width) : nil
+        }
+        let itemProposal = containerWidth.map {
+            ProposedViewSize(width: $0, height: nil)
+        } ?? .unspecified
+        let sizes = subviews.map { $0.sizeThatFits(itemProposal) }
+        return TranscriptFlowGeometry(
+            itemSizes: sizes,
+            containerWidth: containerWidth,
+            horizontalSpacing: horizontalSpacing,
+            verticalSpacing: verticalSpacing
+        )
+    }
+}
+
+/// A single source of truth for both measurement and placement of transcript
+/// words. When a parent offers a finite width, the layout claims that exact
+/// width. This invariant prevents SwiftUI from placing the words in a narrower
+/// box than the one used to calculate their height.
+struct TranscriptFlowGeometry {
+    let frames: [CGRect]
+    let size: CGSize
+
+    init(
+        itemSizes: [CGSize],
+        containerWidth: CGFloat?,
+        horizontalSpacing: CGFloat,
+        verticalSpacing: CGFloat
+    ) {
+        let finiteWidth = containerWidth.flatMap { width in
+            width.isFinite ? max(0, width) : nil
+        }
+        var frames: [CGRect] = []
+        frames.reserveCapacity(itemSizes.count)
+
+        var x: CGFloat = 0
+        var y: CGFloat = 0
         var rowHeight: CGFloat = 0
+        var contentWidth: CGFloat = 0
 
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            let nextX = x == bounds.minX ? x + size.width : x + horizontalSpacing + size.width
-            if x > bounds.minX, nextX > bounds.maxX {
-                x = bounds.minX
+        for rawSize in itemSizes {
+            let width = min(max(0, rawSize.width), finiteWidth ?? .greatestFiniteMagnitude)
+            let height = max(0, rawSize.height)
+            let size = CGSize(width: width, height: height)
+            let spacedX = x == 0 ? 0 : x + horizontalSpacing
+
+            if x > 0, let finiteWidth, spacedX + width > finiteWidth {
+                x = 0
                 y += rowHeight + verticalSpacing
                 rowHeight = 0
+            } else {
+                x = spacedX
             }
-            if x > bounds.minX { x += horizontalSpacing }
-            subview.place(
-                at: CGPoint(x: x, y: y),
-                anchor: .topLeading,
-                proposal: ProposedViewSize(width: size.width, height: size.height)
-            )
-            x += size.width
-            rowHeight = max(rowHeight, size.height)
+
+            let frame = CGRect(origin: CGPoint(x: x, y: y), size: size)
+            frames.append(frame)
+            x = frame.maxX
+            rowHeight = max(rowHeight, height)
+            contentWidth = max(contentWidth, frame.maxX)
         }
+
+        let contentHeight = itemSizes.isEmpty ? 0 : y + rowHeight
+        self.frames = frames
+        self.size = CGSize(width: finiteWidth ?? contentWidth, height: contentHeight)
     }
 }

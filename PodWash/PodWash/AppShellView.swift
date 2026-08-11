@@ -13,12 +13,7 @@ enum AppShellTab: Hashable {
     case library
     case queue
     case discover
-}
-
-/// Pushed Settings destination (toolbar Button → navigationDestination).
-private enum ShellSettingsRoute: Hashable, Identifiable {
     case settings
-    var id: Self { self }
 }
 
 struct AppShellView: View {
@@ -27,8 +22,6 @@ struct AppShellView: View {
     @State private var selectedTab: AppShellTab = .library
     @State private var libraryViewModel: LibraryViewModel
     @State private var discoverViewModel: DiscoverViewModel
-    @State private var librarySettingsRoute: ShellSettingsRoute?
-    @State private var discoverSettingsRoute: ShellSettingsRoute?
     @State private var libraryNavigationPath = NavigationPath()
     @State private var unsubscribeConfirmation: PodcastSummary?
     /// Measured `UITabBar` height so the mini-player inset clears tab-bar hit targets (task-010).
@@ -76,6 +69,12 @@ struct AppShellView: View {
                     Label("Discover", systemImage: "magnifyingglass")
                 }
                 .tag(AppShellTab.discover)
+
+            settingsTab
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                .tag(AppShellTab.settings)
         }
         .background(BrandTheme.surface)
         .background {
@@ -86,9 +85,10 @@ struct AppShellView: View {
                 .accessibilityValue("1")
         }
         .onChange(of: selectedTab) { oldTab, newTab in
-            if newTab == .library, oldTab != .library {
+            // Settings is a peer destination: returning from it should reveal the
+            // same Library screen (including a pushed podcast detail) the listener left.
+            if newTab == .library, oldTab != .library, oldTab != .settings {
                 libraryNavigationPath = NavigationPath()
-                librarySettingsRoute = nil
             }
             if oldTab == .discover, newTab != .discover {
                 UIApplication.shared.sendAction(
@@ -109,27 +109,6 @@ struct AppShellView: View {
             if showsMiniPlayerInShellInset, let engine = model.engine {
                 shellMiniPlayerBar(engine: engine, reservesTabBarClearance: true)
                     .accessibilitySortPriority(1)
-            }
-        }
-        // Content-tree Settings control (not ToolbarItem). iOS 26 nav-bar glass +
-        // toolbar Image buttons often report exists&&!isHittable under XCTest; a
-        // plain SwiftUI Button overlaid in the safe-area trailing slot stays hittable.
-        // Use alignment overlay (not GeometryReader) so only the 44pt control steals hits.
-        .overlay(alignment: .topTrailing) {
-            if showsShellSettingsButton {
-                Button {
-                    openSettingsForSelectedTab()
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.body.weight(.medium))
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .accessibilityIdentifier("settingsButton")
-                .accessibilityLabel("Settings")
-                .accessibilityHint("Opens cleaning and playback defaults.")
-                .padding(.trailing, 8)
-                .safeAreaPadding(.top)
             }
         }
         .sheet(isPresented: $model.isFullPlayerPresented) {
@@ -156,7 +135,7 @@ struct AppShellView: View {
                 }
                 // Content-tree leading control (not ToolbarItem). ToolbarItem wraps
                 // the button so `descendants(.any)["playback.viewTranscript"]` matches
-                // Other + Button and `.tap()` fails — same pattern as settingsButton.
+                // Other + Button and `.tap()` fails under XCTest.
                 .overlay(alignment: .topLeading) {
                     if model.nowPlayingTranscriptExists {
                         Button {
@@ -189,7 +168,7 @@ struct AppShellView: View {
             )
         }
         .alert(
-            "Unsubscribe from \(unsubscribeConfirmation?.title ?? \"this podcast\")?",
+            "Unsubscribe from \(unsubscribeConfirmation?.title ?? "this podcast")?",
             isPresented: Binding(
                 get: { unsubscribeConfirmation != nil },
                 set: { if !$0 { unsubscribeConfirmation = nil } }
@@ -396,25 +375,6 @@ struct AppShellView: View {
         )
     }
 
-    /// Hide when a pushed Settings screen or full player would cover the affordance.
-    private var showsShellSettingsButton: Bool {
-        !model.isFullPlayerPresented
-            && selectedTab != .queue
-            && librarySettingsRoute == nil
-            && discoverSettingsRoute == nil
-    }
-
-    private func openSettingsForSelectedTab() {
-        switch selectedTab {
-        case .library:
-            librarySettingsRoute = .settings
-        case .queue:
-            break
-        case .discover:
-            discoverSettingsRoute = .settings
-        }
-    }
-
     private var libraryTab: some View {
         NavigationStack(path: $libraryNavigationPath) {
             LibraryView(
@@ -440,10 +400,6 @@ struct AppShellView: View {
                             }
                         }
                 }
-                .navigationDestination(item: $librarySettingsRoute) { _ in
-                    SettingsView(store: model.settingsStore)
-                }
-                // Reserve trailing nav-bar space so the overlay gear aligns with chrome.
                 // Brand wordmark replaces literal "Library" nav title (slice-21-ux.md).
                 .toolbar {
                     ToolbarItem(placement: .principal) {
@@ -453,11 +409,6 @@ struct AppShellView: View {
                             .accessibilityIdentifier("brandWordmark")
                             .accessibilityLabel(BrandTheme.approvedDisplayName)
                     }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Color.clear
-                            .frame(width: 44, height: 44)
-                            .accessibilityHidden(true)
-                    }
                 }
         }
     }
@@ -466,16 +417,12 @@ struct AppShellView: View {
         NavigationStack {
             DiscoverView(viewModel: discoverViewModel)
                 .navigationBarTitleDisplayMode(.inline)
-                .navigationDestination(item: $discoverSettingsRoute) { _ in
-                    SettingsView(store: model.settingsStore)
-                }
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Color.clear
-                            .frame(width: 44, height: 44)
-                            .accessibilityHidden(true)
-                    }
-                }
+        }
+    }
+
+    private var settingsTab: some View {
+        NavigationStack {
+            SettingsView(store: model.settingsStore)
         }
     }
 }

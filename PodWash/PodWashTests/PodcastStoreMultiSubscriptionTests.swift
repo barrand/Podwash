@@ -82,6 +82,16 @@ final class PodcastStoreMultiSubscriptionTests: XCTestCase {
         XCTAssertEqual(Set(removedEpisodeIDs), Set(feedA.episodes.map(\.id)))
         XCTAssertFalse(store.isSubscribed(feedURL: golden[0].feedURL))
         XCTAssertEqual(store.subscriptionCount, 1)
-        XCTAssertEqual(store.subscription(forFeedURL: golden[1].feedURL), feedB)
+        // Discovery metadata is intentionally preferred over the RSS channel's
+        // title and artwork when a subscription is saved (see saveSubscription).
+        XCTAssertEqual(
+            store.subscription(forFeedURL: golden[1].feedURL),
+            PodcastFeed(
+                title: golden[1].title,
+                artworkURL: golden[1].artworkURL ?? feedB.artworkURL,
+                description: feedB.description,
+                episodes: feedB.episodes
+            )
+        )
     }
 }

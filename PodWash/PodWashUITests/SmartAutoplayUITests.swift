@@ -15,14 +15,14 @@ final class SmartAutoplayUITests: XCTestCase {
     func testSmartAutoplayToggleAndBingeControlExist() throws {
         let app = XCUIApplication()
         // Library shell only — `-UITestFixtureSettings` alone routes RootView to a
-        // bare Settings stack (no settingsButton / binge chrome). AppShell settings
+        // bare Settings stack (no tab bar / binge chrome). AppShell settings
         // exposes `smartAutoplayToggle`; podcast detail exposes `bingeToggle`.
         app.launchArguments += [
             "-UITestFixtureLibrary",
         ]
         app.launch()
 
-        let settings = app.buttons["settingsButton"]
+        let settings = app.tabBars.buttons["Settings"]
         XCTAssertTrue(settings.waitForExistence(timeout: 10))
         settings.tap()
 
@@ -30,14 +30,7 @@ final class SmartAutoplayUITests: XCTestCase {
         XCTAssertTrue(smart.waitForExistence(timeout: 10))
 
         // Leave settings and open first library podcast for binge toggle.
-        if app.navigationBars.buttons["Back"].exists {
-            app.navigationBars.buttons["Back"].tap()
-        } else if app.buttons["Back"].exists {
-            app.buttons["Back"].tap()
-        }
-
-        let library = app.descendants(matching: .any)["tabLibrary"]
-        if library.exists { library.tap() }
+        app.tabBars.buttons["Library"].tap()
 
         let firstPodcast = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "libraryCell_"))

@@ -348,18 +348,32 @@ final class LibraryUITests: XCTestCase {
     @MainActor
     func testSettingsReachableFromLibrary() throws {
         let app = launchLibraryApp()
-        waitForLibraryRoot(app)
+        navigateToEpisodeList(app)
 
-        // Query as Button — shell mounts a content-tree Button (not toolbar chrome).
-        let settings = app.buttons["settingsButton"]
+        // The channel action stays in the navigation bar without a shell overlay
+        // competing for its hit target.
+        let actions = app.buttons["podcastActions"]
+        XCTAssertTrue(actions.waitForExistence(timeout: fixtureTimeout))
+        XCTAssertTrue(actions.isHittable, "Podcast actions must remain hittable on channel detail")
+
+        let settings = tab("Settings", in: app)
         XCTAssertTrue(settings.waitForExistence(timeout: fixtureTimeout))
 
         // Wait for layout to publish a hittable hit target (ui_race on first paint).
         let predicate = NSPredicate(format: "isHittable == true")
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: settings)
         let result = XCTWaiter().wait(for: [expectation], timeout: fixtureTimeout)
-        XCTAssertEqual(result, .completed, "settingsButton must be hittable from Library tab")
-        XCTAssertTrue(settings.isHittable, "settingsButton must be hittable from Library tab")
+        XCTAssertEqual(result, .completed, "Settings tab must be hittable from Library")
+        XCTAssertTrue(settings.isHittable, "Settings tab must be hittable from Library")
+
+        settings.tap()
+        XCTAssertTrue(element("settingsRoot", in: app).waitForExistence(timeout: fixtureTimeout))
+
+        tab("Library", in: app).tap()
+        XCTAssertTrue(
+            element("episodeList", in: app).waitForExistence(timeout: fixtureTimeout),
+            "Returning from Settings must preserve the channel detail"
+        )
     }
 
     // MARK: - Native tabs stay listener-reachable with mini-player chrome
@@ -533,7 +547,7 @@ final class LibraryUITests: XCTestCase {
     func testDetailUnsubscribeDeletesOnlySelectedSubscription() throws {
         let app = launchLibraryApp()
         navigateToEpisodeList(app)
-        let actions = element("podcastActions", in: app)
+        let actions = app.buttons["podcastActions"]
         XCTAssertTrue(actions.waitForExistence(timeout: fixtureTimeout))
         actions.tap()
         let unsubscribe = element("podcastUnsubscribe", in: app)

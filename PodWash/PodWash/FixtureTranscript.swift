@@ -12,6 +12,7 @@ enum FixtureTranscript {
     static let noCacheLaunchArgument = "-UITestFixtureTranscriptNoCache"
     static let longFollowLaunchArgument = "-UITestFixtureTranscriptLongFollow"
     static let scrollFollowLaunchArgument = "-UITestFixtureTranscriptScrollFollow"
+    static let layoutStressLaunchArgument = "-UITestFixtureTranscriptLayoutStress"
 
     static let wordCount = 24
     static let wordDuration = 2.5
@@ -29,6 +30,7 @@ enum FixtureTranscript {
             argument == launchArgument
                 || argument == longFollowLaunchArgument
                 || argument == scrollFollowLaunchArgument
+                || argument == layoutStressLaunchArgument
                 || (argument.hasSuffix("UITestFixtureTranscript")
                     && !argument.contains("NoCache"))
         }
@@ -40,6 +42,10 @@ enum FixtureTranscript {
 
     static var isScrollFollowEnabled: Bool {
         ProcessInfo.processInfo.arguments.contains(scrollFollowLaunchArgument)
+    }
+
+    static var isLayoutStressEnabled: Bool {
+        ProcessInfo.processInfo.arguments.contains(layoutStressLaunchArgument)
     }
 
     /// Dedicated negative mode: same library/intervals/resume, omit transcript file.
@@ -71,6 +77,9 @@ enum FixtureTranscript {
     }
 
     static func makeTranscript() -> [TimedWord] {
+        if isLayoutStressEnabled {
+            return layoutStressTranscript()
+        }
         let count = isLongFollowEnabled
             ? longFollowWordCount
             : (isScrollFollowEnabled ? scrollFollowWordCount : wordCount)
@@ -79,6 +88,23 @@ enum FixtureTranscript {
             let start = Double(index) * duration
             let text = isScrollFollowEnabled && index % 4 == 3 ? "w\(index)." : "w\(index)"
             return TimedWord(word: text, start: start, end: start + duration)
+        }
+    }
+
+    /// Exercises wrapping with a token wider than the viewport and multiple
+    /// medium-width rows followed by another timestamped paragraph.
+    private static func layoutStressTranscript() -> [TimedWord] {
+        (0 ..< 18).map { index in
+            let start = Double(index) * wordDuration
+            let text: String
+            if index == 0 {
+                text = String(repeating: "unbroken", count: 24)
+            } else if index == 7 || index == 15 {
+                text = "transcription\(index)."
+            } else {
+                text = "transcription\(index)"
+            }
+            return TimedWord(word: text, start: start, end: start + wordDuration)
         }
     }
 
@@ -114,9 +140,16 @@ enum FixtureTranscript {
         // Wipe any leftover transcript from a prior UITest launch (shared Application Support).
         try? transcriptCache.remove(episodeID: episodeID)
 
-        let position = isLongFollowEnabled
-            ? longFollowPlaybackPosition
-            : (isScrollFollowEnabled ? scrollFollowPlaybackPosition : playbackPosition)
+        let position: TimeInterval
+        if isLayoutStressEnabled {
+            position = 0
+        } else if isLongFollowEnabled {
+            position = longFollowPlaybackPosition
+        } else if isScrollFollowEnabled {
+            position = scrollFollowPlaybackPosition
+        } else {
+            position = playbackPosition
+        }
         try resumeStore.setPosition(position, for: episodeID)
 
         let targetWords = settingsStore.activeNormalizedTargetSet()
