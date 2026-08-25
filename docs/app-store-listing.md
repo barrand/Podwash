@@ -29,16 +29,24 @@ this statement against the final shipped cloud-consent behavior before use.
 
 ## Description
 
-PodWash is a podcast player built for more control over how you listen.
+Skip the interruptions. PodWash identifies likely ad breaks and moves you past
+them, so you can stay with the show.
 
-Build a library of podcasts, line up what you want to hear next, and keep your
-favorites ready for offline listening. PodWash gives you practical playback
-tools without making you sign up for an account.
+Filter the words you do not want to hear. Choose word categories, add your own
+words, and decide whether matching moments are muted or skipped.
+
+PodWash is a podcast player built for more control over how you listen. Build a
+library, line up what you want to hear next, and keep favorites ready for
+offline listening—without creating an account.
 
 FEATURES
 
-• Shape your listening experience. Choose word categories, add custom words,
-  and select whether matching moments are muted or skipped.
+• Skip likely ad breaks. Optional cloud ad detection uses timed transcript
+  text—not podcast audio—to identify likely ads. Turn it off in Settings at
+  any time.
+
+• Filter profanity and unwanted words. Choose word categories, add custom
+  words, and select whether matching moments are muted or skipped.
 
 • Keep your place. Use playback speed controls, a sleep timer, and a queue that
   keeps the next episode in view.
@@ -51,10 +59,6 @@ FEATURES
 
 • See what is ahead. The playback timeline shows preparation and cleaned
   segments as they become available.
-
-• Choose cloud ad detection. When enabled, this optional feature sends timed
-  transcript text—not podcast audio—to identify likely ad breaks. You can turn
-  it off in Settings at any time.
 
 Podcast content and recognition results can vary. PodWash’s analysis tools are
 designed to give you more control; they do not guarantee that every word or
