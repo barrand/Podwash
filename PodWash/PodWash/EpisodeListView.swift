@@ -21,11 +21,18 @@ struct EpisodeListView: View {
     var onViewTranscript: ((String) -> Void)? = nil
     var transcriptAffordanceGeneration: Int = 0
     var cleaningSummary: ((String) -> EpisodeCleaningSummary?)? = nil
+    var isPlayed: ((String) -> Bool)? = nil
+    var playedEpisodeActionState: ((String) -> PlayedEpisodeActionState)? = nil
+    var onPrepareReplay: ((String) -> Void)? = nil
+    var onRetryReplay: ((String) -> Void)? = nil
+    var onReplayFromBeginning: ((String) -> Void)? = nil
+    var episodeListRevision: Int = 0
 
     var body: some View {
         // Observe generation so representable refreshes when analysis UI changes.
         let _ = analysisViewModel.contentGeneration
         let _ = transcriptAffordanceGeneration
+        let _ = episodeListRevision
         return EpisodeTableViewRepresentable(
             feed: feed,
             analysisViewModel: analysisViewModel,
@@ -38,7 +45,13 @@ struct EpisodeListView: View {
             transcriptExists: transcriptExists,
             onViewTranscript: onViewTranscript,
             transcriptAffordanceGeneration: transcriptAffordanceGeneration,
-            cleaningSummary: cleaningSummary
+            cleaningSummary: cleaningSummary,
+            isPlayed: isPlayed,
+            playedEpisodeActionState: playedEpisodeActionState,
+            onPrepareReplay: onPrepareReplay,
+            onRetryReplay: onRetryReplay,
+            onReplayFromBeginning: onReplayFromBeginning,
+            episodeListRevision: episodeListRevision
         )
         .background(BrandTheme.surface)
     }
@@ -58,6 +71,12 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
     /// Explicit input so SwiftUI always calls `updateUIViewController` after backfill.
     var transcriptAffordanceGeneration: Int
     var cleaningSummary: ((String) -> EpisodeCleaningSummary?)?
+    var isPlayed: ((String) -> Bool)?
+    var playedEpisodeActionState: ((String) -> PlayedEpisodeActionState)?
+    var onPrepareReplay: ((String) -> Void)?
+    var onRetryReplay: ((String) -> Void)?
+    var onReplayFromBeginning: ((String) -> Void)?
+    var episodeListRevision: Int
 
     func makeUIViewController(context: Context) -> EpisodeTableViewController {
         EpisodeTableViewController(
@@ -71,7 +90,12 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
             onRequestCloudConsentBeforeDownload: onRequestCloudConsentBeforeDownload,
             transcriptExists: transcriptExists,
             onViewTranscript: onViewTranscript,
-            cleaningSummary: cleaningSummary
+            cleaningSummary: cleaningSummary,
+            isPlayed: isPlayed,
+            playedEpisodeActionState: playedEpisodeActionState,
+            onPrepareReplay: onPrepareReplay,
+            onRetryReplay: onRetryReplay,
+            onReplayFromBeginning: onReplayFromBeginning
         )
     }
 
@@ -88,7 +112,13 @@ private struct EpisodeTableViewRepresentable: UIViewControllerRepresentable {
             transcriptExists: transcriptExists,
             onViewTranscript: onViewTranscript,
             transcriptAffordanceGeneration: transcriptAffordanceGeneration,
-            cleaningSummary: cleaningSummary
+            cleaningSummary: cleaningSummary,
+            isPlayed: isPlayed,
+            playedEpisodeActionState: playedEpisodeActionState,
+            onPrepareReplay: onPrepareReplay,
+            onRetryReplay: onRetryReplay,
+            onReplayFromBeginning: onReplayFromBeginning,
+            episodeListRevision: episodeListRevision
         )
     }
 }
@@ -106,6 +136,12 @@ private final class EpisodeTableViewController: UITableViewController {
     private var onViewTranscript: ((String) -> Void)?
     private var cleaningSummary: ((String) -> EpisodeCleaningSummary?)?
     private var transcriptAffordanceGeneration = 0
+    private var isPlayed: ((String) -> Bool)?
+    private var playedEpisodeActionState: ((String) -> PlayedEpisodeActionState)?
+    private var onPrepareReplay: ((String) -> Void)?
+    private var onRetryReplay: ((String) -> Void)?
+    private var onReplayFromBeginning: ((String) -> Void)?
+    private var episodeListRevision = 0
     private var transcriptBackfillObserver: NSObjectProtocol?
 
     init(
@@ -119,7 +155,12 @@ private final class EpisodeTableViewController: UITableViewController {
         onRequestCloudConsentBeforeDownload: ((Episode) -> Bool)?,
         transcriptExists: ((String) -> Bool)?,
         onViewTranscript: ((String) -> Void)?,
-        cleaningSummary: ((String) -> EpisodeCleaningSummary?)?
+        cleaningSummary: ((String) -> EpisodeCleaningSummary?)?,
+        isPlayed: ((String) -> Bool)?,
+        playedEpisodeActionState: ((String) -> PlayedEpisodeActionState)?,
+        onPrepareReplay: ((String) -> Void)?,
+        onRetryReplay: ((String) -> Void)?,
+        onReplayFromBeginning: ((String) -> Void)?
     ) {
         self.feed = feed
         self.analysisViewModel = analysisViewModel
@@ -132,6 +173,11 @@ private final class EpisodeTableViewController: UITableViewController {
         self.transcriptExists = transcriptExists
         self.onViewTranscript = onViewTranscript
         self.cleaningSummary = cleaningSummary
+        self.isPlayed = isPlayed
+        self.playedEpisodeActionState = playedEpisodeActionState
+        self.onPrepareReplay = onPrepareReplay
+        self.onRetryReplay = onRetryReplay
+        self.onReplayFromBeginning = onReplayFromBeginning
         super.init(style: .plain)
         analysisViewModel.onAnalyzingEpisodeIDChanged = { [weak self] in
             guard let self else { return }
@@ -196,11 +242,18 @@ private final class EpisodeTableViewController: UITableViewController {
         transcriptExists: ((String) -> Bool)?,
         onViewTranscript: ((String) -> Void)?,
         transcriptAffordanceGeneration: Int = 0,
-        cleaningSummary: ((String) -> EpisodeCleaningSummary?)?
+        cleaningSummary: ((String) -> EpisodeCleaningSummary?)?,
+        isPlayed: ((String) -> Bool)?,
+        playedEpisodeActionState: ((String) -> PlayedEpisodeActionState)?,
+        onPrepareReplay: ((String) -> Void)?,
+        onRetryReplay: ((String) -> Void)?,
+        onReplayFromBeginning: ((String) -> Void)?,
+        episodeListRevision: Int = 0
     ) {
         let feedChanged = self.feed != feed
         let transcriptAffordanceChanged =
             self.transcriptAffordanceGeneration != transcriptAffordanceGeneration
+        let replayPresentationChanged = self.episodeListRevision != episodeListRevision
         self.feed = feed
         self.analysisViewModel = analysisViewModel
         self.downloadManager = downloadManager
@@ -213,6 +266,12 @@ private final class EpisodeTableViewController: UITableViewController {
         self.onViewTranscript = onViewTranscript
         self.transcriptAffordanceGeneration = transcriptAffordanceGeneration
         self.cleaningSummary = cleaningSummary
+        self.isPlayed = isPlayed
+        self.playedEpisodeActionState = playedEpisodeActionState
+        self.onPrepareReplay = onPrepareReplay
+        self.onRetryReplay = onRetryReplay
+        self.onReplayFromBeginning = onReplayFromBeginning
+        self.episodeListRevision = episodeListRevision
         analysisViewModel.onAnalyzingEpisodeIDChanged = { [weak self] in
             guard let self else { return }
             self.refreshAnalysisDisplayOnVisibleRows()
@@ -226,7 +285,7 @@ private final class EpisodeTableViewController: UITableViewController {
             self.refreshDownloadDisplayOnVisibleRows()
         }
         applyListAccessibility()
-        if feedChanged || transcriptAffordanceChanged {
+        if feedChanged || transcriptAffordanceChanged || replayPresentationChanged {
             // A transcript button changes the cell's accessibility subtree. Reload
             // rather than only mutating visible cells so UIKit publishes that new
             // subtree immediately after the backfill write.
@@ -245,15 +304,70 @@ private final class EpisodeTableViewController: UITableViewController {
 
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: false)
-        guard let onPlayEpisode else { return }
-        onPlayEpisode(feed.episodes[indexPath.row])
+        activateEpisode(at: indexPath)
     }
 
     private func playHandler(for indexPath: IndexPath) -> () -> Void {
         { [weak self] in
-            guard let self, let onPlayEpisode = self.onPlayEpisode else { return }
-            onPlayEpisode(self.feed.episodes[indexPath.row])
+            self?.activateEpisode(at: indexPath)
         }
+    }
+
+    private func activateEpisode(at indexPath: IndexPath) {
+        let episode = feed.episodes[indexPath.row]
+        guard isPlayed?(episode.id) == true else {
+            onPlayEpisode?(episode)
+            return
+        }
+        presentPlayedActions(for: episode, sourceIndexPath: indexPath)
+    }
+
+    private func presentPlayedActions(for episode: Episode, sourceIndexPath: IndexPath) {
+        let actionState = playedEpisodeActionState?(episode.id) ?? .prepare(requiresDownload: true)
+        let message: String?
+        switch actionState {
+        case .prepare(let requiresDownload):
+            message = requiresDownload
+                ? "PodWash will download and prepare this episode again. This can take several minutes. The current transcript will be replaced."
+                : "PodWash will prepare this episode again. This can take several minutes. The current transcript will be replaced."
+        case .preparing(let status):
+            message = status
+        case .failed(let detail):
+            message = detail
+        case .blocked(let title):
+            message = "PodWash is already preparing \(title)."
+        case .replayNow:
+            message = nil
+        }
+        let alert = UIAlertController(title: episode.title, message: message, preferredStyle: .actionSheet)
+        if transcriptExists?(episode.id) == true {
+            alert.addAction(UIAlertAction(title: "View Transcript", style: .default) { [weak self] _ in
+                self?.onViewTranscript?(episode.id)
+            })
+        }
+        switch actionState {
+        case .replayNow:
+            alert.addAction(UIAlertAction(title: "Replay from Beginning", style: .default) { [weak self] _ in
+                self?.onReplayFromBeginning?(episode.id)
+            })
+        case .prepare:
+            alert.addAction(UIAlertAction(title: "Prepare to Replay", style: .default) { [weak self] _ in
+                self?.onPrepareReplay?(episode.id)
+            })
+        case .failed:
+            alert.addAction(UIAlertAction(title: "Try Again", style: .default) { [weak self] _ in
+                self?.onRetryReplay?(episode.id)
+            })
+        case .preparing, .blocked:
+            break
+        }
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        if let popover = alert.popoverPresentationController,
+           let cell = tableView.cellForRow(at: sourceIndexPath) {
+            popover.sourceView = cell
+            popover.sourceRect = cell.bounds
+        }
+        present(alert, animated: true)
     }
 
     private func refreshDownloadDisplayOnVisibleRows() {
@@ -334,6 +448,11 @@ private final class EpisodeTableViewController: UITableViewController {
             let episode = self.feed.episodes[indexPath.row]
             let state = self.downloadManager.state(for: episode.id)
 
+            if self.isPlayed?(episode.id) == true, state != .downloaded {
+                self.presentPlayedActions(for: episode, sourceIndexPath: indexPath)
+                return
+            }
+
             switch state {
             case .notDownloaded, .failed:
                 guard let remoteURL = episode.audioURL else {
@@ -379,7 +498,7 @@ private final class EpisodeTableViewController: UITableViewController {
                     self.refreshDownloadDisplayOnVisibleRows()
                 }
             case .downloaded:
-                try? self.downloadManager.deleteDownload(episodeID: episode.id)
+                try? self.downloadManager.removeAudio(episodeID: episode.id)
                 self.refreshDownloadDisplayOnVisibleRows()
             case .downloading:
                 break
@@ -409,6 +528,7 @@ private final class EpisodeTableViewController: UITableViewController {
         let cell = tableView.dequeueReusableCell(withIdentifier: EpisodeTableViewCell.reuseID, for: indexPath) as! EpisodeTableViewCell
         let episode = feed.episodes[indexPath.row]
         let isQueued = queueStore.queueEpisodeIDs().contains(episode.id)
+        let played = isPlayed?(episode.id) ?? false
         let showsTranscript = transcriptExists?(episode.id) ?? false
         cell.configure(
             episode: episode,
@@ -416,6 +536,7 @@ private final class EpisodeTableViewController: UITableViewController {
             analysisViewModel: analysisViewModel,
             downloadManager: downloadManager,
             isQueued: isQueued,
+            isPlayed: played,
             showsTranscript: showsTranscript,
             cleaningSummary: cleaningSummary,
             onDownload: downloadButtonHandler(for: indexPath),
@@ -730,6 +851,7 @@ final class EpisodeTableViewCell: UITableViewCell {
         analysisViewModel: AnalysisUIViewModel,
         downloadManager: DownloadManager,
         isQueued: Bool,
+        isPlayed: Bool,
         showsTranscript: Bool,
         cleaningSummary: ((String) -> EpisodeCleaningSummary?)?,
         onDownload: @escaping () -> Void,
@@ -744,7 +866,8 @@ final class EpisodeTableViewCell: UITableViewCell {
         self.rowIndex = index
 
         titleLabel.text = episode.title
-        dateLabel.text = EpisodeListFormatting.localizedDate(from: episode.pubDate)
+        let date = EpisodeListFormatting.localizedDate(from: episode.pubDate)
+        dateLabel.text = isPlayed ? "\(date)  •  ✓ Played" : date
 
         downloadButton.accessibilityIdentifier = "downloadButton_\(index)"
         applyQueueDisplay(isQueued: isQueued, index: index)
@@ -761,6 +884,7 @@ final class EpisodeTableViewCell: UITableViewCell {
         )
 
         cellAccessibilityValue = EpisodeListFormatting.iso8601String(from: episode.pubDate)
+            + (isPlayed ? ", Played" : "")
 
         // Single `episodeCell_*` on the UITableViewCell only — never also on
         // textStack. Duplicate IDs make `app.descendants[.any]["episodeCell_N"]`
@@ -787,7 +911,9 @@ final class EpisodeTableViewCell: UITableViewCell {
             textStack.isAccessibilityElement = true
             textStack.accessibilityTraits = .button
             textStack.accessibilityLabel = episode.title
-            textStack.accessibilityHint = "Plays this episode."
+            textStack.accessibilityHint = isPlayed
+                ? "Shows replay and transcript options."
+                : "Plays this episode."
             textStack.accessibilityValue = cellAccessibilityValue
             textStack.onActivate = { [weak self] in self?.onPlay?() }
         } else {
@@ -1112,6 +1238,7 @@ enum EpisodeTableViewCellLayoutTesting {
             analysisViewModel: analysisViewModel,
             downloadManager: downloadManager,
             isQueued: isQueued,
+            isPlayed: false,
             showsTranscript: false,
             cleaningSummary: nil,
             onDownload: {},

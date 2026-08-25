@@ -111,6 +111,18 @@ struct AppShellView: View {
                     .accessibilitySortPriority(1)
             }
         }
+        .overlay(alignment: .bottom) {
+            if let episodeID = model.replayReadyEpisodeID,
+               let lookup = model.podcastStore.episodeLookup(id: episodeID) {
+                ReplayReadyBanner(title: lookup.episode.title) {
+                    model.replayFromBeginning(episodeID: episodeID)
+                } onDismiss: {
+                    model.dismissReplayReadyBanner()
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, (showsMiniPlayerInShellInset ? MiniPlayerBar.shellOverlayClearance : tabBarHeight) + 12)
+            }
+        }
         .sheet(isPresented: $model.isFullPlayerPresented) {
             if let engine = model.engine {
                 NavigationStack {
@@ -272,7 +284,7 @@ struct AppShellView: View {
             onMarkPlayed: { model.markPlayedWithUndo(episodeID: $0) },
             onRestore: { model.restoreQueueMutation($0) },
             onCommitPlayed: { model.commitQueueMutation($0) },
-            onRemoveDownload: { model.removeDownloadAndPreparation(episodeID: $0) },
+            onRemoveDownload: { model.removeDownloadedAudioAndPreparation(episodeID: $0) },
             onAddToUpNext: { model.addAndPrepare(episodeID: $0) },
             onClearUpNext: { model.clearUpNext() },
             onRestoreUpNext: { model.restoreUpNext($0) },
@@ -427,6 +439,30 @@ struct AppShellView: View {
     }
 }
 
+private struct ReplayReadyBanner: View {
+    let title: String
+    let onPlay: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.tint)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Ready to replay").font(.subheadline.weight(.semibold))
+                Text(title).font(.caption).lineLimit(1).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            Button("Not now", action: onDismiss)
+            Button("Play", action: onPlay).buttonStyle(.borderedProminent)
+        }
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("replayReadyBanner")
+    }
+}
+
 /// Hosts existing PodcastDetailView for a library subscription (store-backed, no network).
 private struct LibraryPodcastDetailView: View {
     @Bindable var model: AppShellModel
@@ -487,7 +523,13 @@ private struct LibraryPodcastDetailView: View {
                 transcriptExists: { model.transcriptExists(for: $0) },
                 onViewTranscript: { model.presentTranscript(for: $0) },
                 transcriptAffordanceGeneration: model.transcriptAffordanceGeneration,
-                cleaningSummary: { model.cleaningSummary(for: $0) }
+                cleaningSummary: { model.cleaningSummary(for: $0) },
+                isPlayed: { model.resumeStore.isPlayed($0) },
+                playedEpisodeActionState: { model.playedEpisodeActionState(for: $0) },
+                onPrepareReplay: { model.prepareReplay(episodeID: $0) },
+                onRetryReplay: { model.retryReplayPreparation(episodeID: $0) },
+                onReplayFromBeginning: { model.replayFromBeginning(episodeID: $0) },
+                episodeListRevision: model.episodeListRevision
             )
         }
         .navigationTitle(summary.title)

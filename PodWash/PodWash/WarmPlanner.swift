@@ -12,6 +12,19 @@ import Observation
 /// for source compatibility with ADR-029 tests, while exposing durable user-facing jobs.
 @MainActor
 @Observable final class WarmPlanner {
+    private enum PreparationRequestKind: Equatable {
+        case replay
+        case manualQueue
+        case automatic
+
+        var isUserRequested: Bool { self != .automatic }
+    }
+
+    private struct PreparationRequest {
+        let item: ComingUpItem
+        let kind: PreparationRequestKind
+    }
+
     var onJobsChanged: (() -> Void)?
     /// Keep the selected next episode plus multiple likely follow-ons warm.
     static let peekCount = 4
@@ -54,10 +67,12 @@ import Observation
 
     /// Cancel in-flight warm work and start warming `items` (up to peek / cap).
     func reaim(at items: [ComingUpItem]) {
-        reaim(items: Array(items.prefix(Self.peekCount)), manualEpisodeIDs: [])
+        reaim(requests: Array(items.prefix(Self.peekCount)).map {
+            PreparationRequest(item: $0, kind: .automatic)
+        })
     }
 
-    private func reaim(items: [ComingUpItem], manualEpisodeIDs: Set<String>) {
+    private func reaim(requests: [PreparationRequest]) {
         warmGeneration += 1
         let generation = warmGeneration
         workerTask?.cancel()
@@ -68,12 +83,12 @@ import Observation
             // genuinely serial even when an adapter observes cancellation late.
             await previousTask?.value
             guard let self else { return }
-            for item in items {
+            for request in requests {
                 guard generation == self.warmGeneration, !Task.isCancelled else { return }
                 await self.warmOne(
-                    item,
+                    request.item,
                     generation: generation,
-                    isUserRequested: manualEpisodeIDs.contains(item.episodeID)
+                    kind: request.kind
                 )
             }
         }
@@ -81,7 +96,24 @@ import Observation
 
     /// Manual Up Next is always prepared before predictions. Duplicates retain the
     /// listener-visible manual ordering and the worker remains deliberately serial.
-    func reaim(manualQueueIDs: [String], predicted: [ComingUpItem]) {
+    func reaim(
+        replayEpisodeID: String? = nil,
+        manualQueueIDs: [String],
+        predicted: [ComingUpItem]
+    ) {
+        let replay = replayEpisodeID.flatMap { id -> PreparationRequest? in
+            guard let lookup = podcastStore.episodeLookup(id: id) else { return nil }
+            return PreparationRequest(
+                item: ComingUpItem(
+                    episodeID: id,
+                    episodeTitle: lookup.episode.title,
+                    podcastTitle: lookup.podcastTitle,
+                    feedURL: lookup.feedURL,
+                    isBinge: podcastStore.isBinge(feedURL: lookup.feedURL)
+                ),
+                kind: .replay
+            )
+        }
         let manual = manualQueueIDs.compactMap { id -> ComingUpItem? in
             guard let lookup = podcastStore.episodeLookup(id: id) else { return nil }
             return ComingUpItem(
@@ -92,10 +124,25 @@ import Observation
                 isBinge: podcastStore.isBinge(feedURL: lookup.feedURL)
             )
         }
-        var seen = Set<String>()
         let automatic = predicted.filter { !manualQueueIDs.contains($0.episodeID) }
-        let ordered = manual + Array(automatic.prefix(Self.peekCount))
-        reaim(items: ordered, manualEpisodeIDs: Set(manualQueueIDs))
+        let ordered = (replay.map { [$0] } ?? [])
+            + manual.map { PreparationRequest(item: $0, kind: .manualQueue) }
+            + Array(automatic.prefix(Self.peekCount)).map {
+                PreparationRequest(item: $0, kind: .automatic)
+            }
+        var seen = Set<String>()
+        reaim(requests: ordered.filter { seen.insert($0.item.episodeID).inserted })
+    }
+
+    /// Stops the serial worker and waits for it to settle so callers can safely
+    /// replace an episode's on-disk artifacts without late writes from old work.
+    func quiesce() async {
+        warmGeneration += 1
+        workerTask?.cancel()
+        let previousTask = workerTask
+        workerTask = nil
+        await previousTask?.value
+        warmingEpisodeIDs.removeAll()
     }
 
     func cancel() {
@@ -168,9 +215,11 @@ import Observation
     private func warmOne(
         _ item: ComingUpItem,
         generation: Int,
-        isUserRequested: Bool = false
+        kind: PreparationRequestKind = .automatic
     ) async {
         guard generation == warmGeneration, !Task.isCancelled else { return }
+        let isUserRequested = kind.isUserRequested
+        let isReplay = kind == .replay
         if !isUserRequested, warmedEpisodeIDs.count >= Self.warmCap,
            !warmedEpisodeIDs.contains(item.episodeID) {
             return
@@ -178,13 +227,14 @@ import Observation
         guard let lookup = podcastStore.episodeLookup(id: item.episodeID) else { return }
 
         let cleaningOn = cleaningStore.isChannelCleaningEnabled(forFeedURL: item.feedURL)
-        if !cleaningOn {
+        if !cleaningOn, !isReplay {
             warmedEpisodeIDs.insert(item.episodeID)
             updateJob(item, stage: .ready, detail: "Cleaning is off", generation: generation)
             return
         }
 
-        if isAnalysisReady(episodeID: item.episodeID, feedURL: item.feedURL),
+        if !isReplay,
+           isAnalysisReady(episodeID: item.episodeID, feedURL: item.feedURL),
            isLocallyDownloaded(episodeID: item.episodeID) {
             warmedEpisodeIDs.insert(item.episodeID)
             updateJob(item, stage: .ready, generation: generation)
@@ -195,28 +245,33 @@ import Observation
         defer { warmingEpisodeIDs.remove(item.episodeID) }
         updateJob(item, stage: .queued, generation: generation)
 
-        guard let remote = lookup.episode.audioURL else {
-            updateJob(item, stage: .needsAttention, detail: "No downloadable audio", generation: generation)
-            return
-        }
         do {
-            updateJob(item, stage: .downloading, estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: 0), generation: generation)
-            let localURL = try await downloadManager.download(
-                episodeID: item.episodeID,
-                from: remote
-            ) { [weak self] progress in
-                Task { @MainActor in
-                    self?.updateJob(
-                        item,
-                        stage: .downloading,
-                        estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: progress),
-                        generation: generation
-                    )
+            let localURL: URL
+            if let existing = downloadManager.localFileURL(for: item.episodeID) {
+                localURL = existing
+            } else {
+                guard let remote = lookup.episode.audioURL else {
+                    updateJob(item, stage: .needsAttention, detail: "No downloadable audio", generation: generation)
+                    return
+                }
+                updateJob(item, stage: .downloading, estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: 0), generation: generation)
+                localURL = try await downloadManager.download(
+                    episodeID: item.episodeID,
+                    from: remote
+                ) { [weak self] progress in
+                    Task { @MainActor in
+                        self?.updateJob(
+                            item,
+                            stage: .downloading,
+                            estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: progress),
+                            generation: generation
+                        )
+                    }
                 }
             }
             guard generation == warmGeneration, !Task.isCancelled else { return }
 
-            if !intervalCache.isAnalysisCompleted(
+            if isReplay || !intervalCache.isAnalysisCompleted(
                 episodeID: item.episodeID,
                 targetWords: settingsStore.activeNormalizedTargetSet()
             ) {
@@ -285,7 +340,7 @@ import Observation
                     retryCount: retryCount,
                     generation: generation
                 )
-                scheduleRetry(item, generation: generation, delay: delay)
+                scheduleRetry(item, generation: generation, delay: delay, kind: kind)
                 return
             }
             if isUserRequested || warmedEpisodeIDs.count < Self.warmCap
@@ -325,18 +380,23 @@ import Observation
                 retryCount: retryCount,
                 generation: generation
             )
-            scheduleRetry(item, generation: generation, delay: delay)
+            scheduleRetry(item, generation: generation, delay: delay, kind: kind)
             PlaybackDiagnostics.error(
                 "WarmPlanner failed episodeID=\(item.episodeID) error=\(error.localizedDescription)"
             )
         }
     }
 
-    private func scheduleRetry(_ item: ComingUpItem, generation: Int, delay: TimeInterval) {
+    private func scheduleRetry(
+        _ item: ComingUpItem,
+        generation: Int,
+        delay: TimeInterval,
+        kind: PreparationRequestKind
+    ) {
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(delay))
             guard let self, generation == self.warmGeneration else { return }
-            await self.warmOne(item, generation: generation)
+            await self.warmOne(item, generation: generation, kind: kind)
         }
     }
 

@@ -198,7 +198,7 @@ final class DownloadManagerTests: XCTestCase {
         XCTAssertEqual(localPlayback?.scheme, "file")
         XCTAssertEqual(localPlayback?.path, localURL.path)
 
-        try manager.deleteDownload(episodeID: Self.fixtureEpisodeID)
+        try manager.removeAudio(episodeID: Self.fixtureEpisodeID)
 
         let afterDelete = resolver.playbackURL(for: episode)
         XCTAssertEqual(afterDelete?.absoluteString, Self.fixtureRemoteURLString)

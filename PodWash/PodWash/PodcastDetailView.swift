@@ -26,6 +26,12 @@ struct PodcastDetailView: View {
     var transcriptAffordanceGeneration: Int = 0
     /// Slice 29 — cleaning summary from IntervalCache (nil = miss / omit).
     var cleaningSummary: ((String) -> EpisodeCleaningSummary?)? = nil
+    var isPlayed: ((String) -> Bool)? = nil
+    var playedEpisodeActionState: ((String) -> PlayedEpisodeActionState)? = nil
+    var onPrepareReplay: ((String) -> Void)? = nil
+    var onRetryReplay: ((String) -> Void)? = nil
+    var onReplayFromBeginning: ((String) -> Void)? = nil
+    var episodeListRevision: Int = 0
     @State private var queueRevision = 0
     /// Landscape / short windows (~402pt) — keep episodeList tall enough to hit cells.
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -66,6 +72,7 @@ struct PodcastDetailView: View {
     private func loadedView(_ feed: PodcastFeed) -> some View {
         let _ = queueRevision
         let _ = transcriptAffordanceGeneration
+        let _ = episodeListRevision
         return VStack(alignment: .leading, spacing: 0) {
             podcastHeader(feed)
             EpisodeListView(
@@ -80,7 +87,13 @@ struct PodcastDetailView: View {
                 transcriptExists: transcriptExists,
                 onViewTranscript: onViewTranscript,
                 transcriptAffordanceGeneration: transcriptAffordanceGeneration,
-                cleaningSummary: cleaningSummary
+                cleaningSummary: cleaningSummary,
+                isPlayed: isPlayed,
+                playedEpisodeActionState: playedEpisodeActionState,
+                onPrepareReplay: onPrepareReplay,
+                onRetryReplay: onRetryReplay,
+                onReplayFromBeginning: onReplayFromBeginning,
+                episodeListRevision: episodeListRevision
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             // Prefer list height over header intrinsic size when the window is short

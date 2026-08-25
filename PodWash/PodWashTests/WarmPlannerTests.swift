@@ -89,6 +89,29 @@ final class WarmPlannerTests: XCTestCase {
         )
     }
 
+    func testReplayReanalyzesExistingAudioEvenWhenCleaningIsOff() async throws {
+        let counter = CountingEpisodeAnalyzer()
+        let env = try makeEnv(cleaningOn: false, analyzer: counter)
+        try installLocalDownload(for: "warm-ep-1")
+
+        env.planner.reaim(
+            replayEpisodeID: "warm-ep-1",
+            manualQueueIDs: [],
+            predicted: []
+        )
+
+        await waitUntil(timeout: 5.0) {
+            env.planner.job(for: "warm-ep-1")?.stage == .ready
+        }
+
+        XCTAssertEqual(counter.analyzeCallCount, 1)
+        XCTAssertEqual(
+            StubDownloadURLProtocol.chunksDelivered,
+            0,
+            "Replay should reuse an existing audio download instead of downloading it again."
+        )
+    }
+
     func testWarmTargetPreparesAtLeastTwoFollowOnEpisodes() async throws {
         let env = try makeEnv(cleaningOn: true, episodeCount: 4)
         let candidates = (1...4).map { comingUp("warm-ep-\($0)") }

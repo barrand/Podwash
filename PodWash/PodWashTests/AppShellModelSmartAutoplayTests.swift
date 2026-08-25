@@ -99,6 +99,30 @@ final class AppShellModelSmartAutoplayTests: XCTestCase {
         model.stopAndDismissPlayer()
     }
 
+    func testRemovingDownloadedAudioKeepsPlayedStateAndTranscript() throws {
+        let persistence = harness.makeController()
+        try seedTwoShows(persistence: persistence)
+        try installLocalDownload(for: "a-1")
+        let transcriptCache = TranscriptCache(
+            baseDirectory: downloadsDirectory.appendingPathComponent("transcripts", isDirectory: true)
+        )
+        try transcriptCache.store(
+            [TimedWord(word: "saved", start: 0, end: 1)],
+            episodeID: "a-1"
+        )
+
+        let model = makeShell(persistence: persistence, transcriptCache: transcriptCache)
+        try model.resumeStore.setPlayed(true, for: "a-1")
+
+        model.removeDownloadedAudio(episodeID: "a-1")
+        waitUntil(timeout: 2.0) {
+            model.downloadManager.localFileURL(for: "a-1") == nil
+        }
+
+        XCTAssertTrue(model.resumeStore.isPlayed("a-1"))
+        XCTAssertTrue(transcriptCache.exists(episodeID: "a-1"))
+    }
+
     func testPreparingNextWhenWarmMiss() throws {
         let persistence = harness.makeController()
         try seedTwoShows(persistence: persistence)
@@ -314,7 +338,10 @@ final class AppShellModelSmartAutoplayTests: XCTestCase {
         try FileManager.default.copyItem(at: source, to: destination)
     }
 
-    private func makeShell(persistence: PersistenceController) -> AppShellModel {
+    private func makeShell(
+        persistence: PersistenceController,
+        transcriptCache: TranscriptCache = .applicationSupport
+    ) -> AppShellModel {
         let commands = RemoteCommandCoordinator(commands: MPRemoteCommandCenterAdapter())
         let context = persistence.viewContext
         let downloadConfig = URLSessionConfiguration.ephemeral
@@ -332,7 +359,8 @@ final class AppShellModelSmartAutoplayTests: XCTestCase {
             episodeAnalyzer: InstantEpisodeAnalyzer(),
             settingsStore: makeIsolatedSettingsStore(),
             fixtureLibraryModeForTesting: false,
-            downloadManager: testDownloadManager
+            downloadManager: testDownloadManager,
+            transcriptCache: transcriptCache
         )
         model.downloadsDirectoryForTesting = downloadsDirectory
         return model

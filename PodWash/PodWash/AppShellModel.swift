@@ -17,6 +17,14 @@ struct QueueUndoSnapshot: Equatable {
     let marksPlayed: Bool
 }
 
+enum PlayedEpisodeActionState: Equatable {
+    case replayNow
+    case prepare(requiresDownload: Bool)
+    case preparing(String)
+    case failed(String)
+    case blocked(activeEpisodeTitle: String)
+}
+
 @MainActor @Observable
 final class AppShellModel {
     enum AnalysisRecoveryState: Equatable {
@@ -143,6 +151,10 @@ final class AppShellModel {
 
     /// Bumped after playback prepare when a transcript file exists — refreshes episode-row affordance.
     private(set) var transcriptAffordanceGeneration = 0
+    /// Bumped when listener-visible episode history or replay availability changes.
+    private(set) var episodeListRevision = 0
+    private(set) var replayPreparationEpisodeID: String?
+    private(set) var replayReadyEpisodeID: String?
 
     /// Transcript sheet presentation (Slice 26). Non-nil when the sheet should show.
     var transcriptSheetEpisodeID: String? = nil
@@ -277,7 +289,7 @@ final class AppShellModel {
             podcastStore: podcastStore,
             jobStore: analysisJobStore
         )
-        warmPlanner?.onJobsChanged = { [weak self] in self?.refreshQueuePresentation() }
+        warmPlanner?.onJobsChanged = { [weak self] in self?.handlePreparationJobsChanged() }
         downloadStateHandlerID = self.downloadManager.addStateChangeHandler { [weak self] in
             self?.refreshQueuePresentation()
         }
@@ -1012,13 +1024,138 @@ final class AppShellModel {
         refreshQueuePresentation()
 
         for episodeID in episodeIDs {
-            await downloadManager.cancel(episodeID: episodeID)
-            try? downloadManager.deleteDownload(episodeID: episodeID)
+            await discardAllLocalEpisodeData(episodeID: episodeID)
         }
 
         _ = try? podcastStore.unsubscribe(feedURL: feedURL)
         scheduleWarmForComingUp()
         refreshQueuePresentation()
+    }
+
+    /// Removes only the audio download; a listener can still revisit the episode's
+    /// transcript and prior preparation until they explicitly prepare a fresh replay.
+    func removeDownloadedAudio(episodeID: String) {
+        Task { [weak self] in
+            guard let self else { return }
+            await self.downloadManager.cancel(episodeID: episodeID)
+            try? self.downloadManager.removeAudio(episodeID: episodeID)
+            self.episodeListRevision &+= 1
+            self.refreshQueuePresentation()
+        }
+    }
+
+    private func purgeAnalysisArtifacts(episodeID: String) {
+        if transcriptSheetEpisodeID == episodeID {
+            dismissTranscript()
+        }
+        try? transcriptCache.remove(episodeID: episodeID)
+        try? intervalCache.remove(episodeID: episodeID)
+        try? artifactStore.remove(episodeID: episodeID)
+        transcriptAffordanceGeneration &+= 1
+        episodeListRevision &+= 1
+    }
+
+    private func discardAllLocalEpisodeData(episodeID: String) async {
+        await downloadManager.cancel(episodeID: episodeID)
+        try? downloadManager.removeAudio(episodeID: episodeID)
+        purgeAnalysisArtifacts(episodeID: episodeID)
+    }
+
+    func playedEpisodeActionState(for episodeID: String) -> PlayedEpisodeActionState {
+        guard let lookup = podcastStore.episodeLookup(id: episodeID) else {
+            return .prepare(requiresDownload: true)
+        }
+
+        if replayPreparationEpisodeID == episodeID {
+            if let job = warmPlanner?.job(for: episodeID) {
+                switch job.stage {
+                case .ready:
+                    return .replayNow
+                case .needsAttention:
+                    return .failed("Preparation failed")
+                case .queued, .downloading, .transcribing, .checkingAds, .adCheckDelayed:
+                    return .preparing(job.compactShelfStatus())
+                }
+            }
+            return .preparing("Waiting to prepare")
+        }
+
+        if let activeID = replayPreparationEpisodeID,
+           let activeJob = warmPlanner?.job(for: activeID),
+           activeJob.stage != .ready,
+           activeJob.stage != .needsAttention {
+            let title = podcastStore.episodeLookup(id: activeID)?.episode.title ?? "another episode"
+            return .blocked(activeEpisodeTitle: title)
+        }
+
+        if warmPlanner?.isReadyOffline(episodeID: episodeID, feedURL: lookup.feedURL) == true {
+            return .replayNow
+        }
+        return .prepare(requiresDownload: downloadManager.localFileURL(for: episodeID) == nil)
+    }
+
+    func prepareReplay(episodeID: String) {
+        guard resumeStore.isPlayed(episodeID), podcastStore.episodeLookup(id: episodeID) != nil else { return }
+        if replayPreparationEpisodeID == episodeID { return }
+        if let activeID = replayPreparationEpisodeID,
+           let activeJob = warmPlanner?.job(for: activeID),
+           activeJob.stage != .ready,
+           activeJob.stage != .needsAttention {
+            return
+        }
+
+        if let retiredID = replayPreparationEpisodeID {
+            warmPlanner?.removeJob(episodeID: retiredID)
+        }
+        replayPreparationEpisodeID = episodeID
+        replayReadyEpisodeID = nil
+        episodeListRevision &+= 1
+
+        if nowPlayingEpisodeID == episodeID {
+            stopAndDismissPlayer()
+        }
+        purgeAnalysisArtifacts(episodeID: episodeID)
+
+        Task { [weak self] in
+            guard let self else { return }
+            await self.warmPlanner?.quiesce()
+            guard self.replayPreparationEpisodeID == episodeID else { return }
+            await self.downloadManager.cancel(episodeID: episodeID)
+            self.purgeAnalysisArtifacts(episodeID: episodeID)
+            if self.downloadManager.localFileURL(for: episodeID) == nil {
+                try? self.downloadManager.removeAudio(episodeID: episodeID)
+            }
+            self.warmPlanner?.removeJob(episodeID: episodeID)
+            self.scheduleWarmForComingUp()
+            self.refreshQueuePresentation()
+        }
+    }
+
+    func retryReplayPreparation(episodeID: String) {
+        guard replayPreparationEpisodeID == episodeID else { return }
+        warmPlanner?.resetJobForRetry(episodeID: episodeID)
+        replayReadyEpisodeID = nil
+        episodeListRevision &+= 1
+        scheduleWarmForComingUp()
+    }
+
+    func replayFromBeginning(episodeID: String) {
+        guard playedEpisodeActionState(for: episodeID) == .replayNow else { return }
+        try? resumeStore.resetForReplay(episodeID)
+        replayPreparationEpisodeID = nil
+        replayReadyEpisodeID = nil
+        warmPlanner?.removeJob(episodeID: episodeID)
+        episodeListRevision &+= 1
+        play(episodeID: episodeID)
+    }
+
+    func dismissReplayReadyBanner() {
+        if let episodeID = replayPreparationEpisodeID {
+            warmPlanner?.removeJob(episodeID: episodeID)
+        }
+        replayPreparationEpisodeID = nil
+        replayReadyEpisodeID = nil
+        episodeListRevision &+= 1
     }
 
     /// Mini-player Next control: advances to the first episode in manual Up Next.
@@ -1056,7 +1193,7 @@ final class AppShellModel {
 
     private func handleEpisodeMarkedPlayed(_ episodeID: String) {
         if settingsStore.autoDeleteAfterPlayedEnabled {
-            removeDownloadAndPreparation(episodeID: episodeID)
+            removeDownloadedAudioAndPreparation(episodeID: episodeID)
         } else {
             refreshQueuePresentation()
         }
@@ -1137,22 +1274,18 @@ final class AppShellModel {
         try? queueStore.remove(episodeID)
         if !wasReady {
             warmPlanner?.removeJob(episodeID: episodeID)
-            Task { [downloadManager] in
-                await downloadManager.cancel(episodeID: episodeID)
-                try? downloadManager.deleteDownload(episodeID: episodeID)
+            Task { [weak self] in
+                await self?.discardAllLocalEpisodeData(episodeID: episodeID)
             }
         }
         scheduleWarmForComingUp()
         refreshQueuePresentation()
     }
 
-    func removeDownloadAndPreparation(episodeID: String) {
+    func removeDownloadedAudioAndPreparation(episodeID: String) {
         try? queueStore.remove(episodeID)
         warmPlanner?.removeJob(episodeID: episodeID)
-        Task { [downloadManager] in
-            await downloadManager.cancel(episodeID: episodeID)
-            try? downloadManager.deleteDownload(episodeID: episodeID)
-        }
+        removeDownloadedAudio(episodeID: episodeID)
         scheduleWarmForComingUp()
         refreshQueuePresentation()
     }
@@ -1196,7 +1329,7 @@ final class AppShellModel {
     /// Called after the five-second Undo window for a manual Mark as Played.
     func commitQueueMutation(_ snapshot: QueueUndoSnapshot) {
         guard snapshot.marksPlayed, settingsStore.autoDeleteAfterPlayedEnabled else { return }
-        removeDownloadAndPreparation(episodeID: snapshot.episodeID)
+        removeDownloadedAudioAndPreparation(episodeID: snapshot.episodeID)
     }
 
     /// Clears manual Up Next while retaining completed downloads. Returns the
@@ -1208,9 +1341,8 @@ final class AppShellModel {
             let wasReady = isReadyOffline(id)
             if !wasReady {
                 warmPlanner?.removeJob(episodeID: id)
-                Task { [downloadManager] in
-                    await downloadManager.cancel(episodeID: id)
-                    try? downloadManager.deleteDownload(episodeID: id)
+                Task { [weak self] in
+                    await self?.discardAllLocalEpisodeData(episodeID: id)
                 }
             }
         }
@@ -1251,9 +1383,24 @@ final class AppShellModel {
         // likely next episodes ready in the background.
         let smartPredictions = smartPredictionItems()
         warmPlanner?.reaim(
+            replayEpisodeID: replayPreparationEpisodeID,
             manualQueueIDs: queueStore.queueEpisodeIDs(),
             predicted: smartPredictions
         )
+    }
+
+    private func handlePreparationJobsChanged() {
+        refreshQueuePresentation()
+        episodeListRevision &+= 1
+        guard let episodeID = replayPreparationEpisodeID,
+              let job = warmPlanner?.job(for: episodeID)
+        else { return }
+        if job.stage == .ready {
+            replayReadyEpisodeID = episodeID
+        }
+        if (job.stage == .ready || job.stage == .needsAttention), transcriptExists(for: episodeID) {
+            transcriptAffordanceGeneration &+= 1
+        }
     }
 
     private func refreshQueuePresentation() {

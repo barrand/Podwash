@@ -190,14 +190,14 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         )
     }
 
-    func deleteDownload(episodeID: String) throws {
+    /// Removes downloaded audio and resumable partial data while retaining listener
+    /// history and analysis artifacts. Callers that intend to forget an episode
+    /// completely must explicitly purge its transcript and analysis separately.
+    func removeAudio(episodeID: String) throws {
         removeInstalledFiles(for: episodeID)
         resumeDataByEpisodeID.removeValue(forKey: episodeID)
         preferredFileExtensionByEpisodeID.removeValue(forKey: episodeID)
         stateStore.setState(.notDownloaded, for: episodeID)
-        try? TranscriptCache.applicationSupport.remove(episodeID: episodeID)
-        try? IntervalCache.applicationSupport.remove(episodeID: episodeID)
-        try? EpisodeAnalysisArtifactStore.applicationSupport.remove(episodeID: episodeID)
         notifyStateChanged()
     }
 

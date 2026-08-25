@@ -387,13 +387,14 @@ struct SettingsView: View {
             .accessibilityValue(store.autoDownloadEnabled ? "1" : "0")
 
             Toggle(isOn: $store.autoDeleteAfterPlayedEnabled) {
-                Text("Auto-delete after played")
+                Text("Remove downloads after playing")
             }
             .padding(.vertical, 4)
             .padding(.horizontal, 12)
             .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
             .accessibilityIdentifier("autoDeleteToggle")
-            .accessibilityLabel("Auto-delete after played")
+            .accessibilityLabel("Remove downloads after playing")
+            .accessibilityHint("Removes downloaded audio while keeping played status and transcripts.")
             .accessibilityValue(store.autoDeleteAfterPlayedEnabled ? "1" : "0")
         }
     }
