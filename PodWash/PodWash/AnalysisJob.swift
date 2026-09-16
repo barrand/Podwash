@@ -36,7 +36,7 @@ enum AnalysisJobStage: String, Codable, CaseIterable, Sendable {
         case .downloading: return "Downloading"
         case .transcribing: return "Preparing clean playback"
         case .checkingAds: return "Checking for ads"
-        case .ready: return "Ready"
+        case .ready: return "Ready to Play"
         case .adCheckDelayed: return "Ad check delayed"
         case .needsAttention: return "Needs attention"
         }

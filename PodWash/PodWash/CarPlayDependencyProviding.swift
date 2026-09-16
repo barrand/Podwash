@@ -12,7 +12,6 @@ protocol CarPlayDependencyProviding: AnyObject {
     var podcastStore: PodcastStore { get }
     var queueStore: QueueStore { get }
     var carPlayEpisodePlayer: (any EpisodePlaying)? { get }
-    var carPlayPlaybackEngine: PlaybackEngine? { get }
 }
 
 @MainActor

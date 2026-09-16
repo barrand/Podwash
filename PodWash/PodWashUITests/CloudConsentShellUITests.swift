@@ -95,7 +95,7 @@ final class CloudConsentShellUITests: XCTestCase {
 
         let consent = app.descendants(matching: .any)["cloudTranscriptConsentSheet"]
         XCTAssertTrue(consent.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Do you want PodWash to automatically skip ads?"].exists)
+        XCTAssertTrue(app.staticTexts["cloudConsentExplanation"].exists)
 
         app.buttons["cloudConsentEnableButton"].tap()
         XCTAssertFalse(consent.waitForExistence(timeout: 2), "Acceptance must dismiss the consent sheet")

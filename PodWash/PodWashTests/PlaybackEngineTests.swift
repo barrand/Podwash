@@ -15,6 +15,9 @@ final class NowPlayingInfoRecorder: NowPlayingInfoUpdating {
     private(set) var lastArtist: String?
     private(set) var lastElapsed: TimeInterval = 0
     private(set) var lastDuration: TimeInterval = 0
+    private(set) var lastPlaybackRate: Float = 0
+    private(set) var lastDefaultPlaybackRate: Float = 0
+    private(set) var clearCount = 0
     private(set) var updateCount = 0
 
     // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION.
@@ -24,13 +27,21 @@ final class NowPlayingInfoRecorder: NowPlayingInfoUpdating {
         title: String,
         artist: String,
         duration: TimeInterval,
-        elapsed: TimeInterval
+        elapsed: TimeInterval,
+        playbackRate: Float,
+        defaultPlaybackRate: Float
     ) {
         lastTitle = title
         lastArtist = artist
         lastElapsed = elapsed
         lastDuration = duration
+        lastPlaybackRate = playbackRate
+        lastDefaultPlaybackRate = defaultPlaybackRate
         updateCount += 1
+    }
+
+    func clearNowPlayingInfo() {
+        clearCount += 1
     }
 
     /// Slice 14 AC3 — elapsed/duration must track engine within ±0.25 s after each transport step.

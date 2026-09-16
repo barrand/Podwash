@@ -25,6 +25,8 @@ final class OverlayEngine {
     private nonisolated(unsafe) var audioPlayer: AVAudioPlayer?
     /// `nonisolated(unsafe)`: invalidated from `nonisolated deinit`.
     private nonisolated(unsafe) var silencePollTimer: Timer?
+    /// Keeps secondary overlay audio strictly subordinate to episode transport.
+    private nonisolated(unsafe) var timeControlObservation: NSKeyValueObservation?
     private var muteIntervals: [(start: TimeInterval, end: TimeInterval)] = []
     private var mode: MuteOverlayMode = .off
     private var assetID: String = "beep"
@@ -47,6 +49,11 @@ final class OverlayEngine {
         self.player = player
         self.eventRecorder = eventRecorder
         self.assetBundle = assetBundle
+        timeControlObservation = player.observe(\.timeControlStatus, options: [.initial, .new]) { [weak self] _, _ in
+            Task { @MainActor [weak self] in
+                self?.handleEpisodeTransportChange()
+            }
+        }
     }
 
     nonisolated deinit {
@@ -56,6 +63,8 @@ final class OverlayEngine {
         }
         silencePollTimer?.invalidate()
         silencePollTimer = nil
+        timeControlObservation?.invalidate()
+        timeControlObservation = nil
         audioPlayer?.stop()
         audioPlayer = nil
     }
@@ -249,13 +258,7 @@ final class OverlayEngine {
     ) {
         guard !isOverlayActive else { return }
         guard let audioPlayer else { return }
-
-        // Snapshot episode transport before secondary AVAudioPlayer.play() — on
-        // simulator the session handoff can park AVPlayer at rate 0 and stall the
-        // playhead (OverlaySyncTests playhead-wait timeouts).
-        let episodeWasPlaying =
-            player.timeControlStatus == .playing || abs(player.rate) > 0.0001
-        let resumeRate: Float = abs(player.rate) > 0.0001 ? player.rate : 1.0
+        guard player.timeControlStatus == .playing else { return }
 
         audioPlayer.currentTime = 0
         if Self.silenceOverlayForTests {
@@ -268,14 +271,9 @@ final class OverlayEngine {
         isOverlayActive = true
         activeSilenceInterval = interval
         eventRecorder?.overlayStart(at: time, assetID: assetID)
-        reassertEpisodePlaybackIfNeeded(wasPlaying: episodeWasPlaying, rate: resumeRate)
     }
 
     private func stopOverlay(at time: TimeInterval, recordEvent: Bool) {
-        let episodeWasPlaying =
-            player.timeControlStatus == .playing || abs(player.rate) > 0.0001
-        let resumeRate: Float = abs(player.rate) > 0.0001 ? player.rate : 1.0
-
         guard isOverlayActive else {
             audioPlayer?.pause()
             return
@@ -286,16 +284,24 @@ final class OverlayEngine {
         if recordEvent {
             eventRecorder?.overlayStop(at: time)
         }
-        reassertEpisodePlaybackIfNeeded(wasPlaying: episodeWasPlaying, rate: resumeRate)
     }
 
-    /// Keep the episode AVPlayer advancing after overlay start/stop (ADR-017 secondary player).
-    private func reassertEpisodePlaybackIfNeeded(wasPlaying: Bool, rate: Float) {
-        guard wasPlaying else { return }
-        guard player.timeControlStatus != .playing || abs(player.rate) < 0.0001 else { return }
-        player.playImmediately(atRate: rate > 0.0001 ? rate : 1.0)
-        if abs(player.rate) < 0.0001 {
-            player.rate = rate > 0.0001 ? rate : 1.0
+    private func handleEpisodeTransportChange() {
+        guard mode != .off else { return }
+        guard player.timeControlStatus == .playing else {
+            audioPlayer?.pause()
+            return
+        }
+        let time = player.currentTime().seconds
+        guard time.isFinite else { return }
+        if let interval = containingInterval(at: time) {
+            if isOverlayActive {
+                audioPlayer?.play()
+            } else {
+                startOverlay(at: interval.start, interval: interval)
+            }
+        } else if isOverlayActive {
+            stopOverlay(at: time, recordEvent: true)
         }
     }
 

@@ -11,8 +11,6 @@ import Foundation
 final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     private var coordinator: CarPlayCoordinator?
     private var nowPlayingUpdater: CarPlayNowPlayingUpdater?
-    /// Retained when no live engine exists yet so coordinator init stays non-optional.
-    private var idleEngine: PlaybackEngine?
 
     // Avoid MainActor/TaskLocal deinit crash under SWIFT_DEFAULT_ACTOR_ISOLATION
     // (same pattern as CarPlayCoordinator / LibraryViewModel).
@@ -28,22 +26,13 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let builder = CarPlayStoreBuilder(store: provider.podcastStore, queue: provider.queueStore)
         let presenting = CarPlayNowPlayingSystemAdapter()
 
-        let engine: PlaybackEngine
-        if let live = provider.carPlayPlaybackEngine {
-            engine = live
-            idleEngine = nil
-        } else {
-            // Lists work before phone playback; updater attaches to a silent idle engine.
-            let idle = PlaybackEngine(
-                url: FixtureAudio.bundledURL() ?? URL(fileURLWithPath: "/dev/null"),
-                title: "",
-                artist: "PodWash"
-            )
-            idleEngine = idle
-            engine = idle
-        }
-
-        let updater = CarPlayNowPlayingUpdater(engine: engine, presenting: presenting)
+        // Browsing CarPlay works before the listener starts an episode. Playback state is
+        // supplied by MPNowPlayingInfoCenter once a real engine becomes active; never create
+        // a silent placeholder engine that can own an audio session or go stale.
+        let updater = CarPlayNowPlayingUpdater(
+            engine: nil,
+            presenting: presenting
+        )
         nowPlayingUpdater = updater
 
         let coordinator = CarPlayCoordinator(
@@ -62,7 +51,6 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         coordinator?.clearInterfaceController()
         coordinator = nil
         nowPlayingUpdater = nil
-        idleEngine = nil
         _ = interfaceController
     }
 }

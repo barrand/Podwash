@@ -107,6 +107,31 @@ enum PlaybackDiagnostics {
         }
     }
 
+    static func logAudioSessionDeactivated(error: Error?) {
+        if let error {
+            self.error("audioSession deactivate failed error=\(error.localizedDescription)")
+        } else {
+            info("audioSession inactive")
+        }
+    }
+
+    static func logAudioSessionEvent(_ event: AudioSessionEvent) {
+        switch event {
+        case .interruptionBegan:
+            info("audioSession event=interruptionBegan")
+        case .interruptionEnded(let shouldResume):
+            info("audioSession event=interruptionEnded shouldResume=\(shouldResume)")
+        case .outputDisconnected:
+            info("audioSession event=outputDisconnected")
+        case .noSuitableOutput:
+            warning("audioSession event=noSuitableOutput")
+        case .mediaServicesLost:
+            warning("audioSession event=mediaServicesLost")
+        case .mediaServicesReset:
+            warning("audioSession event=mediaServicesReset")
+        }
+    }
+
     static func logPreparePlaybackStart(episodeID: String, cleaning: Bool, localFile: Bool) {
         info("preparePlayback start episodeID=\(episodeID) cleaning=\(cleaning) localFile=\(localFile)")
     }

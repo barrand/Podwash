@@ -227,6 +227,37 @@ final class LibraryUITests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testLastEpisodeInLongListRemainsTappableAboveMiniPlayer() throws {
+        let app = launchLibraryApp(
+            extraArguments: ["-UITestFixtureLibraryLongEpisodes", "-UITestChannelCleaningOff"]
+        )
+        navigateToEpisodeList(app)
+
+        // Start the persistent chrome, then exercise the actual bottom-of-list
+        // condition rather than merely checking a static content inset.
+        let first = element("episodeCell_0", in: app)
+        XCTAssertTrue(first.waitForExistence(timeout: fixtureTimeout))
+        first.tap()
+        let miniPlayer = element("miniPlayer", in: app)
+        XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout))
+
+        let last = element("episodeCell_23", in: app)
+        for _ in 0 ..< 16 where !last.isHittable || last.frame.maxY > miniPlayer.frame.minY {
+            app.swipeUp()
+        }
+        XCTAssertTrue(last.exists, "The long fixture must contain its final episode")
+        XCTAssertTrue(last.isHittable, "The final episode must scroll above the mini-player")
+        XCTAssertLessThanOrEqual(
+            last.frame.maxY,
+            miniPlayer.frame.minY,
+            "The final episode must not be covered by mini-player chrome"
+        )
+
+        last.tap()
+        XCTAssertEqual(miniPlayer.label, "Long fixture episode 24", "The final episode row must receive the tap")
+    }
+
     // MARK: - Task 012: tap episode downloads before play when Clean Profanity on
 
     @MainActor

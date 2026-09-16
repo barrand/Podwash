@@ -48,6 +48,51 @@ nonisolated final class PodcastStore: @unchecked Sendable {
         )
     }
 
+    /// Transactional RSS merge.  Unlike the legacy subscription upsert this
+    /// never removes an episode merely because a publisher omitted it from a
+    /// response, and it refuses cross-show identity collisions.
+    func mergeRefreshedFeed(_ feed: PodcastFeed, feedURL: URL) throws {
+        try context.performAndWait {
+            guard let podcast = self.fetchPodcast(feedURLString: feedURL.absoluteString) else { return }
+            let incoming = feed.episodes.filter { !$0.id.isEmpty }
+            guard Set(incoming.map(\.id)).count == incoming.count else { throw RSSParserError.malformedFeed }
+            for episode in incoming {
+                let request = CDEpisode.fetchRequest()
+                request.predicate = NSPredicate(format: "id == %@", episode.id)
+                request.fetchLimit = 1
+                if let collision = try self.context.fetch(request).first,
+                   collision.podcast != podcast {
+                    // The application still assumes globally unique IDs.  Do
+                    // not make a feed refresh destructive when that assumption
+                    // is violated by a publisher.
+                    throw RSSParserError.malformedFeed
+                }
+            }
+            podcast.title = feed.title
+            podcast.artworkURLString = feed.artworkURL?.absoluteString
+            podcast.feedDescription = feed.description
+            var ordered = podcast.episodes?.mutableCopy() as? NSMutableOrderedSet ?? NSMutableOrderedSet()
+            for episode in incoming {
+                let request = CDEpisode.fetchRequest()
+                request.predicate = NSPredicate(format: "id == %@", episode.id)
+                request.fetchLimit = 1
+                let row = try self.context.fetch(request).first ?? CDEpisode(context: self.context)
+                row.id = episode.id
+                row.title = episode.title
+                row.pubDate = episode.pubDate
+                row.artworkURLString = episode.artworkURL?.absoluteString
+                row.showNotes = episode.showNotes
+                // A different enclosure is metadata only: a completed local
+                // asset is intentionally not replaced or re-associated here.
+                row.audioURLString = episode.audioURL?.absoluteString
+                row.podcast = podcast
+                if !ordered.contains(row) { ordered.add(row) }
+            }
+            podcast.episodes = ordered
+            try self.context.save()
+        }
+    }
+
     /// Compatibility for pre–Slice 22 callers; upserts under `FixtureFeed.fixtureFeedURL`.
     func save(_ feed: PodcastFeed) throws {
         try save(feed, feedURL: FixtureFeed.fixtureFeedURL)

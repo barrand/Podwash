@@ -11,7 +11,7 @@ import os
 
 @MainActor
 @Observable
-final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
+final class PlaybackEngine: PlaybackPausing, PlaybackTransporting, AudioSessionEventHandling {
     /// Discrete playback rates supported by the speed control (Slice 12).
     /// Nonisolated so SettingsStore (nonisolated) can snap default rates.
     nonisolated static let supportedRates: [Float] = [0.75, 1.0, 1.25, 1.5, 2.0, 3.0]
@@ -52,6 +52,14 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     /// `nonisolated(unsafe)`: cleared from `nonisolated deinit`.
     nonisolated(unsafe) var onPlaybackEnded: (() -> Void)?
 
+    /// Called after a system-caused pause has refreshed the live playhead. The shell
+    /// persists position here; it must not call `pause()` again and overwrite pending intent.
+    nonisolated(unsafe) var onSystemPause: (() -> Void)?
+
+    /// Media services reset invalidates AVFoundation objects. AppShellModel owns rebuilding
+    /// the complete playback stack rather than trying to mutate this engine in place.
+    nonisolated(unsafe) var onMediaServicesReset: (() -> Void)?
+
     /// Boundary time observer token for `.skip` intervals; removed on re-apply/deinit.
     /// `nonisolated(unsafe)`: only mutated on the main actor, but `deinit` (nonisolated)
     /// must read it to tear the observer down.
@@ -75,6 +83,12 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     /// Cleared by `pause()`. Lets seek-completion and a deferred run-loop turn
     /// re-engage playback when `playImmediately` no-ops after an exact seek.
     private var wantsPlayback = false
+    private enum AudioInterruptionState {
+        case normal
+        case interrupted(pendingPlay: Bool)
+    }
+    private var audioInterruptionState: AudioInterruptionState = .normal
+    private var mediaServicesInvalid = false
     /// `nonisolated(unsafe)`: invalidated from `nonisolated deinit` without a MainActor hop.
     private nonisolated(unsafe) var itemStatusObservation: NSKeyValueObservation?
     /// `nonisolated(unsafe)`: playback stall / waiting diagnostics.
@@ -160,7 +174,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         self.title = title
         self.artist = artist
         self.nowPlayingUpdater = nowPlayingUpdater ?? MPNowPlayingInfoCenterUpdater()
-        self.audioSessionConfigurator = audioSessionConfigurator ?? AVAudioSessionPlaybackConfigurator()
+        self.audioSessionConfigurator = audioSessionConfigurator ?? AudioSessionManager()
 
         PlaybackDiagnostics.logEngineCreated(url: playableURL, title: title)
 
@@ -210,12 +224,28 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
             itemStatus: player.currentItem?.status ?? .unknown,
             timeControl: PlaybackDiagnostics.timeControlLabel(player.timeControlStatus)
         )
+        if case .interrupted = audioInterruptionState {
+            audioInterruptionState = .interrupted(pendingPlay: true)
+            touchUI()
+            return
+        }
+        guard !mediaServicesInvalid else {
+            PlaybackDiagnostics.warning("play ignored — media services invalid")
+            return
+        }
+        guard audioSessionConfigurator.activatePlaybackSession() else {
+            pauseTransport(deactivateSession: false)
+            return
+        }
+        startPlaybackAfterActivation()
+    }
+
+    private func startPlaybackAfterActivation() {
         wantsPlayback = true
         if Self.silenceEpisodeForTests {
             player.isMuted = true
             player.volume = 0
         }
-        audioSessionConfigurator.activatePlaybackSession()
         startOrPendPlayback()
         startStallWatchdog()
         refreshCurrentTime()
@@ -227,6 +257,13 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
     }
 
     func pause() {
+        if case .interrupted = audioInterruptionState {
+            audioInterruptionState = .interrupted(pendingPlay: false)
+        }
+        pauseTransport(deactivateSession: true)
+    }
+
+    private func pauseTransport(deactivateSession: Bool) {
         wantsPlayback = false
         pendingPlayWhenReady = false
         suppressCurrentTimeSample = false
@@ -237,6 +274,9 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         touchUI()
         updateNowPlaying()
         onPlayPauseIntent?(false)
+        if deactivateSession {
+            audioSessionConfigurator.deactivatePlaybackSession()
+        }
     }
 
     private func handlePlaybackEnded() {
@@ -247,7 +287,63 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         refreshCurrentTime()
         touchUI()
         updateNowPlaying()
+        audioSessionConfigurator.deactivatePlaybackSession()
         onPlaybackEnded?()
+    }
+
+    // MARK: - Audio session events
+
+    func handleAudioSessionEvent(_ event: AudioSessionEvent) {
+        switch event {
+        case .interruptionBegan:
+            guard case .normal = audioInterruptionState else {
+                PlaybackDiagnostics.info("audioSession interruption duplicate begin ignored")
+                return
+            }
+            audioInterruptionState = .interrupted(pendingPlay: wantsPlayback)
+            skipSeekGeneration &+= 1
+            pauseTransport(deactivateSession: false)
+            onSystemPause?()
+
+        case .interruptionEnded(let shouldResume):
+            guard case let .interrupted(pendingPlay) = audioInterruptionState else {
+                PlaybackDiagnostics.info("audioSession interruption end without begin ignored")
+                return
+            }
+            audioInterruptionState = .normal
+            if pendingPlay && shouldResume && !mediaServicesInvalid {
+                play()
+            }
+
+        case .outputDisconnected, .noSuitableOutput:
+            if case .interrupted = audioInterruptionState {
+                audioInterruptionState = .interrupted(pendingPlay: false)
+            }
+            permanentlyPauseForSystemEvent()
+
+        case .mediaServicesLost:
+            mediaServicesInvalid = true
+            if case .interrupted = audioInterruptionState {
+                audioInterruptionState = .interrupted(pendingPlay: false)
+            }
+            permanentlyPauseForSystemEvent()
+
+        case .mediaServicesReset:
+            // iOS normally sends loss then reset, but a reset notification alone still means
+            // AVFoundation objects must be rebuilt rather than trusted.
+            mediaServicesInvalid = true
+            if case .interrupted = audioInterruptionState {
+                audioInterruptionState = .interrupted(pendingPlay: false)
+            }
+            permanentlyPauseForSystemEvent()
+            onMediaServicesReset?()
+        }
+    }
+
+    private func permanentlyPauseForSystemEvent() {
+        skipSeekGeneration &+= 1
+        pauseTransport(deactivateSession: true)
+        onSystemPause?()
     }
 
     /// Starts playback immediately when the item is ready; otherwise arms a one-shot
@@ -873,6 +969,8 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
         onPlayPauseIntent = nil
         onSeekCompleted = nil
         onPlaybackEnded = nil
+        onSystemPause = nil
+        onMediaServicesReset = nil
         if let endOfItemObserver {
             NotificationCenter.default.removeObserver(endOfItemObserver)
         }
@@ -1147,8 +1245,14 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting {
             title: title,
             artist: artist,
             duration: duration,
-            elapsed: currentTime
+            elapsed: currentTime,
+            playbackRate: wantsPlayback ? selectedRate : 0,
+            defaultPlaybackRate: selectedRate
         )
+    }
+
+    func clearNowPlayingInfo() {
+        nowPlayingUpdater.clearNowPlayingInfo()
     }
 
     private func loadDuration(from asset: AVAsset) async {

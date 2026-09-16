@@ -22,6 +22,8 @@ struct PodWashApp: App {
 
     /// Lock-screen / Control Center transport (ADR-011). Activated once at launch.
     private let remoteCommands: RemoteCommandCoordinator
+    /// One process-wide AVAudioSession owner. Engines are rebound as episodes change.
+    private let audioSessionManager: AudioSessionManager
 
     init() {
         FirebaseCloudBootstrap.configure()
@@ -52,11 +54,16 @@ struct PodWashApp: App {
         let commands = RemoteCommandCoordinator(commands: MPRemoteCommandCenterAdapter())
         commands.activate()
         remoteCommands = commands
+        audioSessionManager = AudioSessionManager()
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(persistence: persistence, remoteCommands: remoteCommands)
+            RootView(
+                persistence: persistence,
+                remoteCommands: remoteCommands,
+                audioSessionManager: audioSessionManager
+            )
                 .preferredColorScheme(.dark)
         }
     }

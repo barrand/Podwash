@@ -11,6 +11,7 @@ import UIKit
 struct RootView: View {
     let persistence: PersistenceController
     let remoteCommands: RemoteCommandCoordinator
+    let audioSessionManager: AudioSessionManager
 
     @State private var fixtureEngine: PlaybackEngine?
     @State private var fixtureFeedViewModel: EpisodeListViewModel?
@@ -23,10 +24,12 @@ struct RootView: View {
 
     init(
         persistence: PersistenceController,
-        remoteCommands: RemoteCommandCoordinator
+        remoteCommands: RemoteCommandCoordinator,
+        audioSessionManager: AudioSessionManager
     ) {
         self.persistence = persistence
         self.remoteCommands = remoteCommands
+        self.audioSessionManager = audioSessionManager
     }
 
     var body: some View {
@@ -146,13 +149,15 @@ struct RootView: View {
         let engine = PlaybackEngine(
             url: url,
             title: FixtureSkipOverride.fixtureTitle,
-            artist: FixtureSkipOverride.fixtureArtist
+            artist: FixtureSkipOverride.fixtureArtist,
+            audioSessionConfigurator: audioSessionManager
         )
         await engine.applySchedule(
             IntervalSchedule(intervals: [FixtureSkipOverride.stubSkipInterval])
         )
         fixtureEngine = engine
         remoteCommands.bind(engine)
+        audioSessionManager.bind(engine)
         // Auto-play is started from SkipOverridePlaybackView.onAppear after the
         // skip-override callback is wired (avoids a nil-handler race at t=2.0 s).
     }
@@ -174,10 +179,12 @@ struct RootView: View {
         let engine = PlaybackEngine(
             url: url,
             title: FixtureAudio.fixtureTitle,
-            artist: FixtureAudio.fixtureArtist
+            artist: FixtureAudio.fixtureArtist,
+            audioSessionConfigurator: audioSessionManager
         )
         fixtureEngine = engine
         remoteCommands.bind(engine)
+        audioSessionManager.bind(engine)
     }
 
     private func loadFixtureAudioIfNeeded() async {
@@ -187,10 +194,12 @@ struct RootView: View {
         let engine = PlaybackEngine(
             url: url,
             title: FixtureAudio.fixtureTitle,
-            artist: FixtureAudio.fixtureArtist
+            artist: FixtureAudio.fixtureArtist,
+            audioSessionConfigurator: audioSessionManager
         )
         fixtureEngine = engine
         remoteCommands.bind(engine)
+        audioSessionManager.bind(engine)
     }
 
     private func loadFixtureFeedIfNeeded() async {
@@ -286,7 +295,11 @@ struct RootView: View {
         else { return }
         guard appShellModel == nil else { return }
 
-        let model = AppShellModel(persistence: persistence, remoteCommands: remoteCommands)
+        let model = AppShellModel(
+            persistence: persistence,
+            remoteCommands: remoteCommands,
+            audioSessionManager: audioSessionManager
+        )
         // Seed/clear via the shell's store so LibraryViewModel reads the same context rows.
         if FixtureNowPlayingSession.shouldPreserveOnLaunch {
             // Skip wipe/reseed — queue, resume position, and active session survive (ADR-027 §8).

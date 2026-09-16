@@ -27,8 +27,8 @@ import Observation
 
     var onJobsChanged: (() -> Void)?
     /// Keep the selected next episode plus multiple likely follow-ons warm.
-    static let peekCount = 4
-    static let warmCap = 5
+    static let peekCount = UpcomingSelectionPolicy.readyTarget
+    static let warmCap = UpcomingSelectionPolicy.readyTarget
 
     private let downloadManager: DownloadManager
     private let analyzer: any EpisodeAnalyzing
@@ -124,12 +124,17 @@ import Observation
                 isBinge: podcastStore.isBinge(feedURL: lookup.feedURL)
             )
         }
-        let automatic = predicted.filter { !manualQueueIDs.contains($0.episodeID) }
-        let ordered = (replay.map { [$0] } ?? [])
-            + manual.map { PreparationRequest(item: $0, kind: .manualQueue) }
-            + Array(automatic.prefix(Self.peekCount)).map {
-                PreparationRequest(item: $0, kind: .automatic)
-            }
+        let selection = UpcomingSelectionPolicy().select(
+            currentEpisodeID: replayEpisodeID,
+            manualQueueIDs: manual.map(\.episodeID),
+            predictions: predicted,
+            automaticPreparationEnabled: settingsStore.autoDownloadEnabled
+        )
+        let byID = Dictionary(uniqueKeysWithValues: (manual + predicted).map { ($0.episodeID, $0) })
+        let ordered = (replay.map { [$0] } ?? []) + selection.compactMap { selected -> PreparationRequest? in
+            guard let item = byID[selected.episodeID] else { return nil }
+            return PreparationRequest(item: item, kind: selected.origin == .manual ? .manualQueue : .automatic)
+        }
         var seen = Set<String>()
         reaim(requests: ordered.filter { seen.insert($0.item.episodeID).inserted })
     }

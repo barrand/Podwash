@@ -25,10 +25,14 @@ final class AudioSessionConfiguringSpy: AudioSessionConfiguring {
     private(set) var recordedMode: AVAudioSession.Mode?
     private(set) var setActiveTrueCount = 0
 
-    func activatePlaybackSession() {
+    func activatePlaybackSession() -> Bool {
         recordedCategory = .playback
         recordedMode = .spokenAudio
         setActiveTrueCount += 1
+        return true
+    }
+
+    func deactivatePlaybackSession() {
     }
 }
 

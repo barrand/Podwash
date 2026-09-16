@@ -13,8 +13,11 @@ protocol NowPlayingInfoUpdating: AnyObject {
         title: String,
         artist: String,
         duration: TimeInterval,
-        elapsed: TimeInterval
+        elapsed: TimeInterval,
+        playbackRate: Float,
+        defaultPlaybackRate: Float
     )
+    func clearNowPlayingInfo()
 }
 
 final class MPNowPlayingInfoCenterUpdater: NowPlayingInfoUpdating {
@@ -27,13 +30,21 @@ final class MPNowPlayingInfoCenterUpdater: NowPlayingInfoUpdating {
         title: String,
         artist: String,
         duration: TimeInterval,
-        elapsed: TimeInterval
+        elapsed: TimeInterval,
+        playbackRate: Float,
+        defaultPlaybackRate: Float
     ) {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = [
             MPMediaItemPropertyTitle: title,
             MPMediaItemPropertyArtist: artist,
             MPMediaItemPropertyPlaybackDuration: duration,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: elapsed,
+            MPNowPlayingInfoPropertyPlaybackRate: playbackRate,
+            MPNowPlayingInfoPropertyDefaultPlaybackRate: defaultPlaybackRate,
         ]
+    }
+
+    func clearNowPlayingInfo() {
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 }

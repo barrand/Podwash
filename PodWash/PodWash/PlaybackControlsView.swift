@@ -232,7 +232,7 @@ struct PlaybackControlsView: View {
             onTogglePlayPause()
             return
         }
-        if engine.isPlaying {
+        if engine.isPlaybackRequested {
             engine.pause()
         } else {
             engine.play()

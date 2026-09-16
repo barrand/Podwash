@@ -377,13 +377,18 @@ struct SettingsView: View {
             .accessibilityValue(store.smartAutoplayEnabled ? "1" : "0")
 
             Toggle(isOn: $store.autoDownloadEnabled) {
-                Text("Auto-download new episodes")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Keep episodes ready automatically")
+                    Text("Prepares your next two choices. Automatic downloads use Wi-Fi.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             .padding(.vertical, 4)
             .padding(.horizontal, 12)
             .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
             .accessibilityIdentifier("autoDownloadToggle")
-            .accessibilityLabel("Auto-download new episodes")
+            .accessibilityLabel("Keep episodes ready automatically")
             .accessibilityValue(store.autoDownloadEnabled ? "1" : "0")
 
             Toggle(isOn: $store.autoDeleteAfterPlayedEnabled) {
@@ -625,6 +630,7 @@ struct CloudAdDetectionConsentSheet: View {
                     Text("Do you want PodWash to automatically skip ads?")
                         .font(.title2.weight(.bold))
                         .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("cloudConsentExplanation")
 
                     Text("PodWash can look for likely ad breaks. To do that, it sends the text from an on-device transcript and its timestamps to Gemini. It never sends the podcast audio.")
                         .foregroundStyle(.secondary)

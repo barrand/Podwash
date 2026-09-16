@@ -11,6 +11,7 @@ struct LibraryView: View {
     @Bindable var viewModel: LibraryViewModel
     var onDiscover: () -> Void
     var onRequestUnsubscribe: (PodcastSummary) -> Void
+    var onRefresh: (() async -> Void)? = nil
 
     var body: some View {
         Group {
@@ -25,6 +26,10 @@ struct LibraryView: View {
         .accessibilityIdentifier("libraryRoot")
         .accessibilityLabel("Library")
         .onAppear { viewModel.reload() }
+        .refreshable {
+            await onRefresh?()
+            viewModel.reload()
+        }
     }
 
     private var subscriptionList: some View {

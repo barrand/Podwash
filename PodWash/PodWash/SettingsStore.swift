@@ -33,6 +33,8 @@ nonisolated final class SettingsStore: @unchecked Sendable {
         static let unrelatedContentAction = "podwash.settings.unrelatedContentAction"
         static let muteOverlayMode = "podwash.settings.muteOverlayMode"
         static let smartAutoplayEnabled = "podwash.settings.smartAutoplayEnabled"
+        static let automaticPreparationMigrationVersion = "podwash.settings.automaticPreparationMigrationVersion"
+        static let automaticPreparationNoticeDismissed = "podwash.settings.automaticPreparationNoticeDismissed"
 
         static let all: [String] = [
             enabledCategories,
@@ -48,6 +50,8 @@ nonisolated final class SettingsStore: @unchecked Sendable {
             unrelatedContentAction,
             muteOverlayMode,
             smartAutoplayEnabled,
+            automaticPreparationMigrationVersion,
+            automaticPreparationNoticeDismissed,
         ]
     }
 
@@ -73,6 +77,9 @@ nonisolated final class SettingsStore: @unchecked Sendable {
     var autoDownloadEnabled: Bool {
         didSet { userDefaults.set(autoDownloadEnabled, forKey: Keys.autoDownloadEnabled) }
     }
+    /// Separate from migration completion: presenting or dismissing the notice
+    /// can never cause an opted-out preference to be enabled again.
+    private(set) var shouldShowAutomaticPreparationNotice: Bool
     var autoDeleteAfterPlayedEnabled: Bool {
         didSet { userDefaults.set(autoDeleteAfterPlayedEnabled, forKey: Keys.autoDeleteAfterPlayedEnabled) }
     }
@@ -111,6 +118,9 @@ nonisolated final class SettingsStore: @unchecked Sendable {
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
+        shouldShowAutomaticPreparationNotice = !userDefaults.bool(
+            forKey: Keys.automaticPreparationNoticeDismissed
+        )
 
         if let stored = userDefaults.array(forKey: Keys.enabledCategories) as? [String] {
             enabledCategoryIDs = stored.sorted()
@@ -139,10 +149,16 @@ nonisolated final class SettingsStore: @unchecked Sendable {
             defaultPlaybackRate = 1.0
         }
 
-        if userDefaults.object(forKey: Keys.autoDownloadEnabled) != nil {
+        let migrationVersion = userDefaults.integer(forKey: Keys.automaticPreparationMigrationVersion)
+        if migrationVersion < 1 {
+            // One intentional enablement for prior installs.  The marker is set
+            // immediately, before any UI is shown, so later opt-outs win.
+            autoDownloadEnabled = true
+            userDefaults.set(1, forKey: Keys.automaticPreparationMigrationVersion)
+        } else if userDefaults.object(forKey: Keys.autoDownloadEnabled) != nil {
             autoDownloadEnabled = userDefaults.bool(forKey: Keys.autoDownloadEnabled)
         } else {
-            autoDownloadEnabled = false
+            autoDownloadEnabled = true
         }
 
         if userDefaults.object(forKey: Keys.autoDeleteAfterPlayedEnabled) != nil {
@@ -266,6 +282,11 @@ nonisolated final class SettingsStore: @unchecked Sendable {
         case .mute: return .mute
         case .skip: return .skip
         }
+    }
+
+    func dismissAutomaticPreparationNotice() {
+        userDefaults.set(true, forKey: Keys.automaticPreparationNoticeDismissed)
+        shouldShowAutomaticPreparationNotice = false
     }
 
     private func persistAction() {

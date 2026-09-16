@@ -53,6 +53,14 @@ final class AppShellModel {
         let episodeID: String
         let remoteURL: URL
     }
+    private struct ActivePlaybackContext {
+        let episode: Episode
+        let podcastTitle: String
+        let feedURL: URL?
+        let sourceURL: URL
+        let localCandidate: URL?
+        let remoteCandidate: URL?
+    }
     let persistence: PersistenceController
     let podcastStore: PodcastStore
     let queueStore: QueueStore
@@ -62,6 +70,8 @@ final class AppShellModel {
     let downloadManager: DownloadManager
     let settingsStore: SettingsStore
     let remoteCommands: RemoteCommandCoordinator
+    let audioSessionManager: any AudioSessionManaging
+    @ObservationIgnored private let feedRefreshCoordinator: FeedRefreshCoordinator
 
     /// Shared by play path and LibraryPodcastDetailView / AnalysisUIViewModel.
     private(set) var episodeAnalyzer: any EpisodeAnalyzing
@@ -99,6 +109,7 @@ final class AppShellModel {
     private var pendingCloudConsentPodcastTitle = ""
     private var pendingCloudConsentFeedURL: URL?
     private var pendingCloudConsentDownload: PendingCloudConsentDownload?
+    private var activePlaybackContext: ActivePlaybackContext?
 
     /// Observes deferred NoCache transcript backfill so episode/full-player affordances refresh.
     /// `nonisolated(unsafe)`: removed from `nonisolated deinit` without a MainActor hop.
@@ -241,6 +252,7 @@ final class AppShellModel {
     init(
         persistence: PersistenceController,
         remoteCommands: RemoteCommandCoordinator,
+        audioSessionManager: (any AudioSessionManaging)? = nil,
         episodeAnalyzer: (any EpisodeAnalyzing)? = nil,
         settingsStore: SettingsStore? = nil,
         fixtureLibraryModeForTesting: Bool? = nil,
@@ -252,6 +264,7 @@ final class AppShellModel {
     ) {
         self.persistence = persistence
         self.remoteCommands = remoteCommands
+        self.audioSessionManager = audioSessionManager ?? AudioSessionManager()
         self.fixtureLibraryModeForTesting = fixtureLibraryModeForTesting
         self.settingsStore = settingsStore ?? SettingsStore()
         self.transcriptCache = transcriptCache
@@ -264,6 +277,7 @@ final class AppShellModel {
 
         let context = persistence.viewContext
         podcastStore = PodcastStore(context: context, retaining: persistence)
+        feedRefreshCoordinator = FeedRefreshCoordinator(store: podcastStore)
         queueStore = QueueStore(context: context)
         resumeStore = ResumePositionStore(context: context)
         nowPlayingSessionStore = NowPlayingSessionStore(context: context)
@@ -311,6 +325,26 @@ final class AppShellModel {
                 self?.transcriptAffordanceGeneration += 1
             }
         }
+        // Catalog and paused playback have already been restored by RootView
+        // before this detached refresh starts; it never blocks first paint.
+        if fixtureLibraryModeForTesting != true {
+            Task { [weak self] in await self?.refreshFeedsIfNeeded() }
+        }
+    }
+
+    func refreshFeedsIfNeeded() async {
+        _ = await feedRefreshCoordinator.refreshAll()
+        episodeListRevision &+= 1
+    }
+
+    func refreshAllFeeds() async {
+        _ = await feedRefreshCoordinator.refreshAll(force: true)
+        episodeListRevision &+= 1
+    }
+
+    func refreshFeed(_ feedURL: URL, force: Bool = false) async {
+        _ = await feedRefreshCoordinator.refresh(feedURL: feedURL, force: force)
+        episodeListRevision &+= 1
     }
 
     /// Factory used when `episodeAnalyzer` init arg is nil (AC2 / production).
@@ -330,7 +364,6 @@ final class AppShellModel {
     }
 
     var carPlayEpisodePlayer: (any EpisodePlaying)? { self }
-    var carPlayPlaybackEngine: PlaybackEngine? { engine }
 
     /// Player chrome no longer publishes in-flight / bucket segment colors (ADR-030).
     /// Always `nil` so AC4/AC5 can assert no `ready/processing/pending` paint path.
@@ -498,6 +531,9 @@ final class AppShellModel {
         // @Observable engine property is still being replaced SIGABRTs (NowPlayingSession).
         flushPlaybackPosition()
         engine?.onPlaybackEnded = nil
+        if let engine {
+            audioSessionManager.unbind(engine)
+        }
         engine?.pause()
         engine?.onUnrelatedContentSkip = nil
         engine?.onSeekCompleted = nil
@@ -510,7 +546,8 @@ final class AppShellModel {
         let newEngine = PlaybackEngine(
             url: audioURL,
             title: episode.title,
-            artist: podcastTitle
+            artist: podcastTitle,
+            audioSessionConfigurator: audioSessionManager
         )
         let coordinator = PlaybackCoordinator(
             pipeline: episodeAnalyzer,
@@ -545,17 +582,32 @@ final class AppShellModel {
         newEngine.onPlaybackEnded = { [weak self] in
             self?.handleEnginePlaybackEnded()
         }
+        newEngine.onSystemPause = { [weak self] in
+            self?.flushPlaybackPosition()
+        }
+        newEngine.onMediaServicesReset = { [weak self] in
+            self?.recoverFromMediaServicesReset()
+        }
 
         engine = newEngine
         playbackCoordinator = coordinator
         episodePlayer = player
         queueCoordinator = queue
         remoteCommands.bind(newEngine)
+        audioSessionManager.bind(newEngine)
 
         nowPlayingEpisodeID = episode.id
         nowPlayingEpisodeTitle = episode.title
         nowPlayingPodcastTitle = podcastTitle
         nowPlayingFeedURL = feedURL
+        activePlaybackContext = ActivePlaybackContext(
+            episode: episode,
+            podcastTitle: podcastTitle,
+            feedURL: feedURL,
+            sourceURL: audioURL,
+            localCandidate: localCandidate,
+            remoteCandidate: remoteCandidate
+        )
         isMiniPlayerVisible = true
         refreshQueuePresentation()
         try? nowPlayingSessionStore.setActiveEpisodeID(episode.id)
@@ -974,6 +1026,10 @@ final class AppShellModel {
     func stopAndDismissPlayer() {
         invalidatePlaybackPreparation()
         flushPlaybackPosition()
+        if let engine {
+            audioSessionManager.unbind(engine)
+            engine.clearNowPlayingInfo()
+        }
         engine?.pause()
         engine?.onUnrelatedContentSkip = nil
         engine?.onSeekCompleted = nil
@@ -992,6 +1048,7 @@ final class AppShellModel {
         nowPlayingEpisodeTitle = "Now playing"
         nowPlayingPodcastTitle = ""
         nowPlayingFeedURL = nil
+        activePlaybackContext = nil
         comingUpItems = []
         foregroundPreparationJob = nil
         warmPlanner?.cancel()
@@ -1501,7 +1558,6 @@ final class AppShellModel {
     }
 
     private func smartPredictionItems() -> [ComingUpItem] {
-        guard settingsStore.smartAutoplayEnabled else { return [] }
         let order = SmartOrderEngine(activeBingeFeedURL: activeBingeFeedURL)
         return order.peek(
             count: WarmPlanner.peekCount,
@@ -1769,6 +1825,45 @@ final class AppShellModel {
         guard let episodeID, let engine else { return }
         let seconds = engine.currentTime
         try? resumeStore.setPosition(seconds, for: episodeID)
+    }
+
+    /// Rebuilds invalid AVFoundation objects after the media server restarts. This path is
+    /// deliberately paused and reuses the existing cleaning schedule; it never re-analyzes.
+    private func recoverFromMediaServicesReset() {
+        guard let context = activePlaybackContext,
+              nowPlayingEpisodeID == context.episode.id,
+              let oldEngine = engine
+        else { return }
+
+        let position = oldEngine.currentTime.isFinite
+            ? oldEngine.currentTime
+            : resumeStore.position(for: context.episode.id)
+        let intervals = playbackCoordinator?.appliedPlaybackIntervals ?? []
+        let snapshot = playbackAnalysisSnapshot
+        try? resumeStore.setPosition(position, for: context.episode.id)
+        PlaybackDiagnostics.info("audioSession media reset rebuild episodeID=\(context.episode.id)")
+
+        beginPlaybackSession(
+            episode: context.episode,
+            podcastTitle: context.podcastTitle,
+            feedURL: context.feedURL,
+            audioURL: context.sourceURL,
+            localCandidate: context.localCandidate,
+            remoteCandidate: context.remoteCandidate,
+            startAnalysis: false
+        )
+        engine?.restorePausedPosition(position)
+        playbackAnalysisSnapshot = snapshot
+        guard let coordinator = playbackCoordinator else {
+            playbackReadiness = .failed
+            return
+        }
+        Task { @MainActor [weak self, weak coordinator] in
+            guard let self, let coordinator,
+                  self.nowPlayingEpisodeID == context.episode.id
+            else { return }
+            await coordinator.applyReconciledIntervals(intervals)
+        }
     }
 
     private func clearPlaybackAnalysisProgress() {

@@ -77,6 +77,19 @@ struct AppShellView: View {
                 .tag(AppShellTab.settings)
         }
         .background(BrandTheme.surface)
+        .overlay(alignment: .top) {
+            if model.settingsStore.shouldShowAutomaticPreparationNotice {
+                AutomaticPreparationNoticeBanner(
+                    onLearnMore: {
+                        selectedTab = .settings
+                        model.settingsStore.dismissAutomaticPreparationNotice()
+                    },
+                    onDismiss: model.settingsStore.dismissAutomaticPreparationNotice
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+            }
+        }
         .background {
             Color.clear
                 .accessibilityElement(children: .ignore)
@@ -392,7 +405,8 @@ struct AppShellView: View {
             LibraryView(
                 viewModel: libraryViewModel,
                 onDiscover: { selectedTab = .discover },
-                onRequestUnsubscribe: { unsubscribeConfirmation = $0 }
+                onRequestUnsubscribe: { unsubscribeConfirmation = $0 },
+                onRefresh: { await model.refreshAllFeeds() }
             )
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(for: PodcastSummary.self) { summary in
@@ -436,6 +450,52 @@ struct AppShellView: View {
         NavigationStack {
             SettingsView(store: model.settingsStore)
         }
+    }
+}
+
+/// A lightweight migration notice. Automatic preparation is already enabled, so
+/// this offers context without forcing the listener to make an ambiguous choice.
+private struct AutomaticPreparationNoticeBanner: View {
+    let onLearnMore: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "arrow.down.circle.fill")
+                .font(.title3)
+                .foregroundStyle(.tint)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Episodes ready on Wi-Fi")
+                    .font(.subheadline.weight(.semibold))
+                Text("PodWash keeps up to 2 upcoming episodes ready to play.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button("Learn more", action: onLearnMore)
+                    .font(.caption.weight(.semibold))
+                    .padding(.top, 2)
+                    .accessibilityIdentifier("automaticPreparationNoticeLearnMore")
+                    .accessibilityHint("Opens Settings for automatic episode preparation.")
+            }
+
+            Spacer(minLength: 0)
+
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("automaticPreparationNoticeDismiss")
+            .accessibilityLabel("Dismiss automatic preparation notice")
+        }
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("automaticPreparationNotice")
+        .accessibilityLabel("PodWash keeps up to 2 upcoming episodes ready on Wi-Fi.")
     }
 }
 
@@ -490,6 +550,14 @@ private struct LibraryPodcastDetailView: View {
         )
     }
 
+    private var miniPlayerContentClearance: CGFloat {
+        model.isMiniPlayerVisible
+            && !model.isFullPlayerPresented
+            && model.transcriptSheetEpisodeID == nil
+            ? MiniPlayerBar.shellOverlayClearance
+            : 0
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             Toggle(isOn: Binding(
@@ -532,8 +600,15 @@ private struct LibraryPodcastDetailView: View {
                 episodeListRevision: model.episodeListRevision
             )
         }
+        // This changes the UIKit table's actual viewport instead of asking the
+        // table to account for SwiftUI chrome it cannot see.
+        .padding(.bottom, miniPlayerContentClearance)
         .navigationTitle(summary.title)
         .navigationBarTitleDisplayMode(.inline)
+        .refreshable {
+            await model.refreshFeed(summary.feedURL, force: true)
+            feedViewModel.loadFromStore(feedURL: summary.feedURL)
+        }
     }
 }
 

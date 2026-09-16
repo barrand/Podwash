@@ -76,7 +76,8 @@ final class SettingsStoreTests: XCTestCase {
 
         XCTAssertEqual(store.defaultCleaningAction, .mute)
         XCTAssertEqual(store.defaultPlaybackRate, 1.0, accuracy: rateTolerance)
-        XCTAssertFalse(store.autoDownloadEnabled)
+        XCTAssertTrue(store.autoDownloadEnabled)
+        XCTAssertTrue(store.shouldShowAutomaticPreparationNotice)
         XCTAssertFalse(store.autoDeleteAfterPlayedEnabled)
         XCTAssertFalse(store.cloudTranscriptProcessingEnabled)
         XCTAssertFalse(store.cloudTranscriptProcessingConsentPrompted)
@@ -206,5 +207,16 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(reloaded.defaultPlaybackRate, 2.0, accuracy: rateTolerance)
         XCTAssertTrue(reloaded.autoDownloadEnabled)
         XCTAssertTrue(reloaded.autoDeleteAfterPlayedEnabled)
+    }
+
+    func testAutomaticPreparationNoticeDismissalPersists() {
+        let store = makeStore()
+
+        store.dismissAutomaticPreparationNotice()
+
+        XCTAssertFalse(store.shouldShowAutomaticPreparationNotice)
+        XCTAssertFalse(
+            SettingsStore(userDefaults: userDefaults).shouldShowAutomaticPreparationNotice
+        )
     }
 }

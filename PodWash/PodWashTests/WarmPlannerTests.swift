@@ -271,7 +271,11 @@ final class WarmPlannerTests: XCTestCase {
             settingsStore: settings,
             intervalCache: cache,
             cleaningStore: cleaningStore,
-            podcastStore: podcastStore
+            podcastStore: podcastStore,
+            // Warm job checkpoints are durable in production. Keep this harness
+            // isolated so a completed job from another test cannot satisfy the
+            // readiness predicate before this test's analyzer runs.
+            jobStore: AnalysisJobStore(defaults: defaults)
         )
         return Env(
             planner: planner,

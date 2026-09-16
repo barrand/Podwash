@@ -10,9 +10,17 @@ import Foundation
 enum FixtureLibrary {
     static let launchArgument = "-UITestFixtureLibrary"
     static let emptyLaunchArgument = "-UITestFixtureLibraryEmpty"
+    /// A deliberately long detail list used to exercise bottom content around
+    /// persistent shell chrome, without depending on a live RSS publisher.
+    static let longEpisodesLaunchArgument = "-UITestFixtureLibraryLongEpisodes"
 
     static var isEnabled: Bool {
         ProcessInfo.processInfo.arguments.contains(launchArgument)
+            || ProcessInfo.processInfo.arguments.contains(longEpisodesLaunchArgument)
+    }
+
+    static var hasLongEpisodeList: Bool {
+        ProcessInfo.processInfo.arguments.contains(longEpisodesLaunchArgument)
     }
 
     static var isEmptyEnabled: Bool {
@@ -41,7 +49,7 @@ enum FixtureLibrary {
         let baseFeed = try parser.parse(data: feedData)
 
         for index in 0 ..< 2 {
-            let namespaced = namespacedFeed(baseFeed, showIndex: index)
+            let namespaced = namespacedFeed(baseFeed, showIndex: index, longList: hasLongEpisodeList)
             try store.saveSubscription(from: results[index], feed: namespaced)
         }
     }
@@ -51,12 +59,25 @@ enum FixtureLibrary {
         try store.clear()
     }
 
-    private static func namespacedFeed(_ feed: PodcastFeed, showIndex: Int) -> PodcastFeed {
-        PodcastFeed(
+    private static func namespacedFeed(_ feed: PodcastFeed, showIndex: Int, longList: Bool) -> PodcastFeed {
+        let sourceEpisodes = longList
+            ? (0 ..< 24).map { number in
+                let source = feed.episodes[number % feed.episodes.count]
+                return Episode(
+                    id: "long-\(number)-\(source.id)",
+                    title: "Long fixture episode \(number + 1)",
+                    pubDate: source.pubDate.addingTimeInterval(-Double(number) * 86_400),
+                    artworkURL: source.artworkURL,
+                    showNotes: source.showNotes,
+                    audioURL: source.audioURL
+                )
+            }
+            : feed.episodes
+        return PodcastFeed(
             title: feed.title,
             artworkURL: feed.artworkURL,
             description: feed.description,
-            episodes: feed.episodes.map { episode in
+            episodes: sourceEpisodes.map { episode in
                 Episode(
                     id: "lib-\(showIndex)-\(episode.id)",
                     title: episode.title,
