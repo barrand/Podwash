@@ -33,8 +33,14 @@ struct EpisodeListView: View {
         let _ = analysisViewModel.contentGeneration
         let _ = transcriptAffordanceGeneration
         let _ = episodeListRevision
+        let displayFeed = PodcastFeed(
+            title: feed.title,
+            artworkURL: feed.artworkURL,
+            description: feed.description,
+            episodes: Episode.newestFirst(feed.episodes)
+        )
         return EpisodeTableViewRepresentable(
-            feed: feed,
+            feed: displayFeed,
             analysisViewModel: analysisViewModel,
             downloadManager: downloadManager,
             queueStore: queueStore,

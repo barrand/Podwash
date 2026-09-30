@@ -25,6 +25,20 @@ enum PlayedEpisodeActionState: Equatable {
     case blocked(activeEpisodeTitle: String)
 }
 
+enum FeedRefreshViewState: Equatable {
+    case idle
+    case refreshing
+    case complete(FeedRefreshSummary)
+    case partialFailure(FeedRefreshSummary)
+}
+
+struct ReadyToPlayChoice: Identifiable, Equatable {
+    let episodeID: String
+    let title: String
+    let podcastTitle: String
+    var id: String { episodeID }
+}
+
 @MainActor @Observable
 final class AppShellModel {
     enum AnalysisRecoveryState: Equatable {
@@ -72,6 +86,8 @@ final class AppShellModel {
     let remoteCommands: RemoteCommandCoordinator
     let audioSessionManager: any AudioSessionManaging
     @ObservationIgnored private let feedRefreshCoordinator: FeedRefreshCoordinator
+    private(set) var feedRefreshState: FeedRefreshViewState = .idle
+    var feedRefreshService: FeedRefreshCoordinator { feedRefreshCoordinator }
 
     /// Shared by play path and LibraryPodcastDetailView / AnalysisUIViewModel.
     private(set) var episodeAnalyzer: any EpisodeAnalyzing
@@ -218,6 +234,33 @@ final class AppShellModel {
         return (foreground + manual + predicted).filter { seen.insert($0.episodeID).inserted }
     }
 
+    /// The compact Library shelf uses the same ordered selection as preparation
+    /// and automatic playback; it never invents a separate recommendation list.
+    var readyToPlayChoices: [ReadyToPlayChoice] {
+        let predictions = smartPredictionItems()
+        let selected = UpcomingSelectionPolicy().select(
+            currentEpisodeID: nowPlayingEpisodeID,
+            manualQueueIDs: queueStore.queueEpisodeIDs(),
+            predictions: predictions,
+            automaticPreparationEnabled: settingsStore.autoDownloadEnabled
+        )
+        return selected.prefix(UpcomingSelectionPolicy.readyTarget).compactMap { selection in
+            guard let lookup = podcastStore.episodeLookup(id: selection.episodeID),
+                  episodeAvailability(for: selection.episodeID, lookup: lookup).readiness.isReadyOffline
+            else { return nil }
+            return ReadyToPlayChoice(
+                episodeID: selection.episodeID,
+                title: lookup.episode.title,
+                podcastTitle: lookup.podcastTitle
+            )
+        }
+    }
+
+    var preparationShelfStatus: String? {
+        guard readyToPlayChoices.isEmpty else { return nil }
+        return preparationJobs.first(where: { $0.stage != .ready })?.stage.userLabel
+    }
+
     /// One shared snapshot powers the Queue tab and the mini-player status strip.
     var queuePresentation: QueuePresentation {
         _ = queuePresentationRevision
@@ -290,7 +333,8 @@ final class AppShellModel {
         transcriptCache: TranscriptCache = .applicationSupport,
         intervalCache: IntervalCache = .applicationSupport,
         artifactStore: EpisodeAnalysisArtifactStore = .applicationSupport,
-        analysisJobStore: AnalysisJobStore = AnalysisJobStore()
+        analysisJobStore: AnalysisJobStore = AnalysisJobStore(),
+        feedRefreshCoordinator: FeedRefreshCoordinator? = nil
     ) {
         self.persistence = persistence
         self.remoteCommands = remoteCommands
@@ -307,7 +351,7 @@ final class AppShellModel {
 
         let context = persistence.viewContext
         podcastStore = PodcastStore(context: context, retaining: persistence)
-        feedRefreshCoordinator = FeedRefreshCoordinator(store: podcastStore)
+        self.feedRefreshCoordinator = feedRefreshCoordinator ?? FeedRefreshCoordinator(store: podcastStore)
         queueStore = QueueStore(context: context)
         resumeStore = ResumePositionStore(context: context)
         nowPlayingSessionStore = NowPlayingSessionStore(context: context)
@@ -358,24 +402,43 @@ final class AppShellModel {
         }
         // Catalog and paused playback have already been restored by RootView
         // before this detached refresh starts; it never blocks first paint.
-        if fixtureLibraryModeForTesting != true {
+        // Fixture launches must not start automatic refresh or speculative
+        // preparation. They own their catalog/download state explicitly, and
+        // background activity would make UI assertions order-dependent.
+        if !isFixtureLibraryMode {
             Task { [weak self] in await self?.refreshFeedsIfNeeded() }
         }
     }
 
     func refreshFeedsIfNeeded() async {
-        _ = await feedRefreshCoordinator.refreshAll()
-        episodeListRevision &+= 1
+        await refreshAllFeeds(force: false)
     }
 
     func refreshAllFeeds() async {
-        _ = await feedRefreshCoordinator.refreshAll(force: true)
+        await refreshAllFeeds(force: true)
+    }
+
+    private func refreshAllFeeds(force: Bool) async {
+        feedRefreshState = .refreshing
+        let summary = FeedRefreshSummary(await feedRefreshCoordinator.refreshAll(force: force))
+        feedRefreshState = summary.failed > 0 ? .partialFailure(summary) : .complete(summary)
         episodeListRevision &+= 1
+        refreshComingUp()
+        scheduleWarmForComingUp()
     }
 
     func refreshFeed(_ feedURL: URL, force: Bool = false) async {
-        _ = await feedRefreshCoordinator.refresh(feedURL: feedURL, force: force)
+        feedRefreshState = .refreshing
+        let result = await feedRefreshCoordinator.refresh(feedURL: feedURL, force: force)
+        let summary = FeedRefreshSummary([feedURL: result])
+        feedRefreshState = result == .failed ? .partialFailure(summary) : .complete(summary)
         episodeListRevision &+= 1
+        refreshComingUp()
+        scheduleWarmForComingUp()
+    }
+
+    func sceneDidBecomeActive() async {
+        await refreshFeedsIfNeeded()
     }
 
     /// Factory used when `episodeAnalyzer` init arg is nil (AC2 / production).
@@ -1323,9 +1386,7 @@ final class AppShellModel {
     }
 
     func refreshComingUp() {
-        guard settingsStore.smartAutoplayEnabled,
-              queueStore.queueEpisodeIDs().isEmpty
-        else {
+        guard queueStore.queueEpisodeIDs().isEmpty else {
             comingUpItems = []
             return
         }
@@ -1347,6 +1408,15 @@ final class AppShellModel {
         didStartPreparationForCurrentSession = true
         scheduleWarmForComingUp()
         refreshQueuePresentation()
+    }
+
+    func playReadyChoice(episodeID: String) {
+        if queueStore.queueEpisodeIDs().contains(episodeID) {
+            playReadyEpisodeNow(episodeID)
+            return
+        }
+        guard let lookup = podcastStore.episodeLookup(id: episodeID) else { return }
+        playEpisode(lookup.episode, podcastTitle: lookup.podcastTitle, feedURL: lookup.feedURL)
     }
 
     func moveUpNext(episodeID: String, to index: Int) {

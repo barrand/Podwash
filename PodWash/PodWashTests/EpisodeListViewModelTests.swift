@@ -49,6 +49,17 @@ final class EpisodeListViewModelTests: XCTestCase {
         super.tearDown()
     }
 
+    func testDisplayEpisodeOrderingPutsNewestPublicationFirst() {
+        let epoch = Date(timeIntervalSince1970: 0)
+        let episodes = [
+            Episode(id: "oldest", title: "Oldest", pubDate: epoch, artworkURL: nil, showNotes: nil, audioURL: nil),
+            Episode(id: "newest", title: "Newest", pubDate: epoch.addingTimeInterval(2), artworkURL: nil, showNotes: nil, audioURL: nil),
+            Episode(id: "middle", title: "Middle", pubDate: epoch.addingTimeInterval(1), artworkURL: nil, showNotes: nil, audioURL: nil),
+        ]
+
+        XCTAssertEqual(Episode.newestFirst(episodes).map(\.id), ["newest", "middle", "oldest"])
+    }
+
     // MARK: - AC5: network failure surfaces typed error state
 
     func testNetworkFailureErrorState() async {

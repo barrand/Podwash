@@ -16,6 +16,21 @@ struct Episode: Equatable, Identifiable, Codable {
     let audioURL: URL?
 }
 
+extension Episode {
+    /// Orders a feed for display without relying on publisher or persistence
+    /// insertion order. Equal publication dates retain their source order.
+    static func newestFirst(_ episodes: [Episode]) -> [Episode] {
+        episodes.enumerated()
+            .sorted { lhs, rhs in
+                if lhs.element.pubDate != rhs.element.pubDate {
+                    return lhs.element.pubDate > rhs.element.pubDate
+                }
+                return lhs.offset < rhs.offset
+            }
+            .map(\.element)
+    }
+}
+
 struct PodcastFeed: Equatable, Codable {
     let title: String
     let artworkURL: URL?

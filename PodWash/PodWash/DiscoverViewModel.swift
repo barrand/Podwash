@@ -33,6 +33,7 @@ final class DiscoverViewModel {
     private let searchClient: ITunesSearchClient
     private let parser: RSSParser
     private let store: PodcastStore
+    private let feedRefreshCoordinator: FeedRefreshCoordinator?
     private let searchDebounceNanoseconds: UInt64
     private var searchTask: Task<Void, Never>?
 
@@ -40,11 +41,13 @@ final class DiscoverViewModel {
         searchClient: ITunesSearchClient,
         parser: RSSParser,
         store: PodcastStore,
+        feedRefreshCoordinator: FeedRefreshCoordinator? = nil,
         searchDebounceNanoseconds: UInt64 = 300_000_000
     ) {
         self.searchClient = searchClient
         self.parser = parser
         self.store = store
+        self.feedRefreshCoordinator = feedRefreshCoordinator
         self.searchDebounceNanoseconds = searchDebounceNanoseconds
     }
 
@@ -113,6 +116,7 @@ final class DiscoverViewModel {
         do {
             let feed = try await parser.parse(url: result.feedURL)
             try store.saveSubscription(from: result, feed: feed)
+            await feedRefreshCoordinator?.recordSuccessfulValidation(feedURL: result.feedURL)
             subscribeState = .succeeded(index: index)
         } catch {
             subscribeState = .failed

@@ -8,6 +8,12 @@
 import CoreData
 import Foundation
 
+protocol FeedRefreshCatalog: Sendable {
+    func subscribedFeedURLs() -> [URL]
+    func isSubscribed(feedURL: URL) -> Bool
+    func mergeRefreshedFeed(_ feed: PodcastFeed, feedURL: URL) throws
+}
+
 /// Feed/episode persistence. Opted out of module default MainActor isolation so
 /// test helpers (nonisolated `FixtureFeedLoader`) can call `save` synchronously;
 /// all Core Data work runs on the context queue via `performAndWait`.
@@ -126,6 +132,10 @@ nonisolated final class PodcastStore: @unchecked Sendable {
                 )
             }
         }
+    }
+
+    func subscribedFeedURLs() -> [URL] {
+        allSubscriptions().map(\.feedURL)
     }
 
     func subscription(forFeedURL feedURL: URL) -> PodcastFeed? {
@@ -420,6 +430,8 @@ nonisolated final class PodcastStore: @unchecked Sendable {
         }
     }
 }
+
+extension PodcastStore: FeedRefreshCatalog {}
 
 /// Compatibility shim: non-throwing API for pre–Slice 11 tests.
 nonisolated final class InMemoryPodcastStore: @unchecked Sendable {

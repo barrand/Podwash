@@ -45,7 +45,8 @@ struct AppShellView: View {
             initialValue: DiscoverViewModel(
                 searchClient: searchClient,
                 parser: parser,
-                store: model.podcastStore
+                store: model.podcastStore,
+                feedRefreshCoordinator: model.feedRefreshService
             )
         )
     }
@@ -219,6 +220,9 @@ struct AppShellView: View {
             model.restoreNowPlayingSessionIfNeeded()
         }
         .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await model.sceneDidBecomeActive() }
+            }
             if newPhase == .inactive || newPhase == .background {
                 model.flushPlaybackPosition()
             }
@@ -407,7 +411,12 @@ struct AppShellView: View {
                 viewModel: libraryViewModel,
                 onDiscover: { selectedTab = .discover },
                 onRequestUnsubscribe: { unsubscribeConfirmation = $0 },
-                onRefresh: { await model.refreshAllFeeds() }
+                onRefresh: { await model.refreshAllFeeds() },
+                refreshState: model.feedRefreshState,
+                readyChoices: model.readyToPlayChoices,
+                preparationStatus: model.preparationShelfStatus,
+                onPlayReadyChoice: { model.playReadyChoice(episodeID: $0) },
+                onOpenQueue: { selectedTab = .queue }
             )
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(for: PodcastSummary.self) { summary in

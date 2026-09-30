@@ -114,6 +114,13 @@ assert_contains "$out" "tier=3b" "tier 3b label"
 assert_contains "$out" "-only-testing:PodWashUITests" "tier 3b filters UI"
 assert_not_contains "$out" "-retry-tests-on-failure" "tier 3b omits retries"
 
+out=$(VERIFY_DRY_RUN=1 VERIFY_TIER=smoke "$VERIFY" 2>&1)
+assert_contains "$out" "tier=smoke" "smoke tier label"
+assert_contains "$out" "-only-testing:PodWashUITests/PodWashUITests/testLaunch" "smoke includes launch"
+assert_contains "$out" "-only-testing:PodWashUITests/LibraryUITests/testTapEpisodeShowsMiniPlayerAndPlays" "smoke includes Library playback"
+assert_contains "$out" "-only-testing:PodWashUITests/SettingsUITests/testCategoryToggleAccessibilityValue" "smoke includes Settings"
+assert_not_contains "$out" "-retry-tests-on-failure" "smoke omits retries"
+
 # Default (no VERIFY_TIER) is tier 3
 out=$(VERIFY_DRY_RUN=1 "$VERIFY" 2>&1)
 assert_contains "$out" "tier=3" "default tier is 3"

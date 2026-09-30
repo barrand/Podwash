@@ -27,6 +27,10 @@ struct PodWashApp: App {
 
     init() {
         FirebaseCloudBootstrap.configure()
+        // UI fixtures must reset preferences before any composition object can
+        // read them. Doing this from RootView's asynchronous task was late
+        // enough for a first manual download to inherit prior consent state.
+        FixtureSettings.prepareFreshDefaults()
         if FixtureDownload.isEnabled {
             FixtureDownload.clearDownloadsDirectoryIfNeeded()
         }

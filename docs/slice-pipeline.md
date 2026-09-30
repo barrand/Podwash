@@ -125,6 +125,11 @@ failed predicates + an unblock hint when a gate stays pending after its worker.
 | **Fast** | `PodWashTests`, `PodWashUITests` | Every `verify.sh`; **skipped must be 0** | Default for all slice ACs |
 | **Nightly / slow** | `PodWashSlowTests` | **Excluded** from tier-2 and Done | Live ML, long CPU, or regenerating committed benchmark JSON |
 
+For a fast UI confidence pass during development, use `VERIFY_TIER=smoke scripts/verify.sh`.
+It covers app launch, seeded Library rendering, starting playback from Library, one Settings
+interaction, and playback controls. It is intentionally filtered and is not a release gate;
+run tier 3 before merge and release candidates.
+
 **Pattern:** fast tests validate **committed artifacts** (e.g. `benchmark-results.json`);
 slow tests **regenerate** those artifacts when the heavy implementation changes.
 Slow targets sit in the `PodWash` scheme with `skipped="YES"` for structural ACs

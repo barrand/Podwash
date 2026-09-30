@@ -12,10 +12,11 @@
 # Environment overrides:
 #   PODWASH_SIM=<simulator name>   force a specific simulator (default: first available iPhone)
 #   VERIFY_ALLOW_SKIPS=1           tolerate skipped tests (nightly @slow job only; never for ship Done)
-#   VERIFY_TIER=0|1|2|3|3a|3b       verification tier (default 3 = full ship gate)
+#   VERIFY_TIER=0|1|2|smoke|3|3a|3b verification tier (default 3 = full ship gate)
 #     0  build-for-testing only (-derivedDataPath build/dd)
 #     1  test-without-building + VERIFY_FAILED_TESTS → -only-testing: (failed-tests-first)
 #     2  filtered slice/task tests (args and/or VERIFY_SLICE_TESTS) + shared derived data
+#     smoke  compact UI confidence pass: launch, Library, settings, and playback
 #     3  full unfiltered suite (ship gate); PodWashTests + PodWashUITests
 #     3a unit-only fast pass (-only-testing:PodWashTests) — early red signal
 #     3b UI-only pass (-only-testing:PodWashUITests) — serial UITests
@@ -56,6 +57,13 @@ RESULTS_DIR="$BUILD_DIR/test-results"
 LOCK_DIR="$BUILD_DIR/.verify.lock"
 DERIVED_DATA=${VERIFY_DERIVED_DATA:-$BUILD_DIR/dd}
 VERIFY_TIER=${VERIFY_TIER:-3}
+UI_SMOKE_TESTS="
+PodWashUITests/PodWashUITests/testLaunch
+PodWashUITests/LibraryUITests/testLibraryRendersSeededSubscriptions
+PodWashUITests/LibraryUITests/testTapEpisodeShowsMiniPlayerAndPlays
+PodWashUITests/SettingsUITests/testCategoryToggleAccessibilityValue
+PodWashUITests/PlaybackControlsUITests/testPlayPauseSeekButtons
+"
 
 # ---------------------------------------------------------------- simulator --
 SIM_NAME=${PODWASH_SIM:-}
@@ -160,6 +168,12 @@ case "$VERIFY_TIER" in
             echo "verify.sh: VERIFY_TIER=2 requires -only-testing: args or VERIFY_SLICE_TESTS" >&2
             exit 1
         fi
+        ;;
+    smoke)
+        XCODE_ACTION=$(_tier_action_with_staleness_check)
+        FILTERED=1
+        ENV_ONLY_TESTING="$UI_SMOKE_TESTS"
+        TIER_LABEL=smoke
         ;;
     3a)
         XCODE_ACTION="test"
