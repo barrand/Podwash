@@ -103,6 +103,28 @@ final class TranscriptViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.skippedAdCount, 5)
     }
 
+    func testProfanityMuteWordsAreClassifiedForRedTranscriptTreatment() {
+        let transcript = Self.syntheticTenWordTranscript()
+        let intervals = [
+            CensorInterval(start: 4.0, end: 6.0, action: .mute, source: .profanity),
+            // A skipped profanity interval has no red seek-bar marker, so it
+            // must not receive the matching red transcript treatment either.
+            CensorInterval(start: 8.0, end: 10.0, action: .skip, source: .profanity),
+        ]
+
+        let viewModel = TranscriptViewModel.make(
+            transcript: transcript,
+            intervals: intervals,
+            playbackPosition: 0
+        )
+
+        XCTAssertEqual(
+            Set(viewModel.words.filter(\.profanityMuted).map(\.index)),
+            [2],
+            "Only words overlapping applied profanity mutes receive the red treatment"
+        )
+    }
+
     // MARK: - Task 021
 
     func testParagraphsSplitAfterSentenceEndingPunctuation() {

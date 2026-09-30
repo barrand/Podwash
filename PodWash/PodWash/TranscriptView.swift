@@ -320,6 +320,11 @@ private struct TranscriptRenderBlockView: View {
     }
 
     private func foreground(for display: TranscriptWordDisplay) -> Color {
+        // Keep the same precedence as the super seek bar, where red mute
+        // markers are painted over yellow ad bands.
+        if display.profanityMuted {
+            return .red
+        }
         if display.skippedAd {
             return BrandTheme.accent
         }
@@ -331,9 +336,13 @@ private struct TranscriptRenderBlockView: View {
 
     private func accessibilityValue(for display: TranscriptWordDisplay, isActive: Bool) -> String {
         var parts: [String] = []
+        if display.profanityMuted {
+            parts.append("profanityMuted")
+        }
         if display.skippedAd {
             parts.append("skippedAd")
-        } else if isListened(display) {
+        }
+        if isListened(display) {
             parts.append("listened")
         }
         if isActive {

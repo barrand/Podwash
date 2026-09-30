@@ -12,6 +12,9 @@ struct TranscriptWordDisplay: Equatable, Sendable {
     var word: TimedWord
     var listened: Bool
     var skippedAd: Bool
+    /// Mirrors the red markers on the super seek bar: profanity intervals that
+    /// are currently applied as mutes.
+    var profanityMuted: Bool
 }
 
 /// Sentence-bounded span of transcript words with a display start time.
@@ -65,6 +68,9 @@ struct TranscriptViewModel: Equatable, Sendable {
         let skipIntervals = intervals.filter {
             $0.source == .unrelatedContent && $0.action == .skip
         }
+        let profanityMuteIntervals = intervals.filter {
+            $0.source == .profanity && $0.action == .mute
+        }
 
         var listenedCount = 0
         var skippedAdCount = 0
@@ -73,6 +79,9 @@ struct TranscriptViewModel: Equatable, Sendable {
                 word.start < interval.end && word.end > interval.start
             }
             let skippedAd = overlapsSkip
+            let profanityMuted = profanityMuteIntervals.contains { interval in
+                word.start < interval.end && word.end > interval.start
+            }
             let listened = isListened(
                 word: word,
                 skippedAd: skippedAd,
@@ -84,7 +93,8 @@ struct TranscriptViewModel: Equatable, Sendable {
                 index: index,
                 word: word,
                 listened: listened,
-                skippedAd: skippedAd
+                skippedAd: skippedAd,
+                profanityMuted: profanityMuted
             )
         }
 
