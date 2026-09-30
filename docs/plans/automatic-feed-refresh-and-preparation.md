@@ -299,6 +299,13 @@ No new backend, remote notification system, bulk offline shelf, catalog pruning,
 
 ## Validation and acceptance requirements
 
+The detailed, implementation-ready validation handoff for the current post-candidate code is
+[`recent-changes-validation.md`](recent-changes-validation.md). Its Track A gate covers the
+behavior currently present in the app and the concrete defects discovered during test planning.
+The requirements below remain the Track B acceptance gate for declaring the complete automatic
+background-preparation roadmap finished. Passing Track A does not imply that the background,
+resource, ownership, recovery, or eviction capabilities below have been implemented.
+
 ### Automated behavioral tests
 
 Use injected clock, feed transport, network/power state, disk capacity, analyzer, and background-task adapters. Tests must not depend on sleeps, real RSS publishers, or actual background scheduling.
