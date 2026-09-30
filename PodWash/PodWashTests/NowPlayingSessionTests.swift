@@ -299,7 +299,11 @@ final class NowPlayingSessionTests: XCTestCase {
     let model = makeShell(persistence: persistence)
     model.restoreNowPlayingSessionIfNeeded()
 
-    model.playQueuedEpisodeNow(thirdEpisodeID)
+    let selectedEpisodeID = thirdEpisodeID
+    model.playQueuedEpisodeNow(selectedEpisodeID)
+    waitUntil(timeout: 5.0) {
+      model.nowPlayingEpisodeID == selectedEpisodeID
+    }
 
     XCTAssertEqual(model.nowPlayingEpisodeID, thirdEpisodeID)
     XCTAssertEqual(

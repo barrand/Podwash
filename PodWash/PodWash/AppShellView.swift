@@ -302,7 +302,8 @@ struct AppShellView: View {
             onClearUpNext: { model.clearUpNext() },
             onRestoreUpNext: { model.restoreUpNext($0) },
             onRetry: { model.retryPreparation(episodeID: $0) },
-            onPlayWithAds: { model.playWithAds(episodeID: $0) }
+            onPlayWithoutAdSkipping: { model.playWithAds(episodeID: $0) },
+            onPlayOriginalAudio: { model.playOriginalAudio(episodeID: $0) }
         )
     }
 

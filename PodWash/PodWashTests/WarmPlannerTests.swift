@@ -89,6 +89,21 @@ final class WarmPlannerTests: XCTestCase {
         )
     }
 
+    func testCleaningOffStillDownloadsBeforeMarkingReadyOffline() async throws {
+        let counter = CountingEpisodeAnalyzer()
+        let env = try makeEnv(cleaningOn: false, analyzer: counter)
+
+        env.planner.reaim(at: [comingUp("warm-ep-1")])
+
+        await waitUntil(timeout: 5.0) {
+            env.planner.job(for: "warm-ep-1")?.stage == .ready
+        }
+
+        XCTAssertNotNil(env.downloadManager.localFileURL(for: "warm-ep-1"))
+        XCTAssertTrue(env.planner.isReadyOffline(episodeID: "warm-ep-1", feedURL: feedURL))
+        XCTAssertEqual(counter.analyzeCallCount, 0, "Cleaning off should skip analysis, not the local download.")
+    }
+
     func testReplayReanalyzesExistingAudioEvenWhenCleaningIsOff() async throws {
         let counter = CountingEpisodeAnalyzer()
         let env = try makeEnv(cleaningOn: false, analyzer: counter)
@@ -112,7 +127,7 @@ final class WarmPlannerTests: XCTestCase {
         )
     }
 
-    func testWarmTargetPreparesAtLeastTwoFollowOnEpisodes() async throws {
+    func testWarmTargetPreparesExactlyTwoAutomaticEpisodes() async throws {
         let env = try makeEnv(cleaningOn: true, episodeCount: 4)
         let candidates = (1...4).map { comingUp("warm-ep-\($0)") }
 
@@ -122,11 +137,12 @@ final class WarmPlannerTests: XCTestCase {
             env.planner.warmedEpisodeIDs.count == WarmPlanner.peekCount
         }
 
-        XCTAssertEqual(WarmPlanner.peekCount, 4)
+        XCTAssertEqual(WarmPlanner.peekCount, 2)
+        XCTAssertEqual(WarmPlanner.warmCap, 2)
         XCTAssertEqual(
             env.planner.warmedEpisodeIDs,
-            Set(candidates.map(\.episodeID)),
-            "the selected next episode and multiple follow-ons should be ready"
+            Set(candidates.prefix(2).map(\.episodeID)),
+            "only the first two automatic choices should be prepared"
         )
     }
 
@@ -182,28 +198,19 @@ final class WarmPlannerTests: XCTestCase {
         XCTAssertTrue(env.planner.warmedEpisodeIDs.contains("warm-ep-2"))
     }
 
-    func testWarmCapStopsAtFiveAnalyzedEpisodes() async throws {
+    func testWarmCapStopsAtTwoAutomaticEpisodes() async throws {
         let counter = CountingEpisodeAnalyzer()
         let env = try makeEnv(cleaningOn: true, analyzer: counter, episodeCount: 7)
 
-        // Two reaims of 3 + 3 would be 6 without a cap; cap must keep ≤ 5.
-        let batch1 = (1...3).map { comingUp("warm-ep-\($0)") }
-        let batch2 = (4...6).map { comingUp("warm-ep-\($0)") }
+        let candidates = (1...7).map { comingUp("warm-ep-\($0)") }
 
-        env.planner.reaim(at: batch1)
+        env.planner.reaim(at: candidates)
         await waitUntil(timeout: 8.0) {
-            env.planner.warmedEpisodeIDs.count >= 3
+            env.planner.warmedEpisodeIDs.count == WarmPlanner.warmCap
         }
 
-        env.planner.reaim(at: batch2)
-        await waitUntil(timeout: 8.0) {
-            Set(["warm-ep-4", "warm-ep-5", "warm-ep-6"]).isSubset(of: env.planner.warmedEpisodeIDs)
-                || env.planner.warmedEpisodeIDs.count >= WarmPlanner.warmCap
-        }
-
-        // Allow eviction loop to settle.
-        try await Task.sleep(for: .milliseconds(200))
-        XCTAssertLessThanOrEqual(env.planner.warmedEpisodeIDs.count, WarmPlanner.warmCap)
+        XCTAssertEqual(env.planner.warmedEpisodeIDs, Set(["warm-ep-1", "warm-ep-2"]))
+        XCTAssertEqual(counter.analyzeCallCount, 2)
     }
 
     // MARK: - Helpers

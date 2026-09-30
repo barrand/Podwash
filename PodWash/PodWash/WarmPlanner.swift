@@ -8,6 +8,13 @@
 import Foundation
 import Observation
 
+enum ImmediatePreparationOutcome: Equatable {
+    case ready
+    case retrying
+    case needsAttention
+    case cancelled
+}
+
 /// The single-worker preparation coordinator. It keeps the old `WarmPlanner` name
 /// for source compatibility with ADR-029 tests, while exposing durable user-facing jobs.
 @MainActor
@@ -37,8 +44,10 @@ import Observation
     private let cleaningStore: CleaningToggleStore
     private let podcastStore: PodcastStore
     private let jobStore: AnalysisJobStore
+    private let timing: any AppTiming
 
     private var warmGeneration = 0
+    private var activeRequestIDs: [String] = []
     private var workerTask: Task<Void, Never>?
     private(set) var warmingEpisodeIDs: Set<String> = []
     private(set) var warmedEpisodeIDs: Set<String> = []
@@ -51,7 +60,8 @@ import Observation
         intervalCache: IntervalCache,
         cleaningStore: CleaningToggleStore,
         podcastStore: PodcastStore,
-        jobStore: AnalysisJobStore = AnalysisJobStore()
+        jobStore: AnalysisJobStore = AnalysisJobStore(),
+        timing: any AppTiming = SystemAppTiming()
     ) {
         self.downloadManager = downloadManager
         self.analyzer = analyzer
@@ -60,6 +70,7 @@ import Observation
         self.cleaningStore = cleaningStore
         self.podcastStore = podcastStore
         self.jobStore = jobStore
+        self.timing = timing
         self.jobs = jobStore.load()
     }
 
@@ -73,6 +84,11 @@ import Observation
     }
 
     private func reaim(requests: [PreparationRequest]) {
+        let requestIDs = requests.map { "\($0.kind)-\($0.item.episodeID)" }
+        // Refresh events routinely deliver the same selection. Keep useful
+        // work alive rather than cancelling and restarting it.
+        guard requestIDs != activeRequestIDs else { return }
+        activeRequestIDs = requestIDs
         warmGeneration += 1
         let generation = warmGeneration
         workerTask?.cancel()
@@ -130,7 +146,13 @@ import Observation
             predictions: predicted,
             automaticPreparationEnabled: settingsStore.autoDownloadEnabled
         )
-        let byID = Dictionary(uniqueKeysWithValues: (manual + predicted).map { ($0.episodeID, $0) })
+        // Manual queue entries win if a prediction repeats them. The selection
+        // policy removes that duplicate from work, but building this lookup must
+        // also be safe before the selection is applied.
+        var byID: [String: ComingUpItem] = [:]
+        for item in manual + predicted where byID[item.episodeID] == nil {
+            byID[item.episodeID] = item
+        }
         let ordered = (replay.map { [$0] } ?? []) + selection.compactMap { selected -> PreparationRequest? in
             guard let item = byID[selected.episodeID] else { return nil }
             return PreparationRequest(item: item, kind: selected.origin == .manual ? .manualQueue : .automatic)
@@ -147,13 +169,41 @@ import Observation
         let previousTask = workerTask
         workerTask = nil
         await previousTask?.value
+        activeRequestIDs = []
         warmingEpisodeIDs.removeAll()
+    }
+
+    /// Promotes one listener-selected episode ahead of automatic warming. The
+    /// caller owns any later retry wait, so a newer selection can cancel its
+    /// auto-play intent without leaving an unowned playback task behind.
+    func prepareImmediately(episodeID: String) async -> ImmediatePreparationOutcome {
+        guard let lookup = podcastStore.episodeLookup(id: episodeID) else { return .needsAttention }
+        await quiesce()
+        guard !Task.isCancelled else { return .cancelled }
+
+        let generation = warmGeneration
+        activeRequestIDs = ["immediate-\(episodeID)"]
+        let item = ComingUpItem(
+            episodeID: episodeID,
+            episodeTitle: lookup.episode.title,
+            podcastTitle: lookup.podcastTitle,
+            feedURL: lookup.feedURL,
+            isBinge: podcastStore.isBinge(feedURL: lookup.feedURL)
+        )
+        await warmOne(item, generation: generation, kind: .manualQueue)
+        guard generation == warmGeneration, !Task.isCancelled else { return .cancelled }
+        if isReadyOffline(episodeID: episodeID, feedURL: lookup.feedURL) { return .ready }
+        switch jobs[episodeID]?.stage {
+        case .needsAttention: return .needsAttention
+        default: return .retrying
+        }
     }
 
     func cancel() {
         warmGeneration += 1
         workerTask?.cancel()
         workerTask = nil
+        activeRequestIDs = []
         warmingEpisodeIDs.removeAll()
     }
 
@@ -165,6 +215,44 @@ import Observation
         jobs.removeValue(forKey: episodeID)
         warmedEpisodeIDs.remove(episodeID)
         warmingEpisodeIDs.remove(episodeID)
+        jobStore.save(jobs)
+        onJobsChanged?()
+    }
+
+    /// Repairs durable job markers against the actual file system and analysis
+    /// cache. Presentation is safe without this pass, but reconciling prevents
+    /// stale ready jobs from surviving relaunch indefinitely.
+    func reconcilePersistedJobs(requestedEpisodeIDs: Set<String>) {
+        var changed = false
+        for episodeID in Array(jobs.keys) {
+            guard let lookup = podcastStore.episodeLookup(id: episodeID) else {
+                jobs.removeValue(forKey: episodeID)
+                changed = true
+                continue
+            }
+            guard var job = jobs[episodeID] else { continue }
+            let hasLocalFile = downloadManager.localFileURL(for: episodeID) != nil
+            let analysisReady = isAnalysisReady(episodeID: episodeID, feedURL: lookup.feedURL)
+
+            if job.stage == .ready, !hasLocalFile {
+                if requestedEpisodeIDs.contains(episodeID) {
+                    job.stage = .queued
+                    job.updatedAt = Date()
+                    jobs[episodeID] = job
+                } else {
+                    jobs.removeValue(forKey: episodeID)
+                }
+                changed = true
+            } else if hasLocalFile, analysisReady, job.stage != .ready {
+                job.stage = .ready
+                job.estimate = AnalysisJobEstimate(secondsRemaining: nil, progress: nil)
+                job.retryAfter = nil
+                job.detail = nil
+                jobs[episodeID] = job
+                changed = true
+            }
+        }
+        guard changed else { return }
         jobStore.save(jobs)
         onJobsChanged?()
     }
@@ -232,12 +320,6 @@ import Observation
         guard let lookup = podcastStore.episodeLookup(id: item.episodeID) else { return }
 
         let cleaningOn = cleaningStore.isChannelCleaningEnabled(forFeedURL: item.feedURL)
-        if !cleaningOn, !isReplay {
-            warmedEpisodeIDs.insert(item.episodeID)
-            updateJob(item, stage: .ready, detail: "Cleaning is off", generation: generation)
-            return
-        }
-
         if !isReplay,
            isAnalysisReady(episodeID: item.episodeID, feedURL: item.feedURL),
            isLocallyDownloaded(episodeID: item.episodeID) {
@@ -276,10 +358,10 @@ import Observation
             }
             guard generation == warmGeneration, !Task.isCancelled else { return }
 
-            if isReplay || !intervalCache.isAnalysisCompleted(
+            if isReplay || (cleaningOn && !intervalCache.isAnalysisCompleted(
                 episodeID: item.episodeID,
                 targetWords: settingsStore.activeNormalizedTargetSet()
-            ) {
+            )) {
                 updateJob(item, stage: .transcribing, generation: generation)
                 let targets = settingsStore.activeNormalizedTargetSet()
                 let unrelated = UnrelatedContentOptions(
@@ -361,7 +443,10 @@ import Observation
             }
             updateJob(item, stage: .ready, generation: generation)
         } catch {
-            guard generation == warmGeneration, !Task.isCancelled else { return }
+            // Cancellation is a resumable interruption. It is not a failed ad
+            // check and must never immediately start a second analyzer.
+            guard generation == warmGeneration, !Task.isCancelled,
+                  !(error is CancellationError) else { return }
             let category = CloudAdDetectionFailureCategory.classify(error)
             if !Self.isRetryable(category) {
                 updateJob(
@@ -398,9 +483,14 @@ import Observation
         delay: TimeInterval,
         kind: PreparationRequestKind
     ) {
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(delay))
-            guard let self, generation == self.warmGeneration else { return }
+        let timing = timing
+        Task { @MainActor [weak self, timing] in
+            do {
+                try await timing.sleep(for: delay)
+            } catch {
+                return
+            }
+            guard let self, generation == self.warmGeneration, !Task.isCancelled else { return }
             await self.warmOne(item, generation: generation, kind: kind)
         }
     }
@@ -480,6 +570,7 @@ import Observation
                 unrelatedContent: unrelatedContent
             )
         } catch {
+            if error is CancellationError || Task.isCancelled { throw CancellationError() }
             return try await analyzer.analyze(
                 episode: EpisodeIdentity(id: episodeID),
                 audioURL: audioURL,

@@ -87,10 +87,12 @@ final class QueueStore {
     /// it was already in Up Next. This also supports Play now from Ready to Play.
     func prepareForImmediatePlayback(
         selectedEpisodeID: String,
-        replacingCurrentEpisodeID currentEpisodeID: String
+        replacingCurrentEpisodeID currentEpisodeID: String?
     ) throws {
-        let reordered = [currentEpisodeID]
-            + queueEpisodeIDs().filter { $0 != selectedEpisodeID && $0 != currentEpisodeID }
+        var reordered = queueEpisodeIDs().filter { $0 != selectedEpisodeID && $0 != currentEpisodeID }
+        if let currentEpisodeID, currentEpisodeID != selectedEpisodeID {
+            reordered.insert(currentEpisodeID, at: 0)
+        }
         try replaceQueue(with: reordered)
     }
 

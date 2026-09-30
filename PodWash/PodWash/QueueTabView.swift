@@ -20,7 +20,8 @@ struct QueueTabView: View {
     let onClearUpNext: () -> [String]
     let onRestoreUpNext: ([String]) -> Void
     let onRetry: (String) -> Void
-    let onPlayWithAds: (String) -> Void
+    let onPlayWithoutAdSkipping: (String) -> Void
+    let onPlayOriginalAudio: (String) -> Void
 
     @AppStorage("queue.downloadsExpanded") private var downloadsExpanded = false
     @State private var isReordering = false
@@ -105,7 +106,8 @@ struct QueueTabView: View {
             isReordering: isReordering,
             onPlay: isReordering ? nil : { onPlayNow(item.episodeID) },
             onRetry: onRetry,
-            onPlayWithAds: onPlayWithAds
+            onPlayWithoutAdSkipping: onPlayWithoutAdSkipping,
+            onPlayOriginalAudio: onPlayOriginalAudio
         ) {
             Button("Play now", systemImage: "play.fill") { onPlayNow(item.episodeID) }
             Button("Move to top", systemImage: "arrow.up.to.line") { onMoveToTop(item.episodeID) }
@@ -117,7 +119,7 @@ struct QueueTabView: View {
                 let snapshot = onRemoveFromUpNext(item.episodeID)
                 showUndo("Removed from Up Next") { onRestore(snapshot) }
             }
-            if item.isDownloaded || item.activity != nil {
+            if item.availability.hasLocalAudio || item.availability.readiness.progress != nil || item.availability.readiness.showsIndeterminateProgress {
                 Button("Remove download", systemImage: "trash", role: .destructive) { onRemoveDownload(item.episodeID) }
             }
         }
@@ -140,8 +142,18 @@ struct QueueTabView: View {
                     Text("Downloaded episodes will appear here.")
                         .foregroundStyle(.secondary)
                 } else {
+                    Text("Saved on this device. Ready to play offline means clean-playback preparation is complete.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     ForEach(presentation.downloads) { item in
-                        QueueEpisodeRow(item: item, isReordering: false, onPlay: { onPlayNow(item.episodeID) }, onRetry: onRetry, onPlayWithAds: onPlayWithAds) {
+                        QueueEpisodeRow(
+                            item: item,
+                            isReordering: false,
+                            onPlay: { onPlayNow(item.episodeID) },
+                            onRetry: onRetry,
+                            onPlayWithoutAdSkipping: onPlayWithoutAdSkipping,
+                            onPlayOriginalAudio: onPlayOriginalAudio
+                        ) {
                             Button("Play now", systemImage: "play.fill") { onPlayNow(item.episodeID) }
                             Button("Add to Up Next", systemImage: "text.badge.plus") { onAddToUpNext(item.episodeID) }
                             Button("Mark as played", systemImage: "checkmark.circle") {
@@ -153,9 +165,17 @@ struct QueueTabView: View {
                     }
                 }
             } label: {
-                Text("Downloads · \(presentation.downloads.count)")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Downloads (\(presentation.downloads.count))")
+                    if !presentation.downloadsSummary.text.isEmpty {
+                        Text(presentation.downloadsSummary.text)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
             .accessibilityIdentifier("queueDownloads")
+            .accessibilityValue(presentation.downloadsSummary.accessibilityValue)
         }
     }
 
@@ -179,7 +199,8 @@ private struct QueueEpisodeRow<MoreActions: View>: View {
     let isReordering: Bool
     let onPlay: (() -> Void)?
     let onRetry: (String) -> Void
-    let onPlayWithAds: (String) -> Void
+    let onPlayWithoutAdSkipping: (String) -> Void
+    let onPlayOriginalAudio: (String) -> Void
     @ViewBuilder let moreActions: () -> MoreActions
 
     var body: some View {
@@ -189,23 +210,42 @@ private struct QueueEpisodeRow<MoreActions: View>: View {
                     .font(.body.weight(.semibold))
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Text(metadataText)
+                Text(item.podcastTitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                if let progress = item.activity?.progress {
+                HStack(spacing: 5) {
+                    Image(systemName: item.availability.readiness.iconName)
+                        .foregroundStyle(statusColor)
+                        .accessibilityHidden(true)
+                    Text(item.availability.readiness.text)
+                        .foregroundStyle(statusColor)
+                }
+                .font(.caption)
+                .fixedSize(horizontal: false, vertical: true)
+                if let progress = item.availability.readiness.progress {
                     ProgressView(value: progress)
                         .accessibilityIdentifier("queueActivityProgress_\(item.episodeID)")
-                } else if item.activity?.showsIndeterminateProgress == true {
+                        .accessibilityLabel("Download progress")
+                        .accessibilityValue("\(Int((progress * 100).rounded())) percent")
+                } else if item.availability.readiness.showsIndeterminateProgress {
                     ProgressView()
                         .controlSize(.small)
                         .accessibilityIdentifier("queueActivityProgress_\(item.episodeID)")
-                        .accessibilityLabel(item.activity?.text ?? "Preparing")
+                        .accessibilityLabel(item.availability.readiness.text)
                 }
-                if item.activity == .delayed || item.activity == .needsAttention {
+                if showsRecoveryActions {
                     HStack {
                         Button("Retry now") { onRetry(item.episodeID) }
-                        Button("Play with ads") { onPlayWithAds(item.episodeID) }
+                        if item.availability.hasLocalAudio {
+                            Button(recoveryPlayTitle) {
+                                if case .adCheckDelayed = item.availability.readiness {
+                                    onPlayWithoutAdSkipping(item.episodeID)
+                                } else {
+                                    onPlayOriginalAudio(item.episodeID)
+                                }
+                            }
+                        }
                     }
                     .buttonStyle(.bordered)
                 }
@@ -221,12 +261,39 @@ private struct QueueEpisodeRow<MoreActions: View>: View {
         .onTapGesture { onPlay?() }
         .accessibilityIdentifier("queueEpisode_\(item.episodeID)")
         .accessibilityLabel(item.title)
-        .accessibilityValue(metadataText)
-        .accessibilityHint(isReordering ? "Reorder mode" : "Plays now and keeps the current episode next.")
+        .accessibilityValue("\(item.podcastTitle), \(item.availability.readiness.text)")
+        .accessibilityHint(accessibilityHint)
     }
 
-    private var metadataText: String {
-        [item.podcastTitle, item.activity?.text].compactMap { $0 }.joined(separator: " · ")
+    private var showsRecoveryActions: Bool {
+        switch item.availability.readiness {
+        case .adCheckDelayed, .needsAttention: return true
+        default: return false
+        }
+    }
+
+    private var recoveryPlayTitle: String {
+        if case .adCheckDelayed = item.availability.readiness {
+            return "Play without ad skipping"
+        }
+        return "Play original audio"
+    }
+
+    private var accessibilityHint: String {
+        if isReordering { return "Reorder mode" }
+        return item.availability.readiness.isReadyOffline
+            ? "Plays now and keeps the current episode next."
+            : "Prepares this episode, then plays it, and keeps the current episode next."
+    }
+
+    private var statusColor: Color {
+        switch item.availability.readiness.tint {
+        case .ready: return .green
+        case .secondary: return .secondary
+        case .accent: return .accentColor
+        case .warning: return .orange
+        case .danger: return .red
+        }
     }
 }
 

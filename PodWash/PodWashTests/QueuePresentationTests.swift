@@ -8,18 +8,13 @@ import XCTest
 
 final class QueuePresentationTests: XCTestCase {
 
-    func testPreparationActivitiesExposeRoughDurationAndCorrectIndicatorStyle() {
-        XCTAssertEqual(
-            QueueRowActivity.preparing.text,
-            "Preparing clean playback · Usually a few minutes"
-        )
-        XCTAssertTrue(QueueRowActivity.preparing.showsIndeterminateProgress)
-        XCTAssertTrue(QueueRowActivity.checkingAds.showsIndeterminateProgress)
-        XCTAssertFalse(QueueRowActivity.downloading(progress: 0.5).showsIndeterminateProgress)
-        XCTAssertEqual(
-            QueueRowActivity.downloading(progress: 0.5).text,
-            "Downloading 50% · Usually a few minutes"
-        )
+    func testAvailabilityCopyUsesMeasuredDownloadProgressAndNoFabricatedDuration() {
+        XCTAssertEqual(EpisodeReadinessStatus.preparing.text, "Preparing clean playback · On device")
+        XCTAssertEqual(EpisodeReadinessStatus.checkingAds.text, "Checking for ads · On device")
+        XCTAssertEqual(EpisodeReadinessStatus.downloading(progress: 0.5).text, "Downloading · 50%")
+        XCTAssertEqual(EpisodeReadinessStatus.downloading(progress: 4).text, "Downloading · 100%")
+        XCTAssertTrue(EpisodeReadinessStatus.preparing.showsIndeterminateProgress)
+        XCTAssertFalse(EpisodeReadinessStatus.downloading(progress: 0.5).showsIndeterminateProgress)
     }
 
     func testDownloadsExcludeNowPlayingPlayedAndManualQueue() {
@@ -34,32 +29,77 @@ final class QueuePresentationTests: XCTestCase {
                 "downloaded": metadata("downloaded"),
             ],
             jobsByEpisodeID: [:],
-            foregroundJob: nil
+            availabilityByEpisodeID: [
+                "queued": readyAvailability(),
+                "playing": readyAvailability(),
+                "played": readyAvailability(),
+                "downloaded": readyAvailability(),
+            ],
+            foregroundJob: nil,
+            pendingQueueActivationEpisodeID: nil
         )
 
         let presentation = QueuePresentationBuilder.build(input)
         XCTAssertEqual(presentation.upNext.map(\.episodeID), ["queued"])
         XCTAssertEqual(presentation.downloads.map(\.episodeID), ["downloaded"])
+        XCTAssertEqual(presentation.downloadsSummary.text, "1 ready")
     }
 
-    func testReadyJobProducesNoRowActivity() {
+    func testReadyJobWithoutLocalFileIsNeverShownAsReady() {
         let job = AnalysisJob(
-            episodeID: "downloaded",
-            title: "Downloaded",
+            episodeID: "episode",
+            title: "Episode",
             stage: .ready,
             estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: nil),
             updatedAt: .now
         )
-        let input = QueuePresentationInput(
-            manualQueueIDs: ["downloaded"],
-            downloadedEpisodeIDs: ["downloaded"],
-            nowPlayingEpisodeID: nil,
-            metadataByEpisodeID: ["downloaded": metadata("downloaded")],
-            jobsByEpisodeID: ["downloaded": job],
+
+        let availability = EpisodeAvailabilityResolver.resolve(EpisodeAvailabilityInput(
+            downloadState: .notDownloaded,
+            hasVerifiedLocalFile: false,
+            isAnalysisReady: true,
+            durableJob: job,
             foregroundJob: nil
+        ))
+
+        XCTAssertEqual(availability.readiness, .waitingToDownload)
+    }
+
+    func testLocalAudioAndCompletedAnalysisAreReadyOfflineEvenWithStaleJob() {
+        let staleJob = AnalysisJob(
+            episodeID: "episode",
+            title: "Episode",
+            stage: .transcribing,
+            estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: nil),
+            updatedAt: .now
         )
 
-        XCTAssertNil(QueuePresentationBuilder.build(input).upNext.first?.activity)
+        let availability = EpisodeAvailabilityResolver.resolve(EpisodeAvailabilityInput(
+            downloadState: .downloaded,
+            hasVerifiedLocalFile: true,
+            isAnalysisReady: true,
+            durableJob: staleJob,
+            foregroundJob: nil
+        ))
+
+        XCTAssertEqual(availability.readiness, .readyOffline)
+        XCTAssertEqual(availability.readiness.text, "Ready to play offline")
+    }
+
+    func testDownloadedWithoutJobIsExplicitlyNotPrepared() {
+        let availability = EpisodeAvailabilityResolver.resolve(EpisodeAvailabilityInput(
+            downloadState: .downloaded,
+            hasVerifiedLocalFile: true,
+            isAnalysisReady: false,
+            durableJob: nil,
+            foregroundJob: nil
+        ))
+
+        XCTAssertEqual(availability.readiness, .downloadedNotPrepared)
+    }
+
+    private func readyAvailability() -> EpisodeAvailability {
+        EpisodeAvailability(localAudio: .downloaded, preparation: .ready, readiness: .readyOffline)
     }
 
     private func metadata(_ id: String, played: Bool = false) -> QueueEpisodeMetadata {

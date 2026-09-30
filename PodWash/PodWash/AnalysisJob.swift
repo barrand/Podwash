@@ -7,17 +7,16 @@
 
 import Foundation
 
-/// Listener-facing copy for active preparation work. This deliberately stays
-/// approximate instead of implying a measured countdown the app does not have.
+/// Listener-facing copy for active preparation work. Only download work has a
+/// measured percentage; analysis deliberately avoids fabricated durations.
 enum PreparationStatusCopy {
-    static let roughDuration = "Usually a few minutes"
-    static let preparing = "Preparing clean playback · \(roughDuration)"
-    static let checkingAds = "Checking for ads · \(roughDuration)"
+    static let preparing = "Preparing clean playback"
+    static let checkingAds = "Checking for ads"
 
     static func downloading(progress: Double?) -> String {
-        guard let progress else { return "Downloading · \(roughDuration)" }
+        guard let progress else { return "Downloading" }
         let percent = Int((min(max(progress, 0), 1) * 100).rounded())
-        return "Downloading \(percent)% · \(roughDuration)"
+        return "Downloading \(percent)%"
     }
 }
 
@@ -42,7 +41,6 @@ enum AnalysisJobStage: String, Codable, CaseIterable, Sendable {
         }
     }
 
-    /// Rough duration is shown only while the job is actively doing work.
     var listenerStatus: String {
         switch self {
         case .downloading:

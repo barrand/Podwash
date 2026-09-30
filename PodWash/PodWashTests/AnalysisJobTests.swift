@@ -25,25 +25,25 @@ final class AnalysisJobTests: XCTestCase {
     }
 
     func testReadyIsTheOnlyAutomaticHandoffState() {
-        XCTAssertTrue(AnalysisJobStage.ready.userLabel == "Ready")
+        XCTAssertTrue(AnalysisJobStage.ready.userLabel == "Ready to Play")
         XCTAssertFalse(AnalysisJobStage.adCheckDelayed.userLabel.isEmpty)
     }
 
-    func testActivePreparationCopyUsesOneHonestRoughDuration() {
+    func testActivePreparationCopyAvoidsFabricatedDurations() {
         XCTAssertEqual(
             AnalysisJobStage.transcribing.listenerStatus,
-            "Preparing clean playback · Usually a few minutes"
+            "Preparing clean playback"
         )
         XCTAssertEqual(
             AnalysisJobStage.checkingAds.listenerStatus,
-            "Checking for ads · Usually a few minutes"
+            "Checking for ads"
         )
         XCTAssertEqual(
             PreparationStatusCopy.downloading(progress: 0.42),
-            "Downloading 42% · Usually a few minutes"
+            "Downloading 42%"
         )
         XCTAssertEqual(AnalysisJobStage.queued.listenerStatus, "Waiting to prepare")
-        XCTAssertEqual(AnalysisJobStage.ready.listenerStatus, "Ready")
+        XCTAssertEqual(AnalysisJobStage.ready.listenerStatus, "Ready to Play")
         XCTAssertEqual(AnalysisJobStage.adCheckDelayed.listenerStatus, "Ad check delayed")
         XCTAssertEqual(AnalysisJobStage.needsAttention.listenerStatus, "Needs attention")
     }
