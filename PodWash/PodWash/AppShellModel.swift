@@ -1437,26 +1437,6 @@ final class AppShellModel {
         refreshQueuePresentation()
     }
 
-    func playReadyChoice(episodeID: String) {
-        if queueStore.queueEpisodeIDs().contains(episodeID) {
-            playReadyEpisodeNow(episodeID)
-            return
-        }
-        guard let lookup = podcastStore.episodeLookup(id: episodeID) else { return }
-        playEpisode(lookup.episode, podcastTitle: lookup.podcastTitle, feedURL: lookup.feedURL)
-    }
-
-    func moveUpNext(episodeID: String, to index: Int) {
-        try? queueStore.move(episodeID, toIndex: index)
-        scheduleWarmForComingUp()
-        refreshQueuePresentation()
-    }
-
-    func moveUpNextToTop(episodeID: String) {
-        moveUpNext(episodeID: episodeID, to: 0)
-    }
-
-    func removeFromUpNext(episodeID: String) {
     /// Explicit row actions never change queue membership. The planner owns the
     /// serial download/analysis pipeline; this method only establishes intent.
     func requestEpisodeDownload(_ episodeID: String) {
@@ -1519,6 +1499,28 @@ final class AppShellModel {
         refreshQueuePresentation()
     }
 
+    func playReadyChoice(episodeID: String) {
+        if queueStore.queueEpisodeIDs().contains(episodeID) {
+            playReadyEpisodeNow(episodeID)
+            return
+        }
+        guard let lookup = podcastStore.episodeLookup(id: episodeID) else { return }
+        playEpisode(lookup.episode, podcastTitle: lookup.podcastTitle, feedURL: lookup.feedURL)
+    }
+
+    func moveUpNext(episodeID: String, to index: Int) {
+        PodWashAnalytics.action("Queue.reordered")
+        try? queueStore.move(episodeID, toIndex: index)
+        scheduleWarmForComingUp()
+        refreshQueuePresentation()
+    }
+
+    func moveUpNextToTop(episodeID: String) {
+        moveUpNext(episodeID: episodeID, to: 0)
+    }
+
+    func removeFromUpNext(episodeID: String) {
+        PodWashAnalytics.action("Queue.removed")
         invalidateQueueActivation(episodeID: episodeID)
         let wasReady = isReadyOffline(episodeID)
         try? queueStore.remove(episodeID)

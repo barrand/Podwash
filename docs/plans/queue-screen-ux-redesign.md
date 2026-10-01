@@ -1,146 +1,138 @@
-# Queue Readiness UX — Canonical Implementation Plan
+# Shared Library + Queue Episode Readiness UI
 
 Status: **approved direction; implementation pending**.
 
-This plan supersedes the earlier Queue preparation plan and the prior decision
-in this file to keep ready rows visually quiet. Git history retains those older
-designs; this document is the single source of truth for the next Queue change.
-
-Queue remains an ordered listening commitment. Downloads remain a derived list
-of audio files stored on this device, not a second queue. The change in this
-plan is that storage, preparation, and immediate playability become explicit and
-consistent everywhere they are shown.
+This document is the canonical plan for the next Library and Queue readiness
+change. It supersedes the prior Ready to Play shelf, the Queue Downloads
+disclosure, separate UIKit/SwiftUI episode rows, permanent Library accessory
+buttons, and the implicit "prepare, then play" interaction.
 
 ## 1. Product contract
 
-The app must answer two different questions without conflating them:
+Library and Queue have separate, simple jobs:
 
-1. **Is the audio stored on this device?**
-2. **Can it begin clean offline playback immediately?**
+- **Library** is the catalog of subscribed shows. A show screen contains its
+  episodes.
+- **Queue** is the listener's ordered **Up Next** list. It contains no global
+  Downloads inventory.
 
-The exact promise is:
+Both surfaces render an episode through the exact same row component and the
+same action handlers. Context changes only the row's secondary metadata and
+collection-management actions.
 
-> **Ready to play offline** means a verified local audio file exists and all
-> processing enabled for that episode/channel is complete.
+The governing interaction rule is:
 
-`AnalysisJob.stage == .ready`, a persisted download flag, or an analysis cache
-entry alone is never sufficient. The actual local file and the currently
-required analysis artifacts are authoritative.
+> Show **Play** only when playback can start immediately. Otherwise show the
+> exact action or passive state that moves the episode toward readiness.
 
-Do not display `100% ready`; percentages are reserved for measured download
-progress. Do not display speculative time estimates such as "Usually a few
-minutes." Use an indeterminate progress indicator for work whose progress is not
-measured.
+**Ready to play offline** requires both a verified local audio file and every
+currently enabled preparation artifact for that episode/channel. A persisted
+download flag, `.ready` job, or cache entry alone is insufficient. The
+filesystem and current preparation requirements are authoritative.
 
-## 2. Existing behavior to preserve
+## 2. Final row design
 
-- **Up Next** remains the sole listener-ordered list.
-- **Downloads** remains a collapsed-by-default disclosure containing verified
-  local files, excluding Now Playing, Up Next, and played episodes.
-- Downloads remain ordered by preparation update, then publication date, with a
-  deterministic episode-ID tie-break.
-- Reorder mode, swipe removal, More menus, five-second Undo, Mark as Played,
-  auto-delete behavior, and mini-player clearance remain unchanged.
-- Selecting another episode keeps the interrupted episode first in Up Next and
-  preserves the relative order of all other entries.
-- Removing from Up Next never deletes completed local audio. **Remove download**
-  deletes it explicitly; the existing auto-delete-after-played setting may also
-  delete it when the Mark as Played Undo window commits.
-- No Saved-for-Later entity and no Core Data migration are required.
+### Shared component
 
-## 3. Listener-facing Queue design
+Create one SwiftUI `EpisodeRowView`. Queue uses it directly. Library's existing
+`UITableViewController` hosts the same view with `UIHostingConfiguration` so the
+app retains its feed refresh, transcript refresh, scrolling, and embedding
+behavior without preserving a second row implementation.
 
-### Row layout
+The row contains:
 
-Every Up Next and Downloads row shows three distinct pieces of information:
+1. title, up to two lines;
+2. context metadata—podcast title in Queue; publication date and Played state in
+   Library;
+3. one listener-facing availability line;
+4. the existing completed cleaning summary when applicable;
+5. one trailing **primary-state slot**;
+6. one trailing **More** button.
 
-1. Episode title, up to two lines.
-2. Podcast title on its own secondary line.
-3. A dedicated availability line containing an icon and the exact status copy
-   from the table below.
-
-Do not append availability to the podcast-title line; truncating the status would
-recreate the original ambiguity. The availability line may wrap under large
-Dynamic Type sizes. Color is supplemental only; icon and text carry the meaning.
-
-Use these SF Symbols unless platform availability forces an equivalent:
-
-| Meaning | Symbol | Default tint |
-| --- | --- | --- |
-| Ready | `checkmark.circle.fill` | green |
-| Waiting/downloaded | `arrow.down.circle` | secondary/blue |
-| Active preparation | `waveform` | accent |
-| Checking ads | `magnifyingglass` | accent |
-| Delayed | `clock` | orange |
-| Needs attention | `exclamationmark.triangle.fill` | red |
-
-### Exact status mapping
-
-The derived status is deterministic. Evaluate conditions in the precedence
-order defined in section 4; use this copy in Queue, Library, mini-player
-accessibility values, and tests.
-
-| Derived status | Visible copy | Indicator |
-| --- | --- | --- |
-| `waitingToDownload` | **Waiting to download** | none |
-| `downloading(progress: nil)` | **Downloading** | indeterminate only if no measured value exists |
-| `downloading(progress: p)` | **Downloading · N%** | determinate, `p` clamped to `0...1` |
-| `downloadedNotPrepared` | **Downloaded · Not prepared** | none |
-| `waitingToPrepare` | **Downloaded · Waiting to prepare** | none |
-| `preparing` | **Preparing clean playback · On device** | indeterminate |
-| `checkingAds` | **Checking for ads · On device** | indeterminate |
-| `readyOffline` | **Ready to play offline** | none |
-| `adCheckDelayed(retryAt: nil)` | **Ad check delayed · Retrying automatically** | none |
-| `adCheckDelayed(retryAt: future)` | **Ad check delayed · Retrying in {duration}** | none |
-| `adCheckDelayed(retryAt: past)` | **Ad check delayed · Retrying now** | none |
-| `needsAttention` | **Needs attention** | none; show safe detail separately when available |
-
-Retry duration uses the existing rounded listener-facing formatter. Never expose
-raw errors, credentials, URLs, implementation stage names, or transcript data.
-
-### Downloads disclosure
-
-The label is two lines:
+The primary-state slot is the only readiness visualization. Do not show a
+second progress bar beneath the status and a progress ring at the same time.
+The status line supplies the words; the slot supplies the action or activity:
 
 ```text
-Downloads (3)
-2 ready · 1 preparing
+Download -> progress -> processing -> Play
+                    \-> failure -> Retry
 ```
 
-Build the secondary summary from nonzero categories in this order: ready,
-preparing, not prepared, delayed, needs attention. The category counts must sum
-to the visible Downloads count. Allow the secondary line to wrap for Dynamic
-Type rather than truncating it. Its accessibility value is the full spoken
-summary, for example, "3 downloads: 2 ready to play offline, 1 preparing."
+The More button stays in a fixed trailing position. The row body is
+informational and never starts playback or preparation. In Queue reorder mode,
+primary and More yield to the reorder interaction.
 
-When expanded, show this short explanation before the first row:
+All interactive targets are at least 44 points. Status text may wrap at Dynamic
+Type sizes. Color is supplemental; visible words and symbols carry meaning.
 
-> Saved on this device. Ready to play offline means clean-playback preparation
-> is complete.
+### Exact state mapping
 
-The empty state remains **Downloaded episodes will appear here.**
+| Resolved readiness | Visible status | Primary-state slot |
+| --- | --- | --- |
+| `notDownloaded` | **Not downloaded** | **Download** |
+| `waitingToDownload` | **Waiting to download** | passive clock |
+| `downloading(progress: nil)` | **Downloading** | indeterminate progress |
+| `downloading(progress: p)` | **Downloading · N%** | determinate progress, clamped to `0...1` |
+| `downloadedNotPrepared` | **Downloaded · Not prepared** | **Prepare** |
+| `waitingToPrepare` | **Downloaded · Waiting to prepare** | passive clock |
+| `preparing` | **Preparing clean playback · On device** | indeterminate activity |
+| `checkingAds` | **Checking for ads · On device** | indeterminate activity |
+| `readyOffline` | **Ready to play offline** | **Play** |
+| `adCheckDelayed(retryAt: nil)` | **Ad check delayed · Retrying automatically** | passive clock |
+| `adCheckDelayed(retryAt: future)` | **Ad check delayed · Retrying in {duration}** | passive clock |
+| `adCheckDelayed(retryAt: past)` | **Ad check delayed · Retrying now** | passive clock |
+| download failure | **Download failed** | **Retry** |
+| preparation failure | **Preparation needs attention** | **Retry** |
 
-### Recovery actions
+Only measured download progress receives a percentage. Do not fabricate
+analysis percentages or duration estimates.
 
-- Retryable failure: show **Retry now**.
-- Ad detection delayed/failed after local cleaning is complete: show
-  **Play without ad skipping**. Existing local profanity intervals remain active.
-- General preparation failure where no cleaning result can be promised: show
-  **Play original audio**. This is an explicit listener override; never invoke it
-  from a normal row tap.
-- Show either bypass action only when a verified local file exists. If no local
-  audio exists, offer Retry only.
-- Show **Play without ad skipping** only when the interval cache proves local
-  profanity processing completed and the failed component is the cloud ad check.
-  Otherwise the honest override is **Play original audio**.
-- Do not use the generic **Play with ads** label for non-ad failures.
+### Action semantics
 
-## 4. Shared availability model
+- **Download** starts the complete download-and-preparation pipeline and ends at
+  verified Ready to play. It does not add the episode to Up Next.
+- **Prepare** continues the same pipeline from an already verified local file.
+- **Retry** retries the failed stage without creating a second download or
+  analyzer run.
+- **Play** re-resolves readiness and starts verified local audio immediately. A
+  stale tap after readiness is lost does not start remote or unprepared audio.
+- Delayed automatic retries remain passive. **Retry now** and safe playback
+  overrides live in More.
+- Repeated taps are idempotent.
+- Safe errors may be retained for diagnostics, but raw URLs, credentials,
+  transcript content, and internal stage names never appear in the row.
 
-Keep storage and preparation as separate facts, then derive a listener-facing
-status. Do not encode all truth in display strings.
+### More menu
 
-Add shared value types equivalent to:
+Shared actions use identical wording and behavior in Library and Queue. Order
+them as Queue membership, active-work/recovery, transcript, played state, then
+destructive local-audio removal.
+
+Applicable shared actions are:
+
+- **Cancel Download** or **Cancel Preparation** when an explicit request owns
+  cancellable work;
+- **Retry now** for delayed work;
+- **Play without ad skipping** only when verified local profanity processing is
+  complete and the failed/delayed component is the cloud ad check;
+- **Play original audio** when a verified local file exists but no cleaning
+  result can honestly be promised;
+- **View Transcript** when available;
+- **Mark as Played** or **Replay from Beginning** when applicable;
+- **Remove Download**, destructive, when local audio exists.
+
+Safe playback overrides appear on both Library and Queue. Omit inapplicable
+items rather than disabling them. Do not duplicate Download, Prepare, Retry, or
+Play in More when the primary-state slot already exposes that action.
+
+The only context-specific actions are:
+
+- Library: **Add to Up Next** or **Remove from Up Next**;
+- Queue: **Move to Top**, **Remove from Up Next**, and reorder support.
+
+## 3. Shared presentation and action interfaces
+
+Keep storage, preparation, listener presentation, and UI actions separate.
 
 ```swift
 enum LocalAudioAvailability: Equatable {
@@ -161,6 +153,7 @@ enum CleanPlaybackPreparation: Equatable {
 }
 
 enum EpisodeReadinessStatus: Equatable {
+    case notDownloaded
     case waitingToDownload
     case downloading(progress: Double?)
     case downloadedNotPrepared
@@ -172,355 +165,365 @@ enum EpisodeReadinessStatus: Equatable {
     case needsAttention(detail: String?)
 }
 
-struct EpisodeAvailability: Equatable {
-    let localAudio: LocalAudioAvailability
-    let preparation: CleanPlaybackPreparation
-    let readiness: EpisodeReadinessStatus
+enum EpisodePrimaryControl: Equatable {
+    case download
+    case prepare
+    case waiting
+    case progress(Double?)
+    case retry
+    case play
 }
 ```
 
-Names may change to match project conventions, but the two source dimensions and
-derived status must remain explicit.
+`EpisodeAvailabilityResolver` is pure. Its input includes download state,
+verified-file presence, current analysis readiness, durable and foreground jobs,
+and whether work has an active owner. It applies this precedence:
 
-Implement one pure `EpisodeAvailabilityResolver`. Its input must contain:
+1. verified file plus current required analysis -> ready offline;
+2. no file plus active download -> downloading;
+3. no file plus download/terminal failure -> needs attention;
+4. no file plus active owner -> waiting to download;
+5. no file plus no owner -> not downloaded;
+6. verified file plus current job -> job-derived preparation state;
+7. verified file plus incomplete analysis and no job -> downloaded/not prepared.
 
-- `DownloadState` from `DownloadManager`;
-- whether `DownloadManager.localFileURL(for:)` verified a real file;
-- whether `WarmPlanner.isAnalysisReady(episodeID:feedURL:)` is true for current
-  settings and channel cleaning configuration;
-- the durable `AnalysisJob`, if any;
-- the foreground preparation job, if it owns this episode.
+Create one pure `EpisodeRowPresentationMapper`. It is the only source of visible
+status copy, symbols, semantic tint, progress presentation, primary control,
+safe failure copy, menu eligibility, and accessibility wording.
 
-Resolution precedence is mandatory:
-
-1. A verified local file plus `isAnalysisReady == true` is `readyOffline`, even
-   if a stale job still says transcribing, delayed, or ready.
-2. Without a verified file, an active download is `downloading`.
-3. Without a verified file, download failure or a terminal preparation failure
-   is `needsAttention`; safe failure detail may be retained.
-4. Without a verified file, all other requested states are
-   `waitingToDownload`. A stale `.ready` job must never produce ready UI.
-5. With a verified file but incomplete analysis, foreground job state takes
-   precedence over the durable warm job because it owns the active request.
-6. With a verified file, map transcribing, checking ads, delayed, failed, and
-   queued jobs to their corresponding statuses.
-7. With a verified file, incomplete analysis, and no active/queued job, return
-   `downloadedNotPrepared`.
-
-Place listener-facing copy, icons, progress behavior, summary category, and
-accessibility wording in a separate pure presentation mapper. SwiftUI views must
-not inspect `AnalysisJob`, `DownloadState`, cache files, or settings directly.
-
-## 5. Reconciliation and source-of-truth fixes
-
-Add a reconciliation pass at launch and whenever a foreground preparation
-finishes:
-
-- A persisted `.ready` job with no local file is not ready. If the episode is
-  still requested by Up Next or automatic preparation, move it back to queued;
-  otherwise remove the stale job.
-- A local file with completed required analysis is ready regardless of stale job
-  stage; update the durable job to `.ready` when a job exists.
-- A local file without completed analysis and without a scheduled job remains
-  downloaded/not prepared. Do not fabricate a queued job merely for display.
-- A download-state record whose file is missing is reset through the existing
-  `DownloadManager.localFileURL(for:)` repair behavior.
-
-Fix `WarmPlanner.warmOne` so cleaning-disabled episodes still download their
-audio before being marked `.ready`. "Cleaning is off" means no analysis is
-required; it does not waive the offline-file requirement.
-
-`WarmPlanner.quiesce()` must also clear `activeRequestIDs`. Otherwise re-aiming
-the same selection after foreground work compares equal, returns early, and
-leaves no worker running.
-
-The same resolver must power:
-
-- `QueuePresentationBuilder` rows and Downloads summary;
-- the in-progress Library **Ready to Play** shelf;
-- mini-player Queue/preparation accessibility status;
-- autoplay/offline-ready eligibility.
-
-Remove independent readiness logic from `ReadyToPlayChoice`. Library may filter
-to `readiness == .readyOffline`, but it must consume the shared snapshot rather
-than recompute readiness.
-
-## 6. Queue presentation changes
-
-Change `QueueEpisodePresentation` so it owns the resolved availability and its
-pure status presentation instead of optional `activity` plus `isDownloaded`.
-`QueuePresentation` also exposes a Downloads summary value with counts and
-spoken copy.
-
-`AppShellModel.queuePresentation` must:
-
-1. Collect manual queue IDs and verified downloaded IDs.
-2. Include download state for every manual item, including active progress and
-   failures.
-3. Resolve metadata, played state, feed URL, analysis readiness, durable job,
-   and foreground job for each candidate.
-4. Call `EpisodeAvailabilityResolver` once per candidate.
-5. Pass resolved values into the pure `QueuePresentationBuilder`.
-
-`QueuePresentationBuilder` retains current filtering and ordering rules. It does
-not access stores, the filesystem, or singleton settings.
-
-Refresh `queuePresentationRevision` on queue mutations, played-state changes,
-download state/progress changes, preparation job changes, foreground stage
-changes, cleaning-setting changes, and analysis completion. Coalesce progress
-refreshes if necessary, but visible download progress must continue advancing.
-
-## 7. Row activation and preparation ownership
-
-Replace `playReadyEpisodeNow`/the Queue row callback with one operation whose
-semantic name does not assume readiness, for example:
+`EpisodeRowView` receives value-only inputs equivalent to:
 
 ```swift
-func activateQueueEpisode(_ episodeID: String)
+EpisodeRowView(
+    presentation: EpisodeRowPresentation,
+    context: EpisodeRowContext,
+    actions: EpisodeRowActions
+)
 ```
 
-It must work whether or not another episode is currently loaded.
+It does not receive `DownloadManager`, `WarmPlanner`, `AnalysisJob`, settings,
+or persistence stores.
 
-### Queue mutation
+Expose one shared action surface from `AppShellModel`:
 
-Extend `QueueStore.prepareForImmediatePlayback` to accept an optional current
-episode ID:
+```swift
+requestEpisodeDownload(_ episodeID: String)
+prepareDownloadedEpisode(_ episodeID: String)
+retryEpisodePreparation(_ episodeID: String)
+playReadyEpisode(_ episodeID: String, context: EpisodePlayContext)
+cancelEpisodePreparation(_ episodeID: String)
+removeEpisodeDownload(_ episodeID: String)
+addToUpNext(_ episodeID: String)
+removeFromUpNext(_ episodeID: String)
+```
 
-- Current episode `X`, selected `B`, queue `[A, B, C]` becomes `[X, A, C]`.
-- No current episode, selected `B`, queue `[A, B, C]` becomes `[A, C]`.
-- Selecting a downloaded item outside Up Next with current `X` inserts `X` at
-  the front without inserting the selected item.
-- Never duplicate the current or selected episode.
+Every handler re-resolves state before mutating anything.
 
-Do not mutate the queue when preparation merely starts. Keep the selected row in
-its existing section so its progress remains visible, and keep the current audio
-playing while the target downloads and prepares. Immediately before the ready
-target becomes Now Playing, persist the mutation using the episode that is
-current at that moment, then create the new playback session. This avoids silent
-minutes, disappearing rows, and saving an episode that has already ended as the
-one to resume.
+## 4. Preparation ownership
 
-### Latest-selection-wins contract
+Keep the existing serial `WarmPlanner`; change its request inputs rather than
+building another preparation engine.
 
-`AppShellModel` owns a monotonically increasing playback-intent generation and
-at most one activation task. Each call to `activateQueueEpisode`:
+### Automatic readiness window
 
-1. Increments the generation and cancels the previous activation task.
-2. Marks the selected episode as the pending Queue activation without removing
-   it from its current presentation section.
-3. Transfers preparation ownership safely and awaits a terminal outcome.
-4. Rechecks that its generation is current after every suspension point.
-5. On ready, applies the queue mutation above and starts playback only if the
-   generation is still current.
+**Keep episodes ready automatically** prepares only the first two eligible
+choices, matching the setting's existing listener-facing promise.
 
-Repeated taps on the same episode are idempotent. Selecting B while A is being
-prepared guarantees A can never auto-play later. Removing the pending episode,
-marking it played, removing its download, clearing Up Next, unsubscribing its
-show, or dismissing the player cancels its pending playback intent.
+- Queue order wins when selecting the two choices.
+- Predictions fill unused slots only when existing smart-autoplay rules permit.
+- An automatic choice waiting for the worker shows Waiting to download and no
+  Download button because work is already requested.
+- Other queued episodes remain Not downloaded with Download.
+- With the setting off, Queue episodes remain idle unless another explicit
+  owner requires them.
+- Reordering recomputes the automatic window.
+- Work leaving the window stops when automatic preparation was its only owner.
+- Completed local audio remains; resumable partial-transfer data may remain
+  internal.
 
-### Background-to-foreground handoff
+### Explicit intent and automatic suppression
 
-`WarmPlanner` and foreground playback share the analyzer, so they must never
-analyze concurrently.
+Use one versioned UserDefaults payload and one store:
 
-- If the selected episode is already ready, start from the local file
-  immediately; do not restart analysis.
-- Otherwise call a new structured async API equivalent to:
+```swift
+struct EpisodePreparationPreferences: Codable {
+    var explicitEpisodeIDs: Set<String>
+    var automaticallySuppressedEpisodeIDs: Set<String>
+}
+```
 
-  ```swift
-  enum ImmediatePreparationOutcome: Equatable {
-      case ready
-      case needsAttention
-      case cancelled
-  }
+The store is the durable source for listener intent; `AnalysisJob` remains the
+durable description of pipeline progress.
 
-  func prepareImmediately(episodeID: String) async -> ImmediatePreparationOutcome
-  ```
+- Insert explicit intent before Download or Prepare starts.
+- Reconstruct ownership on launch from explicit IDs, current automatic choices,
+  and replay/current-playback requirements.
+- Clear explicit intent after verified readiness, explicit cancellation, Remove
+  Download, unsubscribe, or local-data cleanup.
+- Remove Download on an automatically owned episode adds suppression so the app
+  does not immediately redownload it.
+- Suppression clears when the episode leaves the automatic window or the
+  listener explicitly taps Download.
+- Queue membership does not create or erase explicit Download intent.
+- Cancelling one owner stops work only when no other owner remains.
 
-- `prepareImmediately` calls `quiesce()` and awaits the prior serial worker
-  before using the existing `warmOne` download/analysis pipeline at
-  user-requested priority. Cancellation alone is insufficient because
-  URLSession/ASR adapters may observe it late.
-- Refactor `warmOne` as needed to return a terminal outcome; do not create a
-  second copy of its download, analysis, retry, or job-update logic.
-- The activation task must own and await the download. It must not call the
-  existing fire-and-forget `startDownloadBeforePlay`, because that task can
-  finish after a newer selection and unexpectedly replace the player.
-- Reuse any completed download or partial analysis artifacts already produced.
-- The durable WarmPlanner job is the authoritative visible job while a Queue
-  target prepares. `pendingQueueActivationEpisodeID` identifies the job that is
-  expected to auto-play. Existing `foregroundPreparationJob` remains authoritative
-  only for a playback session that already owns the episode.
-- The current episode continues playing during this preparation. The mini-player
-  Queue line reports the pending target's state; Queue and Library show the same
-  job through the shared resolver.
-- On success, reconcile the durable job to `.ready`, perform the queue mutation,
-  load the prepared local episode, clear the pending intent, and start playback
-  exactly once. The normal playback path must recognize the ready cache and must
-  not perform the full analysis again. Then re-aim background warming.
-- On cancellation, do not report failure and do not auto-play.
-- Keep retries for immediate preparation structured under the activation task;
-  do not schedule an unowned retry that can auto-play later. While retrying, the
-  job publishes `adCheckDelayed` and waits using the injected `AppTiming`. A new
-  selection or any cancellation condition terminates both the wait and the
-  pending auto-play. The existing retry backoff schedule remains unchanged.
-- On terminal failure, keep playback stopped and expose the recovery actions.
+Planner priority is replay/current playback requirements, explicit Download or
+Prepare requests, the automatic next-two window, then predictions. All owners
+share one download and one analyzer run.
 
-The new Queue activation generation protects the entire
-quiesce/download/analyze/retry/queue-mutation/play sequence. Reuse the existing
-`invalidatePlaybackPreparation()` request-ID guard only after a playback session
-has taken foreground ownership.
+## 5. Screen changes
 
-## 8. Accessibility and interaction requirements
+### Library root
 
-- Each row accessibility label is the episode title.
-- Each row accessibility value includes podcast title, availability copy, and
-  measured progress when present.
-- Normal-mode hint: ready rows say **Plays now and keeps the current episode
-  next.** Unready rows say **Prepares this episode, then plays it, and keeps the
-  current episode next.**
-- Reorder-mode hint remains **Reorder mode** and row activation stays disabled.
-- Progress indicators have explicit labels and values; never announce both a
-  parent percentage and a duplicate child percentage.
-- More remains a separate 44-point target and must not trigger row playback.
-- Status icons are hidden from accessibility when the same meaning is already in
-  the row value.
+Keep subscription artwork/title, navigation, unsubscribe, empty state, refresh,
+and compact partial-refresh failure. Remove every episode-readiness shelf and
+Queue shortcut.
 
-## 9. Implementation sequence
+### Library show
 
-1. Add the two-axis availability types, resolver, presentation mapper, and unit
-   tests without changing the view.
-2. Fix WarmPlanner's cleaning-off download invariant and add reconciliation.
-3. Convert `QueuePresentationBuilder` and `AppShellModel.queuePresentation` to
-   the shared availability snapshot; migrate Library and mini-player consumers.
-4. Update Queue row layout, Downloads summary, accessibility, and recovery copy.
-5. Implement optional-current queue mutation and the latest-selection-wins
-   activation/handoff path.
-6. Add integration and UI coverage, then run the focused and full verification
-   suites.
+Host the shared row in the existing table. Refresh a visible row whenever its
+download state/progress, planner job, analysis readiness, cleaning setting,
+queue membership, transcript availability, or played state changes.
 
-Do not combine these steps with unrelated feed-refresh refactors. The working
-tree currently contains feed-refresh/upcoming-preparation changes in shared
-files; preserve them and integrate with their Library Ready to Play shelf rather
-than reverting or duplicating them.
+Use self-sizing cells. Preserve pull-to-refresh, long-list scrolling, transcript
+backfill refresh, and zero-width embedding safeguards.
 
-## 10. Validation requirements
+### Queue
 
-### Availability resolver unit tests
+Queue contains one Up Next section only. Remove the Downloads disclosure and
+all global downloaded-episode summary/filtering behavior.
 
-Use table-driven tests covering at least:
+Preserve saved order, reorder mode, Move to Top, swipe removal, five-second
+Undo, Mark as Played, auto-delete-after-played, mini-player clearance, and the
+empty state.
 
-- no file + no job -> waiting to download for requested Up Next item;
-- active download at `0`, `0.42`, `1`, below `0`, and above `1` -> correctly
-  clamped display percentage;
-- file + no job + incomplete analysis -> downloaded/not prepared;
-- file + queued job -> waiting to prepare;
-- file + transcribing -> preparing;
-- file + checking ads -> checking ads;
-- file + complete required analysis -> ready offline;
-- cleaning disabled + file -> ready offline;
-- cleaning disabled + no file + `.ready` job -> not ready;
-- missing file + `.ready` job -> not ready;
-- file + stale transcribing job + completed analysis -> ready offline;
-- foreground job overrides a conflicting durable nonterminal job;
-- delayed retry before, at, and after `retryAfter`;
-- download failure and terminal preparation failure -> needs attention;
-- safe failure detail is preserved and raw diagnostic detail is not exposed.
+The mini-player Queue status button continues to open Queue. It consumes the
+same availability presentation but does not render `EpisodeRowView`.
 
-### Presentation-builder unit tests
+## 6. Required old-code removal
 
-- Up Next preserves `QueueStore` order regardless of readiness.
-- Downloads excludes Now Playing, Up Next, and played episodes.
-- Downloads ordering remains deterministic.
-- Every row has exactly one availability status; no nil/blank ready state exists.
-- Summary categories omit zero counts and sum to the Downloads total.
-- Summary visual and spoken copy are exact for ready-only, mixed, delayed,
-  attention, and empty collections.
-- Status icon, tint role, indicator style, visible copy, and accessibility copy
-  match the mapping table.
+Implementation is incomplete until the obsolete presentation and behavior
+paths below are deleted rather than left behind as compatibility code.
 
-### Planner and reconciliation tests
+### Remove the Library Ready to Play shelf
 
-- Cleaning disabled still downloads before the job becomes ready.
-- Ready job with a missing file is requeued when requested and removed when no
-  longer requested.
-- Completed artifacts repair a stale nonterminal job to ready.
-- A local unprocessed file without a request remains not prepared and does not
-  start work merely because Queue was opened.
-- Launch reconciliation is idempotent and never duplicates work.
-- Quiescing and then re-aiming the same request list starts a worker again;
-  `activeRequestIDs` cannot suppress the restart.
+Delete:
 
-### Activation and concurrency tests
+- `ReadyToPlayChoice`;
+- `readyToPlayChoices`;
+- `preparationShelfStatus`;
+- `playReadyChoice`;
+- `LibraryView.readyChoices`;
+- `LibraryView.preparationStatus`;
+- `LibraryView.onPlayReadyChoice`;
+- `LibraryView.onOpenQueue`;
+- Ready to Play markup and `readyToPlay_*` identifiers;
+- Library-root Queue/View Queue buttons;
+- corresponding `AppShellView` parameters and closures.
 
-- Ready local episode starts immediately without analyzer invocation.
-- Downloaded/unprepared episode prepares and starts exactly once.
-- Not-downloaded episode downloads, prepares, and starts exactly once.
-- The current episode continues playing and the selected row remains visible
-  while an unready target prepares.
-- Activation works with no current player session.
-- With current `X` and queue `[A, B, C]`, selecting B persists `[X, A, C]`.
-- With no current and queue `[A, B, C]`, selecting B persists `[A, C]`.
-- If X ends and Y becomes current while B prepares, switching to ready B queues
-  Y, not the already-ended X.
-- Rapid A-then-B selection can only start B.
-- Repeated taps on B create one download, one analysis, and one playback start.
-- A late completion from the old fire-and-forget download path cannot replace a
-  newer selection; Queue activation uses only its owned structured task.
-- Background preparation is fully settled before foreground analysis begins;
-  assert maximum analyzer concurrency is one.
-- Cancellation never becomes delayed/failed UI and never auto-plays later.
-- Removing/playing/clearing/unsubscribing the pending episode invalidates its
-  intent.
-- Failure exposes the correct context-specific bypass action.
-- Successful foreground completion updates Queue, Library, and mini-player to
-  the same ready state before or when playback begins.
+### Remove the old Library episode cell
 
-### UI tests
+Delete the custom `EpisodeTableViewCell` presentation implementation, including:
 
-- Ready, downloaded/not-prepared, downloading, preparing, checking, delayed,
-  and attention rows show the exact copy above.
-- Downloads disclosure is collapsed initially, persists its expansion setting,
-  and announces the correct summary.
-- An unready selected row remains visible with live progress while the existing
-  episode continues playing.
-- Tapping an unready row visibly progresses and then plays without a second tap.
-- Tapping a ready row plays immediately.
-- Retry and bypass controls do not also trigger the row tap.
-- Long titles, long podcast names, and every supported Dynamic Type size keep
-  status readable and More/reorder controls hittable.
-- VoiceOver reads title, podcast, status, progress, and the correct activation
-  hint once each.
-- Reorder, swipe removal, Undo, Mark as Played, auto-delete, mini-player
-  clearance, and last-row scrolling continue to work.
+- manual title/date/status/accessory constraints and fixed 140-point height;
+- permanent queue-add, download/delete, transcript, and replay buttons;
+- `applyDownloadDisplay`, `applyQueueDisplay`, and raw
+  `downloadButtonHandler` behavior;
+- row-tap playback and the played-episode UIKit action sheet;
+- download/progress accessibility hosts;
+- retired analysis-timeline hosts and hidden layout remnants;
+- manual accessibility-child ordering;
+- `EpisodeTableViewCellLayoutTesting` and its production test accessors.
 
-### Regression and release gates
+Keep `EpisodeTableViewController` only for table ownership, feed updates,
+refresh, scrolling, and hosting the shared SwiftUI row.
 
-Run focused tests for Queue presentation, Queue store, WarmPlanner, production
-analysis wiring, now-playing session restoration, Library, and the mini-player.
-Then run the repository's normal full verification command. The change is not
-complete if any focused test is skipped because of flakiness; fix or explicitly
-quarantine with a documented existing issue.
+Replace the callback chain through `PodcastDetailView`, `EpisodeListView`, its
+representable, and controller with shared presentation lookup plus
+`EpisodeRowActions`. Remove obsolete callbacks including `onAddAndPrepare`,
+direct raw-download callbacks, and prepare-before-play row activation.
 
-Perform a manual device/simulator pass with:
+### Remove the old Queue row and Downloads section
 
-1. one ready download;
-2. one downloaded but unprepared episode;
-3. one actively downloading episode;
-4. one ad-check delay;
-5. no current player session;
-6. a playing episode interrupted by an unready Queue selection;
-7. VoiceOver and an accessibility Dynamic Type size.
+Delete:
 
-## 11. Definition of done
+- private `QueueEpisodeRow` and its status-color, progress, recovery-title,
+  row-tap, and accessibility-hint logic;
+- Queue's duplicate Play now menu action;
+- `downloadsExpanded`;
+- Queue Downloads markup and explanation;
+- `DownloadSummaryCategory` and `DownloadsSummary`;
+- downloaded-item candidate filtering, sorting, and summary construction from
+  `QueuePresentationBuilder`;
+- Queue presentation fields used only by Downloads.
 
-- A listener can distinguish downloaded, processing, and immediately playable
-  episodes without opening a menu or inferring from missing text.
-- **Ready to play offline** is truthful under stale persistence, missing files,
-  disabled cleaning, retries, relaunch, and concurrent background work.
-- Queue, Library, mini-player, and autoplay agree because they consume the same
-  resolved availability.
-- Selecting unfinished work cannot create concurrent analysis or surprise later
-  playback.
-- The two old Queue directions have been consolidated into this document, with
-  no contradictory active plan remaining in `docs/plans`.
+`QueueEpisodePresentation` carries the shared row presentation instead of
+requiring Queue to reinterpret raw availability. Replace Queue's per-action
+closure list with `EpisodeRowActions` plus Queue-only move, remove-with-Undo,
+and reorder operations.
+
+### Remove implicit prepare-and-play
+
+Play is ready-only, so delete the machinery that waits for preparation and
+auto-plays later:
+
+- `pendingQueueActivationEpisodeID`;
+- `queueActivationGeneration`;
+- `queueActivationTask`;
+- `activateQueueEpisode`;
+- `waitForQueueActivationReadiness`;
+- `finishQueueActivationIfCurrent`;
+- `invalidateQueueActivation`;
+- `playReadyEpisodeNow`;
+- `playQueuedEpisodeNow`;
+- pending-activation Queue presentation/status fields and candidate IDs.
+
+Replace it with a guarded ready-only Queue operation that revalidates readiness,
+applies the existing interrupted-episode Queue mutation, and starts local
+playback synchronously.
+
+Delete `ImmediatePreparationOutcome` and `WarmPlanner.prepareImmediately` after
+the final call-site audit confirms there is no non-row consumer.
+
+Remove Library's implicit `startDownloadBeforePlay` branch. Move any still-needed
+cloud-consent handling into explicit Download. Delete pending-download-before-
+play state and callbacks that become unreferenced.
+
+### Remove dead preparation UI and duplicate copy
+
+Keep `QueueStatusButton`, which the mini-player uses, and move it to a clearly
+named Queue-status source file if appropriate.
+
+Delete unused `PreparationDetailView`, `isPreparationPresented`,
+`openPreparation`, assignments that only dismiss the deleted sheet, and the
+sheet's obsolete identifiers/tests.
+
+Remove listener-facing copy duplication from:
+
+- `PreparationStatusCopy`;
+- `AnalysisJobStage.userLabel`;
+- `AnalysisJobStage.listenerStatus`;
+- `AnalysisJob.compactShelfStatus`.
+
+Retain internal/debug descriptions only when still required. Production copy
+comes from `EpisodeRowPresentationMapper` or a shared compact presentation
+derived from it.
+
+### Replace old accessibility contracts
+
+Use stable episode-ID identifiers on both screens:
+
+```text
+episodeRow_{episodeID}
+episodeStatus_{episodeID}
+episodePrimary_{episodeID}
+episodeProgress_{episodeID}
+episodeMore_{episodeID}
+```
+
+Remove production and test dependencies on `downloadButton_*`,
+`downloadProgress_*`, `queueAddButton_*`, duplicate Queue-specific row-action
+identifiers, row taps that play, the old download/delete toggle, Add to Up Next
+implying preparation, and Play initiating preparation.
+
+### Cleanup completion audit
+
+Repository-wide searches must return no production references to:
+
+- deleted shelf types, callbacks, and identifiers;
+- `EpisodeTableViewCell` or its testing seam;
+- private `QueueEpisodeRow`;
+- Queue Downloads summary/disclosure types;
+- implicit prepare-and-play activation symbols;
+- old wording such as **Play now** or **Add and prepare**;
+- duplicate readiness copy or state-to-symbol mappings outside the shared
+  presentation layer.
+
+Historical ADRs may remain as history. Update active plans, current UX specs,
+and code comments so none describe retired behavior as current.
+
+## 7. Testing
+
+### Pure model tests
+
+Table-test resolver precedence for every state in section 2, including
+unrequested/requested missing audio, measured and invalid progress, local files
+with every job stage, cleaning disabled, stale jobs, foreground precedence,
+safe failure classification, and retry-time wording.
+
+Table-test that `EpisodeRowPresentationMapper` produces the exact status,
+primary control, menu eligibility, symbol, semantic tint, and accessibility
+copy. The same availability produces identical readiness presentation in
+Library and Queue; only metadata and collection actions may differ.
+
+### Planner and intent tests
+
+- Automatic preparation selects exactly two eligible choices.
+- Reorder, removal, setting changes, and playback advancement recompute them.
+- Other queued episodes remain unrequested.
+- Explicit Download survives relaunch and never adds to Up Next.
+- Explicit and automatic ownership share one download/analyzer run.
+- Cancelling one owner preserves work required by another.
+- Remove Download suppression prevents immediate redownload.
+- Suppression clears under the rules in section 4.
+- Launch reconciliation is idempotent and repairs stale jobs safely.
+
+### Action tests
+
+- Download runs once and reaches verified readiness.
+- Prepare reuses an existing file.
+- Retry resumes the correct failed stage.
+- Play is unavailable for every unready state and immediate when ready.
+- A stale Play tap cannot stream or start preparation.
+- Safe overrides appear only when their artifacts support the promise.
+- Remove Download deletes audio without silently deleting transcripts unless an
+  existing explicit all-local-data operation requests broader cleanup.
+
+### Shared UI tests
+
+- Library root has no readiness shelf or Queue shortcut.
+- Queue contains Up Next only and no Downloads disclosure.
+- Library and Queue show the same row, state copy, primary action, More behavior,
+  and accessibility meaning for the same episode.
+- Row-body taps do nothing; primary and More never trigger one another.
+- Waiting and active states have one activity visualization, not duplicates.
+- Download, Prepare, Retry, and Play transition correctly in place.
+- Long text, narrow/transient zero width, light/dark appearance, VoiceOver, and
+  every supported Dynamic Type size remain usable.
+- Queue reorder, swipe removal, Undo, Move to Top, Mark as Played, auto-delete,
+  mini-player clearance, and last-row scrolling remain intact.
+- Library refresh, transcript backfill, cleaning summary, and long-list
+  scrolling remain intact.
+
+Rewrite or delete tests coupled only to `EpisodeTableViewCell`, the old download
+button, Queue Downloads, or row-tap playback. Preserve still-relevant behavior
+through mapper tests, hosted-row layout tests, and episode-ID-based UI tests.
+
+Run focused resolver, mapper, planner, download, Library, Queue, playback,
+accessibility, and hosted-layout suites, then the complete unit and UI suite.
+
+## 8. Implementation order
+
+1. Add resolver inputs, primary-control model, presentation mapper, and tests.
+2. Add `EpisodePreparationPreferencesStore`; correct WarmPlanner selection to
+   two automatic choices plus explicit owners.
+3. Add shared action handlers and remove implicit prepare-and-play.
+4. Build `EpisodeRowView` and migrate Queue Up Next.
+5. Host the same row in Library and migrate transcript/played/cleaning actions.
+6. Remove Library root shelf and Queue Downloads.
+7. Perform every cleanup and repository-wide audit in section 6.
+8. Run focused tests, full tests, and a manual device pass.
+
+## 9. Definition of done
+
+- Library is shows; Queue is Up Next.
+- Both render one shared episode component.
+- Play appears only for immediately playable episodes.
+- Every other episode shows one truthful action or passive state.
+- Download means the full path to readiness and never changes Queue membership.
+- Only the next two eligible choices prepare automatically.
+- Each row contains one readiness visualization.
+- No old shelf, Queue Downloads, custom Library cell, private Queue row,
+  implicit prepare-and-play path, duplicated readiness copy, or obsolete test
+  contract remains in production code.
+- Existing unrelated working-tree changes are preserved.
