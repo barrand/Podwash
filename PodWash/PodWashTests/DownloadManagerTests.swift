@@ -61,6 +61,19 @@ final class DownloadManagerTests: XCTestCase {
         downloadsDirectory = nil
     }
 
+    func testCancelRetainsCompletedAudioAndRemovesOnlyPartialTransfer() async throws {
+        let installed = DownloadPaths.localFileURL(episodeID: Self.fixtureEpisodeID,
+            downloadsDirectory: downloadsDirectory)
+        let partial = DownloadPaths.partialFileURL(episodeID: Self.fixtureEpisodeID,
+            downloadsDirectory: downloadsDirectory)
+        try Data(repeating: 0xAB, count: 64).write(to: installed)
+        try Data(repeating: 0xCD, count: 32).write(to: partial)
+        await manager.cancel(episodeID: Self.fixtureEpisodeID)
+        XCTAssertEqual(manager.verifiedLocalFileURL(for: Self.fixtureEpisodeID), installed)
+        XCTAssertEqual(manager.state(for: Self.fixtureEpisodeID), .downloaded)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: partial.path))
+    }
+
     // MARK: - Helpers
 
     private func expectedLocalFileURL() -> URL {

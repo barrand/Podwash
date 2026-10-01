@@ -29,5 +29,9 @@ enum FixtureSettings {
     nonisolated static func prepareFreshDefaults(in defaults: UserDefaults = .standard) {
         guard isEnabled || shouldResetOnLaunch else { return }
         SettingsStore.clearPersistedValues(in: defaults)
+        // UITest methods terminate and relaunch the app back-to-back. Flush the
+        // test-only reset before composition creates SettingsStore so the next
+        // process cannot observe consent written by the preceding test.
+        defaults.synchronize()
     }
 }

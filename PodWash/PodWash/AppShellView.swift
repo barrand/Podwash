@@ -51,7 +51,7 @@ struct AppShellView: View {
         )
     }
 
-    var body: some View {
+    private var tabContent: some View {
         TabView(selection: $selectedTab) {
             libraryTab
                 .tabItem {
@@ -77,7 +77,16 @@ struct AppShellView: View {
                 }
                 .tag(AppShellTab.settings)
         }
+    }
+
+    private var shellChrome: some View {
+        tabContent
         .background(BrandTheme.surface)
+        .onChange(of: model.settingsStore.autoDownloadEnabled) { _, _ in model.episodePreparationSettingsChanged() }
+        .onChange(of: model.settingsStore.smartAutoplayEnabled) { _, _ in model.episodePreparationSettingsChanged() }
+        .onChange(of: model.settingsStore.unrelatedContentEnabled) { _, _ in model.episodePreparationSettingsChanged() }
+        .onChange(of: model.settingsStore.cloudTranscriptProcessingEnabled) { _, _ in model.episodePreparationSettingsChanged() }
+        .onChange(of: model.settingsStore.activeNormalizedTargetSet()) { _, _ in model.episodePreparationSettingsChanged() }
         .overlay(alignment: .top) {
             if model.settingsStore.shouldShowAutomaticPreparationNotice {
                 AutomaticPreparationNoticeBanner(
@@ -137,6 +146,36 @@ struct AppShellView: View {
                 .padding(.bottom, (showsMiniPlayerInShellInset ? MiniPlayerBar.shellOverlayClearance : tabBarHeight) + 12)
             }
         }
+        .overlay(alignment: .bottom) {
+            if let message = model.episodeUndoMessage {
+                HStack {
+                    Text(message)
+                    Spacer()
+                    Button("Undo") { model.undoEpisodeMutation() }
+                        .accessibilityIdentifier("episodeUndo")
+                }
+                .padding().background(.ultraThinMaterial, in: Capsule())
+                .padding(.horizontal)
+                .padding(.bottom, (showsMiniPlayerInShellInset ? MiniPlayerBar.shellOverlayClearance : tabBarHeight) + 12)
+            }
+        }
+        .alert("Prepare replay?", isPresented: Binding(
+            get: { model.replayConfirmationEpisodeID != nil },
+            set: { if !$0 { model.replayConfirmationEpisodeID = nil } })) {
+                Button("Prepare") {
+                    if let id = model.replayConfirmationEpisodeID {
+                        model.replayConfirmationEpisodeID = nil
+                        model.prepareReplay(episodeID: id)
+                    }
+                }
+                Button("Cancel", role: .cancel) { model.replayConfirmationEpisodeID = nil }
+        } message: {
+            Text("Preparing a fresh replay replaces the saved transcript and cleaning analysis. Playback will not start automatically.")
+        }
+    }
+
+    var body: some View {
+        shellChrome
         .sheet(isPresented: $model.isFullPlayerPresented) {
             if let engine = model.engine {
                 NavigationStack {
@@ -147,6 +186,8 @@ struct AppShellView: View {
                         showsCompleteSeekBarPaint: model.isPlayerSeekBarAnalysisComplete,
                         episodeDuration: model.superSeekDuration,
                         muteIntervals: model.nowPlayingMuteIntervals,
+                        showsTranscriptButton: model.nowPlayingTranscriptExists,
+                        onViewTranscript: { model.presentTranscriptForNowPlaying() },
                         onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
                         onSeekTo: { model.seekReadyPlayback(to: $0) },
                         onSeekBy: { model.seek(by: $0) }
@@ -158,26 +199,6 @@ struct AppShellView: View {
                                 }
                             }
                         }
-                }
-                // Content-tree leading control (not ToolbarItem). ToolbarItem wraps
-                // the button so `descendants(.any)["playback.viewTranscript"]` matches
-                // Other + Button and `.tap()` fails under XCTest.
-                .overlay(alignment: .topLeading) {
-                    if model.nowPlayingTranscriptExists {
-                        Button {
-                            model.presentTranscriptForNowPlaying()
-                        } label: {
-                            Image(systemName: "text.alignleft")
-                                .font(.body.weight(.medium))
-                                .frame(width: 44, height: 44)
-                                .contentShape(Rectangle())
-                        }
-                        .accessibilityIdentifier("playback.viewTranscript")
-                        .accessibilityLabel("View transcript")
-                        .accessibilityHint("Shows the episode transcript.")
-                        .padding(.leading, 8)
-                        .safeAreaPadding(.top)
-                    }
                 }
                 .sheet(item: nestedTranscriptSheetItem) { _ in
                     transcriptSheetContent
@@ -192,6 +213,14 @@ struct AppShellView: View {
                 onEnable: { model.enableCloudTranscriptProcessing() },
                 onNotNow: { model.declineCloudTranscriptProcessing() }
             )
+        }
+        .alert("Could not play episode", isPresented: Binding(
+            get: { model.episodeActionError != nil },
+            set: { if !$0 { model.episodeActionError = nil } }
+        )) {
+            Button("OK") { model.episodeActionError = nil }
+        } message: {
+            Text(model.episodeActionError ?? "Please try again.")
         }
         .alert(
             "Unsubscribe from \(unsubscribeConfirmation?.title ?? "this podcast")?",
@@ -295,20 +324,18 @@ struct AppShellView: View {
                     to: target
                 )
             },
-            onDownload: { model.requestEpisodeDownload($0) },
-            onPrepare: { model.prepareDownloadedEpisode($0) },
-            onPlay: { model.playReadyEpisode($0, context: .queue) },
-            onMoveToTop: { model.moveUpNextToTop(episodeID: $0) },
-            onRemoveFromUpNext: { model.removeFromUpNextWithUndo(episodeID: $0) },
-            onMarkPlayed: { model.markPlayedWithUndo(episodeID: $0) },
-            onRestore: { model.restoreQueueMutation($0) },
-            onCommitPlayed: { model.commitQueueMutation($0) },
-            onRemoveDownload: { model.removeEpisodeDownload($0) },
-            onClearUpNext: { model.clearUpNext() },
-            onRestoreUpNext: { model.restoreUpNext($0) },
-            onRetry: { model.retryPreparation(episodeID: $0) },
-            onPlayWithoutAdSkipping: { model.playWithAds(episodeID: $0) },
-            onPlayOriginalAudio: { model.playOriginalAudio(episodeID: $0) }
+            rowSnapshot: { id in
+                model.podcastStore.episodeLookup(id: id).map {
+                    model.episodeRowSnapshot($0.episode, context: .queue)
+                }
+            },
+            rowBindings: { model.episodeRowBindings($0, context: .queue) },
+            onClearUpNext: {
+                let ids = model.clearUpNext()
+                if !ids.isEmpty {
+                    model.offerEpisodeUndo("Cleared Up Next") { model.restoreUpNext(ids) }
+                }
+            }
         )
     }
 
@@ -536,7 +563,6 @@ private struct LibraryPodcastDetailView: View {
     let summary: PodcastSummary
 
     @State private var feedViewModel: EpisodeListViewModel
-    @State private var analysisViewModel: AnalysisUIViewModel
 
     init(model: AppShellModel, summary: PodcastSummary) {
         self.model = model
@@ -544,17 +570,7 @@ private struct LibraryPodcastDetailView: View {
         let feedVM = EpisodeListViewModel(parser: RSSParser(), store: model.podcastStore)
         feedVM.loadFromStore(feedURL: summary.feedURL)
         _feedViewModel = State(initialValue: feedVM)
-        _analysisViewModel = State(
-            initialValue: AnalysisUIViewModel(
-                store: FeedScopedCleaningToggleStore(
-                    store: model.cleaningStore,
-                    feedURL: summary.feedURL
-                ),
-                analyzer: model.episodeAnalyzer,
-                autoAnalyzeOnEpisodeEnable: false,
-                progressRelay: model.analysisProgressRelay
-            )
-        )
+
     }
 
     private var miniPlayerContentClearance: CGFloat {
@@ -582,28 +598,8 @@ private struct LibraryPodcastDetailView: View {
 
             PodcastDetailView(
                 viewModel: feedViewModel,
-                analysisViewModel: analysisViewModel,
-                downloadManager: model.downloadManager,
-                queueStore: model.queueStore,
-                onPlayEpisode: { episode in
-                    model.playEpisode(
-                        episode,
-                        podcastTitle: summary.title,
-                        feedURL: summary.feedURL
-                    )
-                },
-                onRequestCloudConsentBeforeDownload: { model.requestCloudConsentBeforeDownload(for: $0) },
-                onPlayQueuedEpisode: { model.playQueuedEpisodeNow($0) },
-                onAddAndPrepare: { model.addAndPrepare(episodeID: $0) },
-                transcriptExists: { model.transcriptExists(for: $0) },
-                onViewTranscript: { model.presentTranscript(for: $0) },
-                transcriptAffordanceGeneration: model.transcriptAffordanceGeneration,
-                cleaningSummary: { model.cleaningSummary(for: $0) },
-                isPlayed: { model.resumeStore.isPlayed($0) },
-                playedEpisodeActionState: { model.playedEpisodeActionState(for: $0) },
-                onPrepareReplay: { model.prepareReplay(episodeID: $0) },
-                onRetryReplay: { model.retryReplayPreparation(episodeID: $0) },
-                onReplayFromBeginning: { model.replayFromBeginning(episodeID: $0) },
+                rowSnapshot: { model.episodeRowSnapshot($0, context: .library) },
+                rowBindings: { model.episodeRowBindings($0, context: .library) },
                 episodeListRevision: model.episodeListRevision
             )
         }

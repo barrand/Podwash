@@ -44,7 +44,7 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting, AudioSessionE
     /// Title pushed to Now Playing / CarPlay seams (Slice 15).
     var nowPlayingTitle: String { title }
 
-    /// Synchronous play (`true`) / pause (`false`) intent for CarPlay now-playing updater (ADR-016 §6).
+    /// Synchronous play (`true`) / pause (`false`) intent for the CarPlay Now Playing updater (ADR-016 §6).
     /// `nonisolated(unsafe)`: cleared/released from `nonisolated deinit` without a MainActor TaskLocal hop.
     nonisolated(unsafe) var onPlayPauseIntent: ((Bool) -> Void)?
 

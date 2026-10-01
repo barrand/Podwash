@@ -53,8 +53,7 @@ struct SettingsView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
-                // The shell mini-player may include its preparation shelf, making it
-                // substantially taller than the tab bar. Keep the final Settings
+                // The shell mini-player is taller than the tab bar. Keep final Settings
                 // controls scrollable above that persistent player chrome.
                 .padding(.bottom, 160)
                 .frame(maxWidth: .infinity, alignment: .leading)

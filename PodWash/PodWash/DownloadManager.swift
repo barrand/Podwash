@@ -53,7 +53,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
     /// Durable downloaded rows whose files still exist on disk.
     func downloadedEpisodeIDs() -> [String] {
-        stateStore.downloadedEpisodeIDs().filter { localFileURL(for: $0) != nil }
+        stateStore.downloadedEpisodeIDs().filter { verifiedLocalFileURL(for: $0) != nil }
     }
 
     init(
@@ -93,17 +93,27 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         }
 
         if FixtureDownload.isEnabled {
-            return try await performFixtureDownloadAsync(episodeID: episodeID, progress: progress)
+            do {
+                return try await performFixtureDownloadAsync(episodeID: episodeID, progress: progress)
+            } catch {
+                if error is CancellationError {
+                    stateStore.setState(verifiedLocalFileURL(for: episodeID) == nil ? .notDownloaded : .downloaded,
+                        for: episodeID)
+                    notifyStateChanged()
+                }
+                throw error
+            }
         }
 
         let stored = resumeDataByEpisodeID.removeValue(forKey: episodeID)
         let systemResume = stored.flatMap { Self.isSystemResumeData($0) ? $0 : nil }
-        return try await startDownload(
-            episodeID: episodeID,
-            remoteURL: remoteURL,
-            resumeData: systemResume,
-            progress: progress
-        )
+        return try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            return try await startDownload(episodeID: episodeID, remoteURL: remoteURL,
+                resumeData: systemResume, progress: progress)
+        } onCancel: { [weak self] in
+            Task { @MainActor in await self?.cancel(episodeID: episodeID) }
+        }
     }
 
     func cancel(episodeID: String) async {
@@ -158,7 +168,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         }
 
         removePartialFiles(for: episodeID)
-        stateStore.setState(.notDownloaded, for: episodeID)
+        stateStore.setState(verifiedLocalFileURL(for: episodeID) == nil ? .notDownloaded : .downloaded, for: episodeID)
         notifyStateChanged()
         cancelLock.withLock {
             _ = cancellingEpisodeIDs.remove(episodeID)
@@ -195,9 +205,31 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     /// completely must explicitly purge its transcript and analysis separately.
     func removeAudio(episodeID: String) throws {
         removeInstalledFiles(for: episodeID)
+        removePartialFiles(for: episodeID)
         resumeDataByEpisodeID.removeValue(forKey: episodeID)
         preferredFileExtensionByEpisodeID.removeValue(forKey: episodeID)
         stateStore.setState(.notDownloaded, for: episodeID)
+        notifyStateChanged()
+    }
+
+    /// Presentation must not migrate files or notify observers during rendering.
+    func verifiedLocalFileURL(for episodeID: String) -> URL? {
+        guard let url = DownloadPaths.existingLocalFileURL(episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory, fileManager: fileManager),
+              fileManager.isReadableFile(atPath: url.path),
+              (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+        else { return nil }
+        return url
+    }
+
+    /// Fixture setup supplies a real local file rather than bypassing readiness.
+    func installFixtureAudio(episodeID: String, source: URL) throws {
+        guard FixtureRuntime.isFixtureLaunch else { return }
+        let destination = DownloadPaths.localFileURL(episodeID: episodeID,
+            downloadsDirectory: downloadsDirectory, fileExtension: source.pathExtension)
+        if fileManager.fileExists(atPath: destination.path) { try fileManager.removeItem(at: destination) }
+        try fileManager.copyItem(at: source, to: destination)
+        stateStore.setState(.downloaded, for: episodeID)
         notifyStateChanged()
     }
 
@@ -226,8 +258,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         let stored = stateStore.state(for: episodeID)
         if case .downloading = stored { return stored }
         if stored == .downloaded { return .downloaded }
-        if localFileURL(for: episodeID) != nil {
-            stateStore.setState(.downloaded, for: episodeID)
+        if verifiedLocalFileURL(for: episodeID) != nil {
             return .downloaded
         }
         return stored
@@ -439,7 +470,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     ) async throws -> URL {
         stateStore.setState(.downloading(progress: 0), for: episodeID)
         notifyStateChanged()
-        // Yield + brief sleep so XCUITest can observe `downloading` / `downloadProgress_*`
+        // Yield briefly so UI tests can observe measured download progress.
         // under verify load (ui_race on task-012 / task-016 filtered runs).
         await Task.yield()
         try await Task.sleep(for: .milliseconds(350))
@@ -591,20 +622,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     }
 
     private func removePartialFiles(for episodeID: String) {
-        removeInstalledFiles(for: episodeID, includePartials: true)
-    }
-
-    private func removeInstalledFiles(for episodeID: String, includePartials: Bool = false) {
         for ext in DownloadPaths.downloadedFileExtensions {
-            let finalURL = DownloadPaths.localFileURL(
-                episodeID: episodeID,
-                downloadsDirectory: downloadsDirectory,
-                fileExtension: ext
-            )
-            if fileManager.fileExists(atPath: finalURL.path) {
-                try? fileManager.removeItem(at: finalURL)
-            }
-            guard includePartials else { continue }
             let partialURL = DownloadPaths.partialFileURL(
                 episodeID: episodeID,
                 downloadsDirectory: downloadsDirectory,
@@ -612,6 +630,16 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             )
             if fileManager.fileExists(atPath: partialURL.path) {
                 try? fileManager.removeItem(at: partialURL)
+            }
+        }
+    }
+
+    private func removeInstalledFiles(for episodeID: String) {
+        for ext in DownloadPaths.downloadedFileExtensions {
+            let finalURL = DownloadPaths.localFileURL(episodeID: episodeID,
+                downloadsDirectory: downloadsDirectory, fileExtension: ext)
+            if fileManager.fileExists(atPath: finalURL.path) {
+                try? fileManager.removeItem(at: finalURL)
             }
         }
     }

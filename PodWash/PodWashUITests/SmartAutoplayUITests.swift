@@ -62,9 +62,9 @@ final class SmartAutoplayUITests: XCTestCase {
         let episodeList = app.descendants(matching: .any)["episodeList"]
         XCTAssertTrue(episodeList.waitForExistence(timeout: 10))
 
-        let episodeCell = app.descendants(matching: .any)["episodeCell_0"]
+        let episodeCell = app.sharedEpisodeRow(at: 0)
         XCTAssertTrue(episodeCell.waitForExistence(timeout: 10))
-        episodeCell.tap()
+        app.playSharedEpisode(at: 0)
 
         let mini = app.descendants(matching: .any)["miniPlayer"]
         XCTAssertTrue(mini.waitForExistence(timeout: 15))

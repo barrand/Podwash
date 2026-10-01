@@ -165,7 +165,11 @@ enum DownloadPaths: Sendable {
     }
 
     nonisolated static var productionDownloadsDirectory: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        if FixtureRuntime.isFixtureLaunch {
+            return FileManager.default.temporaryDirectory
+                .appendingPathComponent("fixture-downloads-\(FixtureRuntime.runIdentifier)", isDirectory: true)
+        }
+        return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             .appendingPathComponent("Downloads", isDirectory: true)
     }
 }

@@ -2,29 +2,19 @@
 //  WarmPlanner.swift
 //  PodWash
 //
-//  ADR-029 — Pre-warm next 2–3 autoplay episodes (download + analyze), cap 5.
+//  Shared explicit preparation and the automatic next-two readiness window.
 //
 
 import Foundation
 import Observation
 
-enum ImmediatePreparationOutcome: Equatable {
-    case ready
-    case retrying
-    case needsAttention
-    case cancelled
-}
-
-/// The single-worker preparation coordinator. It keeps the old `WarmPlanner` name
-/// for source compatibility with ADR-029 tests, while exposing durable user-facing jobs.
+/// The single-worker coordinator for explicit, replay, and automatic preparation.
 @MainActor
 @Observable final class WarmPlanner {
     private enum PreparationRequestKind: Equatable {
         case replay
-        case manualQueue
+        case explicit
         case automatic
-
-        var isUserRequested: Bool { self != .automatic }
     }
 
     private struct PreparationRequest {
@@ -33,9 +23,8 @@ enum ImmediatePreparationOutcome: Equatable {
     }
 
     var onJobsChanged: (() -> Void)?
-    /// Keep the selected next episode plus multiple likely follow-ons warm.
+    /// The current automatic preparation window, not a lifetime download cap.
     static let peekCount = UpcomingSelectionPolicy.readyTarget
-    static let warmCap = UpcomingSelectionPolicy.readyTarget
 
     private let downloadManager: DownloadManager
     private let analyzer: any EpisodeAnalyzing
@@ -49,13 +38,20 @@ enum ImmediatePreparationOutcome: Equatable {
 
     private var warmGeneration = 0
     private var activeRequestIDs: [String] = []
-    /// Explicit row requests are independent from Up Next membership. They are
-    /// retained for this planner lifetime; persistence/reconciliation is owned
-    /// by the shell's durable intent store in a later migration.
+    private var ownerRequests: [PreparationRequest] = []
+    private struct Requirements: Equatable {
+        let targets: Set<String>
+        let cleaning: Bool
+        let cloud: Bool
+        let unrelated: Bool
+    }
+    private var activeRequirements: [String: Requirements] = [:]
+    private var retryTasks: [String: Task<Void, Never>] = [:]
+    /// Durable explicit requests are independent from Queue membership and retire
+    /// only after verified readiness or an explicit terminating action.
     private var explicitEpisodeIDs: Set<String>
     private var workerTask: Task<Void, Never>?
     private(set) var warmingEpisodeIDs: Set<String> = []
-    private(set) var warmedEpisodeIDs: Set<String> = []
     private(set) var jobs: [String: AnalysisJob]
 
     init(
@@ -86,13 +82,27 @@ enum ImmediatePreparationOutcome: Equatable {
 
     /// Cancel in-flight warm work and start warming `items` (up to peek / cap).
     func reaim(at items: [ComingUpItem]) {
-        reaim(requests: Array(items.prefix(Self.peekCount)).map {
+        reaim(requests: Array((settingsStore.autoDownloadEnabled ? items : []).prefix(Self.peekCount)).map {
             PreparationRequest(item: $0, kind: .automatic)
         })
     }
 
     private func reaim(requests: [PreparationRequest]) {
-        let explicit = explicitEpisodeIDs.compactMap { id -> PreparationRequest? in
+        for id in explicitEpisodeIDs where podcastStore.episodeLookup(id: id) == nil {
+            explicitEpisodeIDs.remove(id)
+            preferencesStore.removeExplicit(id)
+        }
+        ownerRequests = requests
+        let windowIDs = Set(requests.filter { $0.kind == .automatic }.map { $0.item.episodeID })
+        for id in preferencesStore.preferences.automaticallySuppressedEpisodeIDs.subtracting(windowIDs) {
+            preferencesStore.clearSuppression(id)
+        }
+        rebuildWorker()
+    }
+
+    private func rebuildWorker(force: Bool = false) {
+        let requests = ownerRequests
+        let explicit = explicitEpisodeIDs.sorted().compactMap { id -> PreparationRequest? in
             guard let lookup = podcastStore.episodeLookup(id: id) else { return nil }
             return PreparationRequest(
                 item: ComingUpItem(
@@ -102,7 +112,7 @@ enum ImmediatePreparationOutcome: Equatable {
                     feedURL: lookup.feedURL,
                     isBinge: podcastStore.isBinge(feedURL: lookup.feedURL)
                 ),
-                kind: .manualQueue
+                kind: .explicit
             )
         }
         var seen = Set<String>()
@@ -112,10 +122,45 @@ enum ImmediatePreparationOutcome: Equatable {
         }
         let effectiveRequests = (requests.filter { $0.kind != .automatic } + explicit + automatic)
             .filter { seen.insert($0.item.episodeID).inserted }
-        let requestIDs = effectiveRequests.map { "\($0.kind)-\($0.item.episodeID)" }
+        let effectiveIDs = Set(effectiveRequests.map { $0.item.episodeID })
+        let requirements = Dictionary(uniqueKeysWithValues: effectiveRequests.map { request in
+            (request.item.episodeID, Requirements(targets: settingsStore.activeNormalizedTargetSet(),
+                cleaning: cleaningStore.isChannelCleaningEnabled(forFeedURL: request.item.feedURL),
+                cloud: settingsStore.canUseCloudTranscriptProcessing,
+                unrelated: settingsStore.unrelatedContentEnabled
+                    && cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: request.item.feedURL)))
+        })
+        let changedRequirements = Set(requirements.compactMap { id, value in
+            activeRequirements[id].map { $0 != value } == true ? id : nil
+        })
+        activeRequirements = requirements
+        for id in changedRequirements {
+            guard var job = jobs[id], job.cloudFailure != nil else { continue }
+            retryTasks.removeValue(forKey: id)?.cancel()
+            job.stage = .queued
+            job.retryAfter = nil
+            job.cloudFailure = nil
+            job.detail = nil
+            jobs[id] = job
+        }
+        for id in Array(retryTasks.keys) where !effectiveIDs.contains(id) {
+            retryTasks.removeValue(forKey: id)?.cancel()
+        }
+        let previousJobs = jobs
+        for id in Array(jobs.keys) where !effectiveIDs.contains(id) {
+            guard let job = jobs[id], [.queued, .downloading, .transcribing, .checkingAds].contains(job.stage) else { continue }
+            jobs.removeValue(forKey: id)
+        }
+        if jobs != previousJobs {
+            jobStore.save(jobs)
+            onJobsChanged?()
+        }
+        let requestIDs = effectiveRequests.map {
+            $0.kind == .replay ? "replay-\($0.item.episodeID)" : $0.item.episodeID
+        }
         // Refresh events routinely deliver the same selection. Keep useful
         // work alive rather than cancelling and restarting it.
-        guard requestIDs != activeRequestIDs else { return }
+        guard force || requestIDs != activeRequestIDs || !changedRequirements.isEmpty else { return }
         activeRequestIDs = requestIDs
         warmGeneration += 1
         let generation = warmGeneration
@@ -129,6 +174,14 @@ enum ImmediatePreparationOutcome: Equatable {
             guard let self else { return }
             for request in effectiveRequests {
                 guard generation == self.warmGeneration, !Task.isCancelled else { return }
+                if let job = self.jobs[request.item.episodeID] {
+                    if job.stage == .needsAttention { continue }
+                    if let deadline = job.retryAfter, deadline > Date() {
+                        self.scheduleRetry(request.item, generation: generation,
+                            delay: deadline.timeIntervalSinceNow, kind: request.kind)
+                        continue
+                    }
+                }
                 await self.warmOne(
                     request.item,
                     generation: generation,
@@ -142,6 +195,7 @@ enum ImmediatePreparationOutcome: Equatable {
     /// listener-visible manual ordering and the worker remains deliberately serial.
     func reaim(
         replayEpisodeID: String? = nil,
+        currentEpisodeID: String? = nil,
         manualQueueIDs: [String],
         predicted: [ComingUpItem]
     ) {
@@ -168,8 +222,8 @@ enum ImmediatePreparationOutcome: Equatable {
                 isBinge: podcastStore.isBinge(feedURL: lookup.feedURL)
             )
         }
-        let selection = UpcomingSelectionPolicy().select(
-            currentEpisodeID: replayEpisodeID,
+        let selection = UpcomingSelectionPolicy().preparationWindow(
+            currentEpisodeID: currentEpisodeID,
             manualQueueIDs: manual.map(\.episodeID),
             predictions: predicted,
             automaticPreparationEnabled: settingsStore.autoDownloadEnabled
@@ -181,9 +235,9 @@ enum ImmediatePreparationOutcome: Equatable {
         for item in manual + predicted where byID[item.episodeID] == nil {
             byID[item.episodeID] = item
         }
-        let ordered = (replay.map { [$0] } ?? []) + selection.compactMap { selected -> PreparationRequest? in
-            guard let item = byID[selected.episodeID] else { return nil }
-            return PreparationRequest(item: item, kind: selected.origin == .manual ? .manualQueue : .automatic)
+        let ordered = (replay.map { [$0] } ?? []) + selection.compactMap { id -> PreparationRequest? in
+            guard let item = byID[id] else { return nil }
+            return PreparationRequest(item: item, kind: .automatic)
         }
         var seen = Set<String>()
         reaim(requests: ordered.filter { seen.insert($0.item.episodeID).inserted })
@@ -195,55 +249,45 @@ enum ImmediatePreparationOutcome: Equatable {
         warmGeneration += 1
         workerTask?.cancel()
         let previousTask = workerTask
-        workerTask = nil
+        let generation = warmGeneration
         await previousTask?.value
+        guard generation == warmGeneration else { return }
+        workerTask = nil
         activeRequestIDs = []
         warmingEpisodeIDs.removeAll()
-    }
-
-    /// Promotes one listener-selected episode ahead of automatic warming. The
-    /// caller owns any later retry wait, so a newer selection can cancel its
-    /// auto-play intent without leaving an unowned playback task behind.
-    func prepareImmediately(episodeID: String) async -> ImmediatePreparationOutcome {
-        guard let lookup = podcastStore.episodeLookup(id: episodeID) else { return .needsAttention }
-        await quiesce()
-        guard !Task.isCancelled else { return .cancelled }
-
-        let generation = warmGeneration
-        activeRequestIDs = ["immediate-\(episodeID)"]
-        let item = ComingUpItem(
-            episodeID: episodeID,
-            episodeTitle: lookup.episode.title,
-            podcastTitle: lookup.podcastTitle,
-            feedURL: lookup.feedURL,
-            isBinge: podcastStore.isBinge(feedURL: lookup.feedURL)
-        )
-        await warmOne(item, generation: generation, kind: .manualQueue)
-        guard generation == warmGeneration, !Task.isCancelled else { return .cancelled }
-        if isReadyOffline(episodeID: episodeID, feedURL: lookup.feedURL) { return .ready }
-        switch jobs[episodeID]?.stage {
-        case .needsAttention: return .needsAttention
-        default: return .retrying
-        }
     }
 
     func cancel() {
         warmGeneration += 1
         workerTask?.cancel()
-        workerTask = nil
+        // Retain the cancelled task so a replacement can await late writes.
         activeRequestIDs = []
         warmingEpisodeIDs.removeAll()
+        for task in retryTasks.values { task.cancel() }
+        retryTasks.removeAll()
     }
 
     func job(for episodeID: String) -> AnalysisJob? { jobs[episodeID] }
 
     func hasExplicitPreparation(episodeID: String) -> Bool { explicitEpisodeIDs.contains(episodeID) }
 
+    func hasAutomaticPreparation(episodeID: String) -> Bool {
+        ownerRequests.contains { $0.kind == .automatic && $0.item.episodeID == episodeID }
+            && !preferencesStore.preferences.automaticallySuppressedEpisodeIDs.contains(episodeID)
+    }
+
+    var ownedEpisodeIDs: Set<String> {
+        explicitEpisodeIDs.union(ownerRequests.compactMap {
+            $0.kind != .automatic || !preferencesStore.preferences.automaticallySuppressedEpisodeIDs.contains($0.item.episodeID)
+                ? $0.item.episodeID : nil
+        })
+    }
+
     var allJobs: [AnalysisJob] { jobs.values.sorted { $0.updatedAt > $1.updatedAt } }
 
     func removeJob(episodeID: String) {
+        retryTasks.removeValue(forKey: episodeID)?.cancel()
         jobs.removeValue(forKey: episodeID)
-        warmedEpisodeIDs.remove(episodeID)
         warmingEpisodeIDs.remove(episodeID)
         jobStore.save(jobs)
         onJobsChanged?()
@@ -255,19 +299,30 @@ enum ImmediatePreparationOutcome: Equatable {
         guard podcastStore.episodeLookup(id: episodeID) != nil else { return }
         explicitEpisodeIDs.insert(episodeID)
         preferencesStore.addExplicit(episodeID)
-        reaim(requests: [])
+        rebuildWorker()
     }
 
     func cancelExplicitPreparation(episodeID: String) {
         explicitEpisodeIDs.remove(episodeID)
         preferencesStore.removeExplicit(episodeID)
-        removeJob(episodeID: episodeID)
-        reaim(requests: [])
+        if !ownerRequests.contains(where: { $0.item.episodeID == episodeID }) {
+            removeJob(episodeID: episodeID)
+        }
+        rebuildWorker()
     }
 
     func suppressAutomaticPreparation(episodeID: String) {
         preferencesStore.suppressAutomatic(episodeID)
-        reaim(requests: [])
+        rebuildWorker()
+    }
+
+    func retireEpisode(episodeID: String) {
+        explicitEpisodeIDs.remove(episodeID)
+        preferencesStore.removeExplicit(episodeID)
+        preferencesStore.clearSuppression(episodeID)
+        ownerRequests.removeAll { $0.item.episodeID == episodeID }
+        removeJob(episodeID: episodeID)
+        rebuildWorker()
     }
 
     /// Repairs durable job markers against the actual file system and analysis
@@ -286,7 +341,7 @@ enum ImmediatePreparationOutcome: Equatable {
             let analysisReady = isAnalysisReady(episodeID: episodeID, feedURL: lookup.feedURL)
 
             if job.stage == .ready, !hasLocalFile {
-                if requestedEpisodeIDs.contains(episodeID) {
+                if requestedEpisodeIDs.contains(episodeID) || explicitEpisodeIDs.contains(episodeID) {
                     job.stage = .queued
                     job.updatedAt = Date()
                     jobs[episodeID] = job
@@ -301,11 +356,20 @@ enum ImmediatePreparationOutcome: Equatable {
                 job.detail = nil
                 jobs[episodeID] = job
                 changed = true
+            } else if job.stage != .ready, job.stage != .needsAttention, job.stage != .adCheckDelayed {
+                if explicitEpisodeIDs.contains(episodeID) || requestedEpisodeIDs.contains(episodeID) {
+                    job.stage = .queued
+                    jobs[episodeID] = job
+                } else {
+                    jobs.removeValue(forKey: episodeID)
+                }
+                changed = true
             }
         }
         guard changed else { return }
         jobStore.save(jobs)
         onJobsChanged?()
+        rebuildWorker(force: true)
     }
 
     /// A listener-initiated retry must immediately retire stale failure copy while
@@ -323,6 +387,8 @@ enum ImmediatePreparationOutcome: Equatable {
         jobs[episodeID] = job
         jobStore.save(jobs)
         onJobsChanged?()
+        retryTasks.removeValue(forKey: episodeID)?.cancel()
+        rebuildWorker(force: true)
     }
 
     /// True when cleaning is off for the channel, or interval cache already has a hit.
@@ -333,14 +399,16 @@ enum ImmediatePreparationOutcome: Equatable {
         // Cloud-off is a supported local-clean mode. A partial cache record proves
         // local transcription/profanity analysis completed even though no ad result
         // should be required for automatic playback.
-        if !settingsStore.canUseCloudTranscriptProcessing {
+        if !settingsStore.canUseCloudTranscriptProcessing
+            || !settingsStore.unrelatedContentEnabled
+            || !cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: feedURL) {
             return intervalCache.loadRecord(episodeID: episodeID, targetWords: targets) != nil
         }
         return intervalCache.isAnalysisCompleted(episodeID: episodeID, targetWords: targets)
     }
 
     func isLocallyDownloaded(episodeID: String) -> Bool {
-        downloadManager.localFileURL(for: episodeID) != nil
+        downloadManager.verifiedLocalFileURL(for: episodeID) != nil
     }
 
     func isReadyForSeamlessPlay(episodeID: String, feedURL: URL) -> Bool {
@@ -350,7 +418,7 @@ enum ImmediatePreparationOutcome: Equatable {
             && isAnalysisReady(episodeID: episodeID, feedURL: feedURL)
     }
 
-    /// Listener-visible Ready to Play always means the episode is available offline.
+    /// Listener-visible readiness always requires installed local audio.
     func isReadyOffline(episodeID: String, feedURL: URL) -> Bool {
         isLocallyDownloaded(episodeID: episodeID)
             && isAnalysisReady(episodeID: episodeID, feedURL: feedURL)
@@ -362,19 +430,15 @@ enum ImmediatePreparationOutcome: Equatable {
         kind: PreparationRequestKind = .automatic
     ) async {
         guard generation == warmGeneration, !Task.isCancelled else { return }
-        let isUserRequested = kind.isUserRequested
         let isReplay = kind == .replay
-        if !isUserRequested, warmedEpisodeIDs.count >= Self.warmCap,
-           !warmedEpisodeIDs.contains(item.episodeID) {
-            return
-        }
         guard let lookup = podcastStore.episodeLookup(id: item.episodeID) else { return }
+        if isReplay, jobs[item.episodeID]?.stage == .ready,
+           isReadyOffline(episodeID: item.episodeID, feedURL: item.feedURL) { return }
 
         let cleaningOn = cleaningStore.isChannelCleaningEnabled(forFeedURL: item.feedURL)
         if !isReplay,
            isAnalysisReady(episodeID: item.episodeID, feedURL: item.feedURL),
            isLocallyDownloaded(episodeID: item.episodeID) {
-            warmedEpisodeIDs.insert(item.episodeID)
             updateJob(item, stage: .ready, generation: generation)
             return
         }
@@ -392,12 +456,17 @@ enum ImmediatePreparationOutcome: Equatable {
                     updateJob(item, stage: .needsAttention, detail: "No downloadable audio", generation: generation)
                     return
                 }
+                // A newly fetched enclosure must never inherit timestamps from
+                // the previous audio. Keep transcript/artifact history until a
+                // successful fresh analysis replaces it; retire derived playback
+                // schedules before the new file can become visible.
+                try intervalCache.remove(episodeID: item.episodeID)
                 updateJob(item, stage: .downloading, estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: 0), generation: generation)
                 localURL = try await downloadManager.download(
                     episodeID: item.episodeID,
                     from: remote
                 ) { [weak self] progress in
-                    Task { @MainActor in
+                    Task { @MainActor [weak self] in
                         self?.updateJob(
                             item,
                             stage: .downloading,
@@ -409,10 +478,7 @@ enum ImmediatePreparationOutcome: Equatable {
             }
             guard generation == warmGeneration, !Task.isCancelled else { return }
 
-            if isReplay || (cleaningOn && !intervalCache.isAnalysisCompleted(
-                episodeID: item.episodeID,
-                targetWords: settingsStore.activeNormalizedTargetSet()
-            )) {
+            if isReplay || (cleaningOn && !isAnalysisReady(episodeID: item.episodeID, feedURL: item.feedURL)) {
                 updateJob(item, stage: .transcribing, generation: generation)
                 let targets = settingsStore.activeNormalizedTargetSet()
                 let unrelated = UnrelatedContentOptions(
@@ -421,9 +487,9 @@ enum ImmediatePreparationOutcome: Equatable {
                     action: settingsStore.unrelatedCensorAction()
                 )
                 let removeCloudObserver: () -> Void
-                if let pipeline = analyzer as? AnalysisPipeline {
+                if let pipeline = SerialEpisodeAnalyzer.pipeline(for: analyzer) {
                     let observerID = pipeline.addCloudAdDetectionObserver(started: { [weak self] in
-                        Task { @MainActor in
+                        Task { @MainActor [weak self] in
                             guard let self else { return }
                             self.updateJob(item, stage: .checkingAds, generation: generation)
                         }
@@ -443,20 +509,28 @@ enum ImmediatePreparationOutcome: Equatable {
                 )
                 // Production AnalysisPipeline owns completion semantics: an unavailable
                 // Gemini result must remain incomplete rather than being overwritten as ready.
-                if !(analyzer is AnalysisPipeline) {
+                if SerialEpisodeAnalyzer.pipeline(for: analyzer) == nil {
                     try intervalCache.store(intervals, episodeID: item.episodeID, targetWords: targets)
                 }
             }
             guard generation == warmGeneration, !Task.isCancelled else { return }
+            guard isLocallyDownloaded(episodeID: item.episodeID) else {
+                updateJob(item, stage: .needsAttention, detail: "Download failed", generation: generation)
+                return
+            }
             guard isAnalysisReady(episodeID: item.episodeID, feedURL: item.feedURL) else {
                 let category: CloudAdDetectionFailureCategory?
-                if let pipeline = analyzer as? AnalysisPipeline,
+                if let pipeline = SerialEpisodeAnalyzer.pipeline(for: analyzer),
                    case let .failed(value)? = pipeline.lastCloudAdDetectionOutcome {
                     category = value
                 } else {
                     category = nil
                 }
-                if let category, !Self.isRetryable(category) {
+                guard let category else {
+                    updateJob(item, stage: .needsAttention, detail: "Local preparation failed", generation: generation)
+                    return
+                }
+                if !Self.isRetryable(category) {
                     updateJob(
                         item,
                         stage: .needsAttention,
@@ -481,24 +555,21 @@ enum ImmediatePreparationOutcome: Equatable {
                 scheduleRetry(item, generation: generation, delay: delay, kind: kind)
                 return
             }
-            if isUserRequested || warmedEpisodeIDs.count < Self.warmCap
-                || warmedEpisodeIDs.contains(item.episodeID) {
-                warmedEpisodeIDs.insert(item.episodeID)
-            }
-            while !isUserRequested && warmedEpisodeIDs.count > Self.warmCap {
-                if let victim = warmedEpisodeIDs.first(where: { $0 != item.episodeID }) {
-                    warmedEpisodeIDs.remove(victim)
-                } else {
-                    break
-                }
-            }
             updateJob(item, stage: .ready, generation: generation)
         } catch {
             // Cancellation is a resumable interruption. It is not a failed ad
             // check and must never immediately start a second analyzer.
             guard generation == warmGeneration, !Task.isCancelled,
                   !(error is CancellationError) else { return }
-            let category = CloudAdDetectionFailureCategory.classify(error)
+            if !isLocallyDownloaded(episodeID: item.episodeID) {
+                updateJob(item, stage: .needsAttention, detail: "Download failed", generation: generation)
+                return
+            }
+            guard let pipeline = SerialEpisodeAnalyzer.pipeline(for: analyzer),
+                  case let .failed(category)? = pipeline.lastCloudAdDetectionOutcome else {
+                updateJob(item, stage: .needsAttention, detail: "Local preparation failed", generation: generation)
+                return
+            }
             if !Self.isRetryable(category) {
                 updateJob(
                     item,
@@ -535,14 +606,18 @@ enum ImmediatePreparationOutcome: Equatable {
         kind: PreparationRequestKind
     ) {
         let timing = timing
-        Task { @MainActor [weak self, timing] in
+        retryTasks[item.episodeID]?.cancel()
+        retryTasks[item.episodeID] = Task { @MainActor [weak self, timing] in
             do {
                 try await timing.sleep(for: delay)
             } catch {
                 return
             }
-            guard let self, generation == self.warmGeneration, !Task.isCancelled else { return }
-            await self.warmOne(item, generation: generation, kind: kind)
+            guard let self, !Task.isCancelled else { return }
+            self.retryTasks.removeValue(forKey: item.episodeID)
+            self.jobs[item.episodeID]?.retryAfter = nil
+            // Retry joins the same serial worker, never starts a parallel analyzer.
+            self.rebuildWorker(force: true)
         }
     }
 
@@ -578,7 +653,7 @@ enum ImmediatePreparationOutcome: Equatable {
         detail: String? = nil,
         retryAfter: Date? = nil,
         cloudFailure: CloudAdDetectionFailureCategory? = nil,
-        retryCount: Int = 0,
+        retryCount: Int? = nil,
         generation: Int? = nil
     ) {
         guard generation == nil || generation == warmGeneration else { return }
@@ -591,11 +666,15 @@ enum ImmediatePreparationOutcome: Equatable {
             retryAfter: retryAfter,
             detail: detail,
             cloudFailure: cloudFailure,
-            retryCount: retryCount
+            retryCount: retryCount ?? jobs[item.episodeID]?.retryCount ?? 0
         )
         jobs[item.episodeID] = job
+        if stage == .ready {
+            explicitEpisodeIDs.remove(item.episodeID)
+            preferencesStore.removeExplicit(item.episodeID)
+        }
         // Keep only recovery checkpoints; high-frequency download updates are useful in
-        // the shelf but need not churn persistent storage.
+        // the row but need not churn persistent storage.
         if stage != .downloading || estimate.progress == nil || estimate.progress == 1 {
             jobStore.save(jobs)
         }
@@ -633,5 +712,3 @@ enum ImmediatePreparationOutcome: Equatable {
         }
     }
 }
-
-typealias AnalysisJobCoordinator = WarmPlanner

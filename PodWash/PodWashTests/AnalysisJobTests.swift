@@ -24,75 +24,22 @@ final class AnalysisJobTests: XCTestCase {
         XCTAssertTrue(job.isDelayed)
     }
 
-    func testReadyIsTheOnlyAutomaticHandoffState() {
-        XCTAssertTrue(AnalysisJobStage.ready.userLabel == "Ready to Play")
-        XCTAssertFalse(AnalysisJobStage.adCheckDelayed.userLabel.isEmpty)
+    func testAnalysisNeverDisplaysMadeUpPercentOrDuration() {
+        var value = job(id: "episode", stage: .transcribing)
+        value.estimate = AnalysisJobEstimate(secondsRemaining: 95, progress: 0.42)
+        let row = EpisodeRowPresentationMapper.map(value)
+        XCTAssertEqual(row.statusText, "Preparing clean playback")
+        XCTAssertEqual(row.primaryControl, .progress(nil))
     }
 
-    func testActivePreparationCopyAvoidsFabricatedDurations() {
-        XCTAssertEqual(
-            AnalysisJobStage.transcribing.listenerStatus,
-            "Preparing clean playback"
-        )
-        XCTAssertEqual(
-            AnalysisJobStage.checkingAds.listenerStatus,
-            "Checking for ads"
-        )
-        XCTAssertEqual(
-            PreparationStatusCopy.downloading(progress: 0.42),
-            "Downloading 42%"
-        )
-        XCTAssertEqual(AnalysisJobStage.queued.listenerStatus, "Waiting to prepare")
-        XCTAssertEqual(AnalysisJobStage.ready.listenerStatus, "Ready to Play")
-        XCTAssertEqual(AnalysisJobStage.adCheckDelayed.listenerStatus, "Ad check delayed")
-        XCTAssertEqual(AnalysisJobStage.needsAttention.listenerStatus, "Needs attention")
-    }
-
-    func testQueueDisplayPlacesReadyJobsFirstWithoutReorderingEitherGroup() {
-        let jobs = [
-            job(id: "preparing-first", stage: .checkingAds),
-            job(id: "ready-first", stage: .ready),
-            job(id: "preparing-second", stage: .downloading),
-            job(id: "ready-second", stage: .ready)
-        ]
-
-        XCTAssertEqual(
-            AnalysisJob.orderedForQueueDisplay(jobs).map(\.episodeID),
-            ["ready-first", "ready-second", "preparing-first", "preparing-second"]
-        )
-    }
-
-    func testCompactShelfStatusUsesFourStepsAndMeasuredProgress() {
-        let job = AnalysisJob(
-            episodeID: "episode-1",
-            title: "Episode one",
-            stage: .transcribing,
-            estimate: AnalysisJobEstimate(secondsRemaining: 95, progress: 0.42),
-            updatedAt: Date(timeIntervalSince1970: 1),
-            retryAfter: nil,
-            detail: nil
-        )
-
-        XCTAssertEqual(job.compactShelfStatus(), "3/4 Preparing clean playback · 42% · ~2 min left")
-    }
-
-    func testCompactShelfStatusShowsElapsedAndRetryTimingWithoutFalseETA() {
-        let start = Date(timeIntervalSince1970: 1_000)
-        var job = AnalysisJob(
-            episodeID: "episode-1",
-            title: "Episode one",
-            stage: .checkingAds,
-            estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: nil),
-            updatedAt: start,
-            retryAfter: nil,
-            detail: nil
-        )
-
-        XCTAssertEqual(job.compactShelfStatus(now: start.addingTimeInterval(18)), "4/4 Checking for ads · 18s elapsed")
-
-        job.stage = .adCheckDelayed
-        job.retryAfter = start.addingTimeInterval(125)
-        XCTAssertEqual(job.compactShelfStatus(now: start), "4/4 Ad check delayed · retrying in ~2 min")
+    func testRetryCountdownUsesInjectedClock() {
+        let start = Date(timeIntervalSince1970: 1000)
+        var value = job(id: "episode", stage: .adCheckDelayed)
+        value.retryAfter = start.addingTimeInterval(125)
+        XCTAssertEqual(EpisodeRowPresentationMapper.map(value, now: start).statusText,
+                       "Ad check delayed · Retrying in ~2 min")
+        XCTAssertEqual(EpisodeRowPresentationMapper.map(value, now: start.addingTimeInterval(126)).statusText,
+                       "Ad check delayed · Retrying now")
     }
 
     private func job(id: String, stage: AnalysisJobStage) -> AnalysisJob {

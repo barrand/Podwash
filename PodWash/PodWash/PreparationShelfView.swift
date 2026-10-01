@@ -37,105 +37,11 @@ struct QueueStatusButton: View {
 
     private var statusText: String {
         if let active = presentation.activeStatus { return active.text }
-        guard presentation.upNext.count + presentation.downloads.count > 0 else { return "Empty" }
-        let downloads = presentation.downloadsSummary.text.isEmpty
-            ? "\(presentation.downloads.count) downloaded"
-            : presentation.downloadsSummary.text
-        return "\(presentation.upNext.count) Up Next · \(downloads)"
+        return presentation.upNext.isEmpty ? "Empty" : "\(presentation.upNext.count) Up Next"
     }
 
     private var accessibilityValue: String {
         if let active = presentation.activeStatus { return active.accessibilityValue }
-        return "\(presentation.upNext.count) up next, \(presentation.downloadsSummary.accessibilityValue)"
+        return "\(presentation.upNext.count) up next"
     }
-}
-
-struct PreparationDetailView: View {
-    let jobs: [AnalysisJob]
-    let onRetry: (String) -> Void
-    let onPlayWithAds: (String) -> Void
-    let onDismiss: () -> Void
-
-    var body: some View {
-        NavigationStack {
-            List {
-                if jobs.isEmpty {
-                    ContentUnavailableView(
-                        "Your queue is empty",
-                        systemImage: "text.line.first.and.arrowtriangle.forward",
-                        description: Text("Add episodes from a podcast to play them next.")
-                    )
-                    .accessibilityIdentifier("queueEmpty")
-                } else {
-                    ForEach(AnalysisJob.orderedForQueueDisplay(jobs)) { job in
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(job.title).fontWeight(.semibold)
-                                Spacer()
-                                Text(job.stage.userLabel).foregroundStyle(.secondary)
-                            }
-                            if let progress = job.estimate.progress, job.stage == .downloading {
-                                ProgressView(value: progress)
-                            }
-                            if job.stage == .adCheckDelayed || job.stage == .needsAttention {
-                                Text(job.detail ?? (job.stage == .adCheckDelayed
-                                    ? "Ad check delayed · Retrying automatically"
-                                    : "Ad check needs attention"))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                HStack {
-                                    Button("Retry now") { onRetry(job.episodeID) }
-                                    Button("Play with ads") { onPlayWithAds(job.episodeID) }
-                                }
-                                .buttonStyle(.bordered)
-                            } else if let detail = job.detail {
-                                Text(detail).font(.caption).foregroundStyle(.secondary)
-                            }
-                            #if DEBUG
-                            debugCloudDiagnostics(for: job)
-                            #endif
-                        }
-                        .accessibilityIdentifier("preparationJob_\(job.episodeID)")
-                    }
-                }
-            }
-            .navigationTitle("Queue")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done", action: onDismiss)
-                }
-            }
-        }
-    }
-
-    #if DEBUG
-    @ViewBuilder
-    private func debugCloudDiagnostics(for job: AnalysisJob) -> some View {
-        if job.stage == .checkingAds || job.stage == .adCheckDelayed || job.stage == .needsAttention {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Debug cloud diagnostics")
-                    .font(.caption2.weight(.semibold))
-                Text("stage=\(job.stage.rawValue) attempts=\(job.retryCount + 1)")
-                if let failure = job.cloudFailure {
-                    Text("failure=\(failure.rawValue)")
-                }
-                if let retryAfter = job.retryAfter {
-                    Text("retry=\(retryAfter.formatted(date: .omitted, time: .shortened))")
-                }
-            }
-            .font(.system(.caption2, design: .monospaced))
-            .foregroundStyle(.secondary)
-            .padding(6)
-            .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 6))
-            .accessibilityIdentifier("preparationCloudDiagnostics_\(job.episodeID)")
-            .accessibilityLabel("Debug cloud diagnostics")
-            .accessibilityValue(debugCloudAccessibilityValue(for: job))
-        }
-    }
-
-    private func debugCloudAccessibilityValue(for job: AnalysisJob) -> String {
-        let failure = job.cloudFailure?.rawValue ?? "none"
-        return "stage:\(job.stage.rawValue),attempts:\(job.retryCount + 1),failure:\(failure)"
-    }
-    #endif
 }

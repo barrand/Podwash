@@ -128,9 +128,9 @@ final class NowPlayingSessionUITests: XCTestCase {
     waitForLibraryRoot(app)
     navigateToEpisodeList(app)
 
-    let episodeCell = element("episodeCell_0", in: app)
+    let episodeCell = app.sharedEpisodeRow(at: 0)
     XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
-    episodeCell.tap()
+    app.playSharedEpisode(at: 0)
 
     let miniPlayer = element("miniPlayer", in: app)
     XCTAssertTrue(
@@ -151,9 +151,7 @@ final class NowPlayingSessionUITests: XCTestCase {
     if let queueEpisodeID {
       // Queue while the episode list is the top chrome, then prove the
       // listener-visible Queue tab contains that exact episode before relaunch.
-      let queueAdd = app.buttons["queueAddButton_1"]
-      XCTAssertTrue(queueAdd.waitForExistence(timeout: fixtureTimeout))
-      tapQueueAddIfNeeded(queueAdd, in: app)
+      app.performSharedEpisodeAction("addToUpNext", at: 1)
       assertQueuedEpisodeVisible(in: app, episodeID: queueEpisodeID)
 
       let libraryTab = app.tabBars.buttons["Library"]
@@ -256,7 +254,9 @@ final class NowPlayingSessionUITests: XCTestCase {
 
     let queueRoot = element("queueTab", in: app)
     XCTAssertTrue(queueRoot.waitForExistence(timeout: fixtureTimeout))
-    let queuedEpisode = element("queueEpisode_\(episodeID)", in: app)
+    // Queue deliberately renders the same row surface as Library; do not retain
+    // a Queue-only accessibility identifier merely for the relaunch fixture.
+    let queuedEpisode = element("episodeRow_\(episodeID)", in: app)
     XCTAssertTrue(queuedEpisode.waitForExistence(timeout: fixtureTimeout))
     XCTAssertFalse(
       element("queueEmpty", in: app).exists,
@@ -285,21 +285,6 @@ final class NowPlayingSessionUITests: XCTestCase {
     _ = miniPlayer.waitForExistence(timeout: fixtureTimeout)
   }
 
-  /// Mini-player safe-area can report `queueAddButton_*` as exists&&!isHittable;
-  /// scroll once then coordinate-tap so seed does not depend on exact chrome inset.
-  @MainActor
-  private func tapQueueAddIfNeeded(_ queueAdd: XCUIElement, in app: XCUIApplication) {
-    if queueAdd.isHittable {
-      queueAdd.tap()
-      return
-    }
-    app.swipeUp()
-    if queueAdd.waitForExistence(timeout: 1), queueAdd.isHittable {
-      queueAdd.tap()
-      return
-    }
-    queueAdd.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-  }
 
   @MainActor
   private func waitForAccessibilityValue(

@@ -32,6 +32,15 @@ struct PodWashApp: App {
         // read them. Doing this from RootView's asynchronous task was late
         // enough for a first manual download to inherit prior consent state.
         FixtureSettings.prepareFreshDefaults()
+        if FixtureRuntime.isFixtureLaunch,
+           !FixtureNowPlayingSession.shouldPreserveOnLaunch,
+           !FixtureQueue.shouldPreserveOnLaunch {
+            // Jobs/intent belong to the same fixture lifetime as the catalog.
+            // A prior interrupted UI run must not secretly prepare a fresh
+            // first-download fixture before it can exercise consent.
+            UserDefaults.standard.removeObject(forKey: "podwash.episodePreparationPreferences.v1")
+            UserDefaults.standard.removeObject(forKey: "podwash.analysisJobs.v1")
+        }
         if FixtureDownload.isEnabled {
             FixtureDownload.clearDownloadsDirectoryIfNeeded()
         }

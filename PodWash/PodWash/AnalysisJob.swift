@@ -7,19 +7,6 @@
 
 import Foundation
 
-/// Listener-facing copy for active preparation work. Only download work has a
-/// measured percentage; analysis deliberately avoids fabricated durations.
-enum PreparationStatusCopy {
-    static let preparing = "Preparing clean playback"
-    static let checkingAds = "Checking for ads"
-
-    static func downloading(progress: Double?) -> String {
-        guard let progress else { return "Downloading" }
-        let percent = Int((min(max(progress, 0), 1) * 100).rounded())
-        return "Downloading \(percent)%"
-    }
-}
-
 enum AnalysisJobStage: String, Codable, CaseIterable, Sendable {
     case queued
     case downloading
@@ -29,30 +16,6 @@ enum AnalysisJobStage: String, Codable, CaseIterable, Sendable {
     case adCheckDelayed
     case needsAttention
 
-    var userLabel: String {
-        switch self {
-        case .queued: return "Waiting to prepare"
-        case .downloading: return "Downloading"
-        case .transcribing: return "Preparing clean playback"
-        case .checkingAds: return "Checking for ads"
-        case .ready: return "Ready to Play"
-        case .adCheckDelayed: return "Ad check delayed"
-        case .needsAttention: return "Needs attention"
-        }
-    }
-
-    var listenerStatus: String {
-        switch self {
-        case .downloading:
-            return PreparationStatusCopy.downloading(progress: nil)
-        case .transcribing:
-            return PreparationStatusCopy.preparing
-        case .checkingAds:
-            return PreparationStatusCopy.checkingAds
-        case .queued, .ready, .adCheckDelayed, .needsAttention:
-            return userLabel
-        }
-    }
 }
 
 struct AnalysisJobEstimate: Codable, Equatable, Sendable {
@@ -78,62 +41,6 @@ struct AnalysisJob: Codable, Equatable, Identifiable, Sendable {
     var isReadyForAutomaticPlayback: Bool { stage == .ready }
     var isDelayed: Bool { stage == .adCheckDelayed }
 
-    /// Presents playable queue entries before entries that are still preparing,
-    /// without changing the listener's saved order within either group.
-    static func orderedForQueueDisplay(_ jobs: [AnalysisJob]) -> [AnalysisJob] {
-        jobs.filter(\.isReadyForAutomaticPlayback)
-            + jobs.filter { !$0.isReadyForAutomaticPlayback }
-    }
-
-    /// Short, listener-facing status for the single-line preparation shelf.
-    /// The numbered steps describe the normal clean-playback path; terminal and
-    /// recovery states deliberately stay unnumbered so we do not imply progress
-    /// that cannot be measured.
-    func compactShelfStatus(now: Date = Date()) -> String {
-        switch stage {
-        case .queued:
-            return "1/4 Waiting to prepare"
-        case .downloading:
-            return compactProgressStatus(step: "2/4 Downloading")
-        case .transcribing:
-            return compactProgressStatus(step: "3/4 Preparing clean playback")
-        case .checkingAds:
-            return "4/4 Checking for ads · \(Self.elapsedText(since: updatedAt, now: now))"
-        case .ready:
-            return "Ready"
-        case .adCheckDelayed:
-            guard let retryAfter else { return "4/4 Ad check delayed · retrying automatically" }
-            let remaining = retryAfter.timeIntervalSince(now)
-            return remaining <= 0
-                ? "4/4 Ad check delayed · retrying now"
-                : "4/4 Ad check delayed · retrying in \(Self.remainingTimeText(remaining))"
-        case .needsAttention:
-            return detail.map { "Needs attention · \($0)" } ?? "Needs attention"
-        }
-    }
-
-    private func compactProgressStatus(step: String) -> String {
-        var parts = [step]
-        if let progress = estimate.progress {
-            parts.append("\(Int((min(max(progress, 0), 1) * 100).rounded()))%")
-        }
-        if let remaining = estimate.secondsRemaining, remaining > 0 {
-            parts.append("\(Self.remainingTimeText(remaining)) left")
-        }
-        return parts.joined(separator: " · ")
-    }
-
-    private static func elapsedText(since start: Date, now: Date) -> String {
-        let seconds = max(0, now.timeIntervalSince(start))
-        if seconds < 60 { return "\(Int(seconds.rounded()))s elapsed" }
-        return "\(Int((seconds / 60).rounded()))m elapsed"
-    }
-
-    private static func remainingTimeText(_ seconds: TimeInterval) -> String {
-        if seconds < 60 { return "under 1 min" }
-        if seconds < 3_600 { return "~\(Int((seconds / 60).rounded())) min" }
-        return "~\(Int((seconds / 3_600).rounded())) hr"
-    }
 }
 
 /// Small checkpoint store. Live byte/chunk updates stay in memory; only recovery-relevant

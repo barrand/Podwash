@@ -8,6 +8,8 @@ If you have never worked this way before, read this page once, skim [`_template.
 
 ## Source of truth model
 
+The current episode-row UX is defined by the [shared Library + Queue readiness plan](../plans/queue-screen-ux-redesign.md). It supersedes historical row-tap playback, separate Library cells, permanent row accessories, Queue Downloads, and index-based fixture controls. Older slice acceptance records remain as history; use the plan's readiness/actions and episode-ID-based identifiers for new work.
+
 | Document | Answers | Changes |
 |----------|---------|---------|
 | **[`product-requirements.md`](../product-requirements.md)** | **WHAT/WHY** — vision, features, constraints, legal, monetization, non-goals | Rarely (strategy shifts) |

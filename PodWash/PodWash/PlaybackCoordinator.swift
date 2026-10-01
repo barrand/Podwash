@@ -96,7 +96,7 @@ final class PlaybackCoordinator {
         injectedTranscript: [TimedWord]? = nil,
         segmentationContext: SegmentationContext = .empty
     ) async throws {
-        if let analysisPipeline = pipeline as? AnalysisPipeline {
+        if let analysisPipeline = SerialEpisodeAnalyzer.pipeline(for: pipeline) {
             analysisPipeline.segmentationContext = segmentationContext
         }
         let intervals = try await pipeline.analyze(
@@ -110,7 +110,7 @@ final class PlaybackCoordinator {
         currentAction = action
         unrelatedContentEnabled = unrelatedContent.enabled
         unrelatedContentAction = unrelatedContent.action
-        if let analysisPipeline = pipeline as? AnalysisPipeline {
+        if let analysisPipeline = SerialEpisodeAnalyzer.pipeline(for: pipeline) {
             lastAnalysisUnion = analysisPipeline.lastAnalysisUnion
         } else {
             lastAnalysisUnion = Self.analysisUnion(from: pipeline, projected: intervals)

@@ -9,30 +9,9 @@ import SwiftUI
 
 struct PodcastDetailView: View {
     @Bindable var viewModel: EpisodeListViewModel
-    @Bindable var analysisViewModel: AnalysisUIViewModel
-    var downloadManager: DownloadManager
-    var queueStore: QueueStore
-    /// Slice 23 — episode row tap starts playback in the app shell (nil in exclusive fixtures).
-    var onPlayEpisode: ((Episode) -> Void)? = nil
-    /// Returns true when the shell has taken ownership of the consent-gated download.
-    var onRequestCloudConsentBeforeDownload: ((Episode) -> Bool)? = nil
-    /// Switch immediately to a tapped Up Next item while preserving the current episode.
-    var onPlayQueuedEpisode: ((String) -> Void)? = nil
-    /// Queue an explicit listener-selected episode and begin preparation.
-    var onAddAndPrepare: ((String) -> Void)? = nil
-    /// Slice 26 — transcript affordance gate + present action.
-    var transcriptExists: ((String) -> Bool)? = nil
-    var onViewTranscript: ((String) -> Void)? = nil
-    var transcriptAffordanceGeneration: Int = 0
-    /// Slice 29 — cleaning summary from IntervalCache (nil = miss / omit).
-    var cleaningSummary: ((String) -> EpisodeCleaningSummary?)? = nil
-    var isPlayed: ((String) -> Bool)? = nil
-    var playedEpisodeActionState: ((String) -> PlayedEpisodeActionState)? = nil
-    var onPrepareReplay: ((String) -> Void)? = nil
-    var onRetryReplay: ((String) -> Void)? = nil
-    var onReplayFromBeginning: ((String) -> Void)? = nil
+    let rowSnapshot: (Episode) -> EpisodeRowSnapshot
+    let rowBindings: (String) -> EpisodeRowBindings
     var episodeListRevision: Int = 0
-    @State private var queueRevision = 0
     /// Landscape / short windows (~402pt) — keep episodeList tall enough to hit cells.
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
@@ -70,35 +49,17 @@ struct PodcastDetailView: View {
     }
 
     private func loadedView(_ feed: PodcastFeed) -> some View {
-        let _ = queueRevision
-        let _ = transcriptAffordanceGeneration
         let _ = episodeListRevision
         return VStack(alignment: .leading, spacing: 0) {
             podcastHeader(feed)
-            EpisodeListView(
-                feed: feed,
-                analysisViewModel: analysisViewModel,
-                downloadManager: downloadManager,
-                queueStore: queueStore,
-                onQueueChanged: { queueRevision += 1 },
-                onAddAndPrepare: onAddAndPrepare,
-                onPlayEpisode: onPlayEpisode,
-                onRequestCloudConsentBeforeDownload: onRequestCloudConsentBeforeDownload,
-                transcriptExists: transcriptExists,
-                onViewTranscript: onViewTranscript,
-                transcriptAffordanceGeneration: transcriptAffordanceGeneration,
-                cleaningSummary: cleaningSummary,
-                isPlayed: isPlayed,
-                playedEpisodeActionState: playedEpisodeActionState,
-                onPrepareReplay: onPrepareReplay,
-                onRetryReplay: onRetryReplay,
-                onReplayFromBeginning: onReplayFromBeginning,
-                episodeListRevision: episodeListRevision
-            )
+            // Resolve observable state in SwiftUI's tracked render, not a later
+            // UIKit datasource callback. The table receives immutable values.
+            EpisodeListView(feed: feed, snapshots: feed.episodes.map(rowSnapshot),
+                            bindings: rowBindings, revision: episodeListRevision)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             // Prefer list height over header intrinsic size when the window is short
             // (UITest sims often launch landscape; without this episodeList collapses
-            // to ~0pt and episodeCell_* exists but is not hittable).
+            // to ~0pt and visible episode controls cannot be hit).
             .layoutPriority(1)
         }
     }
@@ -111,77 +72,6 @@ struct PodcastDetailView: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityIdentifier("feed.empty")
                 .accessibilityLabel("No episodes")
-        }
-    }
-
-    private func upNextSection(feed: PodcastFeed) -> some View {
-        let ids = queueStore.queueEpisodeIDs()
-        let titleByID = Dictionary(uniqueKeysWithValues: feed.episodes.map { ($0.id, $0.title) })
-        let sectionSpacing: CGFloat = isCompactHeight ? 4 : 8
-        let topPad: CGFloat = isCompactHeight ? 2 : 8
-        let emptyBottomPad: CGFloat = isCompactHeight ? 2 : 8
-        return VStack(alignment: .leading, spacing: sectionSpacing) {
-            Text("Up Next")
-                .font(.headline)
-                .padding(.horizontal)
-                .padding(.top, topPad)
-
-            if ids.isEmpty {
-                Text("Nothing queued")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.bottom, emptyBottomPad)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityIdentifier("queueEmpty")
-                    .accessibilityLabel("Nothing queued")
-            }
-
-            VStack(spacing: 0) {
-                ForEach(Array(ids.enumerated()), id: \.element) { index, episodeID in
-                    // Put queueCell_* on the title leaf — HStack + children:.contain +
-                    // label/value collapses the row container in XCUITest (only
-                    // queueRemoveButton_* remained queryable).
-                    HStack {
-                        if let onPlayQueuedEpisode {
-                            Button {
-                                onPlayQueuedEpisode(episodeID)
-                                queueRevision += 1
-                            } label: {
-                                Text(titleByID[episodeID] ?? episodeID)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("queueCell_\(index)")
-                            .accessibilityLabel(titleByID[episodeID] ?? episodeID)
-                            .accessibilityValue(episodeID)
-                            .accessibilityHint("Plays now and keeps the current episode next.")
-                        } else {
-                            Text(titleByID[episodeID] ?? episodeID)
-                                .lineLimit(2)
-                                .accessibilityIdentifier("queueCell_\(index)")
-                                .accessibilityLabel(titleByID[episodeID] ?? episodeID)
-                                .accessibilityValue(episodeID)
-                        }
-                        Spacer()
-                        Button("Remove") {
-                            try? queueStore.remove(episodeID)
-                            queueRevision += 1
-                        }
-                        .accessibilityIdentifier("queueRemoveButton_\(index)")
-                        .accessibilityLabel("Remove from queue")
-                        .accessibilityValue(episodeID)
-                        .accessibilityHint("Removes this episode from up next.")
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                }
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("queueList")
-            .accessibilityLabel("Up next")
-            .accessibilityValue("\(ids.count)")
         }
     }
 

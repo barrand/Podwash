@@ -167,8 +167,9 @@ AC3: after AC2, re-analyze with `targetWords = { "shit" }` only → spy = 2.
 #### Slow path (AC4 — live ASR)
 
 Reuse `speech-pangram.wav` (Slice 05). `WordProfiles` categories contain no pangram
-tokens, so AC4 uses a **pinned slow target set** `{ "quick", "fox", "dog" }` — tokens
-present in `asr_fixture_expected.json`.
+tokens, so AC4 uses a **pinned slow target set** `{ "quick", "fox", "fock", "dog" }`.
+`fock` is the pinned tiny.en benchmark's accepted lexical error for `fox`; the
+ASR benchmark owns lexical accuracy, while AC4 owns pipeline interval timing.
 
 Hand-computed golden `slow_pipeline_intervals.json` (matching-spec §3–§6 applied to
 `asr_fixture_expected.json`):

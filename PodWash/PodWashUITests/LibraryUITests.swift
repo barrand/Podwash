@@ -73,9 +73,9 @@ final class LibraryUITests: XCTestCase {
 
     private func playFirstEpisodeAndWaitForMiniPlayer(_ app: XCUIApplication) {
         navigateToEpisodeList(app)
-        let episodeCell = element("episodeCell_0", in: app)
+        let episodeCell = app.sharedEpisodeRow(at: 0)
         XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
-        episodeCell.tap()
+        app.playSharedEpisode(at: 0)
         let miniPlayer = element("miniPlayer", in: app)
         XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout), "miniPlayer must appear within \(fixtureTimeout)s")
     }
@@ -89,30 +89,8 @@ final class LibraryUITests: XCTestCase {
 
     private func playFirstEpisodeWithChannelCleaningOn(_ app: XCUIApplication) {
         navigateToEpisodeList(app)
-        ensureChannelCleaningOn(in: app)
-
-        let downloadButton = app.buttons["downloadButton_0"]
-        XCTAssertTrue(downloadButton.waitForExistence(timeout: fixtureTimeout))
-
-        let episodeCell = element("episodeCell_0", in: app)
-        XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
-        episodeCell.tap()
-
-        if downloadButton.value as? String != "downloaded" {
-            waitForAccessibilityValue(
-                "downloaded",
-                identifier: "downloadButton_0",
-                in: app,
-                timeout: fixtureTimeout,
-                message: "downloadButton_0 must report downloaded before play-time analysis starts"
-            )
-        }
-
-        let miniPlayer = element("miniPlayer", in: app)
-        XCTAssertTrue(
-            miniPlayer.waitForExistence(timeout: fixtureTimeout),
-            "miniPlayer must appear within \(fixtureTimeout)s after downloaded local play starts"
-        )
+        app.playSharedEpisode(at: 0)
+        XCTAssertTrue(element("miniPlayer", in: app).waitForExistence(timeout: fixtureTimeout))
     }
 
     @discardableResult
@@ -127,30 +105,13 @@ final class LibraryUITests: XCTestCase {
             "\(identifier) must appear within \(timeout)s"
         )
 
-        let terminalSnapshot = expectation(description: "terminal \(identifier) snapshot")
-        terminalSnapshot.assertForOverFulfill = false
-
-        var resolved = ""
-        var sawTerminal = false
-        let timer = Timer(timeInterval: 0.05, repeats: true) { timer in
-            guard control.exists, let value = control.value as? String else { return }
-            guard SuperSeekBarAXParsing.adBandSummary(from: value) != nil else { return }
-            guard value == Self.terminalSuperSeekBarValue else { return }
-            sawTerminal = true
-            resolved = value
-            timer.invalidate()
-            terminalSnapshot.fulfill()
-        }
-        RunLoop.current.add(timer, forMode: .common)
-
-        defer { timer.invalidate() }
-        wait(for: [terminalSnapshot], timeout: timeout)
-
-        XCTAssertTrue(
-            sawTerminal,
-            "\(identifier) must reach terminal analysis snapshot within \(timeout)s; last value: \(control.value as? String ?? "nil")"
+        let terminal = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND value == %@", Self.terminalSuperSeekBarValue),
+            object: control
         )
-        return resolved
+        XCTAssertEqual(XCTWaiter.wait(for: [terminal], timeout: timeout), .completed,
+            "\(identifier) must expose completed analysis")
+        return control.value as? String ?? ""
     }
 
     private static func isValidTimelineAccessibilityValue(_ value: String) -> Bool {
@@ -196,8 +157,8 @@ final class LibraryUITests: XCTestCase {
         navigateToEpisodeList(app)
 
         for index in 0 ..< 3 {
-            let cell = element("episodeCell_\(index)", in: app)
-            XCTAssertTrue(cell.waitForExistence(timeout: fixtureTimeout), "episodeCell_\(index) missing")
+            let cell = app.sharedEpisodeRow(at: index)
+            XCTAssertTrue(cell.waitForExistence(timeout: fixtureTimeout), "Shared episode row \(index) missing")
         }
     }
 
@@ -211,9 +172,9 @@ final class LibraryUITests: XCTestCase {
         let app = launchLibraryApp(extraArguments: ["-UITestChannelCleaningOff"])
         navigateToEpisodeList(app)
 
-        let episodeCell = element("episodeCell_0", in: app)
+        let episodeCell = app.sharedEpisodeRow(at: 0)
         XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
-        episodeCell.tap()
+        app.playSharedEpisode(at: 0)
 
         let miniPlayer = element("miniPlayer", in: app)
         XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout), "miniPlayer must appear within \(fixtureTimeout)s")
@@ -236,13 +197,13 @@ final class LibraryUITests: XCTestCase {
 
         // Start the persistent chrome, then exercise the actual bottom-of-list
         // condition rather than merely checking a static content inset.
-        let first = element("episodeCell_0", in: app)
+        let first = app.sharedEpisodeRow(at: 0)
         XCTAssertTrue(first.waitForExistence(timeout: fixtureTimeout))
-        first.tap()
+        app.playSharedEpisode(at: 0)
         let miniPlayer = element("miniPlayer", in: app)
         XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout))
 
-        let last = element("episodeCell_23", in: app)
+        let last = app.sharedEpisodeRow(at: 23)
         for _ in 0 ..< 16 where !last.isHittable || last.frame.maxY > miniPlayer.frame.minY {
             app.swipeUp()
         }
@@ -254,56 +215,25 @@ final class LibraryUITests: XCTestCase {
             "The final episode must not be covered by mini-player chrome"
         )
 
-        last.tap()
+        app.playSharedEpisode(at: 23)
         XCTAssertEqual(miniPlayer.label, "Long fixture episode 24", "The final episode row must receive the tap")
     }
 
     // MARK: - Task 012: tap episode downloads before play when Clean Profanity on
 
     @MainActor
-    func testTapEpisodeDownloadsBeforePlayWhenChannelCleaningOn() throws {
+    func testExplicitDownloadDoesNotPlayUntilReadyPlayIsTapped() throws {
         let app = launchLibraryApp(extraArguments: ["-UITestFixtureDownload"])
         navigateToEpisodeList(app)
-        ensureChannelCleaningOn(in: app)
-
-        let downloadButton = app.buttons["downloadButton_0"]
-        XCTAssertTrue(downloadButton.waitForExistence(timeout: fixtureTimeout))
-        XCTAssertEqual(downloadButton.value as? String, "notDownloaded")
-
-        let episodeCell = element("episodeCell_0", in: app)
-        XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
-
-        XCTAssertFalse(
-            element("miniPlayerPlayPause", in: app).exists,
-            "mini-player must not appear before download completes"
-        )
-
-        episodeCell.tap()
-
-        waitForAccessibilityValue(
-            "downloaded",
-            identifier: "downloadButton_0",
-            in: app,
-            timeout: fixtureTimeout,
-            message: "downloadButton_0 must report downloaded after tap-to-play download completes"
-        )
-
-        let miniPlayer = element("miniPlayer", in: app)
-        XCTAssertTrue(
-            miniPlayer.waitForExistence(timeout: fixtureTimeout),
-            "miniPlayer must appear after downloaded local play session starts"
-        )
-
-        waitForAccessibilityValue(
-            "playing",
-            identifier: "miniPlayerPlayPause",
-            in: app,
-            timeout: fixtureTimeout,
-            message: "miniPlayerPlayPause must report playing within \(fixtureTimeout)s after download"
-        )
+        let row = app.sharedEpisodeRow(at: 0)
+        XCTAssertTrue(row.waitForExistence(timeout: fixtureTimeout))
+        row.tap()
+        XCTAssertFalse(element("miniPlayer", in: app).exists, "Informational row body must not start playback")
+        app.prepareSharedEpisode(at: 0)
+        XCTAssertFalse(element("miniPlayer", in: app).exists, "Preparation must not auto-play")
+        app.playSharedEpisode(at: 0)
+        XCTAssertTrue(element("miniPlayer", in: app).waitForExistence(timeout: fixtureTimeout))
     }
-
-    // MARK: - Task 011: analysis timeline in mini and full player
 
     @MainActor
     func testMiniPlayerShowsAnalysisTimelineWhenAnalysisComplete() throws {
@@ -443,37 +373,33 @@ final class LibraryUITests: XCTestCase {
     }
 
     @MainActor
-    func testTabsRemainHittableWhilePlaybackPrepares() throws {
+    func testTabsRemainHittableWhileEpisodePreparationRuns() throws {
         let app = launchLibraryApp(extraArguments: libraryPlayerAnalysisTimelineArgs)
         navigateToEpisodeList(app)
-        ensureChannelCleaningOn(in: app)
-
-        let episodeCell = element("episodeCell_0", in: app)
-        XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
-        episodeCell.tap()
-
-        let preparing = element("miniPlayer.preparing", in: app)
-        XCTAssertTrue(
-            preparing.waitForExistence(timeout: fixtureTimeout),
-            "The mini-player must show its preparing status before terminal analysis completes"
-        )
-        let preparationFrame = preparing.frame
-        XCTAssertEqual(
-            preparing.label,
-            "Preparing clean playback · Usually a few minutes"
-        )
-        let preparingSpinner = element("miniPlayer.preparingProgress", in: app)
-        XCTAssertTrue(
-            preparingSpinner.exists,
-            "The mini-player must pair rough preparation timing with an active spinner"
-        )
-
+        let primary = app.buttons["episodePrimary_\(app.sharedEpisodeID(at: 0))"]
+        XCTAssertTrue(primary.waitForExistence(timeout: fixtureTimeout))
+        primary.tap()
+        let decline = app.buttons["cloudConsentDeclineButton"]
+        if decline.waitForExistence(timeout: 1) { decline.tap() }
+        XCTAssertFalse(element("miniPlayer", in: app).exists)
         for name in ["Library", "Queue", "Discover"] {
-            let control = tab(name, in: app)
-            XCTAssertTrue(control.waitForExistence(timeout: fixtureTimeout), "\(name) tab must exist while preparing")
-            XCTAssertTrue(control.isHittable, "\(name) tab must remain tappable while preparing")
-            XCTAssertFalse(control.frame.intersects(preparationFrame), "\(name) must not overlap preparation chrome")
+            XCTAssertTrue(tab(name, in: app).isHittable)
         }
+    }
+
+    @MainActor
+    func testLibraryAndQueueShareRowAndMenuWithoutTapToPlay() throws {
+        let app = launchLibraryApp()
+        navigateToEpisodeList(app)
+        let id = app.sharedEpisodeID(at: 0)
+        XCTAssertTrue(app.sharedEpisodeRow(at: 0).waitForExistence(timeout: fixtureTimeout))
+        app.performSharedEpisodeAction("addToUpNext", at: 0)
+        app.tabBars.buttons["Queue"].tap()
+        XCTAssertTrue(element("episodeRow_\(id)", in: app).waitForExistence(timeout: fixtureTimeout))
+        XCTAssertTrue(app.buttons["episodePrimary_\(id)"].exists)
+        app.openSharedEpisodeMenu(at: 0)
+        XCTAssertTrue(app.buttons["episodeMenu_moveToTop_\(id)"].exists)
+        XCTAssertTrue(app.buttons["episodeMenu_removeFromUpNext_\(id)"].exists)
     }
 
     // MARK: - AC7: empty library prompts Discover navigation

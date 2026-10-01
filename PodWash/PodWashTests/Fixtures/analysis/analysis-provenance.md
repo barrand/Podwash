@@ -33,7 +33,10 @@ Golden: `[{0.92, 1.87}, {2.92, 3.32}]`.
 **Reference transcript:** `../asr/asr_fixture_expected.json` (independent golden for
 the pangram clip — **not** live ASR output).
 
-**Target set (pinned):** `{ "quick", "fox", "dog" }`.
+**Target set (pinned):** `{ "quick", "fox", "fock", "dog" }`. The `fock`
+variant is the pinned tiny.en benchmark's accepted lexical error for `fox`; the
+separate ASR benchmark owns the word-error threshold, while this golden owns
+pipeline interval timing.
 
 Hand computation (matching-spec §3–§6):
 

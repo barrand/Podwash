@@ -24,14 +24,14 @@ final class CloudConsentShellUITests: XCTestCase {
         XCTAssertTrue(show.waitForExistence(timeout: 5))
         show.tap()
 
-        let download = app.buttons["downloadButton_0"]
+        let download = app.buttons["episodePrimary_lib-0-fixture-ep-001"]
         XCTAssertTrue(download.waitForExistence(timeout: 5))
         download.tap()
         XCTAssertTrue(app.descendants(matching: .any)["cloudTranscriptConsentSheet"].waitForExistence(timeout: 5))
         app.buttons["cloudConsentDeclineButton"].tap()
 
         let downloaded = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "value == %@", "downloaded"),
+            predicate: NSPredicate(format: "exists == true AND label == %@", "Play"),
             object: download
         )
         XCTAssertEqual(XCTWaiter().wait(for: [downloaded], timeout: 5), .completed)
@@ -54,9 +54,9 @@ final class CloudConsentShellUITests: XCTestCase {
         XCTAssertTrue(show.waitForExistence(timeout: 5))
         show.tap()
 
-        let download = app.buttons["downloadButton_0"]
+        let download = app.buttons["episodePrimary_lib-0-fixture-ep-001"]
         XCTAssertTrue(download.waitForExistence(timeout: 5))
-        XCTAssertEqual(download.value as? String, "notDownloaded")
+        XCTAssertEqual(download.label, "Download")
         download.tap()
 
         let consent = app.descendants(matching: .any)["cloudTranscriptConsentSheet"]
@@ -65,7 +65,7 @@ final class CloudConsentShellUITests: XCTestCase {
         XCTAssertFalse(consent.waitForExistence(timeout: 2))
 
         let downloaded = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "value == %@", "downloaded"),
+            predicate: NSPredicate(format: "exists == true AND label == %@", "Play"),
             object: download
         )
         XCTAssertEqual(XCTWaiter().wait(for: [downloaded], timeout: 5), .completed)

@@ -839,140 +839,54 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         XCTAssertEqual(model.playbackCoordinator?.cachedIntervals.count ?? 0, 0)
     }
 
-    // MARK: - Task 012: download-before-play when channel cleaning on
-
-    func testPlayEpisodeDownloadsInsteadOfStreamingWhenChannelCleaningOn() async throws {
-        try await withStubDownloadTransport { [self] in
-            let model = makeShell(
-                fixtureLibraryMode: false,
-                injectedTranscript: try loadTranscript()
-            )
-            let episode = fixtureEpisode()
-            removeProductionDownload(for: episode.id)
-
-            try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
-
-            model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
-
-            assertEngineDoesNotStreamRemote(from: model)
-            XCTAssertNil(
-                model.engine,
-                "playEpisode must not create PlaybackEngine before download completes when channel cleaning is on"
-            )
-
-            await waitUntil(timeout: 2) {
-                self.isDownloading(model.downloadManager.state(for: episode.id))
-                    || model.downloadManager.state(for: episode.id) == .downloaded
-            }
-            if isDownloading(model.downloadManager.state(for: episode.id)) {
-                assertEngineDoesNotStreamRemote(from: model)
-                XCTAssertNil(
-                    model.engine,
-                    "PlaybackEngine must stay absent while download-before-play is in flight"
-                )
-            }
-            XCTAssertTrue(
-                isDownloading(model.downloadManager.state(for: episode.id))
-                    || model.downloadManager.state(for: episode.id) == .downloaded,
-                "playEpisode must start a download when channel cleaning is on and no local file exists"
-            )
-        }
-    }
-
-    func testPlayEpisodeStreamsWhenChannelCleaningOffAndNoLocalFile() async throws {
+    func testReadyRowRejectsMissingAudioWithoutDownloadingOrStreaming() async throws {
         let model = makeShell(fixtureLibraryMode: false)
         let episode = fixtureEpisode()
+        try model.podcastStore.save(PodcastFeed(title: podcastTitle, artworkURL: nil,
+            description: nil, episodes: [episode]), feedURL: feedURL)
         removeProductionDownload(for: episode.id)
+        try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
+        model.playReadyEpisode(episode.id, context: .library)
+        XCTAssertNil(model.engine)
+        XCTAssertEqual(model.downloadManager.state(for: episode.id), .notDownloaded)
+        XCTAssertEqual(pipelineSpy.analyzeCallCount, 0)
+    }
 
+    func testReadyRowRejectsRemoteAudioEvenWithCleaningOff() async throws {
+        let model = makeShell(fixtureLibraryMode: false)
+        let episode = fixtureEpisode()
+        try model.podcastStore.save(PodcastFeed(title: podcastTitle, artworkURL: nil,
+            description: nil, episodes: [episode]), feedURL: feedURL)
+        removeProductionDownload(for: episode.id)
         try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: false)
-
-        model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
-
-        await waitUntil { model.engine != nil }
-
-        let playbackURL = enginePlaybackURL(from: model)
-        XCTAssertEqual(playbackURL?.scheme?.lowercased(), "https")
-        XCTAssertEqual(
-            episode.audioURL?.absoluteString,
-            playbackURL?.absoluteString,
-            "Cleaning off must stream the remote enclosure URL when no sandbox file exists"
-        )
-        XCTAssertEqual(
-            model.downloadManager.state(for: episode.id),
-            .notDownloaded,
-            "Cleaning off must not invoke download on tap-to-play"
-        )
+        model.playReadyEpisode(episode.id, context: .library)
+        XCTAssertNil(model.engine)
+        XCTAssertEqual(model.downloadManager.state(for: episode.id), .notDownloaded)
     }
 
-    func testPlayEpisodeAnalyzesAfterDownloadCompletesWhenChannelCleaningOn() async throws {
+    func testExplicitDownloadPreparesWithoutPlaybackAndReadyPlayDoesNotAnalyzeAgain() async throws {
         try await withStubDownloadTransport { [self] in
-            let model = makeShell(
-                fixtureLibraryMode: false,
-                injectedTranscript: try loadTranscript()
-            )
+            let model = makeShell(fixtureLibraryMode: false, injectedTranscript: try loadTranscript(),
+                intervalCache: IntervalCache(baseDirectory: cacheDir), transcriptCache: transcriptCache)
             let episode = fixtureEpisode()
+            try model.podcastStore.save(PodcastFeed(title: podcastTitle, artworkURL: nil,
+                description: nil, episodes: [episode]), feedURL: feedURL)
             removeProductionDownload(for: episode.id)
-
+            model.settingsStore.cloudTranscriptProcessingConsentPrompted = true
             try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
-
-            model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
-
+            model.requestEpisodeDownload(episode.id)
             await waitUntil(timeout: 10) {
-                let playbackURL = self.enginePlaybackURL(from: model)
-                return playbackURL?.isFileURL == true
-                    && FileManager.default.fileExists(atPath: playbackURL?.path ?? "")
-                    && self.pipelineSpy.analyzeCallCount >= 1
+                model.episodeRowSnapshot(episode, context: .library).presentation.primaryControl == .play
             }
-
-            let playbackURL = try XCTUnwrap(enginePlaybackURL(from: model))
-            XCTAssertTrue(playbackURL.isFileURL)
-            XCTAssertTrue(FileManager.default.fileExists(atPath: playbackURL.path))
-            XCTAssertEqual(
-                pipelineSpy.analyzeCallCount,
-                1,
-                "Local-file gate must invoke analyze exactly once after download completes"
-            )
-        }
-    }
-
-    // MARK: - AC7: no local file → skip analysis even when cleaning is on
-
-    func testStreamingURLSkipsAnalysisEvenWhenCleaningOn() async throws {
-        // After task-012, channel cleaning on + no sandbox file starts download-before-play
-        // (not silent stream). Force a hard transport failure so no local file lands;
-        // ADR-008 / ADR-020 AC7 still requires analyze == 0 without a local file.
-        try await withStubDownloadTransport { [self] in
-            let model = makeShell(
-                fixtureLibraryMode: false,
-                injectedTranscript: try loadTranscript()
-            )
-            let episode = Episode(
-                id: episodeID,
-                title: "Alpha Signal — Pilot Launch",
-                pubDate: ISO8601DateFormatter().date(from: "2026-01-15T08:00:00Z")!,
-                artworkURL: URL(string: "file:///fixtures/feeds/episode-0-art.png"),
-                showNotes: "<p>Welcome to the pilot.</p>",
-                audioURL: URL(string: "https://fixture.podwash.tests/audio/transport-error.m4a")
-            )
-            removeProductionDownload(for: episode.id)
-
-            try model.cleaningStore.setEpisodeCleaning(episode.id, enabled: false)
-            try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: true)
-
-            model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
-
-            await waitUntil { model.downloadManager.state(for: episode.id) == .failed }
-            try await Task.sleep(for: .milliseconds(300))
-
-            XCTAssertNil(
-                model.playbackCoordinator,
-                "Failed download-before-play must not start a playback session"
-            )
-            XCTAssertEqual(
-                pipelineSpy.analyzeCallCount,
-                0,
-                "Without a local file, analyze must not run (ADR-008 local-file gate; download failed)"
-            )
+            XCTAssertNil(model.engine)
+            XCTAssertTrue(model.queueStore.queueEpisodeIDs().isEmpty)
+            let analysisCalls = pipelineSpy.analyzeCallCount
+            XCTAssertEqual(analysisCalls, 1)
+            model.playReadyEpisode(episode.id, context: .library)
+            await waitUntil(timeout: 10) { model.nowPlayingEpisodeID == episode.id }
+            XCTAssertTrue(enginePlaybackURL(from: model)?.isFileURL == true)
+            XCTAssertEqual(pipelineSpy.analyzeCallCount, analysisCalls)
+            model.stopAndDismissPlayer()
         }
     }
 

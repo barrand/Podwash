@@ -84,7 +84,7 @@ final class QueueStore {
     }
 
     /// Places the interrupted episode first while removing the selected episode if
-    /// it was already in Up Next. This also supports Play now from Ready to Play.
+    /// it was already in Up Next. Called only after local playback is staged.
     func prepareForImmediatePlayback(
         selectedEpisodeID: String,
         replacingCurrentEpisodeID currentEpisodeID: String?

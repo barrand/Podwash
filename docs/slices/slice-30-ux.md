@@ -1,5 +1,7 @@
 # Slice 30 — UX spec: Mini-player super seek bar parity
 
+> Episode-row contract superseded (October 1, 2026): the [shared Library + Queue readiness plan](../plans/queue-screen-ux-redesign.md) is authoritative for current rows, controls, menus, and fixture identifiers. Library and Queue render `SharedEpisodeRow`; the row body is informational, explicit Download/Prepare never plays, and only ready local audio exposes Play. Permanent accessory buttons and index-based row identifiers below are historical slice evidence, not implementation requirements.
+
 | Field | Value |
 |-------|-------|
 | **Slice** | 30 — Mini-player super seek bar parity (shared chrome) |

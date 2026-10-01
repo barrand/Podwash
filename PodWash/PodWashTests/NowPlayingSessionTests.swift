@@ -244,8 +244,8 @@ final class NowPlayingSessionTests: XCTestCase {
     model.restoreNowPlayingSessionIfNeeded()
 
     waitUntil(timeout: 5.0) {
-      model.preparationJobs.contains {
-        $0.episodeID == self.nextEpisodeID && $0.stage == .ready
+      model.queuePresentation.upNext.contains {
+        $0.episodeID == self.nextEpisodeID && $0.availability.readiness == .readyOffline
       }
     }
     XCTAssertEqual(analyzer.analyzedEpisodeIDs, [nextEpisodeID])
@@ -278,7 +278,7 @@ final class NowPlayingSessionTests: XCTestCase {
     model.restoreNowPlayingSessionIfNeeded()
 
     XCTAssertEqual(analyzer.calls, 0)
-    XCTAssertTrue(model.preparationJobs.isEmpty)
+    XCTAssertEqual(model.queuePresentation.upNext.first?.availability.readiness, .notDownloaded)
     XCTAssertNil(model.downloadManager.localFileURL(for: nextEpisodeID))
 
     model.stopAndDismissPlayer()
@@ -300,7 +300,9 @@ final class NowPlayingSessionTests: XCTestCase {
     model.restoreNowPlayingSessionIfNeeded()
 
     let selectedEpisodeID = thirdEpisodeID
-    model.playQueuedEpisodeNow(selectedEpisodeID)
+    let feedURL = try XCTUnwrap(model.podcastStore.episodeLookup(id: selectedEpisodeID)?.feedURL)
+    try model.cleaningStore.setChannelCleaning(forFeedURL: feedURL, enabled: false)
+    model.playReadyEpisode(selectedEpisodeID, context: .queue)
     waitUntil(timeout: 5.0) {
       model.nowPlayingEpisodeID == selectedEpisodeID
     }
@@ -452,7 +454,8 @@ final class NowPlayingSessionTests: XCTestCase {
       transcriptCache: transcriptCache,
       intervalCache: intervalCache,
       artifactStore: artifactStore,
-      analysisJobStore: AnalysisJobStore(defaults: artifactDefaults)
+      analysisJobStore: AnalysisJobStore(defaults: artifactDefaults),
+      preparationPreferencesStore: EpisodePreparationPreferencesStore(defaults: artifactDefaults)
     )
     model.downloadsDirectoryForTesting = downloadsDirectory
     return model
@@ -465,7 +468,9 @@ final class NowPlayingSessionTests: XCTestCase {
       return SettingsStore()
     }
     defaults.removePersistentDomain(forName: suite)
-    return SettingsStore(userDefaults: defaults)
+    let settings = SettingsStore(userDefaults: defaults)
+    settings.autoDownloadEnabled = false
+    return settings
   }
 
   private func waitUntil(

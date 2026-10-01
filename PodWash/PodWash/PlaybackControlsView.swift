@@ -19,6 +19,10 @@ struct PlaybackControlsView: View {
     let episodeDuration: Double
     /// Applied / cached intervals for mute-marker + ad-band overlays (ADR-023 / ADR-030).
     let muteIntervals: [CensorInterval]
+    /// A completed transcript is a session artifact, so its full-player action
+    /// belongs in the player content tree rather than in sheet chrome.
+    let showsTranscriptButton: Bool
+    let onViewTranscript: (() -> Void)?
     let onTogglePlayPause: (() -> Void)?
     let onSeekTo: ((Double) -> Void)?
     let onSeekBy: ((Double) -> Void)?
@@ -39,10 +43,12 @@ struct PlaybackControlsView: View {
     init(
         engine: PlaybackEngine,
         readiness: AppShellModel.PlaybackReadiness = .ready,
-        preparationStatusText: String = PreparationStatusCopy.preparing,
+        preparationStatusText: String = EpisodeRowPresentationMapper.map(.preparing).statusText,
         showsCompleteSeekBarPaint: Bool = false,
         episodeDuration: Double = 0,
         muteIntervals: [CensorInterval] = [],
+        showsTranscriptButton: Bool = false,
+        onViewTranscript: (() -> Void)? = nil,
         onTogglePlayPause: (() -> Void)? = nil,
         onSeekTo: ((Double) -> Void)? = nil,
         onSeekBy: ((Double) -> Void)? = nil
@@ -53,6 +59,8 @@ struct PlaybackControlsView: View {
         self.showsCompleteSeekBarPaint = showsCompleteSeekBarPaint
         self.episodeDuration = episodeDuration
         self.muteIntervals = muteIntervals
+        self.showsTranscriptButton = showsTranscriptButton
+        self.onViewTranscript = onViewTranscript
         self.onTogglePlayPause = onTogglePlayPause
         self.onSeekTo = onSeekTo
         self.onSeekBy = onSeekBy
@@ -87,6 +95,18 @@ struct PlaybackControlsView: View {
                 : nil
 
             VStack(spacing: 24) {
+                if showsTranscriptButton {
+                    HStack {
+                        Button(action: { onViewTranscript?() }) {
+                            Label("View transcript", systemImage: "text.alignleft")
+                        }
+                        .accessibilityIdentifier("playback.viewTranscript")
+                        .accessibilityLabel("View transcript")
+                        .accessibilityHint("Shows the episode transcript.")
+                        Spacer()
+                    }
+                }
+
                 VStack(spacing: 4) {
                     SuperSeekBarView(
                         showsCompleteContentTrack: showCompletePaint,

@@ -17,6 +17,22 @@ nonisolated struct UpcomingSelection: Equatable, Sendable {
 nonisolated struct UpcomingSelectionPolicy: Sendable {
     static let readyTarget = 2
 
+    /// Preparation ownership is bounded independently of the complete listening order.
+    func preparationWindow(
+        currentEpisodeID: String?,
+        manualQueueIDs: [String],
+        predictions: [ComingUpItem],
+        automaticPreparationEnabled: Bool
+    ) -> [String] {
+        guard automaticPreparationEnabled else { return [] }
+        return Array(select(
+            currentEpisodeID: currentEpisodeID,
+            manualQueueIDs: manualQueueIDs,
+            predictions: predictions,
+            automaticPreparationEnabled: true
+        ).prefix(Self.readyTarget).map(\.episodeID))
+    }
+
     /// Manual entries always remain in their saved order. Predictions are only
     /// used to fill the first two choices and never include the current item or
     /// a manual duplicate.

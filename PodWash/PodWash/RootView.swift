@@ -15,12 +15,12 @@ struct RootView: View {
 
     @State private var fixtureEngine: PlaybackEngine?
     @State private var fixtureFeedViewModel: EpisodeListViewModel?
-    @State private var fixtureAnalysisViewModel: AnalysisUIViewModel?
     @State private var fixtureDownloadManager: DownloadManager?
     @State private var queueStore: QueueStore?
     @State private var fixtureSettingsStore: SettingsStore?
     @State private var discoverViewModel: DiscoverViewModel?
     @State private var appShellModel: AppShellModel?
+    @State private var fixtureRowModel: AppShellModel?
 
     init(
         persistence: PersistenceController,
@@ -65,15 +65,12 @@ struct RootView: View {
                         .accessibilityIdentifier("playback.loading")
                 }
             } else if FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled || FixtureCleaningSummary.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch {
-                if let fixtureFeedViewModel, let fixtureAnalysisViewModel, let fixtureDownloadManager, let queueStore {
+                if let fixtureFeedViewModel, let fixtureRowModel {
                     PodcastDetailView(
                         viewModel: fixtureFeedViewModel,
-                        analysisViewModel: fixtureAnalysisViewModel,
-                        downloadManager: fixtureDownloadManager,
-                        queueStore: queueStore,
-                        cleaningSummary: { episodeID in
-                            Self.fixtureCleaningSummary(for: episodeID)
-                        }
+                        rowSnapshot: { fixtureRowModel.episodeRowSnapshot($0, context: .library) },
+                        rowBindings: { fixtureRowModel.episodeRowBindings($0, context: .library) },
+                        episodeListRevision: fixtureRowModel.episodeListRevision
                     )
                 } else {
                     ProgressView()
@@ -134,7 +131,7 @@ struct RootView: View {
         }
         if FixtureFeed.isEnabled || FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled
             || FixtureCleaningSummary.isEnabled || FixtureQueue.isEnabled || FixtureQueue.shouldPreserveOnLaunch {
-            return fixtureFeedViewModel != nil && fixtureAnalysisViewModel != nil
+            return fixtureFeedViewModel != nil && fixtureRowModel != nil
                 && fixtureDownloadManager != nil && queueStore != nil
         }
         if FixtureDiscover.isEnabled {
@@ -220,11 +217,6 @@ struct RootView: View {
         let analyzer: any EpisodeAnalyzing = FixtureAnalysisTimeline.isEnabled
             ? FixtureAnalysisTimeline.makeSteppedAnalyzer()
             : InstantEpisodeAnalyzer()
-        let analysisViewModel = AnalysisUIViewModel(
-            store: CleaningToggleStoreAdapter(cleaningStore),
-            analyzer: analyzer,
-            autoAnalyzeOnEpisodeEnable: FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled
-        )
         let downloadStateStore = DownloadStateStore(context: context)
         let downloadManager = DownloadManager(
             downloadsDirectory: DownloadPaths.productionDownloadsDirectory,
@@ -236,8 +228,7 @@ struct RootView: View {
         }
 
         guard let data = FixtureFeed.bundledData() else { return }
-        // Load + migrate *before* publishing view models so EpisodeList auto-start
-        // sees channel cleaning already on (task-023; no channelCleaningToggle).
+        // Load and migrate before publishing the shared row model.
         await feedViewModel.load(data: data)
         try? cleaningStore.migrateAllChannelsCleaningAndUnrelatedOnIfNeeded()
         if FixtureAnalysis.isEnabled || FixtureAnalysisTimeline.isEnabled {
@@ -256,9 +247,12 @@ struct RootView: View {
         }
 
         fixtureFeedViewModel = feedViewModel
-        fixtureAnalysisViewModel = analysisViewModel
         fixtureDownloadManager = downloadManager
         queueStore = queue
+        fixtureRowModel = AppShellModel(persistence: persistence, remoteCommands: remoteCommands,
+            audioSessionManager: audioSessionManager, episodeAnalyzer: analyzer,
+            fixtureLibraryModeForTesting: true, downloadManager: downloadManager)
+        fixtureRowModel?.settingsStore.cloudTranscriptProcessingConsentPrompted = true
     }
 
     /// Cache lookup for fixture PodcastDetailView (same fingerprint as production).
@@ -294,6 +288,8 @@ struct RootView: View {
               !FixtureDiscover.isEnabled
         else { return }
         guard appShellModel == nil else { return }
+
+        FixtureDownload.clearDownloadsDirectoryIfNeeded()
 
         let model = AppShellModel(
             persistence: persistence,
@@ -351,6 +347,7 @@ struct RootView: View {
             podcastStore: model.podcastStore
         )
         appShellModel = model
+        model.seedFixtureRowReadiness()
         // Prefer an immediate bootstrap for the fixed-id relaunch family — SwiftUI `.task`
         // alone can lag under XCTest host pressure (ADR-027 §5; restore is idempotent).
         if FixtureNowPlayingSession.usesFixedPersistence {

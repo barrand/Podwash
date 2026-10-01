@@ -29,6 +29,11 @@ final class EpisodePreparationPreferencesStore {
         }
     }
 
+    // The project defaults reference types to MainActor isolation. XCTest releases
+    // AppShellModel's WarmPlanner inside its TaskLocal executor context, where an
+    // actor-isolated synthesized deinit can double-destroy the task lookup scope.
+    nonisolated deinit {}
+
     func addExplicit(_ episodeID: String) {
         preferences.explicitEpisodeIDs.insert(episodeID)
         preferences.automaticallySuppressedEpisodeIDs.remove(episodeID)

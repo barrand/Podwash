@@ -338,52 +338,23 @@ final class TranscriptUITests: XCTestCase {
     /// cleaning on, local bundled audio. Stable entry: `episode.viewTranscript` on row 0 after
     /// first play/prepare (not full-player `playback.viewTranscript`).
     @MainActor
-    func testTranscriptAffordanceAppearsAfterBackfillWhenIntervalsCached() throws {
+    func testTranscriptAffordanceAppearsAfterExplicitPreparationBackfill() throws {
         let app = launchTranscriptFixtureApp(includeTranscriptCache: false)
         navigateToEpisodeList(app)
-        ensureChannelCleaningOn(in: app)
-
-        assertTranscriptAffordanceAbsent("episode.viewTranscript", scopedToRow: 0, in: app)
-
-        let episodeCell = app.cells["episodeCell_0"]
-        XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
-        episodeCell.tap()
-
-        let miniPlayer = element("miniPlayer", in: app)
-        XCTAssertTrue(
-            miniPlayer.waitForExistence(timeout: fixtureTimeout),
-            "first play/prepare must surface miniPlayer"
-        )
-
-        XCTAssertTrue(
-            waitUntil(timeout: backfillAffordanceTimeout) {
-                let refreshedCell = app.cells["episodeCell_0"]
-                let viewTranscript = refreshedCell.descendants(matching: .any)["episode.viewTranscript"]
-                return viewTranscript.exists && viewTranscript.isHittable
-            },
-            "episode.viewTranscript must become hittable within \(backfillAffordanceTimeout)s after backfill"
-        )
+        app.prepareSharedEpisode(at: 0)
+        XCTAssertFalse(element("miniPlayer", in: app).exists)
+        app.performSharedEpisodeAction("transcript", at: 0)
+        XCTAssertTrue(element("transcript.view", in: app).waitForExistence(timeout: transcriptOpenTimeout))
     }
 
     // MARK: - AC9
 
     @MainActor
-    func testTranscriptHiddenWhilePlaybackPrepares() throws {
+    func testTranscriptAbsentBeforeExplicitPreparationHasCompleted() throws {
         let app = launchPreparationFixtureApp()
         navigateToEpisodeList(app)
-        ensureChannelCleaningOn(in: app)
-
-        let episodeCell = app.cells["episodeCell_0"]
-        XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
-        episodeCell.tap()
-
-        let preparing = element("miniPlayer.preparing", in: app)
-        XCTAssertTrue(
-            preparing.waitForExistence(timeout: fixtureTimeout),
-            "terminal preparation must be visible before playback starts"
-        )
-
-        assertTranscriptAffordanceAbsent("episode.viewTranscript", scopedToRow: 0, in: app)
+        app.openSharedEpisodeMenu(at: 0)
+        XCTAssertFalse(app.buttons["episodeMenu_transcript_\(app.sharedEpisodeID(at: 0))"].exists)
     }
 
     // MARK: - Task 029
@@ -574,9 +545,9 @@ final class TranscriptUITests: XCTestCase {
 
         // Prefer `app.cells` over descendants(.any) — slice-06-ux / slice-26-ux.
         // A descendants query can match more than one node if identifiers collide.
-        let episodeCell = app.cells["episodeCell_0"]
+        let episodeCell = app.sharedEpisodeRow(at: 0)
         XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
-        episodeCell.tap()
+        app.playSharedEpisode(at: 0)
 
         let miniPlayer = element("miniPlayer", in: app)
         XCTAssertTrue(miniPlayer.waitForExistence(timeout: fixtureTimeout))
@@ -588,12 +559,7 @@ final class TranscriptUITests: XCTestCase {
 
     @MainActor
     private func tapEpisodeViewTranscript(onRow row: Int, in app: XCUIApplication) {
-        let cell = app.cells["episodeCell_\(row)"]
-        XCTAssertTrue(cell.waitForExistence(timeout: fixtureTimeout))
-
-        let button = cell.descendants(matching: .any)["episode.viewTranscript"]
-        XCTAssertTrue(button.waitForExistence(timeout: fixtureTimeout), "episode.viewTranscript must exist on row \(row)")
-        button.tap()
+        app.performSharedEpisodeAction("transcript", at: row)
     }
 
     @MainActor
@@ -602,18 +568,13 @@ final class TranscriptUITests: XCTestCase {
         scopedToRow row: Int?,
         in app: XCUIApplication
     ) {
-        let control: XCUIElement
         if let row {
-            control = app.cells["episodeCell_\(row)"].descendants(matching: .any)[identifier]
+            app.openSharedEpisodeMenu(at: row)
+            XCTAssertFalse(app.buttons["episodeMenu_transcript_\(app.sharedEpisodeID(at: row))"].exists)
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.1)).tap()
         } else {
-            control = element(identifier, in: app)
-        }
-
-        if control.exists {
-            XCTAssertFalse(
-                control.isHittable,
-                "\(identifier) must not be hittable when no complete transcript is cached"
-            )
+            let control = element(identifier, in: app)
+            if control.exists { XCTAssertFalse(control.isHittable) }
         }
     }
 
@@ -626,9 +587,9 @@ final class TranscriptUITests: XCTestCase {
     private func startPlaybackAndOpenTranscript(_ app: XCUIApplication) {
         navigateToEpisodeList(app)
 
-        let episodeCell = app.cells["episodeCell_0"]
+        let episodeCell = app.sharedEpisodeRow(at: 0)
         XCTAssertTrue(episodeCell.waitForExistence(timeout: fixtureTimeout))
-        episodeCell.tap()
+        app.playSharedEpisode(at: 0)
 
         let miniPlayer = element("miniPlayer", in: app)
         XCTAssertTrue(

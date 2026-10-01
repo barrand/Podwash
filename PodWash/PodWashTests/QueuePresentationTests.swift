@@ -8,44 +8,22 @@ import XCTest
 
 final class QueuePresentationTests: XCTestCase {
 
-    func testAvailabilityCopyUsesMeasuredDownloadProgressAndNoFabricatedDuration() {
-        XCTAssertEqual(EpisodeReadinessStatus.preparing.text, "Preparing clean playback · On device")
-        XCTAssertEqual(EpisodeReadinessStatus.checkingAds.text, "Checking for ads · On device")
-        XCTAssertEqual(EpisodeReadinessStatus.downloading(progress: 0.5).text, "Downloading · 50%")
-        XCTAssertEqual(EpisodeReadinessStatus.downloading(progress: 4).text, "Downloading · 100%")
-        XCTAssertTrue(EpisodeReadinessStatus.preparing.showsIndeterminateProgress)
-        XCTAssertFalse(EpisodeReadinessStatus.downloading(progress: 0.5).showsIndeterminateProgress)
+    func testCopyUsesOnlyMeasuredDownloadProgress() {
+        XCTAssertEqual(EpisodeRowPresentationMapper.map(.preparing).statusText, "Preparing clean playback")
+        XCTAssertEqual(EpisodeRowPresentationMapper.map(.checkingAds).statusText, "Checking for ads")
+        XCTAssertEqual(EpisodeRowPresentationMapper.map(.downloading(progress: 0.5)).statusText, "Downloading · 50%")
+        XCTAssertEqual(EpisodeRowPresentationMapper.map(.downloading(progress: 4)).progress, 1)
     }
 
-    func testDownloadsExcludeNowPlayingPlayedAndManualQueue() {
-        let input = QueuePresentationInput(
-            manualQueueIDs: ["queued"],
-            downloadedEpisodeIDs: ["queued", "playing", "played", "downloaded"],
-            nowPlayingEpisodeID: "playing",
-            metadataByEpisodeID: [
-                "queued": metadata("queued"),
-                "playing": metadata("playing"),
-                "played": metadata("played", played: true),
-                "downloaded": metadata("downloaded"),
-            ],
-            jobsByEpisodeID: [:],
-            availabilityByEpisodeID: [
-                "queued": readyAvailability(),
-                "playing": readyAvailability(),
-                "played": readyAvailability(),
-                "downloaded": readyAvailability(),
-            ],
-            foregroundJob: nil,
-            pendingQueueActivationEpisodeID: nil
-        )
-
-        let presentation = QueuePresentationBuilder.build(input)
-        XCTAssertEqual(presentation.upNext.map(\.episodeID), ["queued"])
-        XCTAssertEqual(presentation.downloads.map(\.episodeID), ["downloaded"])
-        XCTAssertEqual(presentation.downloadsSummary.text, "1 ready")
+    func testQueuePreservesAllManualMembershipWithoutInventingDownloadsCollection() {
+        let input = QueuePresentationInput(manualQueueIDs: ["third", "first", "second"],
+            metadataByEpisodeID: ["first": metadata("first"), "second": metadata("second"), "third": metadata("third")],
+            availabilityByEpisodeID: ["first": readyAvailability()],
+            foregroundJob: nil)
+        XCTAssertEqual(QueuePresentationBuilder.build(input).upNext.map(\.episodeID), ["third", "first", "second"])
     }
 
-    func testReadyJobWithoutLocalFileIsNeverShownAsReady() {
+    func testStaleReadyJobWithoutLocalFileIsShownAsNotDownloaded() {
         let job = AnalysisJob(
             episodeID: "episode",
             title: "Episode",
@@ -60,6 +38,19 @@ final class QueuePresentationTests: XCTestCase {
             isAnalysisReady: true,
             durableJob: job,
             foregroundJob: nil
+        ))
+
+        XCTAssertEqual(availability.readiness, .notDownloaded)
+    }
+
+    func testActivePreparationOwnerWithoutLocalFileIsWaitingToDownload() {
+        let availability = EpisodeAvailabilityResolver.resolve(EpisodeAvailabilityInput(
+            downloadState: .notDownloaded,
+            hasVerifiedLocalFile: false,
+            isAnalysisReady: false,
+            durableJob: nil,
+            foregroundJob: nil,
+            hasActiveWorkOwner: true
         ))
 
         XCTAssertEqual(availability.readiness, .waitingToDownload)
@@ -83,7 +74,7 @@ final class QueuePresentationTests: XCTestCase {
         ))
 
         XCTAssertEqual(availability.readiness, .readyOffline)
-        XCTAssertEqual(availability.readiness.text, "Ready to play offline")
+        XCTAssertEqual(EpisodeRowPresentationMapper.map(availability).statusText, "Ready to play offline")
     }
 
     func testDownloadedWithoutJobIsExplicitlyNotPrepared() {

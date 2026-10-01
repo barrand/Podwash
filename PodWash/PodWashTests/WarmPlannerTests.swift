@@ -35,6 +35,19 @@ final class WarmPlannerTests: XCTestCase {
         harness = nil
     }
 
+    func testPreparationPreferencesStoreReleasesWithoutTaskLocalDeinitAbort() {
+        let suite = "com.podwash.tests.preparation-preferences.\(UUID().uuidString)"
+        autoreleasepool {
+            let defaults = UserDefaults(suiteName: suite)!
+            defaults.removePersistentDomain(forName: suite)
+            let store = EpisodePreparationPreferencesStore(defaults: defaults)
+
+            store.addExplicit("episode-1")
+            XCTAssertEqual(store.preferences.explicitEpisodeIDs, Set(["episode-1"]))
+        }
+        UserDefaults.standard.removePersistentDomain(forName: suite)
+    }
+
     // MARK: - Ready checks
 
     func testCleaningOffIsReadyWithoutDownloadOrCache() throws {
@@ -79,7 +92,7 @@ final class WarmPlannerTests: XCTestCase {
         env.planner.reaim(at: [comingUp("warm-ep-1")])
 
         await waitUntil(timeout: 5.0) {
-            env.planner.warmedEpisodeIDs.contains("warm-ep-1")
+            Set(env.planner.allJobs.filter { $0.stage == .ready }.map { $0.episodeID }).contains("warm-ep-1")
         }
 
         XCTAssertEqual(counter.analyzeCallCount, 1)
@@ -134,13 +147,12 @@ final class WarmPlannerTests: XCTestCase {
         env.planner.reaim(at: candidates)
 
         await waitUntil(timeout: 8.0) {
-            env.planner.warmedEpisodeIDs.count == WarmPlanner.peekCount
+            Set(env.planner.allJobs.filter { $0.stage == .ready }.map { $0.episodeID }).count == WarmPlanner.peekCount
         }
 
         XCTAssertEqual(WarmPlanner.peekCount, 2)
-        XCTAssertEqual(WarmPlanner.warmCap, 2)
         XCTAssertEqual(
-            env.planner.warmedEpisodeIDs,
+            Set(env.planner.allJobs.filter { $0.stage == .ready }.map { $0.episodeID }),
             Set(candidates.prefix(2).map(\.episodeID)),
             "only the first two automatic choices should be prepared"
         )
@@ -153,7 +165,7 @@ final class WarmPlannerTests: XCTestCase {
         env.planner.reaim(at: [comingUp("warm-ep-1")])
 
         await waitUntil(timeout: 5.0) {
-            env.planner.warmedEpisodeIDs.contains("warm-ep-1")
+            Set(env.planner.allJobs.filter { $0.stage == .ready }.map { $0.episodeID }).contains("warm-ep-1")
         }
 
         XCTAssertEqual(flaky.attemptCount, 2)
@@ -172,7 +184,7 @@ final class WarmPlannerTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(800))
 
         XCTAssertEqual(alwaysFail.attemptCount, 2, "Must attempt once + one retry")
-        XCTAssertFalse(env.planner.warmedEpisodeIDs.contains("warm-ep-1"))
+        XCTAssertFalse(Set(env.planner.allJobs.filter { $0.stage == .ready }.map { $0.episodeID }).contains("warm-ep-1"))
         XCTAssertFalse(
             env.planner.isReadyForSeamlessPlay(episodeID: "warm-ep-1", feedURL: feedURL)
         )
@@ -187,18 +199,18 @@ final class WarmPlannerTests: XCTestCase {
         env.planner.reaim(at: [comingUp("warm-ep-2")])
 
         await waitUntil(timeout: 5.0) {
-            env.planner.warmedEpisodeIDs.contains("warm-ep-2")
+            Set(env.planner.allJobs.filter { $0.stage == .ready }.map { $0.episodeID }).contains("warm-ep-2")
         }
 
         // First generation should have been abandoned before completing.
         XCTAssertFalse(
-            env.planner.warmedEpisodeIDs.contains("warm-ep-1"),
+            Set(env.planner.allJobs.filter { $0.stage == .ready }.map { $0.episodeID }).contains("warm-ep-1"),
             "Cancelled generation must not commit warm-ep-1"
         )
-        XCTAssertTrue(env.planner.warmedEpisodeIDs.contains("warm-ep-2"))
+        XCTAssertTrue(Set(env.planner.allJobs.filter { $0.stage == .ready }.map { $0.episodeID }).contains("warm-ep-2"))
     }
 
-    func testWarmCapStopsAtTwoAutomaticEpisodes() async throws {
+    func testLongCandidateListOnlyPreparesItsFirstTwoChoices() async throws {
         let counter = CountingEpisodeAnalyzer()
         let env = try makeEnv(cleaningOn: true, analyzer: counter, episodeCount: 7)
 
@@ -206,16 +218,120 @@ final class WarmPlannerTests: XCTestCase {
 
         env.planner.reaim(at: candidates)
         await waitUntil(timeout: 8.0) {
-            env.planner.warmedEpisodeIDs.count == WarmPlanner.warmCap
+            Set(env.planner.allJobs.filter { $0.stage == .ready }.map { $0.episodeID }).count == WarmPlanner.peekCount
         }
 
-        XCTAssertEqual(env.planner.warmedEpisodeIDs, Set(["warm-ep-1", "warm-ep-2"]))
+        XCTAssertEqual(Set(env.planner.allJobs.filter { $0.stage == .ready }.map { $0.episodeID }), Set(["warm-ep-1", "warm-ep-2"]))
         XCTAssertEqual(counter.analyzeCallCount, 2)
     }
 
     // MARK: - Helpers
 
+    func testExplicitIntentReconstructsWithoutQueueAndRetiresOnlyWhenReady() async throws {
+        let env = try makeEnv(cleaningOn: true)
+        env.settings.autoDownloadEnabled = false
+        env.planner.requestExplicitPreparation(episodeID: "warm-ep-1")
+        await env.planner.quiesce()
+        let preferences = EpisodePreparationPreferencesStore(defaults: env.defaults)
+        XCTAssertTrue(preferences.preferences.explicitEpisodeIDs.contains("warm-ep-1"))
+        let restored = WarmPlanner(downloadManager: env.downloadManager, analyzer: InstantEpisodeAnalyzer(),
+            settingsStore: env.settings, intervalCache: env.cache, cleaningStore: env.cleaningStore,
+            podcastStore: env.podcastStore, jobStore: AnalysisJobStore(defaults: env.defaults),
+            preferencesStore: preferences)
+        restored.reaim(at: [])
+        restored.reconcilePersistedJobs(requestedEpisodeIDs: restored.ownedEpisodeIDs)
+        await waitUntil(timeout: 5) { restored.job(for: "warm-ep-1")?.stage == .ready }
+        XCTAssertFalse(preferences.preferences.explicitEpisodeIDs.contains("warm-ep-1"))
+        XCTAssertTrue(restored.isReadyOffline(episodeID: "warm-ep-1", feedURL: feedURL))
+        restored.cancel()
+    }
+
+    func testChangedTargetsReprepareTheSameAutomaticWindow() async throws {
+        let counter = CountingEpisodeAnalyzer()
+        let env = try makeEnv(cleaningOn: true, analyzer: counter)
+        let selection = [comingUp("warm-ep-1")]
+        env.planner.reaim(at: selection)
+        await waitUntil(timeout: 5) { env.planner.job(for: "warm-ep-1")?.stage == .ready }
+        env.settings.addCustomWord("newtarget")
+        env.planner.reaim(at: selection)
+        await waitUntil(timeout: 5) { counter.analyzeCallCount == 2 }
+        await waitUntil(timeout: 5) {
+            env.planner.isReadyOffline(episodeID: "warm-ep-1", feedURL: self.feedURL)
+        }
+    }
+
+    func testAutomaticWindowAdvancesAfterEarlierChoicesAreReady() async throws {
+        let counter = CountingEpisodeAnalyzer()
+        let env = try makeEnv(cleaningOn: true, analyzer: counter, episodeCount: 4)
+        env.planner.reaim(at: [comingUp("warm-ep-1"), comingUp("warm-ep-2")])
+        await waitUntil(timeout: 5) { env.planner.job(for: "warm-ep-2")?.stage == .ready }
+        env.planner.reaim(at: [comingUp("warm-ep-3"), comingUp("warm-ep-4")])
+        await waitUntil(timeout: 5) { env.planner.job(for: "warm-ep-4")?.stage == .ready }
+        XCTAssertEqual(counter.analyzeCallCount, 4)
+        XCTAssertTrue(env.planner.isReadyOffline(episodeID: "warm-ep-1", feedURL: feedURL))
+        XCTAssertTrue(env.planner.isReadyOffline(episodeID: "warm-ep-4", feedURL: feedURL))
+    }
+
+    func testCancellingExplicitIntentRetainsAutomaticOwner() async throws {
+        let env = try makeEnv(cleaningOn: true, analyzer: SlowEpisodeAnalyzer(delayMilliseconds: 100))
+        env.planner.reaim(at: [comingUp("warm-ep-1")])
+        env.planner.requestExplicitPreparation(episodeID: "warm-ep-1")
+        env.planner.cancelExplicitPreparation(episodeID: "warm-ep-1")
+        XCTAssertFalse(env.planner.hasExplicitPreparation(episodeID: "warm-ep-1"))
+        XCTAssertTrue(env.planner.hasAutomaticPreparation(episodeID: "warm-ep-1"))
+        await waitUntil(timeout: 5) { env.planner.job(for: "warm-ep-1")?.stage == .ready }
+    }
+
+    func testAutomaticQueueWindowDoesNotOwnThirdEntry() async throws {
+        let env = try makeEnv(cleaningOn: false, episodeCount: 4)
+        env.settings.autoDownloadEnabled = true
+        env.planner.reaim(manualQueueIDs: ["warm-ep-1", "warm-ep-2", "warm-ep-3"], predicted: [])
+        await waitUntil(timeout: 5) { env.planner.job(for: "warm-ep-2")?.stage == .ready }
+        XCTAssertFalse(env.planner.hasAutomaticPreparation(episodeID: "warm-ep-3"))
+        XCTAssertNil(env.downloadManager.localFileURL(for: "warm-ep-3"))
+        env.planner.cancel()
+    }
+
+    func testExplicitRequestRetainsAutomaticWindowAndClearsOnCompletion() async throws {
+        let env = try makeEnv(cleaningOn: false, episodeCount: 4)
+        env.settings.autoDownloadEnabled = true
+        env.planner.reaim(manualQueueIDs: ["warm-ep-1", "warm-ep-2"], predicted: [])
+        env.planner.requestExplicitPreparation(episodeID: "warm-ep-4")
+        await waitUntil(timeout: 5) {
+            ["warm-ep-1", "warm-ep-2", "warm-ep-4"].allSatisfy { env.planner.job(for: $0)?.stage == .ready }
+        }
+        XCTAssertFalse(env.planner.hasExplicitPreparation(episodeID: "warm-ep-4"))
+        XCTAssertTrue(env.planner.hasAutomaticPreparation(episodeID: "warm-ep-1"))
+        env.planner.cancel()
+    }
+
+    func testSuppressedFirstChoiceDoesNotPromoteThirdAndResetsAfterLeavingWindow() async throws {
+        let env = try makeEnv(cleaningOn: false, episodeCount: 4)
+        env.settings.autoDownloadEnabled = true
+        env.planner.reaim(manualQueueIDs: ["warm-ep-1", "warm-ep-2", "warm-ep-3"], predicted: [])
+        env.planner.suppressAutomaticPreparation(episodeID: "warm-ep-1")
+        await waitUntil(timeout: 5) { env.planner.job(for: "warm-ep-2")?.stage == .ready }
+        XCTAssertFalse(env.planner.hasAutomaticPreparation(episodeID: "warm-ep-1"))
+        XCTAssertFalse(env.planner.hasAutomaticPreparation(episodeID: "warm-ep-3"))
+        env.planner.reaim(manualQueueIDs: ["warm-ep-2", "warm-ep-3"], predicted: [])
+        env.planner.reaim(manualQueueIDs: ["warm-ep-1", "warm-ep-2"], predicted: [])
+        XCTAssertTrue(env.planner.hasAutomaticPreparation(episodeID: "warm-ep-1"))
+        env.planner.cancel()
+    }
+
+    func testAutomaticSettingOffLeavesQueueIdleButExplicitRequestStillWorks() async throws {
+        let env = try makeEnv(cleaningOn: false)
+        env.settings.autoDownloadEnabled = false
+        env.planner.reaim(manualQueueIDs: ["warm-ep-1", "warm-ep-2"], predicted: [])
+        XCTAssertFalse(env.planner.hasAutomaticPreparation(episodeID: "warm-ep-1"))
+        env.planner.requestExplicitPreparation(episodeID: "warm-ep-2")
+        await waitUntil(timeout: 5) { env.planner.job(for: "warm-ep-2")?.stage == .ready }
+        XCTAssertNil(env.downloadManager.localFileURL(for: "warm-ep-1"))
+        env.planner.cancel()
+    }
+
     private struct Env {
+        let defaults: UserDefaults
         let planner: WarmPlanner
         let downloadManager: DownloadManager
         let cache: IntervalCache
@@ -282,9 +398,11 @@ final class WarmPlannerTests: XCTestCase {
             // Warm job checkpoints are durable in production. Keep this harness
             // isolated so a completed job from another test cannot satisfy the
             // readiness predicate before this test's analyzer runs.
-            jobStore: AnalysisJobStore(defaults: defaults)
+            jobStore: AnalysisJobStore(defaults: defaults),
+            preferencesStore: EpisodePreparationPreferencesStore(defaults: defaults)
         )
         return Env(
+            defaults: defaults,
             planner: planner,
             downloadManager: downloadManager,
             cache: cache,
