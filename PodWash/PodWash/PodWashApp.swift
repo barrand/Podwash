@@ -26,6 +26,7 @@ struct PodWashApp: App {
     private let audioSessionManager: AudioSessionManager
 
     init() {
+        PodWashAnalytics.initialize()
         FirebaseCloudBootstrap.configure()
         // UI fixtures must reset preferences before any composition object can
         // read them. Doing this from RootView's asynchronous task was late

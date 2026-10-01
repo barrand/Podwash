@@ -181,6 +181,7 @@ final class AnalysisUIViewModel {
     }
 
     func setChannelCleaning(_ enabled: Bool) {
+        PodWashAnalytics.featureStateChanged("profanityCleaning", isEnabled: enabled)
         store.setChannelCleaning(enabled)
         isChannelCleaningEnabled = enabled
         if enabled {
@@ -230,6 +231,7 @@ final class AnalysisUIViewModel {
     }
 
     func setChannelUnrelatedContent(_ enabled: Bool) {
+        PodWashAnalytics.featureStateChanged("adSkippingForPodcast", isEnabled: enabled)
         store.setChannelUnrelatedContent(enabled)
         isChannelUnrelatedContentEnabled = enabled
         markContentChanged()
@@ -237,6 +239,7 @@ final class AnalysisUIViewModel {
 
     func setEpisodeCleaning(episodeID: String, enabled: Bool) async {
         if enabled && shouldAutoAnalyzeOnEpisodeEnable {
+            PodWashAnalytics.featureStateChanged("profanityCleaningForEpisode", isEnabled: true)
             store.setEpisodeCleaning(episodeID, enabled: enabled)
             primeEpisodeCleaningToggle(episodeID: episodeID)
             await completePrimedEpisodeAnalysis(episodeID: episodeID)
@@ -247,6 +250,7 @@ final class AnalysisUIViewModel {
 
     /// Non-auto toggle path used by UITests that assert badges on post-tap idle.
     func applyEpisodeCleaningWithoutAnalysis(episodeID: String, enabled: Bool) {
+        PodWashAnalytics.featureStateChanged("profanityCleaningForEpisode", isEnabled: enabled)
         store.setEpisodeCleaning(episodeID, enabled: enabled)
         progressSnapshot = nil
         if enabled {

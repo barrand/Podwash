@@ -80,6 +80,24 @@ struct SettingsView: View {
                 onNotNow: declineCloudAdDetection
             )
         }
+        .onChange(of: store.defaultCleaningAction) { _, value in
+            PodWashAnalytics.action("Settings.defaultCleaningActionChanged", parameters: ["action": value.rawValue])
+        }
+        .onChange(of: store.muteOverlayMode) { _, value in
+            PodWashAnalytics.action("Settings.muteOverlayChanged", parameters: ["mode": value.rawValue])
+        }
+        .onChange(of: store.defaultPlaybackRate) { _, value in
+            PodWashAnalytics.action("Settings.defaultPlaybackRateChanged", parameters: ["rate": String(value)])
+        }
+        .onChange(of: store.smartAutoplayEnabled) { _, value in
+            PodWashAnalytics.featureStateChanged("smartAutoplay", isEnabled: value)
+        }
+        .onChange(of: store.autoDownloadEnabled) { _, value in
+            PodWashAnalytics.featureStateChanged("automaticPreparation", isEnabled: value)
+        }
+        .onChange(of: store.autoDeleteAfterPlayedEnabled) { _, value in
+            PodWashAnalytics.featureStateChanged("autoDeleteAfterPlayed", isEnabled: value)
+        }
     }
 
     // MARK: - Sections
@@ -204,6 +222,7 @@ struct SettingsView: View {
             set: { enabled in
                 guard enabled else {
                     store.unrelatedContentEnabled = false
+                    PodWashAnalytics.featureStateChanged("adSkipping", isEnabled: false)
                     return
                 }
                 guard store.canUseCloudTranscriptProcessing else {
@@ -212,6 +231,7 @@ struct SettingsView: View {
                     return
                 }
                 store.unrelatedContentEnabled = true
+                PodWashAnalytics.featureStateChanged("adSkipping", isEnabled: true)
             }
         )
     }
@@ -224,6 +244,7 @@ struct SettingsView: View {
                     // Withdrawing this setting also revokes the prior consent.
                     store.cloudTranscriptProcessingEnabled = false
                     store.cloudTranscriptProcessingConsentGranted = false
+                    PodWashAnalytics.featureStateChanged("cloudAdDetection", isEnabled: false)
                     return
                 }
                 guard !store.canUseCloudTranscriptProcessing else { return }
@@ -238,6 +259,8 @@ struct SettingsView: View {
         store.cloudTranscriptProcessingConsentGranted = true
         store.cloudTranscriptProcessingEnabled = true
         store.unrelatedContentEnabled = true
+        PodWashAnalytics.featureStateChanged("cloudAdDetection", isEnabled: true)
+        PodWashAnalytics.featureStateChanged("adSkipping", isEnabled: true)
         enableSkipAdsAfterConsent = false
         isCloudConsentPresented = false
     }
@@ -246,6 +269,7 @@ struct SettingsView: View {
         store.cloudTranscriptProcessingConsentPrompted = true
         store.cloudTranscriptProcessingConsentGranted = false
         store.cloudTranscriptProcessingEnabled = false
+        PodWashAnalytics.action("Settings.cloudAdDetectionDeclined")
         if enableSkipAdsAfterConsent {
             store.unrelatedContentEnabled = false
         }
@@ -282,7 +306,9 @@ struct SettingsView: View {
         let _ = categoryChangeToken
         let enabled = store.isCategoryEnabled(categoryID)
         return Button {
-            store.setCategoryEnabled(categoryID, !store.isCategoryEnabled(categoryID))
+            let isNowEnabled = !store.isCategoryEnabled(categoryID)
+            store.setCategoryEnabled(categoryID, isNowEnabled)
+            PodWashAnalytics.featureStateChanged("profanityCategory", isEnabled: isNowEnabled)
             categoryChangeToken &+= 1
         } label: {
             HStack(spacing: 4) {

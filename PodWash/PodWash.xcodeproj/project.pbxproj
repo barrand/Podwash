@@ -11,6 +11,7 @@
 		AC9000010000000000000001 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = AC9000040000000000000001 /* FirebaseAuth */; };
 		AC9000020000000000000001 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = AC9000050000000000000001 /* FirebaseAppCheck */; };
 		AC9000030000000000000001 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = AC9000060000000000000001 /* FirebaseCore */; };
+		D0A110010000000000000001 /* TelemetryDeck in Frameworks */ = {isa = PBXBuildFile; productRef = D0A110020000000000000001 /* TelemetryDeck */; };
 		E33E79D1302A8121007C2B0D /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = E33E79D0302A8121007C2B0D /* FirebaseCrashlytics */; };
 /* End PBXBuildFile section */
 
@@ -98,6 +99,7 @@
 				E33E79D1302A8121007C2B0D /* FirebaseCrashlytics in Frameworks */,
 				AC9000020000000000000001 /* FirebaseAppCheck in Frameworks */,
 				AC9000030000000000000001 /* FirebaseCore in Frameworks */,
+				D0A110010000000000000001 /* TelemetryDeck in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -191,6 +193,7 @@
 				AC9000050000000000000001 /* FirebaseAppCheck */,
 				AC9000060000000000000001 /* FirebaseCore */,
 				E33E79D0302A8121007C2B0D /* FirebaseCrashlytics */,
+				D0A110020000000000000001 /* TelemetryDeck */,
 			);
 			productName = PodWash;
 			productReference = E3E16DD02FFF1BCC00E398A5 /* PodWash.app */;
@@ -281,6 +284,7 @@
 			packageReferences = (
 				2497113C66B2A000B4EE4808 /* XCRemoteSwiftPackageReference "WhisperKit" */,
 				AC9000070000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				D0A110030000000000000001 /* XCRemoteSwiftPackageReference "SwiftSDK" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E3E16DD12FFF1BCC00E398A5 /* Products */;
@@ -822,6 +826,14 @@
 				minimumVersion = 11.0.0;
 			};
 		};
+		D0A110030000000000000001 /* XCRemoteSwiftPackageReference "SwiftSDK" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/TelemetryDeck/SwiftSDK";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -844,6 +856,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AC9000070000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseCore;
+		};
+		D0A110020000000000000001 /* TelemetryDeck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D0A110030000000000000001 /* XCRemoteSwiftPackageReference "SwiftSDK" */;
+			productName = TelemetryDeck;
 		};
 		E33E79D0302A8121007C2B0D /* FirebaseCrashlytics */ = {
 			isa = XCSwiftPackageProductDependency;
