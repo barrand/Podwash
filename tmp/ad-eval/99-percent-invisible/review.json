@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "99-percent-invisible",
+  "status": "approved",
+  "revision": 14,
+  "transcriptSha256": "befbeb2822a40a5cd0ec91d53391266c77f91ea97698b0485794d7938e1dc070",
+  "proposalSha256": "2c6611be3bed6f667598a1895ab5d59154384553bc5da828dda1712c214089db",
+  "reviewedThroughWord": 7514,
+  "resumeWord": 7244,
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 0,
+      "endWord": 97,
+      "label": "paid_dai",
+      "advertiser": "Pure Storage",
+      "note": "Cold-open data/storage spot; ASR renders the brand as Everpeer/EverPure.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-001"
+    },
+    {
+      "id": "span-2",
+      "startWord": 97,
+      "endWord": 173,
+      "label": "paid_dai",
+      "advertiser": "Discover",
+      "note": "Cold-open Discover cash-back spot; content starts at 'This is 99% Invisible.'",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-002"
+    },
+    {
+      "id": "span-3",
+      "startWord": 4693,
+      "endWord": 4767,
+      "label": "paid_dai",
+      "advertiser": "Genesis GV70",
+      "note": "Midroll car spot after the airship reappear tease.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-003"
+    },
+    {
+      "id": "span-4",
+      "startWord": 4767,
+      "endWord": 4975,
+      "label": "paid_dai",
+      "advertiser": "T-Mobile",
+      "note": "Midroll mobile network spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-004"
+    },
+    {
+      "id": "span-5",
+      "startWord": 4975,
+      "endWord": 5052,
+      "label": "paid_dai",
+      "advertiser": "Adobe Firefly",
+      "note": "Midroll Adobe creative AI spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-005"
+    },
+    {
+      "id": "span-6",
+      "startWord": 5052,
+      "endWord": 5128,
+      "label": "paid_dai",
+      "advertiser": "Discover",
+      "note": "Midroll Discover cash-back spot; content resumes at the Time magazine story.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-006"
+    },
+    {
+      "id": "span-7",
+      "startWord": 7379,
+      "endWord": 7433,
+      "label": "network_promo",
+      "advertiser": "Family Lore",
+      "note": "End-of-feature Family Lore rate/review/subscribe CTA. Delete if you consider this part of the carried episode content.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-007"
+    },
+    {
+      "id": "span-8",
+      "startWord": 7433,
+      "endWord": 7514,
+      "label": "paid_dai",
+      "advertiser": "Walmart",
+      "note": "Post-roll Walmart same-day delivery spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-008"
+    }
+  ],
+  "auditDecisions": {},
+  "attested": true,
+  "reviewer": "Brian",
+  "createdAt": "2026-07-20T01:14:38.457218+00:00",
+  "updatedAt": "2026-07-21T17:48:50.912534+00:00",
+  "approvedAt": "2026-07-20T01:16:05.952340+00:00"
+}

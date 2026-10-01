@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "engine": "mlx-whisper",
+  "engineVersion": "0.4.3",
+  "model": "mlx-community/whisper-large-v3-mlx",
+  "modelRevision": "49e6aa286ad60c14352c404340ded53710378a11",
+  "language": "en",
+  "wordTimestamps": true,
+  "conditionOnPreviousText": false,
+  "temperatureFallback": [
+    0.0,
+    0.2,
+    0.4
+  ],
+  "initialPrompt": "AI News & Strategy Daily with Nate B. Jones. The AI Harness Audit: Clean Your Setup Before You Upgrade",
+  "hallucinationSilenceThreshold": 2.0,
+  "audioFile": "audio-dai-a.bin",
+  "audioSha256": "f4885d1ac6e47dde464dd0d562a4fcecc3db57609cf67fed69d193efd321f4e4",
+  "metadataSha256": "d300579757767c95df22fb467eec21cde35b009a08ea4508e142ed9d436b32be",
+  "audioDuration": 950.151813,
+  "transcriptSha256": "e6fa366e8a3bf8427b715d671e007454b4f73371ffc845058850872f01605621",
+  "transcriptionSeconds": 175.923,
+  "validation": {
+    "wordCount": 3180,
+    "firstWordStart": 0.0,
+    "lastWordEnd": 945.24,
+    "audioCoverage": 0.99483,
+    "overlappingWordStarts": 0,
+    "maxSilenceGap": 1.72,
+    "maxSilenceGapAfter": 820.14
+  }
+}

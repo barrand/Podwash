@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "planet-money",
+  "status": "approved",
+  "revision": 7,
+  "transcriptSha256": "874f3d7b33ceadd6715c78c281b17500dcbc5365b2b6c640d4d4b8d0b5849bb8",
+  "proposalSha256": "35f3bd6c1b42317162b6a6a15d98d747a876f1fca62c779549ae316bd6f2592d",
+  "reviewedThroughWord": 6991,
+  "resumeWord": 6638,
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 0,
+      "endWord": 58,
+      "label": "paid_dai",
+      "advertiser": "Schwab",
+      "note": "Cold-open Schwab teen investor account spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-001"
+    },
+    {
+      "id": "span-2",
+      "startWord": 831,
+      "endWord": 910,
+      "label": "paid_dai",
+      "advertiser": "Thumbtack",
+      "note": "Break spot before NPR Politics promo.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-002"
+    },
+    {
+      "id": "span-3",
+      "startWord": 910,
+      "endWord": 963,
+      "label": "network_promo",
+      "advertiser": "NPR Politics Podcast",
+      "note": "NPR network promo; content resumes with Planet Money Summer School.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-003"
+    },
+    {
+      "id": "span-4",
+      "startWord": 3875,
+      "endWord": 3947,
+      "label": "network_promo",
+      "advertiser": "Short Wave",
+      "note": "NPR network promo after break tease.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-004"
+    },
+    {
+      "id": "span-5",
+      "startWord": 3947,
+      "endWord": 4022,
+      "label": "network_promo",
+      "advertiser": "Fresh Air",
+      "note": "NPR network promo; content resumes with world economic tour.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-005"
+    },
+    {
+      "id": "span-6",
+      "startWord": 6826,
+      "endWord": 6908,
+      "label": "network_promo",
+      "advertiser": "NPR World Cup coverage",
+      "note": "NPR network promo near episode end.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-006"
+    },
+    {
+      "id": "span-7",
+      "startWord": 6908,
+      "endWord": 6991,
+      "label": "network_promo",
+      "advertiser": "Wait Wait... Don't Tell Me!",
+      "note": "NPR network promo at episode end.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-007"
+    }
+  ],
+  "auditDecisions": {},
+  "attested": true,
+  "reviewer": "Brian",
+  "createdAt": "2026-07-20T01:34:52.391162+00:00",
+  "updatedAt": "2026-07-20T01:35:50.345069+00:00",
+  "approvedAt": "2026-07-20T01:35:50.351384+00:00"
+}

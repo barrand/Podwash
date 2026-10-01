@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "cougar-sports",
+  "transcriptSha256": "eb2938592dd75451de685a9707afb7edc9031e0fd5dfc5fa7da538474060b8c3",
+  "sources": {
+    "primary": "codex-transcript-pass",
+    "notes": "Agent-proposed starting spans for human review. These are not human-approved goldens."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 0,
+      "endWord": 92,
+      "label": "paid_dai",
+      "advertiser": "OnDeck",
+      "note": "Cold-open small-business line of credit spot."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 92,
+      "endWord": 176,
+      "label": "paid_dai",
+      "advertiser": "SpinQuest",
+      "note": "Cold-open social casino spot."
+    },
+    {
+      "id": "proposal-003",
+      "startWord": 176,
+      "endWord": 265,
+      "label": "paid_dai",
+      "advertiser": "Sleep Number",
+      "note": "Cold-open mattress spot."
+    },
+    {
+      "id": "proposal-004",
+      "startWord": 265,
+      "endWord": 318,
+      "label": "network_promo",
+      "advertiser": "ESPN The Fan / Cougar Sports",
+      "note": "Opening station and show promo language."
+    },
+    {
+      "id": "proposal-005",
+      "startWord": 321,
+      "endWord": 350,
+      "label": "paid_host_read",
+      "advertiser": "Pander Wealth Studios",
+      "note": "Local studio sponsor read."
+    },
+    {
+      "id": "proposal-006",
+      "startWord": 441,
+      "endWord": 455,
+      "label": "paid_host_read",
+      "advertiser": "Atrium Hotel and Suites",
+      "note": "Local sponsor bridge before interview."
+    },
+    {
+      "id": "proposal-007",
+      "startWord": 4432,
+      "endWord": 4447,
+      "label": "paid_host_read",
+      "advertiser": "Atrium Hotel and Suites",
+      "note": "Midroll local sponsor read."
+    },
+    {
+      "id": "proposal-008",
+      "startWord": 4447,
+      "endWord": 4467,
+      "label": "paid_host_read",
+      "advertiser": "Ortho Pros of Utah",
+      "note": "Local orthodontist sponsor read."
+    },
+    {
+      "id": "proposal-009",
+      "startWord": 4467,
+      "endWord": 4521,
+      "label": "network_promo",
+      "advertiser": "Cougar Sports",
+      "note": "Station/show sponsor-bumper language."
+    },
+    {
+      "id": "proposal-010",
+      "startWord": 4524,
+      "endWord": 4559,
+      "label": "paid_host_read",
+      "advertiser": "Pander Wealth Studios",
+      "note": "Studio sponsor read."
+    },
+    {
+      "id": "proposal-011",
+      "startWord": 4675,
+      "endWord": 4805,
+      "label": "paid_host_read",
+      "advertiser": "Self Serve Mattress",
+      "note": "Local mattress sponsor read."
+    },
+    {
+      "id": "proposal-012",
+      "startWord": 9513,
+      "endWord": 9590,
+      "label": "paid_host_read",
+      "advertiser": "Cougar Sports sponsors",
+      "note": "Closing sponsor appeal and station sales pitch."
+    },
+    {
+      "id": "proposal-013",
+      "startWord": 9590,
+      "endWord": 9690,
+      "label": "paid_dai",
+      "advertiser": "OnDeck",
+      "note": "Closing small-business line of credit spot."
+    },
+    {
+      "id": "proposal-014",
+      "startWord": 9690,
+      "endWord": 9760,
+      "label": "paid_dai",
+      "advertiser": "SpinQuest",
+      "note": "Closing social casino spot."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "audit-cold-open-boundaries",
+      "startWord": 0,
+      "endWord": 318,
+      "reason": "Cold open contains stacked DAI spots plus station/show promo; verify the exact transition back into episode content."
+    },
+    {
+      "id": "audit-early-studio-sponsor",
+      "startWord": 318,
+      "endWord": 360,
+      "reason": "Possible local sponsor read near the first story re-entry; verify this is unrelated content and set the boundary tightly."
+    },
+    {
+      "id": "audit-atrium-orthopros-stack",
+      "startWord": 4432,
+      "endWord": 4467,
+      "reason": "Midroll local sponsor stack may contain two separate advertisers; verify whether to keep split spans or merge."
+    },
+    {
+      "id": "audit-midroll-reentry",
+      "startWord": 4467,
+      "endWord": 4559,
+      "reason": "Station/show bumper and studio sponsor occur near content re-entry; verify no story words are included."
+    },
+    {
+      "id": "audit-self-serve-boundary",
+      "startWord": 4675,
+      "endWord": 4805,
+      "reason": "Self Serve Mattress read is long and ASR is messy; verify exact first and last words."
+    },
+    {
+      "id": "audit-closing-stack",
+      "startWord": 9513,
+      "endWord": 9760,
+      "reason": "Closing sponsor appeal plus stacked DAI ads; verify all labels and the episode-end boundary."
+    }
+  ]
+}

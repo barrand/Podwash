@@ -1,0 +1,69 @@
+{
+  "slug": "ai-daily-brief",
+  "detector": "legacy",
+  "precision": 0.0,
+  "recall": 0.0,
+  "truePositives": 0,
+  "falsePositives": 2,
+  "falseNegatives": 5,
+  "predictionCount": 2,
+  "goldenCount": 5,
+  "boundary": {
+    "matched": 0,
+    "medianAbsDeltaStart": null,
+    "medianAbsDeltaEnd": null,
+    "maxAbsDeltaStart": null,
+    "maxAbsDeltaEnd": null,
+    "within3sBoth": 0
+  },
+  "falsePositivesDetail": [
+    {
+      "start": 729.96,
+      "end": 745.32,
+      "excerpt": "-z -y .com. This episode is brought to you by retool. Generating a working app now takes about five minutes thanks to AI. Getting it safely into production, wit\u2026"
+    },
+    {
+      "start": 777.08,
+      "end": 784.24,
+      "excerpt": "daily brief is brought to you by Hyperagent, where you run fleets of agents your team can manage together. New users get $1 ,000 in inference."
+    }
+  ],
+  "falseNegativesDetail": [
+    {
+      "start": 26.96,
+      "end": 40.4,
+      "kind": "membership",
+      "rationale": "Opening: thank-you to sponsors + Patreon ad-free pitch",
+      "excerpt": "First of all, thank you to today's sponsors KPMG, Blitzy, retool, and airtable To get an ad free version of the show, go to patreon .com such AI Daily Brief, or\u2026"
+    },
+    {
+      "start": 645.0,
+      "end": 685.96,
+      "kind": "midroll",
+      "rationale": "Mid-roll: KPMG research/sponsor read",
+      "excerpt": "most important AI questions right now isn't who's using AI, it's who's using it well. KPMG in the University of Texas at Austin just analyzed 1 .4 million real \u2026"
+    },
+    {
+      "start": 686.0,
+      "end": 732.46,
+      "kind": "midroll",
+      "rationale": "Mid-roll: Blitzy sponsor read",
+      "excerpt": "With the emergence of AI code generation in 2022, in video master inventor and Harvard engineer Sid Pureshi took a contrarian stance. Inference time compute and\u2026"
+    },
+    {
+      "start": 732.46,
+      "end": 776.0,
+      "kind": "midroll",
+      "rationale": "Mid-roll: Retool sponsor read",
+      "excerpt": "This episode is brought to you by retool. Generating a working app now takes about five minutes thanks to AI. Getting it safely into production, with auth permi\u2026"
+    },
+    {
+      "start": 776.24,
+      "end": 815.76,
+      "kind": "midroll",
+      "rationale": "Mid-roll: Hyperagent sponsor read",
+      "excerpt": "This episode of the AI daily brief is brought to you by Hyperagent, where you run fleets of agents your team can manage together. New users get $1 ,000 in infer\u2026"
+    }
+  ],
+  "goldenSource": "golden.json"
+}

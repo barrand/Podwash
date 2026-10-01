@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "armchair-expert-grant-achatz",
+  "transcriptSha256": "946d30a4a4e825686e418f625fafdcd50326abb99c620ad6653f970060cda74b",
+  "generatedAt": "2026-07-20T04:32:36.271688+00:00",
+  "sources": {
+    "primary": "keyword-cue-cluster-v1",
+    "notes": "Conservative reviewer-assist proposal from sponsor, CTA, URL, and promo cue clusters."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 537,
+      "endWord": 642,
+      "label": "paid_dai",
+      "advertiser": "",
+      "note": "Commercial cue cluster; dynamic/baked-in source unknown."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 10314,
+      "endWord": 10421,
+      "label": "paid_dai",
+      "advertiser": "SoFi",
+      "note": "Commercial cue cluster; dynamic/baked-in source unknown."
+    }
+  ],
+  "auditItems": [
+    {
+      "startWord": 331,
+      "endWord": 442,
+      "reason": "Commercial cue cluster: sponsor/support phrase.",
+      "id": "audit-001"
+    },
+    {
+      "startWord": 0,
+      "endWord": 220,
+      "reason": "No visible proposal near cold open; quick-scan the start for DAI.",
+      "id": "audit-002"
+    },
+    {
+      "startWord": 19814,
+      "endWord": 20074,
+      "reason": "No visible proposal near episode end; quick-scan the ending.",
+      "id": "audit-003"
+    },
+    {
+      "startWord": 5082,
+      "endWord": 5223,
+      "reason": "Added model note: Allstate support spot was missed by the original AI pass; verify exact boundaries.",
+      "id": "audit-004"
+    },
+    {
+      "startWord": 5223,
+      "endWord": 5396,
+      "reason": "Added model note: Apple Gift Card support spot was missed by the original AI pass; verify exact boundaries.",
+      "id": "audit-005"
+    },
+    {
+      "startWord": 5396,
+      "endWord": 5526,
+      "reason": "Added model note: Arm & Hammer support spot was missed by the original AI pass; verify exact boundaries.",
+      "id": "audit-006"
+    }
+  ]
+}

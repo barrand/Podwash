@@ -1,0 +1,45 @@
+{
+  "status": "proposed",
+  "reviewer": null,
+  "reviewedAt": "2026-07-14T14:33:22.674366+00:00",
+  "labelSource": "agent-proposed",
+  "note": "Drafted from Whisper transcript by cursor-agent; pending human boundary/subtype review.",
+  "spans": [
+    {
+      "start": 110.2,
+      "end": 162.8,
+      "kind": "midroll",
+      "confidence": "high",
+      "rationale": "Opening: Threadlocker sponsor read",
+      "excerpt": "This episode is sponsored by Threadlocker. The weird part about modern cyber attacks is how normal they look. The attacker logs in from Chrome, uses PowerShell, runs a remote admin tool, your IT team already trusts. There's no custom malware, no dramatic movie hacker moment, just normal tools used in the wrong way. That's part of why Threadlocker exists. Threadlocker helps organizations control what software can run, what it can do in how systems communicate. If attackers get credentials or land",
+      "source": "agent-proposed"
+    },
+    {
+      "start": 167.6,
+      "end": 222.69,
+      "kind": "midroll",
+      "confidence": "high",
+      "rationale": "Opening: Mays sponsor read",
+      "excerpt": "This episode is sponsored by my friends over at Mays. GitHub saw nearly a billion commits last year. This year, with AI agents writing code, they're on pace for 14 billion. Code is shipping faster than ever. And its vulnerabilities are piling up just as quickly. Legacy SCA and SAS T tools weren't built for this kind of scale. That's why Mays just launched Mays code. They're using AI agents to investigate every vulnerability in your dependencies and in the code, your team writes. The agents use c",
+      "source": "agent-proposed"
+    },
+    {
+      "start": 2106.7,
+      "end": 2172.18,
+      "kind": "midroll",
+      "confidence": "high",
+      "rationale": "Mid-roll: NetSuite sponsor read",
+      "excerpt": "This episode is sponsored by NetSuite. I'm reading that each day your business is late to AI. You fall two days behind. So how do you keep up? Fortunately, there's NetSuite. You probably know NetSuite. It's a unified suite that brings you financials, inventory, commerce, HR, and CRM into a single source of truth. NetSuite next is how your business leaps ahead because AI is built into everything you do. It automatically surfaces custom insights throughout your day. AI agents work alongside you to",
+      "source": "agent-proposed"
+    },
+    {
+      "start": 4145.35,
+      "end": 4166.65,
+      "kind": "membership",
+      "confidence": "high",
+      "rationale": "Outro: plus.darknetdiaries membership pitch",
+      "excerpt": "But listen, if you want to be the first to hear it, you need to pitch in by going to plus .darknetdairies .com and sign up for our plus feed. You'll get bonus episodes and add free version of the show. And you'll be able to listen to this new podcast way sooner than everyone else. So please visit plus .darknetdairies .com and help support the show.",
+      "source": "agent-proposed"
+    }
+  ]
+}

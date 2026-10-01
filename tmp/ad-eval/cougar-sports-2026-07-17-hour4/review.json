@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "cougar-sports-2026-07-17-hour4",
+  "status": "approved",
+  "revision": 11,
+  "transcriptSha256": "7a6c5986dfea686ac11524e45d12599170c1561f0646bc4b499378f5727dd883",
+  "proposalSha256": "318db5d9883c8b04d36ca369d264afc8892e8cf8b650c7fea08bdd568ab66416",
+  "reviewedThroughWord": 9287,
+  "resumeWord": 8646,
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 0,
+      "endWord": 81,
+      "label": "paid_dai",
+      "advertiser": "Polymarket",
+      "note": "Cold-open sports trading app spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-001"
+    },
+    {
+      "id": "span-2",
+      "startWord": 81,
+      "endWord": 161,
+      "label": "paid_dai",
+      "advertiser": "Shopify",
+      "note": "Cold-open Shopify customer testimonial spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-002"
+    },
+    {
+      "id": "span-3",
+      "startWord": 161,
+      "endWord": 214,
+      "label": "network_promo",
+      "advertiser": "ESPN The Fan / Cougar Sports",
+      "note": "Station and show bumper before episode re-entry.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-003"
+    },
+    {
+      "id": "span-4",
+      "startWord": 232,
+      "endWord": 262,
+      "label": "paid_host_read",
+      "advertiser": "Banner Wealth Studios",
+      "note": "Studio sponsor read and free Q&A CTA.",
+      "origin": "human-edited",
+      "proposalId": "proposal-004"
+    },
+    {
+      "id": "span-5",
+      "startWord": 300,
+      "endWord": 419,
+      "label": "paid_host_read",
+      "advertiser": "Atrium Hotel and Suites",
+      "note": "Local hotel sponsor read before hotline segment.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-005"
+    },
+    {
+      "id": "span-6",
+      "startWord": 1591,
+      "endWord": 1644,
+      "label": "paid_host_read",
+      "advertiser": "Atrium Hotel and Suites",
+      "note": "Mid-segment local hotel sponsor read.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-006"
+    },
+    {
+      "id": "span-7",
+      "startWord": 3582,
+      "endWord": 3689,
+      "label": "paid_host_read",
+      "advertiser": "Atrium Hotel and Suites",
+      "note": "Post-interview hotel sponsor recap and CTA.",
+      "origin": "human-edited",
+      "proposalId": "proposal-007"
+    },
+    {
+      "id": "span-8",
+      "startWord": 8402,
+      "endWord": 8411,
+      "label": "paid_host_read",
+      "advertiser": "Self-Serve Mattress",
+      "note": "Short segment sponsor bumper.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-008"
+    },
+    {
+      "id": "span-9",
+      "startWord": 8770,
+      "endWord": 8824,
+      "label": "paid_host_read",
+      "advertiser": "Cougar Sports sponsors",
+      "note": "Closing sponsor appeal and sales promise.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-009"
+    },
+    {
+      "id": "span-10",
+      "startWord": 8978,
+      "endWord": 9108,
+      "label": "paid_dai",
+      "advertiser": "Wealthfront",
+      "note": "Closing Wealthfront cash account spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-010"
+    },
+    {
+      "id": "span-11",
+      "startWord": 9108,
+      "endWord": 9159,
+      "label": "paid_dai",
+      "advertiser": "Toyota",
+      "note": "Closing Toyota electrified lineup spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-011"
+    },
+    {
+      "id": "span-12",
+      "startWord": 9159,
+      "endWord": 9287,
+      "label": "paid_dai",
+      "advertiser": "Wealthfront",
+      "note": "Repeated closing Wealthfront cash account spot through episode end.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-012"
+    }
+  ],
+  "auditDecisions": {},
+  "attested": true,
+  "reviewer": "Brian",
+  "createdAt": "2026-07-20T02:33:58.281386+00:00",
+  "updatedAt": "2026-07-20T02:35:18.074314+00:00",
+  "approvedAt": "2026-07-20T02:35:18.090001+00:00"
+}

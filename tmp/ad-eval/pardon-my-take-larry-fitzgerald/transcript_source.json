@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "engine": "faster-whisper",
+  "engineVersion": "unknown",
+  "model": "base.en",
+  "language": "en",
+  "wordTimestamps": true,
+  "generatedAt": "2026-07-21T05:55:00.000000+00:00",
+  "audioFile": "audio.mp3",
+  "audioSha256": "2bac6b94dcd534cf5c01c44160a61c3e16d5de1cde770a7960600aadd7e27d94",
+  "metadataSha256": "f7118814009fc448967e25851fbf9ef701448198631ee5ce5849e0d8fd39b449",
+  "transcriptSha256": "0c730ca66bb8707032ef88532ef11aca1ade2b187a9975a7787bff340fe7219f",
+  "source": "faster_whisper:base.en:ffmpeg_16k_mono_wav:chunked_600s",
+  "wordCount": 26786,
+  "notes": "Original MP3 produced a bad 110-word faster-whisper transcript and MP3 frame warnings. Audio was transcoded to 16 kHz mono WAV and transcribed in 600-second chunks."
+}

@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "pardon-my-take-larry-fitzgerald",
+  "status": "approved",
+  "revision": 24,
+  "transcriptSha256": "0c730ca66bb8707032ef88532ef11aca1ade2b187a9975a7787bff340fe7219f",
+  "proposalSha256": "60eef9fcb9353e3c763ca22262854a388304c9665ffaefe297a2c40738c8dd95",
+  "reviewedThroughWord": 0,
+  "resumeWord": 26697,
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 0,
+      "endWord": 25,
+      "label": "network_promo",
+      "advertiser": "Amazon Music",
+      "note": "Opening platform/ad-free availability promo before the episode.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-001"
+    },
+    {
+      "id": "span-2",
+      "startWord": 25,
+      "endWord": 111,
+      "label": "network_promo",
+      "advertiser": "MGM+ / The Westies",
+      "note": "Cold-open MGM+ show promo ending before the PMT episode preview.",
+      "origin": "human-edited",
+      "proposalId": "proposal-002"
+    },
+    {
+      "id": "span-3",
+      "startWord": 220,
+      "endWord": 435,
+      "label": "paid_host_read",
+      "advertiser": "Twisted Tea",
+      "note": "Twisted Tea host-read/paid sponsor segment before the show open.",
+      "origin": "human-edited",
+      "proposalId": "proposal-003"
+    },
+    {
+      "id": "span-4",
+      "startWord": 9207,
+      "endWord": 9521,
+      "label": "paid_host_read",
+      "advertiser": "DraftKings",
+      "note": "DraftKings fight-night/predictions sponsor read and legal disclaimer before Larry Fitzgerald.",
+      "origin": "human-edited",
+      "proposalId": "proposal-004"
+    },
+    {
+      "id": "span-5",
+      "startWord": 17265,
+      "endWord": 17304,
+      "label": "paid_host_read",
+      "advertiser": "Rhoback",
+      "note": "Short Rhoback promo-code sponsor question bumper inside the interview.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-005"
+    },
+    {
+      "id": "span-6",
+      "startWord": 18732,
+      "endWord": 18978,
+      "label": "paid_host_read",
+      "advertiser": "Nutrafol",
+      "note": "Nutrafol sponsor read before Fyre Fest of the Week.",
+      "origin": "human-edited",
+      "proposalId": "proposal-006"
+    },
+    {
+      "id": "span-7",
+      "startWord": 26697,
+      "endWord": 26786,
+      "label": "paid_dai",
+      "advertiser": "Abercrombie",
+      "note": "Closing Abercrombie inserted ad through episode end.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-007"
+    }
+  ],
+  "auditDecisions": {},
+  "attested": true,
+  "reviewer": "Brian",
+  "createdAt": "2026-07-21T17:32:58.643948+00:00",
+  "updatedAt": "2026-07-21T17:38:15.375201+00:00",
+  "approvedAt": "2026-07-21T17:38:15.392319+00:00"
+}

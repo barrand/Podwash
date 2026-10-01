@@ -1,0 +1,835 @@
+{
+  "schemaVersion": 1,
+  "rows": [
+    {
+      "slug": "99-percent-invisible",
+      "split": "holdout",
+      "audioUrl": "https://mgln.ai/e/2/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/3bb687b0-04af-4257-90f1-39eef4e631b6/episodes/2a384df5-2270-470d-b466-4b5831433fcc/audio/128/default.mp3?aid=rss_feed&awCollectionId=3bb687b0-04af-4257-90f1-39eef4e631b6&awEpisodeId=2a384df5-2270-470d-b466-4b5831433fcc&feed=BqbsxVfO",
+      "original": {
+        "requestedAt": "2026-07-23T03:26:27.630422+00:00",
+        "bytes": 44076535,
+        "sha256": "03450fcb0acc40600981342121511685b7b4d076d3c2597b38da21f096b51e87",
+        "durationSeconds": 2754.769
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:26:31.651700+00:00",
+        "bytes": 45714932,
+        "sha256": "5678372a28f66ed99227128499562fae77beb845ed576b90fe2ab790c793ba35",
+        "durationSeconds": 2857.169,
+        "status": 200,
+        "finalUrl": "https://stitcher.simplecastaudio.com/3bb687b0-04af-4257-90f1-39eef4e631b6/episodes/2a384df5-2270-470d-b466-4b5831433fcc/audio/128/default.mp3/default.mp3_ywr3ahjkcgo_c1fa545f21c858caf9e30f8eb34e7c13_45714932.mp3?aid=rss_feed&awCollectionId=3bb687b0-04af-4257-90f1-39eef4e631b6&awEpisodeId=2a384df5-2270-470d-b466-4b5831433fcc&feed=BqbsxVfO&hash_redirect=1&x-total-bytes=45714932&x-ais-classified=streaming&listeningSessionID=0CD_382_203__0977972b0b3a4f9150071a802f684067a89b6a0a",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "45714932",
+          "last-modified": "Thu, 23 Jul 2026 03:26:28 GMT",
+          "via": "1.1 28a153499e6447173f44812ca04c8e96.cloudfront.net (CloudFront)"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:26:35.392530+00:00",
+        "bytes": 46329752,
+        "sha256": "7139fbd9fabc7ae9109fa8ae8fe83d0ea06ca3d1548665307977cc15ac4c8b05",
+        "durationSeconds": 2895.595,
+        "status": 200,
+        "finalUrl": "https://stitcher.simplecastaudio.com/3bb687b0-04af-4257-90f1-39eef4e631b6/episodes/2a384df5-2270-470d-b466-4b5831433fcc/audio/128/default.mp3/default.mp3_ywr3ahjkcgo_8f748588d25bb3c1dd6471053207b061_46329752.mp3?aid=rss_feed&awCollectionId=3bb687b0-04af-4257-90f1-39eef4e631b6&awEpisodeId=2a384df5-2270-470d-b466-4b5831433fcc&feed=BqbsxVfO&hash_redirect=1&x-total-bytes=46329752&x-ais-classified=streaming&listeningSessionID=0CD_382_203__52feb2d90b8d9b581464e1864b559807a1de9422",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "46329752",
+          "last-modified": "Thu, 23 Jul 2026 03:26:32 GMT",
+          "via": "1.1 9f8e983712a91f731388ac1791f4d1ba.cloudfront.net (CloudFront)"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "ai-daily-brief",
+      "split": "development",
+      "audioUrl": "https://anchor.fm/s/f7cac464/podcast/play/122888803/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2026-6-15%2F428030680-44100-2-dfa8dbcdf41bc.mp3",
+      "original": {
+        "requestedAt": "2026-07-23T03:26:35.472276+00:00",
+        "bytes": 30208417,
+        "sha256": "c3e6bff81910add6d6c29afe415dfba7221efe068c943d40d399df7a6f442d32",
+        "durationSeconds": 1887.968
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:26:36.792947+00:00",
+        "bytes": 27029837,
+        "sha256": "9d504f1d7658ad4f3d8c1cdb6439f5c2c1b01a22b10e5672bbf2a6a1ef7c605c",
+        "durationSeconds": 1689.298,
+        "status": 200,
+        "finalUrl": "https://d3ctxlq1ktw2nl.cloudfront.net/staging/2026-6-15/428030680-44100-2-dfa8dbcdf41bc.mp3",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "27029837",
+          "last-modified": "Wed, 15 Jul 2026 20:26:06 GMT",
+          "etag": "\"456fdf75dea28082f9a3345a7d076656\"",
+          "via": "1.1 7c0015d1fbdfef60382a41612cc270a2.cloudfront.net (CloudFront)",
+          "age": "53778"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:26:38.133295+00:00",
+        "bytes": 27029837,
+        "sha256": "9d504f1d7658ad4f3d8c1cdb6439f5c2c1b01a22b10e5672bbf2a6a1ef7c605c",
+        "durationSeconds": 1689.298,
+        "status": 200,
+        "finalUrl": "https://d3ctxlq1ktw2nl.cloudfront.net/staging/2026-6-15/428030680-44100-2-dfa8dbcdf41bc.mp3",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "27029837",
+          "last-modified": "Wed, 15 Jul 2026 20:26:06 GMT",
+          "etag": "\"456fdf75dea28082f9a3345a7d076656\"",
+          "via": "1.1 778f10aca26cba9bae0c66580a2b1c78.cloudfront.net (CloudFront)",
+          "age": "53780"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "ai-news-strategy-daily",
+      "split": "holdout",
+      "audioUrl": "https://sphinx.acast.com/p/open/s/69ab3b7c7036d739021982df/e/6a579f1dc152a357dbc4de9f/media.mp3",
+      "original": {
+        "requestedAt": "2026-07-23T03:26:38.194142+00:00",
+        "bytes": 15202813,
+        "sha256": "f4885d1ac6e47dde464dd0d562a4fcecc3db57609cf67fed69d193efd321f4e4",
+        "durationSeconds": 950.152
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:26:39.859988+00:00",
+        "bytes": 15202813,
+        "sha256": "f4885d1ac6e47dde464dd0d562a4fcecc3db57609cf67fed69d193efd321f4e4",
+        "durationSeconds": 950.152,
+        "status": 200,
+        "finalUrl": "https://stitcher2.acast.com/livestitches/a6add8d0cdf910b91367573c6569a69b.mp3?aid=6a579f1dc152a357dbc4de9f&chid=69ab3b7c7036d739021982df&ci=ibxKzXBknC6EHRCTHcKoWkPrwSeSK--KGbCARjSgxv_XqcFqlC-UAA%3D%3D&pf=rss&src=4672df9a61c7130f72447d302d7baef4%2F128-2.mp3&sv=sphinx%401.280.1&uid=f1e8ed8445f9fc1e1dc2d6f30b6e2a70&Expires=1784788899&Key-Pair-Id=K38CTQXUSD0VVB&Signature=ch8rY6Kt0-k2BS8bBFsSn~n7tnkkwO7NnYnGlxgiRarJHbX9d~darAUtGnfz7ruS5qnKdlECZSWUDOpcaOkhWzvcAFBx76wmOEZaEsChYSnDgr47FhzpRK7eCGs8u801LL1GAFFhkkotoelEhfpBS2nLy8T-MuySjsnM-YdZIVNK26NbAyzps3mfaMkvjOoDwtRvDBprX3fZ-nyFgjtlWdaV~V2U89UDzvhguO1gEKo5CAt8mtsN0jVT6Vy2hgeAv3I9nZZJJtwYj~C5RqbhyuL7AsZY7YaDLpp-3v2juqgpFw-nu-2xAKsgrVGgV01uWLNq0c-TvJOZvj~RVYYh9A__",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "15202813",
+          "etag": "\"a6add8d0cdf910b91367573c6569a69b\"",
+          "via": "1.1 86b6aab4b36e97123c5f76cc2e3ac8ec.cloudfront.net (CloudFront)",
+          "age": "641423"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:26:41.447627+00:00",
+        "bytes": 15202813,
+        "sha256": "f4885d1ac6e47dde464dd0d562a4fcecc3db57609cf67fed69d193efd321f4e4",
+        "durationSeconds": 950.152,
+        "status": 200,
+        "finalUrl": "https://stitcher2.acast.com/livestitches/a6add8d0cdf910b91367573c6569a69b.mp3?aid=6a579f1dc152a357dbc4de9f&chid=69ab3b7c7036d739021982df&ci=-E_N8ci6FlTMAbic4Uln-Trc_5REtGTQD_dIFT-UiHpyffxs3eUI7Q%3D%3D&pf=rss&src=4672df9a61c7130f72447d302d7baef4%2F128-2.mp3&sv=sphinx%401.280.1&uid=57b6fa17a7d393bb5894f2b9e4347eed&Expires=1784788900&Key-Pair-Id=K38CTQXUSD0VVB&Signature=ZXbzQF77478BanR3HONfkD5eosIakWKVyA35K5rJBxEtsMfw-bIfIYJle~zH1cGn26rP5J6z4W72I8p5TetbN0Xd-IXrZhO2QysJ1YOcbNkIxnTVfUrH2Lze33VjYLhnNvZjv~2gUKJiaW6UgmN1aBubWlgsOn5iRScN1SAbdoDpSmR2hLxPdUDSQs5MYGxz~RUP48dyQ23Nx8k0z-9T6KeSV~TGOxF~KgYPGkNPNKK9xDC6OubMox23SP3PF9WEBbUWswdMt0KvyHsreMoHtXO1cz4yY9VHkx30WSXMEsB-UMSuDUhux8OFXogRPlcRmGedq5aUtcWxKb4kJdZjgA__",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "15202813",
+          "etag": "\"a6add8d0cdf910b91367573c6569a69b\"",
+          "via": "1.1 5ca5d4f769888ca013d817040942ebf2.cloudfront.net (CloudFront)",
+          "age": "641425"
+        }
+      },
+      "classification": "inconclusive"
+    },
+    {
+      "slug": "armchair-expert-grant-achatz",
+      "split": "holdout",
+      "audioUrl": "https://rss.art19.com/episodes/a0c1527b-209c-4d53-b00d-106857880cfb.mp3?rss_browser=BAhJIhRQb2RXYXNoLWFkLWV2YWwGOgZFVA%3D%3D--dd216a74157335fd7fc551d1d2e970f86ecfa8c1",
+      "original": {
+        "requestedAt": "2026-07-23T03:26:41.503049+00:00",
+        "bytes": 111982972,
+        "sha256": "de0c7dbb6322ab18cc55085bf2a4c01cf61a6b540aea44e866a6c0f5aa013cfe",
+        "durationSeconds": 6993.136
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:26:45.596768+00:00",
+        "bytes": 113227654,
+        "sha256": "b394862b071e24ee3b04e6301b36314d1773a9b13c74cdaa13f7e4196f57aa09",
+        "durationSeconds": 7070.928,
+        "status": 200,
+        "finalUrl": "https://content.production.cdn.art19.com/validation=1784863602,ba018084-939f-5a7d-aab6-190f6110c62f,E2M3700lZCCGeB5lhanEdQTbcuU/episodes/a0c1527b-209c-4d53-b00d-106857880cfb/03f6d1ba0d6c2825d7758327eb3c4e30fb19aa9f4829d102f822daa44e9faa4fe4ba6673cf85914456f11126ff369c649e474c7faaf849bca566d6bfe9b83561/1075%20-%20Grant%20Achatz%20%28Wide%29%20-%20V2%20AP.mp3",
+        "headers": {
+          "content-length": "113227654",
+          "content-type": "audio/mpeg",
+          "via": "1.1 haproxy, 1.1 varnish, 1.1 varnish, 1.1 varnish",
+          "cache-control": "public, max-age=86400",
+          "age": "6"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:26:48.849139+00:00",
+        "bytes": 113227654,
+        "sha256": "b394862b071e24ee3b04e6301b36314d1773a9b13c74cdaa13f7e4196f57aa09",
+        "durationSeconds": 7070.928,
+        "status": 200,
+        "finalUrl": "https://content.production.cdn.art19.com/validation=1784863606,f043910e-958c-56db-b45e-34e17b8cafcf,dIn6G4uZU_M2PKo9TdrNg1sczIg/episodes/a0c1527b-209c-4d53-b00d-106857880cfb/03f6d1ba0d6c2825d7758327eb3c4e30fb19aa9f4829d102f822daa44e9faa4fe4ba6673cf85914456f11126ff369c649e474c7faaf849bca566d6bfe9b83561/1075%20-%20Grant%20Achatz%20%28Wide%29%20-%20V2%20AP.mp3",
+        "headers": {
+          "content-length": "113227654",
+          "content-type": "audio/mpeg",
+          "via": "1.1 haproxy, 1.1 varnish, 1.1 varnish, 1.1 varnish",
+          "cache-control": "public, max-age=86400",
+          "age": "10"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "bill-simmons-kawhi",
+      "split": "development",
+      "audioUrl": "https://pdst.fm/e/traffic.megaphone.fm/GLT3048186222.mp3",
+      "original": {
+        "requestedAt": "2026-07-23T03:26:48.964309+00:00",
+        "bytes": 284916713,
+        "sha256": "569c2e97a2bd0f4575d4476b77c37f28aa47d344b3f980078b7fe0f568b15225",
+        "durationSeconds": 7121.894
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:27:05.274098+00:00",
+        "bytes": 281059994,
+        "sha256": "83cf7dd2dc1a32d84f9be10979dbcdabfc5c46595417c1de979f724503414e0a",
+        "durationSeconds": 7025.476,
+        "status": 200,
+        "finalUrl": "https://dcs-spotify.megaphone.fm/GLT3048186222.mp3?key=965251f942e436475e5f6131ca161568&request_event_id=204d0e84-684e-4821-ac55-3bba589bec91&session_id=204d0e84-684e-4821-ac55-3bba589bec91&timetoken=1784784409_7D076B4EF2F6E45C6DC6234428A98B6A",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "281059994",
+          "cache-control": "max-age=0, no-cache, no-store"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:27:17.523090+00:00",
+        "bytes": 281059994,
+        "sha256": "1c57e4f3142fc64ae6d1aa17e15bb877adb816192c96d748f2d5889476814ef3",
+        "durationSeconds": 7025.476,
+        "status": 200,
+        "finalUrl": "https://dcs-spotify.megaphone.fm/GLT3048186222.mp3?key=e9706c7e4db366d387cded9823d7de0a&request_event_id=01984283-fb36-4d94-a93f-8029d1a7087e&session_id=01984283-fb36-4d94-a93f-8029d1a7087e&timetoken=1784784426_16347B4B25AC0DB6BBBE1FFE93A17782",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "281059994",
+          "cache-control": "max-age=0, no-cache, no-store"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "cougar-sports",
+      "split": "holdout",
+      "audioUrl": "https://dts.podtrac.com/redirect.mp3/api.spreaker.com/download/episode/73005208/tmp8y332tvv.mp3",
+      "original": {
+        "requestedAt": "2026-07-23T03:27:17.738122+00:00",
+        "bytes": 50146045,
+        "sha256": "c49a698d66d1f752b74f91f39dd4ca1dd98f57aa057fd5d5330f46c289e938bb",
+        "durationSeconds": 3134.067
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:27:22.215662+00:00",
+        "bytes": 52035640,
+        "sha256": "694a01cd1ab2783959d865988aa8127874d5deeca3de0a65fc4f2d15e9ce0110",
+        "durationSeconds": 3252.149,
+        "status": 200,
+        "finalUrl": "https://d1bxy2pveef3fq.cloudfront.net/v1/variant/9db332f6-056e-5e81-9d4e-1736d68aae4d.mp3?session_id=f9de8722-f7c1-52b9-96f7-6bd1f9468c9b&ab=128&al=3175653&ao=559&cc=YYYYYYYYYY&ct=DOWNLOAD&episode_id=73005208&show_id=1369939&user_id=4650595&organization_id=10862925&tenant=SPREAKER&timestamp=1784777238&ppi=78d33d57-cebe-5c17-922b-43caceea0f01&epi=484d10bf-d172-5297-ae76-632e35741130&emt=audio&media_type=dynamic&fallback_url=https%3A%2F%2Fd1bxy2pveef3fq.cloudfront.net%2Fepisodes%2Foriginal%2F55387642%3Fsession_id%3Df9de8722-f7c1-52b9-96f7-6bd1f9468c9b%26ab%3D128%26al%3D3175653%26ao%3D559%26cc%3DYYYYYYYYYY%26ct%3DDOWNLOAD%26episode_id%3D73005208%26show_id%3D1369939%26user_id%3D4650595%26organization_id%3D10862925%26tenant%3DSPREAKER%26timestamp%3D1784777238%26ppi%3D78d33d57-cebe-5c17-922b-43caceea0f01%26epi%3D484d10bf-d172-5297-ae76-632e35741130%26emt%3Daudio%26media_type%3Dstatic%26edt%3Dmp3%26Expires%3D1784863638%26Key-Pair-Id%3DK1J2BR3INU6RYD%26Signature%3DE3qEY9H3g70gnFRSsEFnwzHUdM-oF6g0XC6KRP0ZE4dQKaDewqw1IUd6q5zg9eqZBRO9ov0-7S427Gor10rba1KqaIoH-pGOtjHeDhmmeqwdfZ46Ybj7uvNCr0VhH2SCk79jsFGf6bD4WNzCjhqB24Uncj6LbX-ObTuQLkmr0hJpMJ9lXjA6OreeRUdX1ziC1jjyKtVj-XKLoAbC3jFSLmKAlQJQtU7lSJEFXw6mlm2lxjC6GYubLlZuBb6zpFzKmnTtwCED4TkGZZjiM~yI4HUgxHehtbwtylHml1HBg-n6CzM9ASBcKSm60wSl9OxeIiYvOf~ZSGEvz6nish3ilQ__&edt=mp3&Expires=1784863639&Key-Pair-Id=K1J2BR3INU6RYD&Signature=CbFY9vl66c~vqMzvRE76Z9IE7d1r~dtsbMi-RuxHc8dm16XhZ8LG0EODJPYtesftoRmy~nnr~2uuUNOggenfTAywIyYhqGqVyskQgvKzA5VZ3CH47Y5kh7F2gXGMFG3yIJJBZrdaNaQ~dj160x8jblsI~n3qMnjWUNHeBy46lXX-~m4F7epuooj4XybIa5veVZ~gyXiAtW6qMkvzdJqjw2f68Q21U9z07SxSFGnFLxsZNgXRi8PquSL1TDpA6bj5chkizmItJa83IS8dEcK0F1Kyek4t13SvywRa57gneGzsfSaZmRmC3LRKtCxsdW02~RfsfcxeuDHB11876YNbZQ__",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "52035640",
+          "cache-control": "max-age=604800, no-transform",
+          "via": "1.1 f0a2a95cb4d25b2414a9c1a7a754943e.cloudfront.net (CloudFront)"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:27:26.907245+00:00",
+        "bytes": 54551753,
+        "sha256": "3b38fd377dcbd7ec6d3d5a02a33f33a9b5f0309c8807bcfe475810a91ef95451",
+        "durationSeconds": 3409.406,
+        "status": 200,
+        "finalUrl": "https://d1bxy2pveef3fq.cloudfront.net/v1/variant/0846734b-6207-5824-9fea-81deb635f1b4.mp3?session_id=18707441-fc52-586f-8620-e59ea526b1ba&ab=128&al=3175653&ao=559&cc=YYYYYYYYYY&ct=DOWNLOAD&episode_id=73005208&show_id=1369939&user_id=4650595&organization_id=10862925&tenant=SPREAKER&timestamp=1784777243&ppi=78d33d57-cebe-5c17-922b-43caceea0f01&epi=484d10bf-d172-5297-ae76-632e35741130&emt=audio&media_type=dynamic&fallback_url=https%3A%2F%2Fd1bxy2pveef3fq.cloudfront.net%2Fepisodes%2Foriginal%2F55387642%3Fsession_id%3D18707441-fc52-586f-8620-e59ea526b1ba%26ab%3D128%26al%3D3175653%26ao%3D559%26cc%3DYYYYYYYYYY%26ct%3DDOWNLOAD%26episode_id%3D73005208%26show_id%3D1369939%26user_id%3D4650595%26organization_id%3D10862925%26tenant%3DSPREAKER%26timestamp%3D1784777243%26ppi%3D78d33d57-cebe-5c17-922b-43caceea0f01%26epi%3D484d10bf-d172-5297-ae76-632e35741130%26emt%3Daudio%26media_type%3Dstatic%26edt%3Dmp3%26Expires%3D1784863643%26Key-Pair-Id%3DK1J2BR3INU6RYD%26Signature%3DEktpxSOijJhVhSKCO7KumdrEJ4ZNJjCQJeGdaJ~aImZlCh30FNO58S1WOIERPNi1-~eHABZtv20sKEHSJjKjn2z4YF2ZLEpbLLAj3N2Jy0BH3ZBj~a1HCR-KFtAG0Su-B3A4MRxm3q0oTnD54s4Qa7c8mVUNLqa7JBMiAUGatHpkAsTCFHfEUl5fVu1I7CgRibkJF9-i3HDgzdJ1M3GDrEIuRWWVd-R4X-1OlpZ7GgpMiKrBSRu8DNxLzJO3T~NPZuUxowALL9o-8y~QdRmiggio2Vla7klRn15adzD0GKqhnTosXJx8c65484aAAgHFjYGNwkbR8-UBbdU9hN~lxA__&edt=mp3&Expires=1784863644&Key-Pair-Id=K1J2BR3INU6RYD&Signature=FCxclNpHJ1QzRGfOXO~Ymn1E-z1iBduatpFQqQoiyaUO17H5Rjb6WGM0CVvIenRl7c~S0yRttSqgMoJMtJtYH~7dapnK8trn0JmrW7Tg9TR4lKAQU6SmYSr~TXyRHtBd9j11TBvAu3tVzhwM5vJHYmkgGE9WY4u9YINjDyUsbKm~9n58lkcKA2YLt6eJQ9Js9RvQpVww~5ADQ1jYocP201M1ucVIoFb1L~9CgcWqdhHNzHeeyv60fRnLPK4jvXt8Seohm-oTVGaEHNnmIGqcqU3W45B3lXdlGJsVn-tehRxhrIQ132guPy3nPruULmRGyq7E8ggk9Jv6xZAtv5M5xw__",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "54551753",
+          "cache-control": "max-age=604800, no-transform",
+          "via": "1.1 025e84e972a461c1dd140ac5fbbbd0aa.cloudfront.net (CloudFront)"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "split": "holdout",
+      "audioUrl": "https://dts.podtrac.com/redirect.mp3/api.spreaker.com/download/episode/73039979/tmp6ck_c9s4.mp3",
+      "original": {
+        "requestedAt": "2026-07-23T03:27:26.982573+00:00",
+        "bytes": 51376935,
+        "sha256": "37d990c9d3ceafd25af4d2d69c825efa649160d43e8def8c7acbd5fad0dc5dd7",
+        "durationSeconds": 3210.995
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:27:31.965407+00:00",
+        "bytes": 50450738,
+        "sha256": "23b35281b872498b9dc1cf035af73b5c0a7699042ac7714315ba0e18de2a7be2",
+        "durationSeconds": 3153.107,
+        "status": 200,
+        "finalUrl": "https://d1bxy2pveef3fq.cloudfront.net/v1/variant/a50803a9-e95c-5855-825e-b40540f7b2f3.mp3?session_id=7997eb5b-e6b1-59d2-b3bb-af3e5c4f919a&ab=128&al=3031118&ao=559&cc=YYYYYYYYYY&ct=DOWNLOAD&episode_id=73039979&show_id=1369939&user_id=4650595&organization_id=10862925&tenant=SPREAKER&timestamp=1784777248&ppi=78d33d57-cebe-5c17-922b-43caceea0f01&epi=189d19b2-0634-51ee-b388-e43f1a17cbba&emt=audio&media_type=dynamic&fallback_url=https%3A%2F%2Fd1bxy2pveef3fq.cloudfront.net%2Fepisodes%2Foriginal%2F55410065%3Fsession_id%3D7997eb5b-e6b1-59d2-b3bb-af3e5c4f919a%26ab%3D128%26al%3D3031118%26ao%3D559%26cc%3DYYYYYYYYYY%26ct%3DDOWNLOAD%26episode_id%3D73039979%26show_id%3D1369939%26user_id%3D4650595%26organization_id%3D10862925%26tenant%3DSPREAKER%26timestamp%3D1784777248%26ppi%3D78d33d57-cebe-5c17-922b-43caceea0f01%26epi%3D189d19b2-0634-51ee-b388-e43f1a17cbba%26emt%3Daudio%26media_type%3Dstatic%26edt%3Dmp3%26Expires%3D1784863648%26Key-Pair-Id%3DK1J2BR3INU6RYD%26Signature%3DZZ1go8-8Pds2oIUqw9DjQd45l-NGJoy5aiwuiA9IV7fJGN-MluQJ9B8hLUSkDQcEwapqtdfh0dn46HpzJKcZ8VbVcxyVLED3qCv4JAUVVZkWiDwGTnsf5Op~tTIeIVThzyLaxixkf76603nfTCVRGEG0M4zqVXNIdW-gbRHAKLXPTmCIyshOi1JD5JOk4cWOt8Bkk4Ewjj6CpUQEGP0oIW781jmBgdFk-BSkh-0MDmgXSFcdlZpO8MEqEzpk-AVlBAkENtr2SPE4lHYSgDHpBvW31jrr49H-0teGybZ-y7xdOtYgs6TXXBcChyfHLPM4PJhzgLkK9fmXaTzHdyhj8Q__&edt=mp3&Expires=1784863649&Key-Pair-Id=K1J2BR3INU6RYD&Signature=Z0AOITPKPi5mn1tf~uiW8TJVJGdONjuxqVpZnmc~Mo-jVsAW6JDMJrQQm-GyvEuIbvG6zV16P0LL7iFQRlMQ4~tu9ihf1iwtB9mfQaeSZJX7qYnearDY1PT2wpbrl3hskNQXFVobaCYMQEp2fKcqN~shLe0E7FmUl95B1nXxs5ExkID7EAAVFE46-PMMTMWw1D2h8xPKgPbDXPoZi4F2pRUul1QY5LpwVK8xPAXQVFZ6z5hBwQdL8kBQSy8-MxNv025hBhmpqlp-k8WSaSkWnRkjnwNQ4q4hWD9UF15i2eB1RggA9wzI--8dE1BJYVKjujbSWYwQs~aOmv9T-pr9mA__",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "50450738",
+          "cache-control": "max-age=604800, no-transform",
+          "via": "1.1 5957ea451aa45a9d254075e89c5df686.cloudfront.net (CloudFront)"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:27:36.395228+00:00",
+        "bytes": 48981612,
+        "sha256": "4fc9612e05e0fa009b99e85d02248d6047024e9fd2c919070bb8cb86733026ed",
+        "durationSeconds": 3061.287,
+        "status": 200,
+        "finalUrl": "https://d1bxy2pveef3fq.cloudfront.net/v1/variant/cfc18c8f-01b8-579b-acb5-219451b6d985.mp3?session_id=5b4dadb7-b0e2-578a-95a5-3259656c2c2f&ab=128&al=3031118&ao=559&cc=YYYYYYYYYY&ct=DOWNLOAD&episode_id=73039979&show_id=1369939&user_id=4650595&organization_id=10862925&tenant=SPREAKER&timestamp=1784777253&ppi=78d33d57-cebe-5c17-922b-43caceea0f01&epi=189d19b2-0634-51ee-b388-e43f1a17cbba&emt=audio&media_type=dynamic&fallback_url=https%3A%2F%2Fd1bxy2pveef3fq.cloudfront.net%2Fepisodes%2Foriginal%2F55410065%3Fsession_id%3D5b4dadb7-b0e2-578a-95a5-3259656c2c2f%26ab%3D128%26al%3D3031118%26ao%3D559%26cc%3DYYYYYYYYYY%26ct%3DDOWNLOAD%26episode_id%3D73039979%26show_id%3D1369939%26user_id%3D4650595%26organization_id%3D10862925%26tenant%3DSPREAKER%26timestamp%3D1784777253%26ppi%3D78d33d57-cebe-5c17-922b-43caceea0f01%26epi%3D189d19b2-0634-51ee-b388-e43f1a17cbba%26emt%3Daudio%26media_type%3Dstatic%26edt%3Dmp3%26Expires%3D1784863653%26Key-Pair-Id%3DK1J2BR3INU6RYD%26Signature%3DDSyBhCqgOQLUi4HOEln9PTDaiV32MjYjmZTgmXoFjr5XpWhPWAvu-FR~oUQ~44tIzN2v2H2L0ovAYQk0zxzFLHby0irExThlV6Rq11XcQWvwQRIFHOTcGZDLFBjE18uMNZzBPLIjgy-euJZH-K~rJClNrLOfPXF7Ee4bcYUx0sUO7QNWKjiO7c0J2iM4nm4V7gDhaC2CbsTDaDSjTYBCHDTMWPBJzFH1LnJ0JmInow3oSulXkpGY8BZqa6B5sfWo4PUeETRIYR3q2STodHDJQffjgjIRLYUl~V3kNfnX5q2FpP9HwqzyQHpPUXgxA6pJPbnm7iry~unmhs7SF00nDQ__&edt=mp3&Expires=1784863654&Key-Pair-Id=K1J2BR3INU6RYD&Signature=NecIRnN8egpUJOfJgNfUDVDNXqTbH5wJlVKllxkeaPfBWP1QAkFvK~aVBTJrzUXDl1CCa~ycEUTh6aJGYGJgl7K1QfH7mcXfebcsrXPGxx6XmvwFsF4dbK73wnmb2g849KtxDLCsjT3OuWN5iMmoxsMGgsnpdcpCSZ1EcIvIMvjn9kHwQTX9fxVO0akGgFlOvuHzNjJenN08tRjnUWcw4RQfnVSbN8W52Stf~9mTjMfEXlBMZ3h47QCYd~RJy6zFSEz14ChNNBlIPUmHXCZJryywUkrKkhvQfMs7JiRbuyV0xX8rxbNDgC6kNBiyY6ZXcfkngs3~mtPlsFJePHtPAw__",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "48981612",
+          "cache-control": "max-age=604800, no-transform",
+          "via": "1.1 1c80fe425edf82026702c486fb324fd0.cloudfront.net (CloudFront)"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "dan-le-batard-local-hour",
+      "split": "development",
+      "audioUrl": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/arttrk.com/p/DF7K3/pscrb.fm/rss/p/titlepl.us/redirect.mp3/MEADOWLARK/1/traffic.megaphone.fm/LBE4172492914.mp3",
+      "original": {
+        "requestedAt": "2026-07-23T03:27:36.465583+00:00",
+        "bytes": 64040862,
+        "sha256": "b91e6d864ca4506abd6beddf6855d56bbaaa8cde5f1efdd3a74e29a5dd5711ee",
+        "durationSeconds": 2665.796
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:27:42.296952+00:00",
+        "bytes": 65319192,
+        "sha256": "56f3de5f5e515948fcd3447bf3d9832f68e65271ec7addeaa447fca0bec0954b",
+        "durationSeconds": 2719.086,
+        "status": 200,
+        "finalUrl": "https://dcs-cached.megaphone.fm/LBE4172492914.mp3?key=4220094bdeed157e6a425532845cae36&request_event_id=16c44f59-23f1-4f75-8227-035b275360a2&session_id=16c44f59-23f1-4f75-8227-035b275360a2&timetoken=1784784458_5575F422F66F5F9AAC588FB316D50DA2",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "65319192",
+          "cache-control": "max-age=0, no-cache, no-store"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:27:48.165818+00:00",
+        "bytes": 62973811,
+        "sha256": "873a5fae529938a614af00ccd332fa8cfb203af5fc29ce3eb0704e5792164df1",
+        "durationSeconds": 2621.335,
+        "status": 200,
+        "finalUrl": "https://dcs-cached.megaphone.fm/LBE4172492914.mp3?key=b6e20ba88b09caa25dbcf18b7a184193&request_event_id=8f7677dd-5eaa-4196-8927-bbee7fc2dd07&session_id=8f7677dd-5eaa-4196-8927-bbee7fc2dd07&timetoken=1784784464_54666307A0C5DCA91B387B18A3A29AFC",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "62973811",
+          "cache-control": "max-age=0, no-cache, no-store"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "darknet-diaries",
+      "split": "holdout",
+      "audioUrl": "https://www.podtrac.com/pts/redirect.mp3/dovetail.prxu.org/7057/84de1d2b-0222-4815-88f6-ead9afcf4d08/darknet-diaries-ep176-nsl.mp3",
+      "original": {
+        "requestedAt": "2026-07-23T03:27:48.243300+00:00",
+        "bytes": 70980723,
+        "sha256": "f34b1dee76d9cad8ea65086c0d5ce64d930fb2057c976533d97d8155d4b353fd",
+        "durationSeconds": 4196.702
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:27:52.755061+00:00",
+        "bytes": 71938685,
+        "sha256": "95ed51da5550da5f12485df8e72b8f6fbfe7d90c814f96f1a1f73e73c02b5b27",
+        "durationSeconds": 4256.575,
+        "status": 200,
+        "finalUrl": "https://dovetail-cdn.prxu.org/usw2/7057/84de1d2b-0222-4815-88f6-ead9afcf4d08/SkOv4VdtzeYr1BfKyvEbBuZf-4dDAsPMJPpMtNPiGgo/darknet-diaries-ep176-nsl.mp3?le=qBcoo1jdK2a5FbOvpvvYauk1NXLdzFUKNdxva72PsRU&exp=1784863668",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "71938685",
+          "last-modified": "Fri, 17 Jul 2026 04:52:46 GMT",
+          "etag": "\"f2137dda77fdbfceaf0c43865ed8a8f6\"",
+          "cache-control": "public, max-age=2592000",
+          "via": "1.1 0952fdd661cdbb703496fdb1bd8ea4a2.cloudfront.net (CloudFront)",
+          "age": "493611"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:27:55.996470+00:00",
+        "bytes": 71938685,
+        "sha256": "95ed51da5550da5f12485df8e72b8f6fbfe7d90c814f96f1a1f73e73c02b5b27",
+        "durationSeconds": 4256.575,
+        "status": 200,
+        "finalUrl": "https://dovetail-cdn.prxu.org/usw2/7057/84de1d2b-0222-4815-88f6-ead9afcf4d08/SkOv4VdtzeYr1BfKyvEbBuZf-4dDAsPMJPpMtNPiGgo/darknet-diaries-ep176-nsl.mp3?le=Df0KmN3Es0eyFSIyVYJZ3B41EOS-uskR8NJ3xxhqkHY&exp=1784863673",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "71938685",
+          "last-modified": "Fri, 17 Jul 2026 04:52:46 GMT",
+          "etag": "\"f2137dda77fdbfceaf0c43865ed8a8f6\"",
+          "cache-control": "public, max-age=2592000",
+          "via": "1.1 c32fdf48b73fea3b9209f753dcec51b6.cloudfront.net (CloudFront)",
+          "age": "493615"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "dr-death",
+      "split": "holdout",
+      "audioUrl": "https://pscrb.fm/rss/p/rss.art19.com/episodes/6d358530-b8bc-4adf-b734-cb277c36f270.mp3?rss_browser=BAhJIhRQb2RXYXNoLWFkLWV2YWwGOgZFVA%3D%3D--dd216a74157335fd7fc551d1d2e970f86ecfa8c1",
+      "original": {
+        "requestedAt": "2026-07-23T03:27:56.174699+00:00",
+        "bytes": 35213762,
+        "sha256": "2024fb1c58be26bb17f92ee89afb1212eb3958df660dead4f71bec5e87341da8",
+        "durationSeconds": 2128.196
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:27:59.373143+00:00",
+        "bytes": 35213771,
+        "sha256": "3db6bb3b69e7addfe8ee818f0225ca44936332ad7b18321f15e5783bcca60e56",
+        "durationSeconds": 2128.196,
+        "status": 200,
+        "finalUrl": "https://content.production.cdn.art19.com/validation=1784863677,8d5a341c-ce93-5f03-a14f-7f140c852152,HdtoALeRSltLTLxrkJNS9GZQdFM/episodes/6d358530-b8bc-4adf-b734-cb277c36f270/88815123121444903112de2fa41c7744e92ace82cb56c201acddc501e7837a23895b1fd56e5f016b2d0be7e8c3aff07533652073af20dd80e958cb4ce6686f26/Dr%20Death%20-%20Laura%20-%20What%20To%20Listen%20To%20Next.mp3",
+        "headers": {
+          "content-length": "35213771",
+          "content-type": "audio/mpeg",
+          "via": "1.1 haproxy, 1.1 varnish, 1.1 varnish, 1.1 varnish",
+          "cache-control": "public, max-age=86400",
+          "age": "473271"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:28:02.550202+00:00",
+        "bytes": 35213771,
+        "sha256": "3db6bb3b69e7addfe8ee818f0225ca44936332ad7b18321f15e5783bcca60e56",
+        "durationSeconds": 2128.196,
+        "status": 200,
+        "finalUrl": "https://content.production.cdn.art19.com/validation=1784863680,91495360-62d6-5c3d-af15-fa48211f0b50,AWlxbvCARs8nJw-cCnFvBAR845o/episodes/6d358530-b8bc-4adf-b734-cb277c36f270/88815123121444903112de2fa41c7744e92ace82cb56c201acddc501e7837a23895b1fd56e5f016b2d0be7e8c3aff07533652073af20dd80e958cb4ce6686f26/Dr%20Death%20-%20Laura%20-%20What%20To%20Listen%20To%20Next.mp3",
+        "headers": {
+          "content-length": "35213771",
+          "content-type": "audio/mpeg",
+          "via": "1.1 haproxy, 1.1 varnish, 1.1 varnish, 1.1 varnish",
+          "cache-control": "public, max-age=86400",
+          "age": "473274"
+        }
+      },
+      "classification": "inconclusive"
+    },
+    {
+      "slug": "economics-of-everyday-things",
+      "split": "development",
+      "audioUrl": "https://dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/51058430-d98f-4830-b949-5d9a371523ce/episodes/25a8e1ee-ea58-440e-bcd1-a5da373bf3ae/audio/128/default.mp3?aid=rss_feed&awCollectionId=51058430-d98f-4830-b949-5d9a371523ce&awEpisodeId=25a8e1ee-ea58-440e-bcd1-a5da373bf3ae&feed=ob9OSBIN",
+      "original": {
+        "requestedAt": "2026-07-23T03:28:02.692298+00:00",
+        "bytes": 21930137,
+        "sha256": "e9fd940f40bc26e0633c0fd179ffa0d2ff210c5082fd7b6d26b1a1610ec3a227",
+        "durationSeconds": 1370.619
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:28:05.519555+00:00",
+        "bytes": 22828750,
+        "sha256": "05d05ee5b5d3338763277f9f1b422e4f6f409febfba8f8f057415b7169d4baa4",
+        "durationSeconds": 1426.782,
+        "status": 200,
+        "finalUrl": "https://stitcher.simplecastaudio.com/51058430-d98f-4830-b949-5d9a371523ce/episodes/25a8e1ee-ea58-440e-bcd1-a5da373bf3ae/audio/128/default.mp3/default.mp3_ywr3ahjkcgo_0d55bf3692597f6f4f8b7750c0c33a8b_22828750.mp3?aid=rss_feed&awCollectionId=51058430-d98f-4830-b949-5d9a371523ce&awEpisodeId=25a8e1ee-ea58-440e-bcd1-a5da373bf3ae&feed=ob9OSBIN&hash_redirect=1&x-total-bytes=22828750&x-ais-classified=streaming&listeningSessionID=0CD_382_203__2146c7255f3f431de2dbcb9ebb093bc5e9514a90",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "22828750",
+          "last-modified": "Thu, 23 Jul 2026 03:28:03 GMT",
+          "via": "1.1 2e158a98e35cae284abe66dca33e1a6c.cloudfront.net (CloudFront)"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:28:08.459351+00:00",
+        "bytes": 23175657,
+        "sha256": "5120298e5a78b339206a8fade71cfe1542bc14471f5dfbf392614b3ddd4924de",
+        "durationSeconds": 1448.464,
+        "status": 200,
+        "finalUrl": "https://stitcher.simplecastaudio.com/51058430-d98f-4830-b949-5d9a371523ce/episodes/25a8e1ee-ea58-440e-bcd1-a5da373bf3ae/audio/128/default.mp3/default.mp3_ywr3ahjkcgo_0723ce9a7c29e6c6e1ab0fee850d7bff_23175657.mp3?aid=rss_feed&awCollectionId=51058430-d98f-4830-b949-5d9a371523ce&awEpisodeId=25a8e1ee-ea58-440e-bcd1-a5da373bf3ae&feed=ob9OSBIN&hash_redirect=1&x-total-bytes=23175657&x-ais-classified=streaming&listeningSessionID=0CD_382_203__1f450da560d0ac4b69cf7600eb270b888dbbe65d",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "23175657",
+          "last-modified": "Thu, 23 Jul 2026 03:28:06 GMT",
+          "via": "1.1 2e158a98e35cae284abe66dca33e1a6c.cloudfront.net (CloudFront)"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "joe-rogan-mrbeast",
+      "split": "holdout",
+      "audioUrl": "https://traffic.megaphone.fm/GLT2845814639.mp3",
+      "original": {
+        "requestedAt": "2026-07-23T03:28:08.515437+00:00",
+        "bytes": 151075884,
+        "sha256": "0e5c24004a3d0db7b29dfccc70c7007e84d933a24394ab6d58f837f02498049d",
+        "durationSeconds": 10786.508
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:28:52.693385+00:00",
+        "bytes": 149491611,
+        "sha256": "cf677516e0d840d89e6361388d857689dced0d71ebdd2d3315ded21dbe432ec4",
+        "durationSeconds": 10673.345,
+        "status": 200,
+        "finalUrl": "https://dcs-cached.megaphone.fm/GLT2845814639.mp3?key=4b7537653136983fbc12f394a18775b6&request_event_id=aef39d9f-ad44-4ec4-aaa7-cd3e137dfd0c&session_id=aef39d9f-ad44-4ec4-aaa7-cd3e137dfd0c&timetoken=1784784489_E8E2C0FF576C681E1A3099396E3B9CEE",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "149491611",
+          "cache-control": "max-age=0, no-cache, no-store"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:30:40.663995+00:00",
+        "bytes": 149323017,
+        "sha256": "6ad576c042e478425f169ae97a1cd0c2ed203c6016bf72a74e715c8edb061a6a",
+        "durationSeconds": 10661.303,
+        "status": 200,
+        "finalUrl": "https://dcs-cached.megaphone.fm/GLT2845814639.mp3?key=2e81c97c1f9b8edcfbc59117d8ab8234&request_event_id=597d4284-2408-4084-b415-bd1dac4a2cef&session_id=597d4284-2408-4084-b415-bd1dac4a2cef&timetoken=1784784533_CF8FCBDBEF105E595E3A644889765426",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "149323017",
+          "cache-control": "max-age=0, no-cache, no-store"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "locked-on-big-12",
+      "split": "development",
+      "audioUrl": "https://dts.podtrac.com/redirect.mp3/pdrl.fm/be506e/lockedon.simplecastaudio.com/58845a92-8ddc-47ba-81cc-9664523c130d/episodes/57aa7371-d07c-4d47-87b6-cd784c177dd7/audio/128/default.mp3?aid=rss_feed&awCollectionId=58845a92-8ddc-47ba-81cc-9664523c130d&awEpisodeId=57aa7371-d07c-4d47-87b6-cd784c177dd7&feed=tCmD8cjX",
+      "original": {
+        "requestedAt": "2026-07-23T03:30:40.799587+00:00",
+        "bytes": 23783261,
+        "sha256": "63694ab3397046cc8a785115659a46624b49d48f491920865d1db9cac5c993bc",
+        "durationSeconds": 1486.446
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:30:42.867567+00:00",
+        "bytes": 23304698,
+        "sha256": "8b473637a99165685da282722decdd454533defc41062b9c829fe6b0d8e7f9c4",
+        "durationSeconds": 1456.535,
+        "status": 200,
+        "finalUrl": "https://lockedon.simplecastaudio.com/58845a92-8ddc-47ba-81cc-9664523c130d/episodes/57aa7371-d07c-4d47-87b6-cd784c177dd7/audio/128/default.mp3/default.mp3_ywr3ahjkcgo_64cea35eb1967a3539da4f87e25dc0c0_23304698.mp3?aid=rss_feed&awCollectionId=58845a92-8ddc-47ba-81cc-9664523c130d&awEpisodeId=57aa7371-d07c-4d47-87b6-cd784c177dd7&feed=tCmD8cjX&hash_redirect=1&x-total-bytes=23304698&x-ais-classified=streaming&listeningSessionID=0CD_382_203__90b940d5018687553c93de8288233c7ff156b606",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "23304698",
+          "last-modified": "Thu, 23 Jul 2026 03:30:41 GMT",
+          "via": "1.1 d26a7f8038e3064e4a232642ca462c2a.cloudfront.net (CloudFront)"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:30:45.133974+00:00",
+        "bytes": 23304698,
+        "sha256": "8b473637a99165685da282722decdd454533defc41062b9c829fe6b0d8e7f9c4",
+        "durationSeconds": 1456.535,
+        "status": 200,
+        "finalUrl": "https://lockedon.simplecastaudio.com/58845a92-8ddc-47ba-81cc-9664523c130d/episodes/57aa7371-d07c-4d47-87b6-cd784c177dd7/audio/128/default.mp3/default.mp3_ywr3ahjkcgo_64cea35eb1967a3539da4f87e25dc0c0_23304698.mp3?aid=rss_feed&awCollectionId=58845a92-8ddc-47ba-81cc-9664523c130d&awEpisodeId=57aa7371-d07c-4d47-87b6-cd784c177dd7&feed=tCmD8cjX&x-ais-classified=streaming&hash_redirect=1&x-total-bytes=23304698&listeningSessionID=0CD_382_203__947f01453dc5822ea3cb6de9e2c05e103dfea627",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "23304698",
+          "last-modified": "Thu, 23 Jul 2026 03:30:41 GMT",
+          "via": "1.1 778f10aca26cba9bae0c66580a2b1c78.cloudfront.net (CloudFront)",
+          "age": "3"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "pardon-my-take-larry-fitzgerald",
+      "split": "development",
+      "audioUrl": "https://dts.podtrac.com/redirect.mp3/landmark-dynamic.barstoolsports.com/stream/PReXUF7TwdEpAdGIK0BunqJd/audio.mp3?v=eyJzcmMiOiJodHRwczovL2JhcnN0b29sLXBvZGNhc3RzLnMzLnVzLWVhc3QtMS5hbWF6b25hd3MuY29tL2JhcnN0b29sLXNwb3J0cy9wYXJkb24tbXktdGFrZS9QUmVYVUY3VHdkRXBBZEdJSzBCdW5xSmQvMjAyNi8wNy8wOS9wbXRhdWRpby03LTEwLjllMWU4YjM2Ljk2cy45MTk1YWMyYy5tcDMiLCJiZWMiOlsibWFsZSIsInNwb3J0cyJdLCJhZnAiOm51bGx9&etag=eccbc87e",
+      "original": {
+        "requestedAt": "2026-07-23T03:30:45.188085+00:00",
+        "bytes": 97113843,
+        "sha256": "2bac6b94dcd534cf5c01c44160a61c3e16d5de1cde770a7960600aadd7e27d94",
+        "durationSeconds": 8092.82
+      },
+      "freshA": {
+        "error": "IncompleteRead(77795328 bytes read, 19631671 more expected)"
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:37:02.663943+00:00",
+        "bytes": 96964004,
+        "sha256": "74e56047794e8648548ec1371076ec730832d194b26cc377b44c0c52ecc6335f",
+        "durationSeconds": 8080.334,
+        "status": 200,
+        "finalUrl": "https://pipe-stream.barstoolsports.com/barstool-sports/pardon-my-take/PReXUF7TwdEpAdGIK0BunqJd/audio.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjEwMDAwMDAwMDAsImV4cCI6MTAwMDAwMDAwMDAwLCJkYXRhIjp7ImMiOiJhdWRpby9tcGVnIiwidiI6eyJtIjoiaHR0cHM6Ly9jbXMtbWVkaWEtbGlicmFyeS5zMy5hbWF6b25hd3MuY29tLyIsIm12MiI6Imh0dHBzOi8vY21zLW1lZGlhLWxpYnJhcnkuczMudXMtZWFzdC0xLmFtYXpvbmF3cy5jb20vIiwiY2giOiJodHRwczovL2NodW1sZXkuYmFyc3Rvb2xzcG9ydHMuY29tLyIsImUiOiJodHRwczovL2JhcnN0b29sLXBvZGNhc3RzLnMzLmFtYXpvbmF3cy5jb20vYmFyc3Rvb2wtc3BvcnRzL3BhcmRvbi1teS10YWtlL1BSZVhVRjdUd2RFcEFkR0lLMEJ1bnFKZC9tZXp6YW5pbmUvIiwiciI6Imh0dHBzOi8vYmFyc3Rvb2wtcG9kY2FzdHMuczMudXMtZWFzdC0xLmFtYXpvbmF3cy5jb20vYmFyc3Rvb2wtc3BvcnRzL3BhcmRvbi1teS10YWtlL1BSZVhVRjdUd2RFcEFkR0lLMEJ1bnFKZC9tZXp6YW5pbmUvIn0sImYiOlsie212Mn11bmlvbi8yMDI2LzAxLzE5LzIwMjYvMDEvMTkvVXBkYXRlZF9BbWF6b25fQXVkaW9fUmVhZF9QTVQuYTcyMzI1NTYuOTZzLjQ5ZjdlODk3Lm1wMyIsIntjaH11bmlvbi8yMDI2LzA2LzI1LzIwMjYvMDYvMjUvTUdNUENPREVfUzFfQVVESU8tQURfTUtUR19QT1NUXzMwX01HTVBIRDIzNDkxLjhiNjU5OWM2Ljk2cy45OGI2OTNkZC5tcDMiLCJ7cn0yMDI2LzA3LzEwLzluVVlQQmhiV2VvSkpwQTMwd0d6T1QxeS0xNzgzNjY0NDUxMjQ4LXNlZ21lbnQtMDAwMC45NnMuZWEzNzU1YjYubXAzIiwie3J9MjAyNi8wNy8xMC85blVZUEJoYldlb0pKcEEzMHdHek9UMXktMTc4MzY2NDQ1MTI0OC1zZWdtZW50LTAwMDEuOTZzLjA0OWVjZjdhLm1wMyIsIntyfTIwMjYvMDcvMTAvOW5VWVBCaGJXZW9KSnBBMzB3R3pPVDF5LTE3ODM2NjQ0NTEyNDgtc2VnbWVudC0wMDAyLjk2cy41NzE5NzExZS5tcDMiLCJ7cn0yMDI2LzA3LzEwLzluVVlQQmhiV2VvSkpwQTMwd0d6T1QxeS0xNzgzNjY0NDUxMjQ4LXNlZ21lbnQtMDAwMy45NnMuZjdmZmJiNGYubXAzIiwie3J9MjAyNi8wNy8xMC85blVZUEJoYldlb0pKcEEzMHdHek9UMXktMTc4MzY2NDQ1MTI0OC1zZWdtZW50LTAwMDQuOTZzLjE2YjRlNjhmLm1wMyIsIntyfTIwMjYvMDcvMTAvOW5VWVBCaGJXZW9KSnBBMzB3R3pPVDF5LTE3ODM2NjQ0NTEyNDgtc2VnbWVudC0wMDA1Ljk2cy4wMWYxNjdmNi5tcDMiLCJ7cn0yMDI2LzA3LzEwLzluVVlQQmhiV2VvSkpwQTMwd0d6T1QxeS0xNzgzNjY0NDUxMjQ4LXNlZ21lbnQtMDAwNi45NnMuYThlZDI3NzQubXAzIiwie3J9MjAyNi8wNy8xMC85blVZUEJoYldlb0pKcEEzMHdHek9UMXktMTc4MzY2NDQ1MTI0OC1zZWdtZW50LTAwMDcuOTZzLmEwZGFhNDk3Lm1wMyIsInttdjJ9dW5pb24vMjAyNi8wNi8yMy8yMDI2LzA2LzIzL0RLLU5BVC1ESVNDTEFJTUVSLVNVUEVSLUFQUC02LjI4LTcuMTktMS4xNTM5NTAzZC45NnMuYWI0NDcxYTEubXAzIiwie3J9MjAyNi8wNy8xMC85blVZUEJoYldlb0pKcEEzMHdHek9UMXktMTc4MzY2NDQ1MTI0OC1zZWdtZW50LTAwMDguOTZzLjQ1ZmNjYzUxLm1wMyIsIntyfTIwMjYvMDcvMTAvOW5VWVBCaGJXZW9KSnBBMzB3R3pPVDF5LTE3ODM2NjQ0NTEyNDgtc2VnbWVudC0wMDA5Ljk2cy4yMzY3YTdmZC5tcDMiLCJ7cn0yMDI2LzA3LzEwLzluVVlQQmhiV2VvSkpwQTMwd0d6T1QxeS0xNzgzNjY0NDUxMjQ4LXNlZ21lbnQtMDAxMC45NnMuNzQwYWI3ZjUubXAzIiwie3J9MjAyNi8wNy8xMC85blVZUEJoYldlb0pKcEEzMHdHek9UMXktMTc4MzY2NDQ1MTI0OC1zZWdtZW50LTAwMTEuOTZzLjE0YmU0MDliLm1wMyIsIntyfTIwMjYvMDcvMTAvOW5VWVBCaGJXZW9KSnBBMzB3R3pPVDF5LTE3ODM2NjQ0NTEyNDgtc2VnbWVudC0wMDEyLjk2cy44ODM1NmZiNC5tcDMiLCJ7cn0yMDI2LzA3LzEwLzluVVlQQmhiV2VvSkpwQTMwd0d6T1QxeS0xNzgzNjY0NDUxMjQ4LXNlZ21lbnQtMDAxMy45NnMuYzE2OWJjMGIubXAzIiwie2NofXVuaW9uLzIwMjYvMDYvMjQvMjAyNi8wNi8yNC9NQ1dLMDkzNTI2QV8yMDI2X01jVmFsdWUyLTBfQnJlYWtmYXN0LUNob2ljZXNfR0NNX0VOR19BdWRpb18xNS5kZThkZTZkMi45NnMuZjZiYTQzMTYubXAzIiwie3J9MjAyNi8wNy8xMC85blVZUEJoYldlb0pKcEEzMHdHek9UMXktMTc4MzY2NDQ1MTI0OC1zZWdtZW50LTAwMTQuOTZzLjlhYTJiYmVlLm1wMyIsIntyfTIwMjYvMDcvMTAvOW5VWVBCaGJXZW9KSnBBMzB3R3pPVDF5LTE3ODM2NjQ0NTEyNDgtc2VnbWVudC0wMDE1Ljk2cy40ZTYzOGMyNy5tcDMiXX19.qD4d5zXcwm3nipyMb6x-_PnvZeJSdeoUeagksD7Kz6g&i=fc059db565ce6de1c850ff0c8f480d1f01f208b2",
+        "headers": {
+          "content-length": "96964004",
+          "content-type": "audio/mpeg",
+          "via": "1.1 varnish",
+          "age": "1"
+        }
+      },
+      "classification": "fetch_error"
+    },
+    {
+      "slug": "planet-money",
+      "split": "development",
+      "audioUrl": "https://tracking.swap.fm/track/XvDEoI11TR00olTUO8US/prfx.byspotify.com/e/play.podtrac.com/npr-510289/npr.simplecastaudio.com/7dda0db1-b7e8-490c-b09a-f22fdeb30a87/episodes/1de32e6d-70dd-45f6-818e-6a6bcf11f827/audio/128/default.mp3?awCollectionId=7dda0db1-b7e8-490c-b09a-f22fdeb30a87&awEpisodeId=1de32e6d-70dd-45f6-818e-6a6bcf11f827&feed=1e5vv9pg&t=podcast&e=nx-s1-5889516&p=510289&d=2321&size=37148718",
+      "original": {
+        "requestedAt": "2026-07-23T03:37:02.860590+00:00",
+        "bytes": 40163442,
+        "sha256": "e1ac684e0755f0cfd0abfe3ddb891e5fa1f43c34e2081fade0af400700784d54",
+        "durationSeconds": 2510.21
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:37:08.522865+00:00",
+        "bytes": 40550055,
+        "sha256": "2a2d7a74f7d8e39c0c1920299a6c9e394159bc90681a5370e0fa9d4ac169028f",
+        "durationSeconds": 2534.374,
+        "status": 200,
+        "finalUrl": "https://npr.simplecastaudio.com/7dda0db1-b7e8-490c-b09a-f22fdeb30a87/episodes/1de32e6d-70dd-45f6-818e-6a6bcf11f827/audio/128/default.mp3/default.mp3_ywr3ahjkcgo_beddfb370e52843fdd092a51c898a201_40550055.mp3?awCollectionId=7dda0db1-b7e8-490c-b09a-f22fdeb30a87&awEpisodeId=1de32e6d-70dd-45f6-818e-6a6bcf11f827&feed=1e5vv9pg&t=podcast&e=nx-s1-5889516&p=510289&d=2321&size=37148718&hash_redirect=1&x-total-bytes=40550055&x-ais-classified=streaming&listeningSessionID=0CD_382_203__1d5ec13c3f23b17ea3871bb90ff2fdef4e9830ff",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "40550055",
+          "last-modified": "Thu, 23 Jul 2026 03:37:05 GMT",
+          "via": "1.1 8774711cd9fd32ceec95cdb13439f30c.cloudfront.net (CloudFront)"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:37:12.314784+00:00",
+        "bytes": 40647439,
+        "sha256": "f5f898cbced450cba0744622275097c3eda2ecdcdd415d4b118a130c1715231c",
+        "durationSeconds": 2540.46,
+        "status": 200,
+        "finalUrl": "https://npr.simplecastaudio.com/7dda0db1-b7e8-490c-b09a-f22fdeb30a87/episodes/1de32e6d-70dd-45f6-818e-6a6bcf11f827/audio/128/default.mp3/default.mp3_ywr3ahjkcgo_55e3fa5a23b603e22deeda82ec8db055_40647439.mp3?awCollectionId=7dda0db1-b7e8-490c-b09a-f22fdeb30a87&awEpisodeId=1de32e6d-70dd-45f6-818e-6a6bcf11f827&feed=1e5vv9pg&t=podcast&e=nx-s1-5889516&p=510289&d=2321&size=37148718&hash_redirect=1&x-total-bytes=40647439&x-ais-classified=streaming&listeningSessionID=0CD_382_203__5ac03d93a0f68ebcd6bb6bfe4d1e50149268372b",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "40647439",
+          "last-modified": "Thu, 23 Jul 2026 03:37:09 GMT",
+          "via": "1.1 52cf696b7d467b009c1bb9273fc4081c.cloudfront.net (CloudFront)"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "radiolab",
+      "split": "development",
+      "audioUrl": "https://pscrb.fm/rss/p/mgln.ai/e/14/prfx.byspotify.com/e/dts.podtrac.com/pts/redirect.mp3/waaa.wnyc.org/758af4c0-a2c3-47ec-a2d8-05f41bfbde51/episodes/449c3648-e49d-409f-a952-300e9ade0bef/audio/128/default.mp3?aid=rss_feed&awCollectionId=758af4c0-a2c3-47ec-a2d8-05f41bfbde51&awEpisodeId=449c3648-e49d-409f-a952-300e9ade0bef&feed=EmVW7VGp",
+      "original": {
+        "requestedAt": "2026-07-23T03:37:12.382039+00:00",
+        "bytes": 39652778,
+        "sha256": "2c8d9a0cf58e7b20c986114519e8e70d27f7cc6a70e07147774e2e9b8faf8962",
+        "durationSeconds": 2478.289
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:37:16.321309+00:00",
+        "bytes": 39468876,
+        "sha256": "76355e6fca0266ba71c7f72b8b1c54576449dd2570bf69b602e230c231c3a044",
+        "durationSeconds": 2466.795,
+        "status": 200,
+        "finalUrl": "https://waaa.wnyc.org/758af4c0-a2c3-47ec-a2d8-05f41bfbde51/episodes/449c3648-e49d-409f-a952-300e9ade0bef/audio/128/default.mp3/default.mp3_ywr3ahjkcgo_2ef09d1ddbe5f3f55aa7bdece22e663f_39468876.mp3?aid=rss_feed&awCollectionId=758af4c0-a2c3-47ec-a2d8-05f41bfbde51&awEpisodeId=449c3648-e49d-409f-a952-300e9ade0bef&feed=EmVW7VGp&x-ais-classified=streaming&hash_redirect=1&x-total-bytes=39468876&listeningSessionID=0CD_382_203__94b5d8cfe67ae5d6387d946e57f7fb8d96efe84d",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "39468876",
+          "last-modified": "Wed, 22 Jul 2026 14:30:07 GMT",
+          "via": "1.1 d99e1939ecc9ba777a9fa6749a5b276a.cloudfront.net (CloudFront)",
+          "age": "47219"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:37:20.810526+00:00",
+        "bytes": 41731705,
+        "sha256": "ec7de1ab8da6e23b683a2d8709585696111ae03e67078f39bc787418ceab9b85",
+        "durationSeconds": 2608.222,
+        "status": 200,
+        "finalUrl": "https://waaa.wnyc.org/758af4c0-a2c3-47ec-a2d8-05f41bfbde51/episodes/449c3648-e49d-409f-a952-300e9ade0bef/audio/128/default.mp3/default.mp3_ywr3ahjkcgo_1b5b06bba739ae2c9270d1c79ab4aa2a_41731705.mp3?aid=rss_feed&awCollectionId=758af4c0-a2c3-47ec-a2d8-05f41bfbde51&awEpisodeId=449c3648-e49d-409f-a952-300e9ade0bef&feed=EmVW7VGp&hash_redirect=1&x-total-bytes=41731705&x-ais-classified=streaming&listeningSessionID=0CD_382_203__87806ffd0943beef0a48744d893642eafce95d18",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "41731705",
+          "last-modified": "Thu, 23 Jul 2026 03:37:17 GMT",
+          "via": "1.1 382c1ac99264c38b9320835b20f5260e.cloudfront.net (CloudFront)"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "search-engine",
+      "split": "development",
+      "audioUrl": "https://pdst.fm/e/tracking.swap.fm/track/v9Uiw3bGr54f6BVZKSyc/pscrb.fm/rss/p/serve.castfire.com/audio/8238835/8238835_2026-04-14-014035.192.mp3?rssID=6042",
+      "original": {
+        "requestedAt": "2026-07-23T03:37:20.872236+00:00",
+        "bytes": 112533432,
+        "sha256": "153a2adb8759fdbcbbee90b3187822c5e78e61a72c76f6e44af372f93fb98bf1",
+        "durationSeconds": 4688.457
+      },
+      "freshA": {
+        "error": "The read operation timed out"
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:51:29.756324+00:00",
+        "bytes": 113092035,
+        "sha256": "be47ad6661458966c5f2f588b0508dcedd50283fd453f333cd7337279b304e4a",
+        "durationSeconds": 4711.732,
+        "status": 200,
+        "finalUrl": "https://d2ffk1w24woq0d.cloudfront.net/audio/661/7981/36369/8238835/34CDD88AD6412B4D1B970FC83A5CF7E9~8238835_2026-04-14-014035-8802-0-0-11.192.mp3?cdn_id=99&uuid=9fdda4b2-83f3-b3c1-a641-5ada26fe987b&wuuid=6a618fb9.AEA03166A66D351B571B8E530F0F45B2&spec=CgMonAgKJSiWCEIgY2EyNDNkYzllYWU0NjA4N2I2N2QzYzJlY2QyNjgzNjAKJSiWCEIgZDQxNGI1YjIxODhkNjBiNWNiNzlmZjNkZTdkMDY1ODgKCQi1q4QFGLviXwonIAEolwhCIDdmZTcyMzdmMGMwMzc3MmViZjdmMWZkMTVmMDc2YzY1CicgASiXCEIgYzZhOGE0N2QxYjY2YzE1OGJmYzQyOTUwOGU2ZTBhZDQKBSABKJsICg0ItauEBRC74l8Y5vtQCicgAiiXCEIgMWI0ZGIxMmI0MzgwOGM4NzMxNDJkMjg0YjZiOTE3NGMKJyACKJcIQiA2N2Q5OTFmNTg5MzBmNThjZGMyZGQ5Zjg2MmFkNDk1NQonIAIolwhCIGRhMWY5YzVmYmJkNjkyMWM5YTRiZGNiNmY0MGFjMDM2CgoItauEBRCi3rABCicgAyiYCEIgMDBiZjFjZWNmOTQ2M2I1N2Y2Njk0NDg2ZThiMDAxZTMKBSADKJ8I&crTotal=113080920",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "113092035",
+          "last-modified": "Thu, 23 Jul 2026 03:51:25 GMT",
+          "etag": "\"6e8aa30f96faa7b8ef8b6f6970e470d3-22\"",
+          "cache-control": "3600",
+          "via": "1.1 6375c26956bc0f0a63d43a140369a4b0.cloudfront.net (CloudFront)"
+        }
+      },
+      "classification": "fetch_error"
+    },
+    {
+      "slug": "smartless-olivia-wilde",
+      "split": "development",
+      "audioUrl": "https://dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/559b7461-a7b0-4341-b142-0ae492cb0a65/episodes/f63ffcce-ca73-44bf-a370-ef773c619aea/audio/128/default.mp3?aid=rss_feed&awCollectionId=559b7461-a7b0-4341-b142-0ae492cb0a65&awEpisodeId=f63ffcce-ca73-44bf-a370-ef773c619aea&feed=hNaFxXpO",
+      "original": {
+        "requestedAt": "2026-07-23T03:51:29.910389+00:00",
+        "bytes": 68399119,
+        "sha256": "968ed3b1303409cb97bbe968d41a307ca45a061c63039f7a2e9a24cbd98bec69",
+        "durationSeconds": 4274.938
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:51:33.690921+00:00",
+        "bytes": 69238381,
+        "sha256": "5b00933fcad99457d8df1d87768f4ac88f88e6a19cb2cc86aafb8b8edb465798",
+        "durationSeconds": 4327.392,
+        "status": 200,
+        "finalUrl": "https://stitcher.simplecastaudio.com/559b7461-a7b0-4341-b142-0ae492cb0a65/episodes/f63ffcce-ca73-44bf-a370-ef773c619aea/audio/128/default.mp3/default.mp3_ywr3ahjkcgo_f002207f2072b7d3c888f7c5027f999e_69238381.mp3?aid=rss_feed&awCollectionId=559b7461-a7b0-4341-b142-0ae492cb0a65&awEpisodeId=f63ffcce-ca73-44bf-a370-ef773c619aea&feed=hNaFxXpO&hash_redirect=1&x-total-bytes=69238381&x-ais-classified=streaming&listeningSessionID=0CD_382_203__25771c9a6d4f8092b24d8052937de34601972925",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "69238381",
+          "last-modified": "Thu, 23 Jul 2026 03:51:30 GMT",
+          "via": "1.1 a42ce842e0f60814700ead82353e9f08.cloudfront.net (CloudFront)"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:51:38.080381+00:00",
+        "bytes": 0,
+        "sha256": "6ae491297cfbb53da5e75d5c26eb9c7109ef708f10161af63dc92d81462d8a90",
+        "durationSeconds": 4311.275,
+        "status": 200,
+        "finalUrl": "https://stitcher.simplecastaudio.com/559b7461-a7b0-4341-b142-0ae492cb0a65/episodes/f63ffcce-ca73-44bf-a370-ef773c619aea/audio/128/default.mp3/default.mp3_ywr3ahjkcgo_6ed1643610866935aae4329fc90c9564_68980501.mp3?aid=rss_feed&awCollectionId=559b7461-a7b0-4341-b142-0ae492cb0a65&awEpisodeId=f63ffcce-ca73-44bf-a370-ef773c619aea&feed=hNaFxXpO&hash_redirect=1&x-total-bytes=68980501&x-ais-classified=streaming&listeningSessionID=0CD_382_203__bcdc7c4fea9fadcb76d3cbb8b5b895138429d317",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "68980501",
+          "last-modified": "Thu, 23 Jul 2026 03:51:34 GMT",
+          "via": "1.1 a42ce842e0f60814700ead82353e9f08.cloudfront.net (CloudFront)"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "this-american-life",
+      "split": "holdout",
+      "audioUrl": "https://pfx.vpixl.com/6qj4J/dts.podtrac.com/redirect.mp/pdst.fm/e/prefix.up.audio/s/npr.simplecastaudio.com/d3081dd9-fcaf-445a-977c-4f56c28f5a6e/episodes/54b46113-a17b-4f3e-ac3f-d525e0106fab/audio/128/default.mp3?awCollectionId=d3081dd9-fcaf-445a-977c-4f56c28f5a6e&awEpisodeId=54b46113-a17b-4f3e-ac3f-d525e0106fab&nocache",
+      "original": {
+        "requestedAt": "2026-07-23T03:51:38.195087+00:00",
+        "bytes": 71656956,
+        "sha256": "9d18c774135189678708f8d2355ba9538c5682ce68f04070e480acea5b6a273e",
+        "durationSeconds": 4436.924
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:51:43.709889+00:00",
+        "bytes": 72225798,
+        "sha256": "8ab8653a802831314df546e3f2faa8772a999c342c8173ed8a7eee2fe2f32580",
+        "durationSeconds": 4472.476,
+        "status": 200,
+        "finalUrl": "https://npr.simplecastaudio.com/d3081dd9-fcaf-445a-977c-4f56c28f5a6e/episodes/54b46113-a17b-4f3e-ac3f-d525e0106fab/audio/128/default.mp3/default.mp3_ywr3ahjkcgo_dc0685357f29eb747a1675d03c79f565_72225798.mp3?awCollectionId=d3081dd9-fcaf-445a-977c-4f56c28f5a6e&awEpisodeId=54b46113-a17b-4f3e-ac3f-d525e0106fab&nocache=&x-ais-classified=streaming&hash_redirect=1&x-total-bytes=72225798&listeningSessionID=0CD_382_203__7f73dbfdff81b261a3a2c91a364ccb8738882873",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "72225798",
+          "last-modified": "Thu, 23 Jul 2026 03:51:39 GMT",
+          "via": "1.1 e529324611aee618447444dc1aa96308.cloudfront.net (CloudFront)",
+          "age": "1"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:51:48.702091+00:00",
+        "bytes": 71980456,
+        "sha256": "84ec90b2f5870ca41a5f26405cbd2f1d24bcb1a4bf058d4e6505550a19db0feb",
+        "durationSeconds": 4457.142,
+        "status": 200,
+        "finalUrl": "https://npr.simplecastaudio.com/d3081dd9-fcaf-445a-977c-4f56c28f5a6e/episodes/54b46113-a17b-4f3e-ac3f-d525e0106fab/audio/128/default.mp3/default.mp3_ywr3ahjkcgo_2e6819745ae222cc83cdc049c358071d_71980456.mp3?awCollectionId=d3081dd9-fcaf-445a-977c-4f56c28f5a6e&awEpisodeId=54b46113-a17b-4f3e-ac3f-d525e0106fab&nocache=&hash_redirect=1&x-total-bytes=71980456&x-ais-classified=streaming&listeningSessionID=0CD_382_203__5305b43065f910ffc28fac87105a0796ab052af9",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "71980456",
+          "last-modified": "Thu, 23 Jul 2026 03:51:44 GMT",
+          "via": "1.1 717259fee28262d19eb04e26675df7a8.cloudfront.net (CloudFront)",
+          "age": "1"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "unexplainable",
+      "split": "development",
+      "audioUrl": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/mgln.ai/e/257/traffic.megaphone.fm/VMP4124324797.mp3",
+      "original": {
+        "requestedAt": "2026-07-23T03:51:48.843958+00:00",
+        "bytes": 48660132,
+        "sha256": "a51786bcd9bd9ef86af6c3ead3888c9f8e62784f72b1567abfa20a2943ae8695",
+        "durationSeconds": 2022.322
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:51:52.475270+00:00",
+        "bytes": 51890746,
+        "sha256": "22536026ca6354b29f2f8a462b9d27027431d47112e41481e2d4360e2239f179",
+        "durationSeconds": 2156.93,
+        "status": 200,
+        "finalUrl": "https://dcs-spotify.megaphone.fm/VMP4124324797.mp3?key=cbab0cc1a14761afbfd51c9c3ccb9262&request_event_id=16f9e15c-2d9d-40e6-bb9a-070dd4f59cbc&session_id=c9f21e09-c49b-4a83-8ad3-609614a36bb7&timetoken=1784785909_4883B37B759E0CE3F4B40B49064706B3",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "51890746",
+          "cache-control": "max-age=0, no-cache, no-store"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:51:57.174823+00:00",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "durationSeconds": 2154.397,
+        "status": 200,
+        "finalUrl": "https://dcs-spotify.megaphone.fm/VMP4124324797.mp3?key=6a6afc78c48bc634ccc22d525969d09f&request_event_id=c502fbcb-4e3a-4b28-a815-4e4c24e22fc4&session_id=c502fbcb-4e3a-4b28-a815-4e4c24e22fc4&timetoken=1784785913_A662C25F2C1C131F4364A36A4561EFD8",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "51829933",
+          "cache-control": "max-age=0, no-cache, no-store"
+        }
+      },
+      "classification": "dai_likely"
+    },
+    {
+      "slug": "version-history",
+      "split": "development",
+      "audioUrl": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/mgln.ai/e/257/traffic.megaphone.fm/VMP7139776748.mp3",
+      "original": {
+        "requestedAt": "2026-07-23T03:51:57.225708+00:00",
+        "bytes": 69221575,
+        "sha256": "9f4ed45e6fe6deaccc298b20f76703ee6950adf3175cd6ad14a3453d50c1a8cb",
+        "durationSeconds": 4323.03
+      },
+      "freshA": {
+        "requestedAt": "2026-07-23T03:52:02.306788+00:00",
+        "bytes": 71311374,
+        "sha256": "c765509207372b1f2704ab38e2cde021f7dc59f35798a857d6891282a1ecff07",
+        "durationSeconds": 4453.642,
+        "status": 200,
+        "finalUrl": "https://dcs-spotify.megaphone.fm/VMP7139776748.mp3?key=e0f1c48cebfffaad93e552acd34c1610&request_event_id=66375345-9c31-40e0-9942-6002bac7cbc7&session_id=66375345-9c31-40e0-9942-6002bac7cbc7&timetoken=1784785918_A00B32A0BF46F786E8A7F920140DB3AC",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "71311374",
+          "cache-control": "max-age=0, no-cache, no-store"
+        }
+      },
+      "freshB": {
+        "requestedAt": "2026-07-23T03:52:13.465462+00:00",
+        "bytes": 71104484,
+        "sha256": "cb6da802810f3105c4d2c5fecd25992a62747481822fee62ac2e04c00e1aa503",
+        "durationSeconds": 4440.712,
+        "status": 200,
+        "finalUrl": "https://dcs-spotify.megaphone.fm/VMP7139776748.mp3?key=296e29e8e5a1554a4bc9a974a1d5b120&request_event_id=4a20b3ec-9d1d-4fb3-9c19-db158171813c&session_id=4a20b3ec-9d1d-4fb3-9c19-db158171813c&timetoken=1784785923_8E181D2DA38849AD3D0621B0B5FA36BD",
+        "headers": {
+          "content-type": "audio/mpeg",
+          "content-length": "71104484",
+          "cache-control": "max-age=0, no-cache, no-store"
+        }
+      },
+      "classification": "dai_likely"
+    }
+  ]
+}

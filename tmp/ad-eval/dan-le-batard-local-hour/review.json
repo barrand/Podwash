@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "dan-le-batard-local-hour",
+  "status": "approved",
+  "revision": 19,
+  "transcriptSha256": "5363c2f67ba626e0b48dddcc03dd1c3af2fe4b1427bf893c5f2320dfe26e1048",
+  "proposalSha256": "9e8336f1e5ed5166cbfc031fbf5990e0ea358023bb2971032eefdd2b0479e5f2",
+  "reviewedThroughWord": 0,
+  "resumeWord": 8433,
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 0,
+      "endWord": 75,
+      "label": "paid_dai",
+      "advertiser": "Accenture",
+      "note": "Cold-open Accenture/Spotify advertising-operations spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-001"
+    },
+    {
+      "id": "span-2",
+      "startWord": 75,
+      "endWord": 158,
+      "label": "paid_dai",
+      "advertiser": "Comcast / Telemundo",
+      "note": "Cold-open Comcast/Telemundo soccer coverage spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-002"
+    },
+    {
+      "id": "span-3",
+      "startWord": 158,
+      "endWord": 244,
+      "label": "paid_dai",
+      "advertiser": "LinkedIn",
+      "note": "Cold-open LinkedIn campaign ad ending before show intro.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-003"
+    },
+    {
+      "id": "span-4",
+      "startWord": 2504,
+      "endWord": 2724,
+      "label": "paid_host_read",
+      "advertiser": "Quince",
+      "note": "Quince host-read with quince.com/Dan CTA.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-004"
+    },
+    {
+      "id": "span-5",
+      "startWord": 2724,
+      "endWord": 2927,
+      "label": "paid_host_read",
+      "advertiser": "NetSuite",
+      "note": "NetSuite Next host-read/sponsor-read with netsuite.ai/dlb CTA.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-005"
+    },
+    {
+      "id": "span-6",
+      "startWord": 2927,
+      "endWord": 3147,
+      "label": "paid_host_read",
+      "advertiser": "Kachava",
+      "note": "Kachava travel-pack host-read with kachava.com code CTA.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-006"
+    },
+    {
+      "id": "span-7",
+      "startWord": 6072,
+      "endWord": 6310,
+      "label": "paid_host_read",
+      "advertiser": "Miller Lite",
+      "note": "Miller Lite/Miller Time MVP host-read ending at responsibility disclaimer.",
+      "origin": "human-edited",
+      "proposalId": "proposal-007"
+    },
+    {
+      "id": "span-8",
+      "startWord": 6310,
+      "endWord": 6523,
+      "label": "paid_host_read",
+      "advertiser": "Chewy",
+      "note": "Chewy host-read with first-order/free-shipping CTA.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-008"
+    },
+    {
+      "id": "span-9",
+      "startWord": 8496,
+      "endWord": 8593,
+      "label": "paid_dai",
+      "advertiser": "Jägermeister",
+      "note": "Closing Jägermeister spot through episode end.",
+      "origin": "human-edited",
+      "proposalId": "proposal-009"
+    }
+  ],
+  "auditDecisions": {},
+  "attested": true,
+  "reviewer": "Brian",
+  "createdAt": "2026-07-21T05:34:18.391774+00:00",
+  "updatedAt": "2026-07-21T05:38:28.703211+00:00",
+  "approvedAt": "2026-07-21T05:38:28.709610+00:00"
+}

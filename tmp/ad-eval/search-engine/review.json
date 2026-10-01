@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "search-engine",
+  "status": "approved",
+  "revision": 14,
+  "transcriptSha256": "2f148ae6b38133c0fe6fe9e9a4f380d23d9a2659685e28b69438c71ffa019bba",
+  "proposalSha256": "ccc9062ce695729cac92ecda009339e2752e88f6e3f9e671f40297c10aada5e2",
+  "reviewedThroughWord": 11661,
+  "resumeWord": 11287,
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 0,
+      "endWord": 209,
+      "label": "paid_host_read",
+      "advertiser": "Bombas",
+      "note": "Cold-open host-read spot; ASR says Surge Engine.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-001"
+    },
+    {
+      "id": "span-2",
+      "startWord": 209,
+      "endWord": 412,
+      "label": "paid_host_read",
+      "advertiser": "Rosetta Stone",
+      "note": "Cold-open host-read spot; content begins at 'Hello. This is part two...'",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-002"
+    },
+    {
+      "id": "span-3",
+      "startWord": 4163,
+      "endWord": 4295,
+      "label": "paid_dai",
+      "advertiser": "Instacart",
+      "note": "Break spot; begins with a clipped alcohol disclaimer before Instacart copy.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-003"
+    },
+    {
+      "id": "span-4",
+      "startWord": 4295,
+      "endWord": 4464,
+      "label": "paid_host_read",
+      "advertiser": "Square",
+      "note": "Break host-read spot; content resumes at Act Three.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-004"
+    },
+    {
+      "id": "span-5",
+      "startWord": 7938,
+      "endWord": 8071,
+      "label": "paid_dai",
+      "advertiser": "Alienware",
+      "note": "Break spot after Berghain sleep beat.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-005"
+    },
+    {
+      "id": "span-6",
+      "startWord": 8071,
+      "endWord": 8177,
+      "label": "paid_dai",
+      "advertiser": "Vanguard",
+      "note": "Financial-ad segment; may bleed into the next T. Rowe Price copy because ASR transition is odd.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-006"
+    },
+    {
+      "id": "span-7",
+      "startWord": 8177,
+      "endWord": 8285,
+      "label": "paid_dai",
+      "advertiser": "T. Rowe Price",
+      "note": "Financial ETF spot; content resumes at Act 5.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-007"
+    },
+    {
+      "id": "span-8",
+      "startWord": 11382,
+      "endWord": 11506,
+      "label": "membership_cta",
+      "advertiser": "Search Engine Incognito Mode",
+      "note": "Outro sponsor-contact plus paid-feed CTA.",
+      "origin": "human-edited",
+      "proposalId": "proposal-008"
+    },
+    {
+      "id": "span-9",
+      "startWord": 11506,
+      "endWord": 11661,
+      "label": "paid_host_read",
+      "advertiser": "Atari Hotels",
+      "note": "Post-roll investor/hotel spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-009"
+    }
+  ],
+  "auditDecisions": {},
+  "attested": true,
+  "reviewer": "Brian",
+  "createdAt": "2026-07-20T01:37:15.394827+00:00",
+  "updatedAt": "2026-07-20T01:38:35.474873+00:00",
+  "approvedAt": "2026-07-20T01:38:35.483997+00:00"
+}

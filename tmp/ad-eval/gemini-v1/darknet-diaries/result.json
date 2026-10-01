@@ -1,0 +1,7062 @@
+{
+  "schemaVersion": 1,
+  "slug": "darknet-diaries",
+  "model": "gemini-3.6-flash",
+  "createdAt": "2026-07-24T22:56:20.001933+00:00",
+  "transcriptSha256": "7200a11869fec9afc77f6390d5e70246c74ee5458c29b2f52269f4c30284272e",
+  "requestSha256": "6168eaf9ed38ea8a336690e6d611dfdf2bdfdb21aef56e9235921268af86feab",
+  "sentenceRows": [
+    {
+      "id": 1,
+      "start_word": 0,
+      "end_word": 9,
+      "start": 0.0,
+      "end": 2.66,
+      "text": "There's a funny story that happened back in 1988."
+    },
+    {
+      "id": 2,
+      "start_word": 9,
+      "end_word": 11,
+      "start": 2.66,
+      "end": 4.02,
+      "text": "No, 1888."
+    },
+    {
+      "id": 3,
+      "start_word": 11,
+      "end_word": 18,
+      "start": 4.62,
+      "end": 7.46,
+      "text": "There was this undertaker guy named Stroger."
+    },
+    {
+      "id": 4,
+      "start_word": 18,
+      "end_word": 35,
+      "start": 7.92,
+      "end": 10.98,
+      "text": "And when someone died, he would get a telephone call to come take care of the body."
+    },
+    {
+      "id": 5,
+      "start_word": 35,
+      "end_word": 42,
+      "start": 11.38,
+      "end": 12.92,
+      "text": "And business was doing well for him."
+    },
+    {
+      "id": 6,
+      "start_word": 42,
+      "end_word": 50,
+      "start": 13.0,
+      "end": 16.6,
+      "text": "But then suddenly, he started receiving fewer calls."
+    },
+    {
+      "id": 7,
+      "start_word": 50,
+      "end_word": 52,
+      "start": 17.06,
+      "end": 17.74,
+      "text": "Business stopped."
+    },
+    {
+      "id": 8,
+      "start_word": 52,
+      "end_word": 58,
+      "start": 18.04,
+      "end": 19.3,
+      "text": "But he knew people were dying."
+    },
+    {
+      "id": 9,
+      "start_word": 58,
+      "end_word": 64,
+      "start": 19.46,
+      "end": 20.68,
+      "text": "So it's like, what's going on?"
+    },
+    {
+      "id": 10,
+      "start_word": 64,
+      "end_word": 84,
+      "start": 21.04,
+      "end": 26.2,
+      "text": "See, back then, when you called someone on the phone, you would tell the operator who you wanted to call."
+    },
+    {
+      "id": 11,
+      "start_word": 84,
+      "end_word": 103,
+      "start": 26.48,
+      "end": 31.26,
+      "text": "And they had a patch panel where they would connect a physical cable from your phone to their phone."
+    },
+    {
+      "id": 12,
+      "start_word": 103,
+      "end_word": 107,
+      "start": 31.5,
+      "end": 32.2,
+      "text": "It was all manual."
+    },
+    {
+      "id": 13,
+      "start_word": 107,
+      "end_word": 133,
+      "start": 32.78,
+      "end": 40.26,
+      "text": "And what this undertaker figured out is that the lady who was working as the phone operator, her husband was trying to start an undertaker business."
+    },
+    {
+      "id": 14,
+      "start_word": 133,
+      "end_word": 152,
+      "start": 40.64,
+      "end": 46.34,
+      "text": "So any time somebody would call asking for the undertaker, she would just connect them to her husband's phone."
+    },
+    {
+      "id": 15,
+      "start_word": 152,
+      "end_word": 169,
+      "start": 46.88,
+      "end": 51.9,
+      "text": "So this Stroger guy was so upset that she was intercepting his incoming calls and rerouting them."
+    },
+    {
+      "id": 16,
+      "start_word": 169,
+      "end_word": 179,
+      "start": 51.9,
+      "end": 55.54,
+      "text": "And he thought, I bet I can automate her job."
+    },
+    {
+      "id": 17,
+      "start_word": 179,
+      "end_word": 204,
+      "start": 55.54,
+      "end": 63.5,
+      "text": "So he set out to work to build an automatic way to connect calls from one person to another without the need of an operator."
+    },
+    {
+      "id": 18,
+      "start_word": 204,
+      "end_word": 215,
+      "start": 63.96,
+      "end": 68.76,
+      "text": "And this was the first telephone switch ever invented in 1889,"
+    },
+    {
+      "id": 19,
+      "start_word": 215,
+      "end_word": 235,
+      "start": 70.02,
+      "end": 78.08,
+      "text": "invented because one guy didn't trust humans to connect the calls and decided to use technology to solve his problem."
+    },
+    {
+      "id": 20,
+      "start_word": 235,
+      "end_word": 246,
+      "start": 82.54,
+      "end": 85.48,
+      "text": "These are true stories from the dark side of the internet."
+    },
+    {
+      "id": 21,
+      "start_word": 246,
+      "end_word": 249,
+      "start": 89.44,
+      "end": 90.7,
+      "text": "I'm Jack Recider."
+    },
+    {
+      "id": 22,
+      "start_word": 249,
+      "end_word": 253,
+      "start": 91.7,
+      "end": 93.88,
+      "text": "This is Darknet Diaries."
+    },
+    {
+      "id": 23,
+      "start_word": 253,
+      "end_word": 259,
+      "start": 110.25,
+      "end": 112.25,
+      "text": "This episode is sponsored by Threadlocker."
+    },
+    {
+      "id": 24,
+      "start_word": 259,
+      "end_word": 271,
+      "start": 112.69,
+      "end": 116.09,
+      "text": "The weird part about modern cyber attacks is how normal they look."
+    },
+    {
+      "id": 25,
+      "start_word": 271,
+      "end_word": 289,
+      "start": 116.35,
+      "end": 121.93,
+      "text": "The attacker logs in from Chrome, uses PowerShell, runs a remote admin tool, your IT team already trusts."
+    },
+    {
+      "id": 26,
+      "start_word": 289,
+      "end_word": 306,
+      "start": 122.45,
+      "end": 128.37,
+      "text": "There's no custom malware, no dramatic movie hacker moment, just normal tools used in the wrong way."
+    },
+    {
+      "id": 27,
+      "start_word": 306,
+      "end_word": 312,
+      "start": 128.71,
+      "end": 130.61,
+      "text": "That's part of why Threadlocker exists."
+    },
+    {
+      "id": 28,
+      "start_word": 312,
+      "end_word": 328,
+      "start": 131.13,
+      "end": 136.87,
+      "text": "Threadlocker helps organizations control what software can run, what it can do in how systems communicate."
+    },
+    {
+      "id": 29,
+      "start_word": 328,
+      "end_word": 347,
+      "start": 137.49,
+      "end": 142.55,
+      "text": "If attackers get credentials or land on a machine, they'll have a much harder time moving through the environment."
+    },
+    {
+      "id": 30,
+      "start_word": 347,
+      "end_word": 354,
+      "start": 143.03,
+      "end": 145.57,
+      "text": "Because security teams are realizing something important."
+    },
+    {
+      "id": 31,
+      "start_word": 354,
+      "end_word": 360,
+      "start": 145.85,
+      "end": 148.31,
+      "text": "Problem isn't always unknown software anymore."
+    },
+    {
+      "id": 32,
+      "start_word": 360,
+      "end_word": 370,
+      "start": 148.83,
+      "end": 152.17,
+      "text": "Sometimes it's trusted software being used by the wrong person."
+    },
+    {
+      "id": 33,
+      "start_word": 370,
+      "end_word": 389,
+      "start": 152.61,
+      "end": 158.49,
+      "text": "If you want to see how Threadlocker works, go to threadlocker .com slash darknet and book a demo today."
+    },
+    {
+      "id": 34,
+      "start_word": 389,
+      "end_word": 398,
+      "start": 159.01,
+      "end": 162.81,
+      "text": "That's threadlocker .com slash darknet to book a demo."
+    },
+    {
+      "id": 35,
+      "start_word": 398,
+      "end_word": 408,
+      "start": 167.61,
+      "end": 170.59,
+      "text": "This episode is sponsored by my friends over at Mays."
+    },
+    {
+      "id": 36,
+      "start_word": 408,
+      "end_word": 416,
+      "start": 170.97,
+      "end": 173.75,
+      "text": "GitHub saw nearly a billion commits last year."
+    },
+    {
+      "id": 37,
+      "start_word": 416,
+      "end_word": 429,
+      "start": 174.37,
+      "end": 179.67,
+      "text": "This year, with AI agents writing code, they're on pace for 14 billion."
+    },
+    {
+      "id": 38,
+      "start_word": 429,
+      "end_word": 435,
+      "start": 180.29,
+      "end": 182.11,
+      "text": "Code is shipping faster than ever."
+    },
+    {
+      "id": 39,
+      "start_word": 435,
+      "end_word": 444,
+      "start": 182.19,
+      "end": 185.05,
+      "text": "And its vulnerabilities are piling up just as quickly."
+    },
+    {
+      "id": 40,
+      "start_word": 444,
+      "end_word": 457,
+      "start": 185.53,
+      "end": 189.71,
+      "text": "Legacy SCA and SAS T tools weren't built for this kind of scale."
+    },
+    {
+      "id": 41,
+      "start_word": 457,
+      "end_word": 464,
+      "start": 190.01,
+      "end": 192.93,
+      "text": "That's why Mays just launched Mays code."
+    },
+    {
+      "id": 42,
+      "start_word": 464,
+      "end_word": 482,
+      "start": 193.13,
+      "end": 199.47,
+      "text": "They're using AI agents to investigate every vulnerability in your dependencies and in the code, your team writes."
+    },
+    {
+      "id": 43,
+      "start_word": 482,
+      "end_word": 499,
+      "start": 199.87,
+      "end": 205.61,
+      "text": "The agents use context from your code and cloud to prove what's really exploitable in your environment."
+    },
+    {
+      "id": 44,
+      "start_word": 499,
+      "end_word": 503,
+      "start": 205.87,
+      "end": 207.21,
+      "text": "Not just theoretically risky."
+    },
+    {
+      "id": 45,
+      "start_word": 503,
+      "end_word": 515,
+      "start": 207.57,
+      "end": 211.57,
+      "text": "Then they go further, catching the business logic flaws, other tools miss."
+    },
+    {
+      "id": 46,
+      "start_word": 515,
+      "end_word": 531,
+      "start": 211.87,
+      "end": 216.71,
+      "text": "And when something's exploitable, they find the fix and send it straight to the right developer."
+    },
+    {
+      "id": 47,
+      "start_word": 531,
+      "end_word": 543,
+      "start": 217.21,
+      "end": 223.31,
+      "text": "Or your coding agent, check out Mays at mayshq .com slash darknet."
+    },
+    {
+      "id": 48,
+      "start_word": 543,
+      "end_word": 556,
+      "start": 231.81,
+      "end": 236.11,
+      "text": "For this episode, I sat down and had a talk with Nick Merrill."
+    },
+    {
+      "id": 49,
+      "start_word": 556,
+      "end_word": 558,
+      "start": 236.45,
+      "end": 236.91,
+      "text": "Let's begin."
+    },
+    {
+      "id": 50,
+      "start_word": 558,
+      "end_word": 560,
+      "start": 237.43,
+      "end": 237.99,
+      "text": "All right."
+    },
+    {
+      "id": 51,
+      "start_word": 560,
+      "end_word": 561,
+      "start": 238.13,
+      "end": 238.25,
+      "text": "Yeah."
+    },
+    {
+      "id": 52,
+      "start_word": 561,
+      "end_word": 570,
+      "start": 238.25,
+      "end": 239.37,
+      "text": "And you can have your drink on the table."
+    },
+    {
+      "id": 53,
+      "start_word": 570,
+      "end_word": 572,
+      "start": 239.57,
+      "end": 239.77,
+      "text": "It's fine."
+    },
+    {
+      "id": 54,
+      "start_word": 572,
+      "end_word": 590,
+      "start": 240.27,
+      "end": 244.55,
+      "text": "I just thought we'd make a noise when I put down or something, cause you more editing work."
+    },
+    {
+      "id": 55,
+      "start_word": 590,
+      "end_word": 596,
+      "start": 245.45,
+      "end": 246.53,
+      "text": "Oh, well, that's my whole life."
+    },
+    {
+      "id": 56,
+      "start_word": 596,
+      "end_word": 600,
+      "start": 247.63,
+      "end": 248.67,
+      "text": "It's a work learned."
+    },
+    {
+      "id": 57,
+      "start_word": 600,
+      "end_word": 622,
+      "start": 249.05,
+      "end": 253.01,
+      "text": "When I was a kid, I used to work in video and film post, but actually, it's one of my first jobs."
+    },
+    {
+      "id": 58,
+      "start_word": 622,
+      "end_word": 630,
+      "start": 253.27,
+      "end": 255.39,
+      "text": "So let's start in the 80s of that."
+    },
+    {
+      "id": 59,
+      "start_word": 630,
+      "end_word": 631,
+      "start": 255.39,
+      "end": 256.17,
+      "text": "Yeah."
+    },
+    {
+      "id": 60,
+      "start_word": 631,
+      "end_word": 632,
+      "start": 256.83,
+      "end": 257.35,
+      "text": "Yeah."
+    },
+    {
+      "id": 61,
+      "start_word": 632,
+      "end_word": 638,
+      "start": 257.35,
+      "end": 259.57,
+      "text": "What are you doing in 80s?"
+    },
+    {
+      "id": 62,
+      "start_word": 638,
+      "end_word": 645,
+      "start": 259.73,
+      "end": 261.45,
+      "text": "I grew up in New York City."
+    },
+    {
+      "id": 63,
+      "start_word": 645,
+      "end_word": 659,
+      "start": 261.73,
+      "end": 266.69,
+      "text": "At some point, I was in Grand Central Station, the famous Grand Central Station."
+    },
+    {
+      "id": 64,
+      "start_word": 659,
+      "end_word": 672,
+      "start": 266.91,
+      "end": 271.33,
+      "text": "And they had amazing newsstands back then that had like thousands of titles."
+    },
+    {
+      "id": 65,
+      "start_word": 672,
+      "end_word": 683,
+      "start": 272.11,
+      "end": 275.43,
+      "text": "And I had some time to kill before this training came."
+    },
+    {
+      "id": 66,
+      "start_word": 683,
+      "end_word": 689,
+      "start": 275.49,
+      "end": 276.59,
+      "text": "And I was looking all around."
+    },
+    {
+      "id": 67,
+      "start_word": 689,
+      "end_word": 700,
+      "start": 276.59,
+      "end": 281.77,
+      "text": "And I found this little tiny magazine called 2 ,600 Magazine."
+    },
+    {
+      "id": 68,
+      "start_word": 700,
+      "end_word": 703,
+      "start": 282.05,
+      "end": 282.83,
+      "text": "It's hacker magazine."
+    },
+    {
+      "id": 69,
+      "start_word": 703,
+      "end_word": 710,
+      "start": 283.17,
+      "end": 285.19,
+      "text": "You know, I was fascinated by this."
+    },
+    {
+      "id": 70,
+      "start_word": 710,
+      "end_word": 722,
+      "start": 285.19,
+      "end": 288.33,
+      "text": "And I bought a copy and I read it covered a cover."
+    },
+    {
+      "id": 71,
+      "start_word": 722,
+      "end_word": 727,
+      "start": 288.55,
+      "end": 290.19,
+      "text": "I just devoured this magazine."
+    },
+    {
+      "id": 72,
+      "start_word": 727,
+      "end_word": 732,
+      "start": 290.83,
+      "end": 292.21,
+      "text": "And it was super interesting."
+    },
+    {
+      "id": 73,
+      "start_word": 732,
+      "end_word": 748,
+      "start": 293.21,
+      "end": 298.59,
+      "text": "And at the end of the magazine, they mentioned that they did in -person get -togethers."
+    },
+    {
+      "id": 74,
+      "start_word": 748,
+      "end_word": 760,
+      "start": 299.27,
+      "end": 303.01,
+      "text": "And the one in Manhattan was held in the city court building."
+    },
+    {
+      "id": 75,
+      "start_word": 760,
+      "end_word": 769,
+      "start": 303.49,
+      "end": 305.25,
+      "text": "Wow, what a special place to be back then."
+    },
+    {
+      "id": 76,
+      "start_word": 769,
+      "end_word": 782,
+      "start": 305.39,
+      "end": 309.41,
+      "text": "Some legendary hackers were knocking about in that city court building back then."
+    },
+    {
+      "id": 77,
+      "start_word": 782,
+      "end_word": 803,
+      "start": 309.53,
+      "end": 316.53,
+      "text": "And I covered exactly what went on in that building in episodes 1 -68 and 1 -69 titled LOD and MOD."
+    },
+    {
+      "id": 78,
+      "start_word": 803,
+      "end_word": 821,
+      "start": 316.99,
+      "end": 320.77,
+      "text": "If you want to hear the story of these legendary hackers, go back and check out those episodes."
+    },
+    {
+      "id": 79,
+      "start_word": 821,
+      "end_word": 838,
+      "start": 321.47,
+      "end": 326.07,
+      "text": "But suffice to say, Nick had some pretty incredible hackers around him when he was a kid."
+    },
+    {
+      "id": 80,
+      "start_word": 838,
+      "end_word": 848,
+      "start": 326.57,
+      "end": 328.41,
+      "text": "And has been in the hacking scene for decades now."
+    },
+    {
+      "id": 81,
+      "start_word": 848,
+      "end_word": 856,
+      "start": 328.49,
+      "end": 330.03,
+      "text": "I've seen him at DEF CON multiple times."
+    },
+    {
+      "id": 82,
+      "start_word": 856,
+      "end_word": 864,
+      "start": 330.49,
+      "end": 331.89,
+      "text": "I was pretty young though when I went."
+    },
+    {
+      "id": 83,
+      "start_word": 864,
+      "end_word": 868,
+      "start": 331.99,
+      "end": 333.97,
+      "text": "I was only 14."
+    },
+    {
+      "id": 84,
+      "start_word": 868,
+      "end_word": 892,
+      "start": 335.93,
+      "end": 340.77,
+      "text": "And so I met all these people, but I got a sense that there was just a lot going on that we didn't understand."
+    },
+    {
+      "id": 85,
+      "start_word": 892,
+      "end_word": 901,
+      "start": 340.77,
+      "end": 344.43,
+      "text": "So I mostly kept to myself and just listened."
+    },
+    {
+      "id": 86,
+      "start_word": 901,
+      "end_word": 908,
+      "start": 344.59,
+      "end": 346.39,
+      "text": "I picked up a lot of stuff."
+    },
+    {
+      "id": 87,
+      "start_word": 908,
+      "end_word": 917,
+      "start": 346.83,
+      "end": 348.99,
+      "text": "This is what kick started his interest in computers."
+    },
+    {
+      "id": 88,
+      "start_word": 917,
+      "end_word": 940,
+      "start": 349.23,
+      "end": 355.17,
+      "text": "He got an Apple computer, started a BBS and tried to keep up with everyone else who was doing cool stuff back then."
+    },
+    {
+      "id": 89,
+      "start_word": 940,
+      "end_word": 949,
+      "start": 355.55,
+      "end": 357.53,
+      "text": "After high school, he went on to attend college."
+    },
+    {
+      "id": 90,
+      "start_word": 949,
+      "end_word": 956,
+      "start": 357.95,
+      "end": 360.23,
+      "text": "I was doing computer science and philosophy,"
+    },
+    {
+      "id": 91,
+      "start_word": 956,
+      "end_word": 962,
+      "start": 361.03,
+      "end": 362.85,
+      "text": "both courses at the same time."
+    },
+    {
+      "id": 92,
+      "start_word": 962,
+      "end_word": 988,
+      "start": 363.27,
+      "end": 371.39,
+      "text": "I remember one of my big challenges in school was just deciding exactly what to focus on and then just focusing like a laser on that."
+    },
+    {
+      "id": 93,
+      "start_word": 988,
+      "end_word": 998,
+      "start": 371.83,
+      "end": 375.33,
+      "text": "I wasn't, I didn't feel like that at the time."
+    },
+    {
+      "id": 94,
+      "start_word": 998,
+      "end_word": 1009,
+      "start": 375.43,
+      "end": 377.19,
+      "text": "And so I was like, I want to take some art."
+    },
+    {
+      "id": 95,
+      "start_word": 1009,
+      "end_word": 1015,
+      "start": 377.41,
+      "end": 379.05,
+      "text": "I want to do some law."
+    },
+    {
+      "id": 96,
+      "start_word": 1015,
+      "end_word": 1026,
+      "start": 379.17,
+      "end": 383.05,
+      "text": "I want to study history and all kinds of other stuff."
+    },
+    {
+      "id": 97,
+      "start_word": 1026,
+      "end_word": 1038,
+      "start": 383.09,
+      "end": 386.19,
+      "text": "But his mind was hungry to learn about all kinds of stuff."
+    },
+    {
+      "id": 98,
+      "start_word": 1038,
+      "end_word": 1046,
+      "start": 386.25,
+      "end": 388.17,
+      "text": "So he took a huge variety of classes."
+    },
+    {
+      "id": 99,
+      "start_word": 1046,
+      "end_word": 1059,
+      "start": 388.43,
+      "end": 391.29,
+      "text": "And at one point, he took a class which really stuck with him."
+    },
+    {
+      "id": 100,
+      "start_word": 1059,
+      "end_word": 1065,
+      "start": 391.69,
+      "end": 393.81,
+      "text": "I took a constitutional law class."
+    },
+    {
+      "id": 101,
+      "start_word": 1065,
+      "end_word": 1084,
+      "start": 393.99,
+      "end": 400.87,
+      "text": "This class was a full overview of all the landmark cases in constitutional law going back to the beginning."
+    },
+    {
+      "id": 102,
+      "start_word": 1084,
+      "end_word": 1104,
+      "start": 401.55,
+      "end": 409.75,
+      "text": "Land market cases are interesting because a Supreme Court decision is basically just as powerful as a full fledged law."
+    },
+    {
+      "id": 103,
+      "start_word": 1104,
+      "end_word": 1107,
+      "start": 410.27,
+      "end": 411.19,
+      "text": "Take Miranda rights."
+    },
+    {
+      "id": 104,
+      "start_word": 1107,
+      "end_word": 1118,
+      "start": 411.53,
+      "end": 413.57,
+      "text": "I'm sure you've heard, you have the right to remain silent."
+    },
+    {
+      "id": 105,
+      "start_word": 1118,
+      "end_word": 1130,
+      "start": 414.05,
+      "end": 416.63,
+      "text": "Anything you say can and will be used against you in court."
+    },
+    {
+      "id": 106,
+      "start_word": 1130,
+      "end_word": 1142,
+      "start": 417.19,
+      "end": 420.61,
+      "text": "Well, that came from a Supreme Court case called Miranda versus Arizona."
+    },
+    {
+      "id": 107,
+      "start_word": 1142,
+      "end_word": 1158,
+      "start": 421.15,
+      "end": 426.23,
+      "text": "A guy named Ernesto Miranda was arrested question for hours and he confessed to his crime."
+    },
+    {
+      "id": 108,
+      "start_word": 1158,
+      "end_word": 1169,
+      "start": 426.23,
+      "end": 429.37,
+      "text": "But later on, he learned that he didn't have to confess."
+    },
+    {
+      "id": 109,
+      "start_word": 1169,
+      "end_word": 1181,
+      "start": 429.71,
+      "end": 432.45,
+      "text": "The Fifth Amendment says you have the right to not self -incriminate."
+    },
+    {
+      "id": 110,
+      "start_word": 1181,
+      "end_word": 1194,
+      "start": 432.89,
+      "end": 435.59,
+      "text": "And so in court, he said, I didn't know I could stay silent."
+    },
+    {
+      "id": 111,
+      "start_word": 1194,
+      "end_word": 1209,
+      "start": 435.65,
+      "end": 438.41,
+      "text": "I didn't know I could get a lawyer before I could talk to the cops."
+    },
+    {
+      "id": 112,
+      "start_word": 1209,
+      "end_word": 1217,
+      "start": 438.65,
+      "end": 440.93,
+      "text": "And the Supreme Court said, you know what?"
+    },
+    {
+      "id": 113,
+      "start_word": 1217,
+      "end_word": 1220,
+      "start": 441.01,
+      "end": 441.73,
+      "text": "You're right, Miranda."
+    },
+    {
+      "id": 114,
+      "start_word": 1220,
+      "end_word": 1234,
+      "start": 442.35,
+      "end": 445.51,
+      "text": "It's hard to know what rights you have when cops are questioning you constantly."
+    },
+    {
+      "id": 115,
+      "start_word": 1234,
+      "end_word": 1249,
+      "start": 445.89,
+      "end": 449.17,
+      "text": "And they should have told you that you do have the right to remain silent."
+    },
+    {
+      "id": 116,
+      "start_word": 1249,
+      "end_word": 1254,
+      "start": 449.21,
+      "end": 450.53,
+      "text": "It's your Fifth Amendment right."
+    },
+    {
+      "id": 117,
+      "start_word": 1254,
+      "end_word": 1274,
+      "start": 450.83,
+      "end": 457.85,
+      "text": "So from now on, all cops must tell you your rights before they can use anything you say against you."
+    },
+    {
+      "id": 118,
+      "start_word": 1274,
+      "end_word": 1291,
+      "start": 458.03,
+      "end": 463.57,
+      "text": "And so every cop across the country, now informs you of your rights before they arrest you."
+    },
+    {
+      "id": 119,
+      "start_word": 1291,
+      "end_word": 1298,
+      "start": 463.91,
+      "end": 466.01,
+      "text": "It's not a law that Congress passed."
+    },
+    {
+      "id": 120,
+      "start_word": 1298,
+      "end_word": 1305,
+      "start": 466.23,
+      "end": 467.93,
+      "text": "It's a rule made in a court."
+    },
+    {
+      "id": 121,
+      "start_word": 1305,
+      "end_word": 1319,
+      "start": 468.37,
+      "end": 473.05,
+      "text": "And that's the power of landmark cases and Nick found all this very fascinating."
+    },
+    {
+      "id": 122,
+      "start_word": 1319,
+      "end_word": 1354,
+      "start": 473.13,
+      "end": 483.63,
+      "text": "Eventually, Nick finished school and at the same time, the internet started sprouting websites, which made it way easier for people to share ideas and communicate with each other instead of the old fashioned BBSs."
+    },
+    {
+      "id": 123,
+      "start_word": 1354,
+      "end_word": 1370,
+      "start": 483.63,
+      "end": 489.61,
+      "text": "He saw a shift from things being for educational purposes to commercial usage of the internet."
+    },
+    {
+      "id": 124,
+      "start_word": 1370,
+      "end_word": 1385,
+      "start": 490.11,
+      "end": 493.75,
+      "text": "And I remember thinking at the time, this is how you could make real change."
+    },
+    {
+      "id": 125,
+      "start_word": 1385,
+      "end_word": 1413,
+      "start": 493.81,
+      "end": 501.89,
+      "text": "This is how you could connect people all over the country and all over the world who have one thought or an idea or want to do something."
+    },
+    {
+      "id": 126,
+      "start_word": 1413,
+      "end_word": 1431,
+      "start": 503.55,
+      "end": 509.89,
+      "text": "And while sitting at home, you could connect to millions of people everywhere and get ideas out there."
+    },
+    {
+      "id": 127,
+      "start_word": 1431,
+      "end_word": 1445,
+      "start": 510.15,
+      "end": 515.65,
+      "text": "And I remember also thinking at the time, there's newspapers, there's television, there's radio."
+    },
+    {
+      "id": 128,
+      "start_word": 1445,
+      "end_word": 1457,
+      "start": 516.73,
+      "end": 522.13,
+      "text": "And the licensing for television and radio is strictly controlled by FCC."
+    },
+    {
+      "id": 129,
+      "start_word": 1457,
+      "end_word": 1477,
+      "start": 523.81,
+      "end": 528.65,
+      "text": "And as far as I know, they don't really issue, even back then, they didn't really issue any new licenses."
+    },
+    {
+      "id": 130,
+      "start_word": 1477,
+      "end_word": 1500,
+      "start": 529.03,
+      "end": 535.51,
+      "text": "Like all the licenses were out there and you could buy and sell the existing licenses for like tens of millions of dollars."
+    },
+    {
+      "id": 131,
+      "start_word": 1500,
+      "end_word": 1517,
+      "start": 536.71,
+      "end": 540.63,
+      "text": "And then they would tell you what words you could say, or what words you couldn't say."
+    },
+    {
+      "id": 132,
+      "start_word": 1517,
+      "end_word": 1545,
+      "start": 540.63,
+      "end": 550.35,
+      "text": "There was a lot of talk at that time about the words that you can't say on the radio and what's too obscene for television and all that."
+    },
+    {
+      "id": 133,
+      "start_word": 1545,
+      "end_word": 1566,
+      "start": 550.85,
+      "end": 558.25,
+      "text": "And so I remember thinking that it was a tightly controlled media environment and the bar to entry was incredibly high."
+    },
+    {
+      "id": 134,
+      "start_word": 1566,
+      "end_word": 1574,
+      "start": 558.43,
+      "end": 559.67,
+      "text": "It was like into the tens of millions."
+    },
+    {
+      "id": 135,
+      "start_word": 1574,
+      "end_word": 1588,
+      "start": 560.55,
+      "end": 565.61,
+      "text": "And then here's the internet, which at that time had no regulation at all."
+    },
+    {
+      "id": 136,
+      "start_word": 1588,
+      "end_word": 1596,
+      "start": 565.61,
+      "end": 567.83,
+      "text": "And the bar to entry was really low."
+    },
+    {
+      "id": 137,
+      "start_word": 1596,
+      "end_word": 1624,
+      "start": 567.83,
+      "end": 575.89,
+      "text": "Like it was so low that when my grandfather died and I inherited like literally a few thousand dollars, like that was enough for me to get in."
+    },
+    {
+      "id": 138,
+      "start_word": 1624,
+      "end_word": 1640,
+      "start": 576.75,
+      "end": 580.97,
+      "text": "And I ended up starting one of the first internet service providers in New York City."
+    },
+    {
+      "id": 139,
+      "start_word": 1640,
+      "end_word": 1659,
+      "start": 581.47,
+      "end": 585.59,
+      "text": "Nick was pretty early to the game when it came to getting on the internet and saw its potential."
+    },
+    {
+      "id": 140,
+      "start_word": 1659,
+      "end_word": 1671,
+      "start": 585.85,
+      "end": 588.55,
+      "text": "I wanted to get more people involved in this kind of technology."
+    },
+    {
+      "id": 141,
+      "start_word": 1671,
+      "end_word": 1689,
+      "start": 588.79,
+      "end": 594.37,
+      "text": "So at the age of 20, he learned everything he needed to start his own internet service provider."
+    },
+    {
+      "id": 142,
+      "start_word": 1689,
+      "end_word": 1707,
+      "start": 594.77,
+      "end": 601.27,
+      "text": "Yep, this was in my very first apartment on East 10th Street in the East Village in Manhattan."
+    },
+    {
+      "id": 143,
+      "start_word": 1707,
+      "end_word": 1717,
+      "start": 602.79,
+      "end": 608.29,
+      "text": "And my apartment had an old no longer working fireplace"
+    },
+    {
+      "id": 144,
+      "start_word": 1717,
+      "end_word": 1728,
+      "start": 608.91,
+      "end": 613.73,
+      "text": "that was wasted space because you could never fire in it."
+    },
+    {
+      "id": 145,
+      "start_word": 1728,
+      "end_word": 1734,
+      "start": 614.19,
+      "end": 615.85,
+      "text": "And the chimney was plugged up."
+    },
+    {
+      "id": 146,
+      "start_word": 1734,
+      "end_word": 1744,
+      "start": 615.85,
+      "end": 618.99,
+      "text": "But I filled that space with a bunch of modems."
+    },
+    {
+      "id": 147,
+      "start_word": 1744,
+      "end_word": 1759,
+      "start": 619.31,
+      "end": 623.51,
+      "text": "I ended up getting something like eight modems and I had them all in there."
+    },
+    {
+      "id": 148,
+      "start_word": 1759,
+      "end_word": 1773,
+      "start": 623.51,
+      "end": 628.93,
+      "text": "And like one server running Linux, which was like super new at that point."
+    },
+    {
+      "id": 149,
+      "start_word": 1773,
+      "end_word": 1781,
+      "start": 629.39,
+      "end": 631.45,
+      "text": "The name of the ISP was called Calix."
+    },
+    {
+      "id": 150,
+      "start_word": 1781,
+      "end_word": 1804,
+      "start": 631.95,
+      "end": 636.59,
+      "text": "And now that he had it stood up, he had to go around and talk to people and convince them to be customers."
+    },
+    {
+      "id": 151,
+      "start_word": 1804,
+      "end_word": 1841,
+      "start": 637.57,
+      "end": 654.69,
+      "text": "People who I knew in New York City that were trying to do some type of either activism or social change or just trying to have some trying to create a social movement and things like that."
+    },
+    {
+      "id": 152,
+      "start_word": 1841,
+      "end_word": 1852,
+      "start": 655.17,
+      "end": 658.95,
+      "text": "And so I went around and I tried to convince them"
+    },
+    {
+      "id": 153,
+      "start_word": 1852,
+      "end_word": 1874,
+      "start": 660.53,
+      "end": 668.77,
+      "text": "that this internet thing was gonna be huge and just like a paradigm -changing thing that they needed to find out about."
+    },
+    {
+      "id": 154,
+      "start_word": 1874,
+      "end_word": 1892,
+      "start": 669.37,
+      "end": 674.17,
+      "text": "And I remember getting a lot of pushback from people who were like, no, that's not for us."
+    },
+    {
+      "id": 155,
+      "start_word": 1892,
+      "end_word": 1895,
+      "start": 675.17,
+      "end": 676.29,
+      "text": "That's for them."
+    },
+    {
+      "id": 156,
+      "start_word": 1895,
+      "end_word": 1900,
+      "start": 676.61,
+      "end": 678.81,
+      "text": "We don't really want that."
+    },
+    {
+      "id": 157,
+      "start_word": 1900,
+      "end_word": 1929,
+      "start": 678.81,
+      "end": 689.25,
+      "text": "And I literally just trying to get people to get email and domain names and just like put out a newsletter or put up a little web page, something."
+    },
+    {
+      "id": 158,
+      "start_word": 1929,
+      "end_word": 1939,
+      "start": 690.33,
+      "end": 692.59,
+      "text": "And it was hard to convince people at the time."
+    },
+    {
+      "id": 159,
+      "start_word": 1939,
+      "end_word": 1945,
+      "start": 692.95,
+      "end": 693.97,
+      "text": "It's crazy to think back then."
+    },
+    {
+      "id": 160,
+      "start_word": 1945,
+      "end_word": 1954,
+      "start": 694.23,
+      "end": 697.01,
+      "text": "People were not interested in spreading their message online."
+    },
+    {
+      "id": 161,
+      "start_word": 1954,
+      "end_word": 1970,
+      "start": 697.61,
+      "end": 700.97,
+      "text": "But yeah, that was a time when the internet was very geeky and difficult to use."
+    },
+    {
+      "id": 162,
+      "start_word": 1970,
+      "end_word": 1976,
+      "start": 701.15,
+      "end": 702.37,
+      "text": "And it was new to everyone."
+    },
+    {
+      "id": 163,
+      "start_word": 1976,
+      "end_word": 1987,
+      "start": 702.59,
+      "end": 705.89,
+      "text": "So it made sense why people just weren't quite ready yet."
+    },
+    {
+      "id": 164,
+      "start_word": 1987,
+      "end_word": 2007,
+      "start": 705.89,
+      "end": 712.05,
+      "text": "And he kept trying to sell internet access to others and finally got some customers near the end of 1994."
+    },
+    {
+      "id": 165,
+      "start_word": 2007,
+      "end_word": 2025,
+      "start": 712.89,
+      "end": 720.55,
+      "text": "So one of the first organizations that I got online was called the New York Civil Liberties Union,"
+    },
+    {
+      "id": 166,
+      "start_word": 2025,
+      "end_word": 2034,
+      "start": 721.21,
+      "end": 724.17,
+      "text": "which is the New York branch of the ACLU."
+    },
+    {
+      "id": 167,
+      "start_word": 2034,
+      "end_word": 2044,
+      "start": 726.01,
+      "end": 729.27,
+      "text": "And you know, they were pretty prominent in New York."
+    },
+    {
+      "id": 168,
+      "start_word": 2044,
+      "end_word": 2052,
+      "start": 729.31,
+      "end": 731.01,
+      "text": "You always heard about them on the news."
+    },
+    {
+      "id": 169,
+      "start_word": 2052,
+      "end_word": 2062,
+      "start": 731.83,
+      "end": 734.33,
+      "text": "They were protecting people's rights, all that kind of stuff."
+    },
+    {
+      "id": 170,
+      "start_word": 2062,
+      "end_word": 2068,
+      "start": 735.03,
+      "end": 736.69,
+      "text": "From there, the ball kept rolling."
+    },
+    {
+      "id": 171,
+      "start_word": 2068,
+      "end_word": 2073,
+      "start": 736.97,
+      "end": 737.93,
+      "text": "Word of mouth was spreading."
+    },
+    {
+      "id": 172,
+      "start_word": 2073,
+      "end_word": 2082,
+      "start": 738.07,
+      "end": 740.31,
+      "text": "And Nick's ISP was gaining more and more customers."
+    },
+    {
+      "id": 173,
+      "start_word": 2082,
+      "end_word": 2106,
+      "start": 740.45,
+      "end": 746.27,
+      "text": "Within two years, he had outgrown his apartment and had to get a bigger place to hold all the modems and servers he needed."
+    },
+    {
+      "id": 174,
+      "start_word": 2106,
+      "end_word": 2134,
+      "start": 746.53,
+      "end": 757.89,
+      "text": "Over time, it kind of morphed or transitioned from like an end user access ISP to more of a hosting kind of an ISP and security consulting ISP."
+    },
+    {
+      "id": 175,
+      "start_word": 2134,
+      "end_word": 2147,
+      "start": 759.65,
+      "end": 765.73,
+      "text": "And by the early 2000s, I wasn't giving individuals the internet access anymore."
+    },
+    {
+      "id": 176,
+      "start_word": 2147,
+      "end_word": 2153,
+      "start": 765.91,
+      "end": 767.69,
+      "text": "And I didn't have modems anymore."
+    },
+    {
+      "id": 177,
+      "start_word": 2153,
+      "end_word": 2162,
+      "start": 768.67,
+      "end": 773.15,
+      "text": "I had like fiber optic lines and T3 connections"
+    },
+    {
+      "id": 178,
+      "start_word": 2162,
+      "end_word": 2170,
+      "start": 773.97,
+      "end": 778.05,
+      "text": "and I was hosting these big corporate clients."
+    },
+    {
+      "id": 179,
+      "start_word": 2170,
+      "end_word": 2179,
+      "start": 779.25,
+      "end": 780.57,
+      "text": "Can you name a few of these corporate clients?"
+    },
+    {
+      "id": 180,
+      "start_word": 2179,
+      "end_word": 2188,
+      "start": 781.31,
+      "end": 789.97,
+      "text": "Yeah, I had Mitsubishi Motors of America and Ikea"
+    },
+    {
+      "id": 181,
+      "start_word": 2188,
+      "end_word": 2192,
+      "start": 790.65,
+      "end": 792.63,
+      "text": "and Snapple, Iced T."
+    },
+    {
+      "id": 182,
+      "start_word": 2192,
+      "end_word": 2200,
+      "start": 792.65,
+      "end": 795.63,
+      "text": "Okay, because you're dealing with larger data links."
+    },
+    {
+      "id": 183,
+      "start_word": 2200,
+      "end_word": 2226,
+      "start": 796.01,
+      "end": 802.75,
+      "text": "And so bigger companies can afford it while the home user doesn't quite, I mean, it was $1 ,000 a month for a T3 back then,"
+    },
+    {
+      "id": 184,
+      "start_word": 2226,
+      "end_word": 2227,
+      "start": 803.53,
+      "end": 803.57,
+      "text": "right?"
+    },
+    {
+      "id": 185,
+      "start_word": 2227,
+      "end_word": 2238,
+      "start": 803.63,
+      "end": 806.39,
+      "text": "Oh, it was like 1 ,000 a month for a T1."
+    },
+    {
+      "id": 186,
+      "start_word": 2238,
+      "end_word": 2239,
+      "start": 806.41,
+      "end": 806.83,
+      "text": "Yeah."
+    },
+    {
+      "id": 187,
+      "start_word": 2239,
+      "end_word": 2260,
+      "start": 806.83,
+      "end": 812.89,
+      "text": "And that was 1 .5 megabits and a T3 for those who don't remember a T3 because this is ancient history."
+    },
+    {
+      "id": 188,
+      "start_word": 2260,
+      "end_word": 2267,
+      "start": 813.03,
+      "end": 815.25,
+      "text": "A T3 was 45 megabits per second."
+    },
+    {
+      "id": 189,
+      "start_word": 2267,
+      "end_word": 2268,
+      "start": 815.53,
+      "end": 815.91,
+      "text": "Yeah."
+    },
+    {
+      "id": 190,
+      "start_word": 2268,
+      "end_word": 2276,
+      "start": 815.91,
+      "end": 818.11,
+      "text": "And that was astronomically huge at the time."
+    },
+    {
+      "id": 191,
+      "start_word": 2276,
+      "end_word": 2321,
+      "start": 818.11,
+      "end": 829.47,
+      "text": "Yeah, he was selling huge data links at this point, a big businesses and not just connections to the internet, but he was also hosting their websites, which means he had a bunch of servers and a ton of bandwidth to keep their websites online."
+    },
+    {
+      "id": 192,
+      "start_word": 2321,
+      "end_word": 2344,
+      "start": 830.13,
+      "end": 835.99,
+      "text": "But deep down in my heart, I was still trying to work with people that were trying to create change in the world."
+    },
+    {
+      "id": 193,
+      "start_word": 2344,
+      "end_word": 2370,
+      "start": 836.19,
+      "end": 846.57,
+      "text": "And so I had all kinds of pro bono clients that I charged either nothing or some token amount like $20 or something, hosting their websites."
+    },
+    {
+      "id": 194,
+      "start_word": 2370,
+      "end_word": 2373,
+      "start": 846.57,
+      "end": 847.61,
+      "text": "And I still,"
+    },
+    {
+      "id": 195,
+      "start_word": 2373,
+      "end_word": 2386,
+      "start": 848.45,
+      "end": 852.63,
+      "text": "and NYCLU is still kind of a client of mine at that time."
+    },
+    {
+      "id": 196,
+      "start_word": 2386,
+      "end_word": 2399,
+      "start": 853.01,
+      "end": 856.49,
+      "text": "This ISP of his kept growing and things were looking better than ever."
+    },
+    {
+      "id": 197,
+      "start_word": 2399,
+      "end_word": 2407,
+      "start": 856.71,
+      "end": 858.95,
+      "text": "He had over 100 clients at this point."
+    },
+    {
+      "id": 198,
+      "start_word": 2407,
+      "end_word": 2436,
+      "start": 859.27,
+      "end": 868.79,
+      "text": "You know, I started working with these advertising agencies that had those big clients and they brought me one and then two and then three and four and five."
+    },
+    {
+      "id": 199,
+      "start_word": 2436,
+      "end_word": 2462,
+      "start": 869.29,
+      "end": 880.17,
+      "text": "And pretty soon I had another advertising agency and then I was hosting the Amtrak site and all these other sites and they were really big."
+    },
+    {
+      "id": 200,
+      "start_word": 2462,
+      "end_word": 2469,
+      "start": 881.45,
+      "end": 883.35,
+      "text": "So yeah, things were going really well"
+    },
+    {
+      "id": 201,
+      "start_word": 2469,
+      "end_word": 2478,
+      "start": 884.67,
+      "end": 887.85,
+      "text": "until one day I got a weird phone call."
+    },
+    {
+      "id": 202,
+      "start_word": 2478,
+      "end_word": 2486,
+      "start": 888.63,
+      "end": 892.45,
+      "text": "This was the phone call that changed everything."
+    },
+    {
+      "id": 203,
+      "start_word": 2486,
+      "end_word": 2513,
+      "start": 892.83,
+      "end": 902.07,
+      "text": "It changed his whole trajectory in life and it would tie him up for the next decade or more and turned him into a whole new person."
+    },
+    {
+      "id": 204,
+      "start_word": 2513,
+      "end_word": 2529,
+      "start": 902.45,
+      "end": 907.31,
+      "text": "One day the phone rings and a person on the other end of the line says,"
+    },
+    {
+      "id": 205,
+      "start_word": 2529,
+      "end_word": 2534,
+      "start": 907.91,
+      "end": 909.55,
+      "text": "I'm calling from the FBI"
+    },
+    {
+      "id": 206,
+      "start_word": 2534,
+      "end_word": 2573,
+      "start": 910.15,
+      "end": 924.15,
+      "text": "and we have a letter for you and I said something like, you know, I thought about it for like a second and I wasn't even sure that it was for real and I didn't really quite believe it."
+    },
+    {
+      "id": 207,
+      "start_word": 2573,
+      "end_word": 2579,
+      "start": 924.39,
+      "end": 926.01,
+      "text": "So I said, okay, cool, thanks."
+    },
+    {
+      "id": 208,
+      "start_word": 2579,
+      "end_word": 2590,
+      "start": 926.59,
+      "end": 930.49,
+      "text": "And then we hung up the call and that was it."
+    },
+    {
+      "id": 209,
+      "start_word": 2590,
+      "end_word": 2615,
+      "start": 932.53,
+      "end": 940.49,
+      "text": "And you know, where my office was in lower Manhattan where all the federal buildings are and where all the courts are in lower Manhattan."
+    },
+    {
+      "id": 210,
+      "start_word": 2615,
+      "end_word": 2632,
+      "start": 941.83,
+      "end": 947.71,
+      "text": "And so I hung up the call from the supposed FBI person who I didn't really believe"
+    },
+    {
+      "id": 211,
+      "start_word": 2632,
+      "end_word": 2639,
+      "start": 948.33,
+      "end": 950.19,
+      "text": "and I just went back to work."
+    },
+    {
+      "id": 212,
+      "start_word": 2639,
+      "end_word": 2652,
+      "start": 950.61,
+      "end": 954.83,
+      "text": "And within less than an hour, there was a knock on the door."
+    },
+    {
+      "id": 213,
+      "start_word": 2652,
+      "end_word": 2675,
+      "start": 954.83,
+      "end": 961.59,
+      "text": "It was like, and it was like the most official police knock who was like, you know, like that kind of a thing."
+    },
+    {
+      "id": 214,
+      "start_word": 2675,
+      "end_word": 2716,
+      "start": 962.91,
+      "end": 981.25,
+      "text": "And I go to the door and here's this person that looks like the most classic FBI agent from like central casting like, you know, gray hair side part some kind of gel hair product, like 10 trench coat, like shiny"
+    },
+    {
+      "id": 215,
+      "start_word": 2716,
+      "end_word": 2724,
+      "start": 981.25,
+      "end": 985.25,
+      "text": "black patent leather shoes, you know, suit everything."
+    },
+    {
+      "id": 216,
+      "start_word": 2724,
+      "end_word": 2747,
+      "start": 986.55,
+      "end": 992.63,
+      "text": "And it was just so obvious like who it was when I opened the door because I didn't usually see people like that."
+    },
+    {
+      "id": 217,
+      "start_word": 2747,
+      "end_word": 2771,
+      "start": 993.43,
+      "end": 1002.75,
+      "text": "And this guy came inside and reached into his inner pocket of his coat and pulled out an envelope and gave it to me."
+    },
+    {
+      "id": 218,
+      "start_word": 2771,
+      "end_word": 2779,
+      "start": 1002.83,
+      "end": 1004.75,
+      "text": "He said, here I have this for you."
+    },
+    {
+      "id": 219,
+      "start_word": 2779,
+      "end_word": 2795,
+      "start": 1005.05,
+      "end": 1011.81,
+      "text": "And so I in front of him, I, you know, I was instantly was like intrigue."
+    },
+    {
+      "id": 220,
+      "start_word": 2795,
+      "end_word": 2809,
+      "start": 1011.81,
+      "end": 1018.49,
+      "text": "I opened the envelope and I opened this letter and I quickly skimmed it."
+    },
+    {
+      "id": 221,
+      "start_word": 2809,
+      "end_word": 2844,
+      "start": 1020.53,
+      "end": 1034.69,
+      "text": "And it basically said that the FBI wanted all this information from me about one of the clients of the company and that I was never to tell any person that they had approached me."
+    },
+    {
+      "id": 222,
+      "start_word": 2844,
+      "end_word": 2875,
+      "start": 1035.99,
+      "end": 1047.75,
+      "text": "And then the entire second or third page was just a long bullet point list of all the types of data that they were demanding that I hand over to them."
+    },
+    {
+      "id": 223,
+      "start_word": 2875,
+      "end_word": 2897,
+      "start": 1050.77,
+      "end": 1058.91,
+      "text": "And at the end of the letter, there was a signature and it said that it was an attorney from the FBI."
+    },
+    {
+      "id": 224,
+      "start_word": 2897,
+      "end_word": 2904,
+      "start": 1059.01,
+      "end": 1061.07,
+      "text": "That was what the signature was from."
+    },
+    {
+      "id": 225,
+      "start_word": 2904,
+      "end_word": 2921,
+      "start": 1061.99,
+      "end": 1068.79,
+      "text": "And so thinking back to all the constitutional law stuff I learned about and the fourth amendment"
+    },
+    {
+      "id": 226,
+      "start_word": 2921,
+      "end_word": 2935,
+      "start": 1069.41,
+      "end": 1074.33,
+      "text": "and what it requires us to do a search and a seizure of documents."
+    },
+    {
+      "id": 227,
+      "start_word": 2935,
+      "end_word": 2939,
+      "start": 1075.75,
+      "end": 1076.31,
+      "text": "I thought to myself,"
+    },
+    {
+      "id": 228,
+      "start_word": 2939,
+      "end_word": 2954,
+      "start": 1076.95,
+      "end": 1080.55,
+      "text": "well, where is there's no stamp on this from a court, there's no judge's signature."
+    },
+    {
+      "id": 229,
+      "start_word": 2954,
+      "end_word": 2961,
+      "start": 1080.85,
+      "end": 1083.23,
+      "text": "This isn't being issued by a court."
+    },
+    {
+      "id": 230,
+      "start_word": 2961,
+      "end_word": 2969,
+      "start": 1083.27,
+      "end": 1085.23,
+      "text": "This is just coming directly from the FBI."
+    },
+    {
+      "id": 231,
+      "start_word": 2969,
+      "end_word": 3002,
+      "start": 1087.8,
+      "end": 1098.3,
+      "text": "He got a letter from the FBI, which was asking him to give them data about one of his customers and all they gave him was an email address that the customer had."
+    },
+    {
+      "id": 232,
+      "start_word": 3002,
+      "end_word": 3024,
+      "start": 1098.94,
+      "end": 1106.44,
+      "text": "And this was someone Nick knew personally and he found it really surprising that this person was under investigation, he knew them."
+    },
+    {
+      "id": 233,
+      "start_word": 3024,
+      "end_word": 3043,
+      "start": 1106.62,
+      "end": 1110.8,
+      "text": "And he thought there was no way they committed some sort of crime that the FBI would be investigating."
+    },
+    {
+      "id": 234,
+      "start_word": 3043,
+      "end_word": 3056,
+      "start": 1111.48,
+      "end": 1116.98,
+      "text": "But the letter said you cannot tell anyone about this request or letter,"
+    },
+    {
+      "id": 235,
+      "start_word": 3056,
+      "end_word": 3057,
+      "start": 1118.18,
+      "end": 1118.36,
+      "text": "anyone."
+    },
+    {
+      "id": 236,
+      "start_word": 3057,
+      "end_word": 3061,
+      "start": 1119.98,
+      "end": 1121.2,
+      "text": "Is this right though?"
+    },
+    {
+      "id": 237,
+      "start_word": 3061,
+      "end_word": 3078,
+      "start": 1121.42,
+      "end": 1127.02,
+      "text": "Can the FBI just ask for data without a warrant or a sign off from a judge?"
+    },
+    {
+      "id": 238,
+      "start_word": 3078,
+      "end_word": 3102,
+      "start": 1127.02,
+      "end": 1134.0,
+      "text": "The fourth amendment says we have the right to privacy and the government needs to have a warrant in order to conduct a search."
+    },
+    {
+      "id": 239,
+      "start_word": 3102,
+      "end_word": 3110,
+      "start": 1134.28,
+      "end": 1136.72,
+      "text": "So this all felt very strange to Nick."
+    },
+    {
+      "id": 240,
+      "start_word": 3110,
+      "end_word": 3148,
+      "start": 1137.22,
+      "end": 1145.8,
+      "text": "I think I paused when I got to the part on the first page when I said I could never tell anyone and I said to him, well, what about my lawyer and what about my business partners?"
+    },
+    {
+      "id": 241,
+      "start_word": 3148,
+      "end_word": 3150,
+      "start": 1147.26,
+      "end": 1148.26,
+      "text": "And he,"
+    },
+    {
+      "id": 242,
+      "start_word": 3150,
+      "end_word": 3165,
+      "start": 1149.54,
+      "end": 1154.14,
+      "text": "in my memory, he must have been over 60, he was not a young God."
+    },
+    {
+      "id": 243,
+      "start_word": 3165,
+      "end_word": 3172,
+      "start": 1154.82,
+      "end": 1157.86,
+      "text": "And he seemed pretty senior to me."
+    },
+    {
+      "id": 244,
+      "start_word": 3172,
+      "end_word": 3178,
+      "start": 1157.94,
+      "end": 1159.7,
+      "text": "It wasn't like a messenger boy."
+    },
+    {
+      "id": 245,
+      "start_word": 3178,
+      "end_word": 3184,
+      "start": 1160.82,
+      "end": 1162.24,
+      "text": "And he said, I don't know."
+    },
+    {
+      "id": 246,
+      "start_word": 3184,
+      "end_word": 3191,
+      "start": 1162.26,
+      "end": 1163.82,
+      "text": "I'm just here to deliver this letter."
+    },
+    {
+      "id": 247,
+      "start_word": 3191,
+      "end_word": 3197,
+      "start": 1163.82,
+      "end": 1165.6,
+      "text": "I can't really answer your questions."
+    },
+    {
+      "id": 248,
+      "start_word": 3197,
+      "end_word": 3216,
+      "start": 1166.58,
+      "end": 1172.22,
+      "text": "And so he just kind of gave me the stiff arm and refused to engage or tell me anything."
+    },
+    {
+      "id": 249,
+      "start_word": 3216,
+      "end_word": 3228,
+      "start": 1173.36,
+      "end": 1177.46,
+      "text": "And so I just sort of took that for what it was"
+    },
+    {
+      "id": 250,
+      "start_word": 3228,
+      "end_word": 3247,
+      "start": 1178.48,
+      "end": 1184.6,
+      "text": "and I think I asked to see his ID and he pulled out a wallet, which was really big."
+    },
+    {
+      "id": 251,
+      "start_word": 3247,
+      "end_word": 3263,
+      "start": 1184.86,
+      "end": 1189.16,
+      "text": "It was like, it almost was like a checkbook and he opened it up and ended."
+    },
+    {
+      "id": 252,
+      "start_word": 3263,
+      "end_word": 3270,
+      "start": 1189.3,
+      "end": 1192.38,
+      "text": "He had this very elaborate FBI ID."
+    },
+    {
+      "id": 253,
+      "start_word": 3270,
+      "end_word": 3280,
+      "start": 1192.48,
+      "end": 1194.82,
+      "text": "And so I understood that he was the real deal"
+    },
+    {
+      "id": 254,
+      "start_word": 3280,
+      "end_word": 3286,
+      "start": 1196.3,
+      "end": 1198.24,
+      "text": "and that was it he left."
+    },
+    {
+      "id": 255,
+      "start_word": 3286,
+      "end_word": 3290,
+      "start": 1199.46,
+      "end": 1200.36,
+      "text": "What is this nonsense?"
+    },
+    {
+      "id": 256,
+      "start_word": 3290,
+      "end_word": 3305,
+      "start": 1200.58,
+      "end": 1204.54,
+      "text": "You can't tell anyone you got this letter, not even your lawyer or business partner."
+    },
+    {
+      "id": 257,
+      "start_word": 3305,
+      "end_word": 3312,
+      "start": 1204.9,
+      "end": 1207.12,
+      "text": "Can you imagine getting such a letter?"
+    },
+    {
+      "id": 258,
+      "start_word": 3312,
+      "end_word": 3329,
+      "start": 1207.5,
+      "end": 1212.54,
+      "text": "Like, shh, secret FBI stuff, send us over your data and don't tell anybody we were here."
+    },
+    {
+      "id": 259,
+      "start_word": 3329,
+      "end_word": 3349,
+      "start": 1213.1,
+      "end": 1219.24,
+      "text": "No explanation of what crime this customer did or what's being investigated or any reason why they want the data."
+    },
+    {
+      "id": 260,
+      "start_word": 3349,
+      "end_word": 3355,
+      "start": 1219.8,
+      "end": 1220.78,
+      "text": "So I'm left with this letter"
+    },
+    {
+      "id": 261,
+      "start_word": 3355,
+      "end_word": 3379,
+      "start": 1222.28,
+      "end": 1231.7,
+      "text": "and the letter has a whole kind of preamble which explains the basis and the authority under which they're asking me for this information."
+    },
+    {
+      "id": 262,
+      "start_word": 3379,
+      "end_word": 3388,
+      "start": 1233.34,
+      "end": 1236.3,
+      "text": "And I remember that it cited two different things."
+    },
+    {
+      "id": 263,
+      "start_word": 3388,
+      "end_word": 3399,
+      "start": 1236.3,
+      "end": 1240.46,
+      "text": "It cited, and I can remember it by heart even today."
+    },
+    {
+      "id": 264,
+      "start_word": 3399,
+      "end_word": 3408,
+      "start": 1241.6,
+      "end": 1246.56,
+      "text": "It cited executive order one, two, three, three, three."
+    },
+    {
+      "id": 265,
+      "start_word": 3408,
+      "end_word": 3417,
+      "start": 1247.4,
+      "end": 1252.86,
+      "text": "And it cited Title 18 US Code Section 2709."
+    },
+    {
+      "id": 266,
+      "start_word": 3417,
+      "end_word": 3424,
+      "start": 1254.66,
+      "end": 1256.88,
+      "text": "And I was like, well, what's that?"
+    },
+    {
+      "id": 267,
+      "start_word": 3424,
+      "end_word": 3433,
+      "start": 1257.06,
+      "end": 1259.58,
+      "text": "You know, I took one semester of constitutional law."
+    },
+    {
+      "id": 268,
+      "start_word": 3433,
+      "end_word": 3442,
+      "start": 1259.66,
+      "end": 1262.06,
+      "text": "I wasn't really familiar with the entire federal code."
+    },
+    {
+      "id": 269,
+      "start_word": 3442,
+      "end_word": 3451,
+      "start": 1262.06,
+      "end": 1264.74,
+      "text": "I had never really read all the executive orders."
+    },
+    {
+      "id": 270,
+      "start_word": 3451,
+      "end_word": 3470,
+      "start": 1264.74,
+      "end": 1270.82,
+      "text": "So I decided to try to figure out what this was about because it was pretty confusing to me."
+    },
+    {
+      "id": 271,
+      "start_word": 3470,
+      "end_word": 3480,
+      "start": 1271.24,
+      "end": 1273.74,
+      "text": "So I started to do a little bit of research"
+    },
+    {
+      "id": 272,
+      "start_word": 3480,
+      "end_word": 3494,
+      "start": 1274.44,
+      "end": 1281.66,
+      "text": "on the two sightings in the letter, the executive order and the federal code."
+    },
+    {
+      "id": 273,
+      "start_word": 3494,
+      "end_word": 3511,
+      "start": 1282.3,
+      "end": 1289.72,
+      "text": "And one thing that I figured out was that Section 2709 is the national security letter provision."
+    },
+    {
+      "id": 274,
+      "start_word": 3511,
+      "end_word": 3521,
+      "start": 1290.6,
+      "end": 1296.94,
+      "text": "But it had been amended multiple times over the years."
+    },
+    {
+      "id": 275,
+      "start_word": 3521,
+      "end_word": 3533,
+      "start": 1297.26,
+      "end": 1301.9,
+      "text": "And the last time it was amended was under the Patriot Act."
+    },
+    {
+      "id": 276,
+      "start_word": 3533,
+      "end_word": 3574,
+      "start": 1302.42,
+      "end": 1319.46,
+      "text": "And so amendments, if you ever read them in Congress when they pass laws, they'll say in Section 2709, after the third paragraph insert these two or three more paragraphs that now, you know, add additional meaning or things like that."
+    },
+    {
+      "id": 277,
+      "start_word": 3574,
+      "end_word": 3609,
+      "start": 1319.46,
+      "end": 1330.68,
+      "text": "And so I started to understand that in order to really grasp the meaning of Section 2709, you'd have to read all the different amendments that had ever happened and then piece it all together."
+    },
+    {
+      "id": 278,
+      "start_word": 3609,
+      "end_word": 3620,
+      "start": 1332.46,
+      "end": 1335.22,
+      "text": "And you'd probably really need to go to a law library."
+    },
+    {
+      "id": 279,
+      "start_word": 3620,
+      "end_word": 3629,
+      "start": 1335.34,
+      "end": 1337.14,
+      "text": "And I didn't know how to do that research."
+    },
+    {
+      "id": 280,
+      "start_word": 3629,
+      "end_word": 3653,
+      "start": 1338.12,
+      "end": 1347.68,
+      "text": "And the executive order, there was some information about it, but not enough for me to truly understand what it implied, what it meant."
+    },
+    {
+      "id": 281,
+      "start_word": 3653,
+      "end_word": 3661,
+      "start": 1348.86,
+      "end": 1352.06,
+      "text": "And I felt really stuck at that point."
+    },
+    {
+      "id": 282,
+      "start_word": 3661,
+      "end_word": 3666,
+      "start": 1354.05,
+      "end": 1354.79,
+      "text": "Yeah, I would be too."
+    },
+    {
+      "id": 283,
+      "start_word": 3666,
+      "end_word": 3684,
+      "start": 1354.89,
+      "end": 1360.13,
+      "text": "The Patriot Act was passed after two planes flew into buildings in New York City on 9 -11."
+    },
+    {
+      "id": 284,
+      "start_word": 3684,
+      "end_word": 3692,
+      "start": 1360.81,
+      "end": 1363.61,
+      "text": "It was passed to try to stop terrorism."
+    },
+    {
+      "id": 285,
+      "start_word": 3692,
+      "end_word": 3705,
+      "start": 1364.25,
+      "end": 1367.83,
+      "text": "And it granted the authority for the FBI to conduct searches without awards."
+    },
+    {
+      "id": 286,
+      "start_word": 3705,
+      "end_word": 3714,
+      "start": 1368.61,
+      "end": 1372.67,
+      "text": "But was the FBI investigating a terrorist plot here?"
+    },
+    {
+      "id": 287,
+      "start_word": 3714,
+      "end_word": 3723,
+      "start": 1372.89,
+      "end": 1375.39,
+      "text": "Were they using this power as it was intended?"
+    },
+    {
+      "id": 288,
+      "start_word": 3723,
+      "end_word": 3746,
+      "start": 1376.09,
+      "end": 1383.63,
+      "text": "Nobody had ever seen these letters before because any time they were sent to someone, that person wasn't allowed to tell anyone else."
+    },
+    {
+      "id": 289,
+      "start_word": 3746,
+      "end_word": 3756,
+      "start": 1383.83,
+      "end": 1387.03,
+      "text": "So these letters were entirely out of the public eye."
+    },
+    {
+      "id": 290,
+      "start_word": 3756,
+      "end_word": 3776,
+      "start": 1387.37,
+      "end": 1392.89,
+      "text": "And the only people who knew they existed was the FBI and the people that the FBI gave it to."
+    },
+    {
+      "id": 291,
+      "start_word": 3776,
+      "end_word": 3786,
+      "start": 1393.19,
+      "end": 1397.79,
+      "text": "The letter is called a national security letter or NSL."
+    },
+    {
+      "id": 292,
+      "start_word": 3786,
+      "end_word": 3793,
+      "start": 1398.11,
+      "end": 1400.09,
+      "text": "And I think if I recall back,"
+    },
+    {
+      "id": 293,
+      "start_word": 3793,
+      "end_word": 3807,
+      "start": 1401.25,
+      "end": 1406.87,
+      "text": "it may have been dated like several days before when I actually got it."
+    },
+    {
+      "id": 294,
+      "start_word": 3807,
+      "end_word": 3820,
+      "start": 1406.87,
+      "end": 1410.83,
+      "text": "So that's sort of to me implied that it wasn't super time sensitive."
+    },
+    {
+      "id": 295,
+      "start_word": 3820,
+      "end_word": 3833,
+      "start": 1411.79,
+      "end": 1415.57,
+      "text": "It wasn't like a nuclear bomb is gonna go off in 10 minutes."
+    },
+    {
+      "id": 296,
+      "start_word": 3833,
+      "end_word": 3842,
+      "start": 1415.71,
+      "end": 1417.53,
+      "text": "You better do this or we're all gonna die."
+    },
+    {
+      "id": 297,
+      "start_word": 3842,
+      "end_word": 3852,
+      "start": 1417.71,
+      "end": 1421.15,
+      "text": "It was more like they weren't in such a hurry."
+    },
+    {
+      "id": 298,
+      "start_word": 3852,
+      "end_word": 3867,
+      "start": 1421.37,
+      "end": 1424.43,
+      "text": "Like I think that it was dated like a week before they actually showed up."
+    },
+    {
+      "id": 299,
+      "start_word": 3867,
+      "end_word": 3872,
+      "start": 1424.59,
+      "end": 1425.85,
+      "text": "So I was like, okay."
+    },
+    {
+      "id": 300,
+      "start_word": 3872,
+      "end_word": 3882,
+      "start": 1426.25,
+      "end": 1428.05,
+      "text": "So he sat down and looked at the letter closer."
+    },
+    {
+      "id": 301,
+      "start_word": 3882,
+      "end_word": 3893,
+      "start": 1428.45,
+      "end": 1432.75,
+      "text": "Under his interpretation, this letter violated three of his constitutional rights."
+    },
+    {
+      "id": 302,
+      "start_word": 3893,
+      "end_word": 3902,
+      "start": 1433.05,
+      "end": 1435.35,
+      "text": "The first amendment is your right to free speech."
+    },
+    {
+      "id": 303,
+      "start_word": 3902,
+      "end_word": 3907,
+      "start": 1435.35,
+      "end": 1437.41,
+      "text": "This letter suppressed his speech."
+    },
+    {
+      "id": 304,
+      "start_word": 3907,
+      "end_word": 3915,
+      "start": 1437.63,
+      "end": 1439.41,
+      "text": "He wasn't allowed to talk about this letter."
+    },
+    {
+      "id": 305,
+      "start_word": 3915,
+      "end_word": 3929,
+      "start": 1440.07,
+      "end": 1443.19,
+      "text": "The fourth amendment is your right to privacy unless the government has a warrant."
+    },
+    {
+      "id": 306,
+      "start_word": 3929,
+      "end_word": 3934,
+      "start": 1443.63,
+      "end": 1444.61,
+      "text": "And there was no warrant."
+    },
+    {
+      "id": 307,
+      "start_word": 3934,
+      "end_word": 3960,
+      "start": 1444.81,
+      "end": 1452.01,
+      "text": "Just a letter that came off some random printer in the FBI's office, he thought if he can't tell anyone and that includes telling a lawyer."
+    },
+    {
+      "id": 308,
+      "start_word": 3960,
+      "end_word": 3979,
+      "start": 1452.41,
+      "end": 1457.15,
+      "text": "And if the government is restricting your right to get a lawyer, then that would violate the fifth amendment."
+    },
+    {
+      "id": 309,
+      "start_word": 3979,
+      "end_word": 3998,
+      "start": 1457.77,
+      "end": 1461.91,
+      "text": "Remember the Miranda rights that the cops have to tell you that you have a right to a lawyer."
+    },
+    {
+      "id": 310,
+      "start_word": 3998,
+      "end_word": 4005,
+      "start": 1461.95,
+      "end": 1463.31,
+      "text": "That comes out of the fifth amendment."
+    },
+    {
+      "id": 311,
+      "start_word": 4005,
+      "end_word": 4016,
+      "start": 1463.31,
+      "end": 1466.73,
+      "text": "Was this letter saying he has no right to a lawyer?"
+    },
+    {
+      "id": 312,
+      "start_word": 4016,
+      "end_word": 4027,
+      "start": 1467.49,
+      "end": 1471.05,
+      "text": "It's really tricky because he wasn't being charged for a crime."
+    },
+    {
+      "id": 313,
+      "start_word": 4027,
+      "end_word": 4039,
+      "start": 1471.53,
+      "end": 1474.55,
+      "text": "He was more of a witness and not even to a crime."
+    },
+    {
+      "id": 314,
+      "start_word": 4039,
+      "end_word": 4049,
+      "start": 1474.61,
+      "end": 1478.41,
+      "text": "But just to someone who the FBI was interested in."
+    },
+    {
+      "id": 315,
+      "start_word": 4049,
+      "end_word": 4061,
+      "start": 1478.65,
+      "end": 1482.07,
+      "text": "And so eventually I thought about it and I thought about it."
+    },
+    {
+      "id": 316,
+      "start_word": 4061,
+      "end_word": 4073,
+      "start": 1482.47,
+      "end": 1486.45,
+      "text": "And I think the first big light bulb over my head moment"
+    },
+    {
+      "id": 317,
+      "start_word": 4073,
+      "end_word": 4083,
+      "start": 1488.25,
+      "end": 1492.17,
+      "text": "was the letter commanded me to never tell any person."
+    },
+    {
+      "id": 318,
+      "start_word": 4083,
+      "end_word": 4102,
+      "start": 1492.69,
+      "end": 1497.31,
+      "text": "But I was like, whatever I can still talk to a lawyer, they can't tell me that I can't."
+    },
+    {
+      "id": 319,
+      "start_word": 4102,
+      "end_word": 4118,
+      "start": 1497.41,
+      "end": 1502.17,
+      "text": "I mean, that part I was very clear on from all the law I had studied,"
+    },
+    {
+      "id": 320,
+      "start_word": 4118,
+      "end_word": 4129,
+      "start": 1502.83,
+      "end": 1505.13,
+      "text": "there's no such thing as denying you the right to counsel."
+    },
+    {
+      "id": 321,
+      "start_word": 4129,
+      "end_word": 4156,
+      "start": 1506.75,
+      "end": 1515.03,
+      "text": "And so I think what helped me also is that the lawyer that I used at the time before he was a lawyer, he was my friend."
+    },
+    {
+      "id": 322,
+      "start_word": 4156,
+      "end_word": 4171,
+      "start": 1515.57,
+      "end": 1519.55,
+      "text": "And I knew him really well for a long time, for a bunch of years."
+    },
+    {
+      "id": 323,
+      "start_word": 4171,
+      "end_word": 4188,
+      "start": 1520.07,
+      "end": 1526.01,
+      "text": "And so I reached out to him and I asked if we could just meet in person."
+    },
+    {
+      "id": 324,
+      "start_word": 4188,
+      "end_word": 4201,
+      "start": 1527.21,
+      "end": 1530.27,
+      "text": "And when I met with him in person, I showed him this letter."
+    },
+    {
+      "id": 325,
+      "start_word": 4201,
+      "end_word": 4211,
+      "start": 1531.25,
+      "end": 1534.01,
+      "text": "And I said, hey, you know, I'm not a lawyer."
+    },
+    {
+      "id": 326,
+      "start_word": 4211,
+      "end_word": 4227,
+      "start": 1535.43,
+      "end": 1540.55,
+      "text": "But my understanding of how search and seizure works is you have to go to court."
+    },
+    {
+      "id": 327,
+      "start_word": 4227,
+      "end_word": 4233,
+      "start": 1541.19,
+      "end": 1542.81,
+      "text": "And they haven't gone to court."
+    },
+    {
+      "id": 328,
+      "start_word": 4233,
+      "end_word": 4252,
+      "start": 1543.13,
+      "end": 1548.95,
+      "text": "They're telling me I can never tell anyone, but here I am telling you and what's this all about?"
+    },
+    {
+      "id": 329,
+      "start_word": 4252,
+      "end_word": 4262,
+      "start": 1548.95,
+      "end": 1553.85,
+      "text": "And my lawyer said, you know, I agree with you."
+    },
+    {
+      "id": 330,
+      "start_word": 4262,
+      "end_word": 4266,
+      "start": 1554.19,
+      "end": 1555.49,
+      "text": "This doesn't seem right."
+    },
+    {
+      "id": 331,
+      "start_word": 4266,
+      "end_word": 4270,
+      "start": 1555.51,
+      "end": 1556.87,
+      "text": "This doesn't seem legal."
+    },
+    {
+      "id": 332,
+      "start_word": 4270,
+      "end_word": 4286,
+      "start": 1557.69,
+      "end": 1561.87,
+      "text": "But he kind of demerit and said something like, you know, I'm like a business lawyer."
+    },
+    {
+      "id": 333,
+      "start_word": 4286,
+      "end_word": 4298,
+      "start": 1562.15,
+      "end": 1566.21,
+      "text": "I do leases and I do business contracts and this and that."
+    },
+    {
+      "id": 334,
+      "start_word": 4298,
+      "end_word": 4305,
+      "start": 1566.37,
+      "end": 1570.07,
+      "text": "And I'm not a constitutional rights attorney."
+    },
+    {
+      "id": 335,
+      "start_word": 4305,
+      "end_word": 4314,
+      "start": 1570.31,
+      "end": 1572.23,
+      "text": "And this is a bit over my pay grade."
+    },
+    {
+      "id": 336,
+      "start_word": 4314,
+      "end_word": 4332,
+      "start": 1572.53,
+      "end": 1578.01,
+      "text": "So I think we should seek a little bit more expert opinions on what to do about this."
+    },
+    {
+      "id": 337,
+      "start_word": 4332,
+      "end_word": 4357,
+      "start": 1578.01,
+      "end": 1584.11,
+      "text": "And I said to him, well, one cool thing is that the New York Civil Liberties Union are my client and I host their website."
+    },
+    {
+      "id": 338,
+      "start_word": 4357,
+      "end_word": 4363,
+      "start": 1585.09,
+      "end": 1586.65,
+      "text": "So maybe we can call them."
+    },
+    {
+      "id": 339,
+      "start_word": 4363,
+      "end_word": 4369,
+      "start": 1586.65,
+      "end": 1587.67,
+      "text": "And he was like, yeah, perfect."
+    },
+    {
+      "id": 340,
+      "start_word": 4369,
+      "end_word": 4372,
+      "start": 1587.73,
+      "end": 1588.61,
+      "text": "Let's call them."
+    },
+    {
+      "id": 341,
+      "start_word": 4372,
+      "end_word": 4393,
+      "start": 1589.57,
+      "end": 1596.63,
+      "text": "So he and I sat there and we picked up the phone and we called the New York Civil Liberties Union."
+    },
+    {
+      "id": 342,
+      "start_word": 4393,
+      "end_word": 4400,
+      "start": 1598.31,
+      "end": 1601.09,
+      "text": "And because they knew who I was,"
+    },
+    {
+      "id": 343,
+      "start_word": 4400,
+      "end_word": 4451,
+      "start": 1601.83,
+      "end": 1614.71,
+      "text": "right on that first phone call, instead of them just taking down a memo and putting it on a stack of, you know, all the people that had called in that day on that first phone call, I got put on the phone with a legal director of the NYC OU."
+    },
+    {
+      "id": 344,
+      "start_word": 4451,
+      "end_word": 4463,
+      "start": 1616.61,
+      "end": 1621.35,
+      "text": "And once we kind of described that I had received this letter"
+    },
+    {
+      "id": 345,
+      "start_word": 4463,
+      "end_word": 4471,
+      "start": 1621.99,
+      "end": 1625.51,
+      "text": "and the vague outline of what it said,"
+    },
+    {
+      "id": 346,
+      "start_word": 4471,
+      "end_word": 4490,
+      "start": 1626.41,
+      "end": 1632.97,
+      "text": "I was told to get an attack seat right now, go to their office immediately and bring the letter."
+    },
+    {
+      "id": 347,
+      "start_word": 4490,
+      "end_word": 4494,
+      "start": 1633.97,
+      "end": 1636.47,
+      "text": "And so I did."
+    },
+    {
+      "id": 348,
+      "start_word": 4494,
+      "end_word": 4502,
+      "start": 1637.87,
+      "end": 1640.19,
+      "text": "He was very nervous on the right there."
+    },
+    {
+      "id": 349,
+      "start_word": 4502,
+      "end_word": 4510,
+      "start": 1640.61,
+      "end": 1642.45,
+      "text": "The tone of all this was very serious."
+    },
+    {
+      "id": 350,
+      "start_word": 4510,
+      "end_word": 4526,
+      "start": 1642.53,
+      "end": 1646.95,
+      "text": "And he was wondering if he's doing the right thing or getting himself in serious trouble."
+    },
+    {
+      "id": 351,
+      "start_word": 4526,
+      "end_word": 4542,
+      "start": 1647.27,
+      "end": 1653.25,
+      "text": "When I got there, I met with a legal director who I had not met previously."
+    },
+    {
+      "id": 352,
+      "start_word": 4542,
+      "end_word": 4548,
+      "start": 1654.71,
+      "end": 1656.45,
+      "text": "And he looked at the letter."
+    },
+    {
+      "id": 353,
+      "start_word": 4548,
+      "end_word": 4552,
+      "start": 1656.53,
+      "end": 1657.51,
+      "text": "He read the letter."
+    },
+    {
+      "id": 354,
+      "start_word": 4552,
+      "end_word": 4584,
+      "start": 1658.15,
+      "end": 1667.03,
+      "text": "And then he asked me, would it be all right if he called in another one of his colleagues from the National ACLU who he said were just on the next floor?"
+    },
+    {
+      "id": 355,
+      "start_word": 4584,
+      "end_word": 4594,
+      "start": 1668.15,
+      "end": 1669.65,
+      "text": "And I said, I thought about it for a minute."
+    },
+    {
+      "id": 356,
+      "start_word": 4594,
+      "end_word": 4603,
+      "start": 1669.91,
+      "end": 1672.63,
+      "text": "I said, OK, but in my mind, I'm thinking,"
+    },
+    {
+      "id": 357,
+      "start_word": 4603,
+      "end_word": 4613,
+      "start": 1673.35,
+      "end": 1676.33,
+      "text": "OK, this letter said you can never tell any person."
+    },
+    {
+      "id": 358,
+      "start_word": 4613,
+      "end_word": 4625,
+      "start": 1676.71,
+      "end": 1680.27,
+      "text": "And so the first thing I did was I told my lawyer."
+    },
+    {
+      "id": 359,
+      "start_word": 4625,
+      "end_word": 4634,
+      "start": 1680.71,
+      "end": 1683.89,
+      "text": "And now he recommended that I tell another lawyer."
+    },
+    {
+      "id": 360,
+      "start_word": 4634,
+      "end_word": 4640,
+      "start": 1683.89,
+      "end": 1685.71,
+      "text": "So now I've broken it twice."
+    },
+    {
+      "id": 361,
+      "start_word": 4640,
+      "end_word": 4652,
+      "start": 1685.85,
+      "end": 1688.29,
+      "text": "And now he's asking if he can bring a third person in."
+    },
+    {
+      "id": 362,
+      "start_word": 4652,
+      "end_word": 4660,
+      "start": 1688.29,
+      "end": 1690.25,
+      "text": "And now I'm breaking it a third time."
+    },
+    {
+      "id": 363,
+      "start_word": 4660,
+      "end_word": 4684,
+      "start": 1691.75,
+      "end": 1697.89,
+      "text": "And in my mind, I'm just, he saw you back and forth between like, well, they can't tell me I can't have a lawyer."
+    },
+    {
+      "id": 364,
+      "start_word": 4684,
+      "end_word": 4691,
+      "start": 1699.25,
+      "end": 1702.55,
+      "text": "But at the same time, they're saying"
+    },
+    {
+      "id": 365,
+      "start_word": 4691,
+      "end_word": 4715,
+      "start": 1703.15,
+      "end": 1710.51,
+      "text": "that all the constitutional rights in habeas corpus and all that stuff doesn't matter anymore because we're at war and it's an existential danger."
+    },
+    {
+      "id": 366,
+      "start_word": 4715,
+      "end_word": 4731,
+      "start": 1711.53,
+      "end": 1715.19,
+      "text": "So I was just a little bit worried about what the ramifications of this would be."
+    },
+    {
+      "id": 367,
+      "start_word": 4731,
+      "end_word": 4742,
+      "start": 1715.19,
+      "end": 1719.39,
+      "text": "I said, OK, the other colleague could come chat with us."
+    },
+    {
+      "id": 368,
+      "start_word": 4742,
+      "end_word": 4749,
+      "start": 1719.65,
+      "end": 1722.41,
+      "text": "And so this younger fellow came down."
+    },
+    {
+      "id": 369,
+      "start_word": 4749,
+      "end_word": 4757,
+      "start": 1723.43,
+      "end": 1726.61,
+      "text": "He was a super smart attorney from ACLU."
+    },
+    {
+      "id": 370,
+      "start_word": 4757,
+      "end_word": 4770,
+      "start": 1728.11,
+      "end": 1733.35,
+      "text": "And he looked at this letter and was just a little bit shocked."
+    },
+    {
+      "id": 371,
+      "start_word": 4770,
+      "end_word": 4797,
+      "start": 1735.59,
+      "end": 1747.55,
+      "text": "And I've since had discussions with them about what they were thinking at that time and understood that they knew that national security letters were being used,"
+    },
+    {
+      "id": 372,
+      "start_word": 4797,
+      "end_word": 4810,
+      "start": 1748.61,
+      "end": 1751.11,
+      "text": "but nobody had ever brought them one and they had never seen one."
+    },
+    {
+      "id": 373,
+      "start_word": 4810,
+      "end_word": 4819,
+      "start": 1751.23,
+      "end": 1754.79,
+      "text": "No copy of one had ever become public before."
+    },
+    {
+      "id": 374,
+      "start_word": 4819,
+      "end_word": 4844,
+      "start": 1755.47,
+      "end": 1761.69,
+      "text": "So it was the first time they had ever seen it and understood the language used in it and understood how they were being used."
+    },
+    {
+      "id": 375,
+      "start_word": 4844,
+      "end_word": 4865,
+      "start": 1762.99,
+      "end": 1774.31,
+      "text": "And so to them, it represented this amazing opportunity because you can't challenge something unless you can show that it's happened."
+    },
+    {
+      "id": 376,
+      "start_word": 4865,
+      "end_word": 4872,
+      "start": 1775.51,
+      "end": 1778.27,
+      "text": "You have to prove standing in court."
+    },
+    {
+      "id": 377,
+      "start_word": 4872,
+      "end_word": 4895,
+      "start": 1779.89,
+      "end": 1791.01,
+      "text": "So they thought, wow, this is an opportunity to challenge the constitutionality of this type of what I would call an illegal search."
+    },
+    {
+      "id": 378,
+      "start_word": 4895,
+      "end_word": 4901,
+      "start": 1791.73,
+      "end": 1793.75,
+      "text": "Well, this just escalated really fast."
+    },
+    {
+      "id": 379,
+      "start_word": 4901,
+      "end_word": 4924,
+      "start": 1794.21,
+      "end": 1800.37,
+      "text": "The ACLU was like ready for battle the moment they saw this, ready to sue the government and ride or die with Nick."
+    },
+    {
+      "id": 380,
+      "start_word": 4924,
+      "end_word": 4950,
+      "start": 1800.81,
+      "end": 1808.01,
+      "text": "They wanted to challenge the legality of this FBI letter and never had the chance to do it before because nobody's ever seen this thing before."
+    },
+    {
+      "id": 381,
+      "start_word": 4950,
+      "end_word": 4964,
+      "start": 1808.27,
+      "end": 1811.03,
+      "text": "They were already pulling up their sleeves coming up with a plan of attack."
+    },
+    {
+      "id": 382,
+      "start_word": 4964,
+      "end_word": 4992,
+      "start": 1811.15,
+      "end": 1821.15,
+      "text": "And they were so excited about this opportunity that they said they'd represent him for free because in their mind, fighting this could result in a landmark case."
+    },
+    {
+      "id": 383,
+      "start_word": 4992,
+      "end_word": 5018,
+      "start": 1821.31,
+      "end": 1827.83,
+      "text": "And though it was a rare, and some lawyers would love a shot at creating a landmark case to change laws that they think are unjust."
+    },
+    {
+      "id": 384,
+      "start_word": 5018,
+      "end_word": 5026,
+      "start": 1828.35,
+      "end": 1831.43,
+      "text": "So the ACLU told Nick, let's fight this."
+    },
+    {
+      "id": 385,
+      "start_word": 5026,
+      "end_word": 5034,
+      "start": 1831.47,
+      "end": 1833.85,
+      "text": "And they started preparing to sue the government."
+    },
+    {
+      "id": 386,
+      "start_word": 5034,
+      "end_word": 5047,
+      "start": 1834.21,
+      "end": 1838.11,
+      "text": "And they were going to claim that this letter violated three constitutional rights."
+    },
+    {
+      "id": 387,
+      "start_word": 5047,
+      "end_word": 5078,
+      "start": 1838.37,
+      "end": 1848.59,
+      "text": "And the fourth amendment violation is particularly interesting here because of why the fourth amendment was made in the first place during colonial times when New England was under British rule."
+    },
+    {
+      "id": 388,
+      "start_word": 5078,
+      "end_word": 5119,
+      "start": 1848.93,
+      "end": 1863.13,
+      "text": "The King of England issued what's called Ritz of Assistance to British soldiers, which granted the British soldiers the right to be able to search any home at any time without specifying what they were looking for and without probable cause."
+    },
+    {
+      "id": 389,
+      "start_word": 5119,
+      "end_word": 5135,
+      "start": 1863.51,
+      "end": 1869.39,
+      "text": "And so British soldiers had carte blanche access to search anyone's personal belongings at any time."
+    },
+    {
+      "id": 390,
+      "start_word": 5135,
+      "end_word": 5148,
+      "start": 1869.75,
+      "end": 1874.37,
+      "text": "There was absolutely no right to privacy in New England at the time."
+    },
+    {
+      "id": 391,
+      "start_word": 5148,
+      "end_word": 5163,
+      "start": 1875.33,
+      "end": 1880.19,
+      "text": "But after the call it has beat the British in the war and declared independence,"
+    },
+    {
+      "id": 392,
+      "start_word": 5163,
+      "end_word": 5175,
+      "start": 1880.85,
+      "end": 1885.49,
+      "text": "that's when they decided that it's very important to preserve our privacy."
+    },
+    {
+      "id": 393,
+      "start_word": 5175,
+      "end_word": 5197,
+      "start": 1885.49,
+      "end": 1897.53,
+      "text": "And in reaction to what the American colonists felt were abuses of that kind of executive power from the King of England,"
+    },
+    {
+      "id": 394,
+      "start_word": 5197,
+      "end_word": 5204,
+      "start": 1898.25,
+      "end": 1901.09,
+      "text": "when they started writing the constitutional amendments,"
+    },
+    {
+      "id": 395,
+      "start_word": 5204,
+      "end_word": 5246,
+      "start": 1902.23,
+      "end": 1920.29,
+      "text": "they designed the fourth amendment to have checks and balances built in so that law enforcement or intelligence forces within the government would have to go before a court and prove that either a crime had occurred or was likely to occur"
+    },
+    {
+      "id": 396,
+      "start_word": 5246,
+      "end_word": 5248,
+      "start": 1920.29,
+      "end": 1921.73,
+      "text": "with evidence."
+    },
+    {
+      "id": 397,
+      "start_word": 5248,
+      "end_word": 5255,
+      "start": 1921.97,
+      "end": 1924.03,
+      "text": "They would have to prove probable cause."
+    },
+    {
+      "id": 398,
+      "start_word": 5255,
+      "end_word": 5283,
+      "start": 1925.45,
+      "end": 1936.81,
+      "text": "And based on that, they would have to also say what the thing or things were that they intended to seize and exactly where they would find them."
+    },
+    {
+      "id": 399,
+      "start_word": 5283,
+      "end_word": 5309,
+      "start": 1936.81,
+      "end": 1946.09,
+      "text": "And so the idea is that a court is supposed to exert some type of oversight authority over these attempts to curtail the rights of individuals."
+    },
+    {
+      "id": 400,
+      "start_word": 5309,
+      "end_word": 5356,
+      "start": 1946.73,
+      "end": 1964.93,
+      "text": "And so the problem with the Patriot Act and the National Security Letter provision amendments that happened in the Patriot Act is that they sidestep that whole system of checks and balances and they allow not just the FBI, but all kinds of government agencies to skip"
+    },
+    {
+      "id": 401,
+      "start_word": 5356,
+      "end_word": 5376,
+      "start": 1964.93,
+      "end": 1974.07,
+      "text": "the whole showing probable cause, skip the whole system of checks and balances and just unilaterally go and seize information."
+    },
+    {
+      "id": 402,
+      "start_word": 5376,
+      "end_word": 5381,
+      "start": 1974.55,
+      "end": 1976.53,
+      "text": "How far we've come, huh?"
+    },
+    {
+      "id": 403,
+      "start_word": 5381,
+      "end_word": 5396,
+      "start": 1976.77,
+      "end": 1981.47,
+      "text": "It's like we've forgotten how bad things can get when governments have too much power."
+    },
+    {
+      "id": 404,
+      "start_word": 5396,
+      "end_word": 5417,
+      "start": 1982.19,
+      "end": 1989.57,
+      "text": "And there's a term I learned here called prior restraint, which is when someone suppresses your speech before you say something."
+    },
+    {
+      "id": 405,
+      "start_word": 5417,
+      "end_word": 5459,
+      "start": 1990.03,
+      "end": 2002.41,
+      "text": "And there have been landmark cases in the past where it's illegal for the government to issue prior restraint to people, such as when the Pentagon papers came out, the New York Times of Washington Post got evidence that the U .S."
+    },
+    {
+      "id": 406,
+      "start_word": 5459,
+      "end_word": 5471,
+      "start": 2002.73,
+      "end": 2005.77,
+      "text": "government lied about the circumstances that led us into the Vietnam War."
+    },
+    {
+      "id": 407,
+      "start_word": 5471,
+      "end_word": 5488,
+      "start": 2006.09,
+      "end": 2012.09,
+      "text": "When Nixon heard that these news outlets got these leaked papers, he demanded they not publish it."
+    },
+    {
+      "id": 408,
+      "start_word": 5488,
+      "end_word": 5499,
+      "start": 2012.61,
+      "end": 2016.69,
+      "text": "And so do you comply with an executive order like that?"
+    },
+    {
+      "id": 409,
+      "start_word": 5499,
+      "end_word": 5506,
+      "start": 2016.87,
+      "end": 2018.49,
+      "text": "Or do you challenge it in court?"
+    },
+    {
+      "id": 410,
+      "start_word": 5506,
+      "end_word": 5537,
+      "start": 2019.03,
+      "end": 2028.01,
+      "text": "They challenged it and it went all the way to the Supreme Court and they ruled on the side of the news outlet saying, you cannot stop speech before it happens."
+    },
+    {
+      "id": 411,
+      "start_word": 5537,
+      "end_word": 5551,
+      "start": 2028.01,
+      "end": 2033.57,
+      "text": "That is the essence of censorship and a direct violation of the First Amendment."
+    },
+    {
+      "id": 412,
+      "start_word": 5551,
+      "end_word": 5566,
+      "start": 2034.41,
+      "end": 2038.89,
+      "text": "So this provision in the NSL, that Nick God, that says you can't tell anybody,"
+    },
+    {
+      "id": 413,
+      "start_word": 5566,
+      "end_word": 5574,
+      "start": 2039.73,
+      "end": 2042.61,
+      "text": "this made the whole letter feels really unconstitutional."
+    },
+    {
+      "id": 414,
+      "start_word": 5574,
+      "end_word": 5595,
+      "start": 2043.23,
+      "end": 2052.05,
+      "text": "We filed a legal challenge, a constitutional challenge to the validity of the National Security Letter provision of the Patriot Act."
+    },
+    {
+      "id": 415,
+      "start_word": 5595,
+      "end_word": 5613,
+      "start": 2052.71,
+      "end": 2059.69,
+      "text": "And because I couldn't talk about it, the case had to be filed under the name John Doe."
+    },
+    {
+      "id": 416,
+      "start_word": 5613,
+      "end_word": 5628,
+      "start": 2060.15,
+      "end": 2065.89,
+      "text": "So it couldn't say my name because that would be admitting that I got it."
+    },
+    {
+      "id": 417,
+      "start_word": 5628,
+      "end_word": 5633,
+      "start": 2066.43,
+      "end": 2067.37,
+      "text": "And so who just sue?"
+    },
+    {
+      "id": 418,
+      "start_word": 5633,
+      "end_word": 5644,
+      "start": 2068.79,
+      "end": 2072.37,
+      "text": "The case was against the Department of Justice and the FBR."
+    },
+    {
+      "id": 419,
+      "start_word": 5644,
+      "end_word": 5653,
+      "start": 2073.27,
+      "end": 2075.21,
+      "text": "Okay, so is there a name on the case?"
+    },
+    {
+      "id": 420,
+      "start_word": 5653,
+      "end_word": 5667,
+      "start": 2076.25,
+      "end": 2081.51,
+      "text": "Yeah, at the time the attorney general of the United States was John Ashcroft."
+    },
+    {
+      "id": 421,
+      "start_word": 5667,
+      "end_word": 5675,
+      "start": 2081.61,
+      "end": 2084.95,
+      "text": "So the case was called Doe versus Ashcroft."
+    },
+    {
+      "id": 422,
+      "start_word": 5675,
+      "end_word": 5696,
+      "start": 2084.95,
+      "end": 2091.21,
+      "text": "Oh, dang, there's sue in the attorney general of the United States who is the head of the Department of Justice."
+    },
+    {
+      "id": 423,
+      "start_word": 5696,
+      "end_word": 5702,
+      "start": 2091.75,
+      "end": 2093.21,
+      "text": "This is about to get good."
+    },
+    {
+      "id": 424,
+      "start_word": 5702,
+      "end_word": 5721,
+      "start": 2093.83,
+      "end": 2098.55,
+      "text": "I'm gonna take a quick break here and get some popcorn because when we get back, the battle begins."
+    },
+    {
+      "id": 425,
+      "start_word": 5721,
+      "end_word": 5727,
+      "start": 2106.72,
+      "end": 2108.42,
+      "text": "This episode is sponsored by NetSuite."
+    },
+    {
+      "id": 426,
+      "start_word": 5727,
+      "end_word": 5738,
+      "start": 2109.04,
+      "end": 2112.18,
+      "text": "I'm reading that each day your business is late to AI."
+    },
+    {
+      "id": 427,
+      "start_word": 5738,
+      "end_word": 5743,
+      "start": 2112.66,
+      "end": 2114.86,
+      "text": "You fall two days behind."
+    },
+    {
+      "id": 428,
+      "start_word": 5743,
+      "end_word": 5749,
+      "start": 2115.38,
+      "end": 2116.46,
+      "text": "So how do you keep up?"
+    },
+    {
+      "id": 429,
+      "start_word": 5749,
+      "end_word": 5752,
+      "start": 2116.86,
+      "end": 2118.56,
+      "text": "Fortunately, there's NetSuite."
+    },
+    {
+      "id": 430,
+      "start_word": 5752,
+      "end_word": 5756,
+      "start": 2119.12,
+      "end": 2120.62,
+      "text": "You probably know NetSuite."
+    },
+    {
+      "id": 431,
+      "start_word": 5756,
+      "end_word": 5775,
+      "start": 2120.62,
+      "end": 2127.48,
+      "text": "It's a unified suite that brings you financials, inventory, commerce, HR, and CRM into a single source of truth."
+    },
+    {
+      "id": 432,
+      "start_word": 5775,
+      "end_word": 5791,
+      "start": 2128.0,
+      "end": 2134.14,
+      "text": "NetSuite next is how your business leaps ahead because AI is built into everything you do."
+    },
+    {
+      "id": 433,
+      "start_word": 5791,
+      "end_word": 5799,
+      "start": 2134.54,
+      "end": 2138.44,
+      "text": "It automatically surfaces custom insights throughout your day."
+    },
+    {
+      "id": 434,
+      "start_word": 5799,
+      "end_word": 5807,
+      "start": 2138.98,
+      "end": 2141.22,
+      "text": "AI agents work alongside you to solve problems."
+    },
+    {
+      "id": 435,
+      "start_word": 5807,
+      "end_word": 5824,
+      "start": 2141.44,
+      "end": 2145.6,
+      "text": "And anytime you have a question, you can ask just like you would with any other colleague."
+    },
+    {
+      "id": 436,
+      "start_word": 5824,
+      "end_word": 5833,
+      "start": 2146.22,
+      "end": 2148.72,
+      "text": "NetSuite is customized for a wide range of industries."
+    },
+    {
+      "id": 437,
+      "start_word": 5833,
+      "end_word": 5843,
+      "start": 2148.72,
+      "end": 2153.54,
+      "text": "It's time for NetSuite next, where your business meets AI."
+    },
+    {
+      "id": 438,
+      "start_word": 5843,
+      "end_word": 5854,
+      "start": 2154.02,
+      "end": 2157.1,
+      "text": "It's the service that I would use if I needed it."
+    },
+    {
+      "id": 439,
+      "start_word": 5854,
+      "end_word": 5866,
+      "start": 2157.42,
+      "end": 2160.76,
+      "text": "For the first time ever, you can try NetSuite next for free."
+    },
+    {
+      "id": 440,
+      "start_word": 5866,
+      "end_word": 5880,
+      "start": 2161.0,
+      "end": 2166.46,
+      "text": "If your revenues are seven figures are above, go to netsuite .ai slash darknet."
+    },
+    {
+      "id": 441,
+      "start_word": 5880,
+      "end_word": 5888,
+      "start": 2166.88,
+      "end": 2169.42,
+      "text": "Built for every industry, ready for the boardroom."
+    },
+    {
+      "id": 442,
+      "start_word": 5888,
+      "end_word": 5892,
+      "start": 2170.04,
+      "end": 2172.84,
+      "text": "NetSuite .ai slash darknet."
+    },
+    {
+      "id": 443,
+      "start_word": 5892,
+      "end_word": 5907,
+      "start": 2176.66,
+      "end": 2180.98,
+      "text": "So Nick and ACLU, we're going to challenge the legality of this letter in court."
+    },
+    {
+      "id": 444,
+      "start_word": 5907,
+      "end_word": 5922,
+      "start": 2180.98,
+      "end": 2184.84,
+      "text": "And at this point, Nick was about 30 years old, and he was all in."
+    },
+    {
+      "id": 445,
+      "start_word": 5922,
+      "end_word": 5941,
+      "start": 2185.2,
+      "end": 2190.7,
+      "text": "And so it seemed to me that it would be a supremely unpatriotic act to just let this go."
+    },
+    {
+      "id": 446,
+      "start_word": 5941,
+      "end_word": 5957,
+      "start": 2191.0,
+      "end": 2198.62,
+      "text": "Wow, he thought it was an extremely unpatriotic act to comply with a national security letter."
+    },
+    {
+      "id": 447,
+      "start_word": 5957,
+      "end_word": 5979,
+      "start": 2199.42,
+      "end": 2205.56,
+      "text": "But I guess you have to feel that strongly about it to try to fight the whole department of justice over it."
+    },
+    {
+      "id": 448,
+      "start_word": 5979,
+      "end_word": 5989,
+      "start": 2206.34,
+      "end": 2208.32,
+      "text": "But the irony was all I couldn't really tell anyone."
+    },
+    {
+      "id": 449,
+      "start_word": 5989,
+      "end_word": 5997,
+      "start": 2208.32,
+      "end": 2211.16,
+      "text": "I couldn't say like, hey, mom and dad."
+    },
+    {
+      "id": 450,
+      "start_word": 5997,
+      "end_word": 6017,
+      "start": 2211.68,
+      "end": 2217.2,
+      "text": "Like, if I just disappeared tomorrow, it's probably because these people got me like, or I couldn't tell my friends."
+    },
+    {
+      "id": 451,
+      "start_word": 6017,
+      "end_word": 6022,
+      "start": 2217.36,
+      "end": 2218.3,
+      "text": "I couldn't tell my parents."
+    },
+    {
+      "id": 452,
+      "start_word": 6022,
+      "end_word": 6026,
+      "start": 2218.5,
+      "end": 2219.54,
+      "text": "I couldn't tell anyone."
+    },
+    {
+      "id": 453,
+      "start_word": 6026,
+      "end_word": 6036,
+      "start": 2219.9,
+      "end": 2222.46,
+      "text": "And so no one knew that this was going on."
+    },
+    {
+      "id": 454,
+      "start_word": 6036,
+      "end_word": 6045,
+      "start": 2222.6,
+      "end": 2224.74,
+      "text": "It was just something that I completely kept myself."
+    },
+    {
+      "id": 455,
+      "start_word": 6045,
+      "end_word": 6068,
+      "start": 2228.16,
+      "end": 2233.44,
+      "text": "Man, this is why I love making this show to hear about all these secret things that I'm not supposed to know about."
+    },
+    {
+      "id": 456,
+      "start_word": 6068,
+      "end_word": 6077,
+      "start": 2233.92,
+      "end": 2235.72,
+      "text": "We were never supposed to know about these letters."
+    },
+    {
+      "id": 457,
+      "start_word": 6077,
+      "end_word": 6093,
+      "start": 2235.82,
+      "end": 2238.84,
+      "text": "We were never supposed to know that Nick got one of these letters, but not today."
+    },
+    {
+      "id": 458,
+      "start_word": 6093,
+      "end_word": 6103,
+      "start": 2238.84,
+      "end": 2241.38,
+      "text": "Today we're bringing what's in the dark to the light."
+    },
+    {
+      "id": 459,
+      "start_word": 6103,
+      "end_word": 6120,
+      "start": 2241.7,
+      "end": 2247.48,
+      "text": "So on April 9th, 2004, the ACLU entered the courtroom to represent Nick Merrill in this case."
+    },
+    {
+      "id": 460,
+      "start_word": 6120,
+      "end_word": 6125,
+      "start": 2247.96,
+      "end": 2249.04,
+      "text": "I was not in court."
+    },
+    {
+      "id": 461,
+      "start_word": 6125,
+      "end_word": 6133,
+      "start": 2249.04,
+      "end": 2250.56,
+      "text": "I was never allowed to go to court."
+    },
+    {
+      "id": 462,
+      "start_word": 6133,
+      "end_word": 6139,
+      "start": 2250.62,
+      "end": 2251.7,
+      "text": "Were allowed to go to court?"
+    },
+    {
+      "id": 463,
+      "start_word": 6139,
+      "end_word": 6152,
+      "start": 2251.86,
+      "end": 2258.48,
+      "text": "No, because then there were closed court sessions because it was classified stuff."
+    },
+    {
+      "id": 464,
+      "start_word": 6152,
+      "end_word": 6165,
+      "start": 2259.18,
+      "end": 2263.12,
+      "text": "And I wasn't allowed to go because then I would have identified myself."
+    },
+    {
+      "id": 465,
+      "start_word": 6165,
+      "end_word": 6173,
+      "start": 2263.88,
+      "end": 2266.46,
+      "text": "So my attorneys went to court without me."
+    },
+    {
+      "id": 466,
+      "start_word": 6173,
+      "end_word": 6181,
+      "start": 2266.46,
+      "end": 2267.86,
+      "text": "And then they told me about what happened."
+    },
+    {
+      "id": 467,
+      "start_word": 6181,
+      "end_word": 6194,
+      "start": 2267.86,
+      "end": 2270.3,
+      "text": "And I got to read the transcripts and all that kind of stuff."
+    },
+    {
+      "id": 468,
+      "start_word": 6194,
+      "end_word": 6200,
+      "start": 2270.74,
+      "end": 2272.5,
+      "text": "But I wasn't allowed to attend."
+    },
+    {
+      "id": 469,
+      "start_word": 6200,
+      "end_word": 6211,
+      "start": 2272.94,
+      "end": 2275.4,
+      "text": "So we had to wait somewhere else for court to finish."
+    },
+    {
+      "id": 470,
+      "start_word": 6211,
+      "end_word": 6222,
+      "start": 2275.88,
+      "end": 2278.48,
+      "text": "Then the ACLU called them up and told them what happened."
+    },
+    {
+      "id": 471,
+      "start_word": 6222,
+      "end_word": 6234,
+      "start": 2278.74,
+      "end": 2282.42,
+      "text": "What happened was the judge issued a decision saying, this is unconstitutional."
+    },
+    {
+      "id": 472,
+      "start_word": 6234,
+      "end_word": 6240,
+      "start": 2283.22,
+      "end": 2285.28,
+      "text": "Boom, there it is, easy win."
+    },
+    {
+      "id": 473,
+      "start_word": 6240,
+      "end_word": 6243,
+      "start": 2285.72,
+      "end": 2286.96,
+      "text": "NSLs are unconstitutional."
+    },
+    {
+      "id": 474,
+      "start_word": 6243,
+      "end_word": 6248,
+      "start": 2287.46,
+      "end": 2288.76,
+      "text": "The judge ruled it so."
+    },
+    {
+      "id": 475,
+      "start_word": 6248,
+      "end_word": 6258,
+      "start": 2289.02,
+      "end": 2291.62,
+      "text": "There was a lot of news coverage of the case."
+    },
+    {
+      "id": 476,
+      "start_word": 6258,
+      "end_word": 6267,
+      "start": 2291.98,
+      "end": 2293.6,
+      "text": "And it was written up in all the papers."
+    },
+    {
+      "id": 477,
+      "start_word": 6267,
+      "end_word": 6278,
+      "start": 2293.7,
+      "end": 2295.86,
+      "text": "It was in the New York Times and the Washington Post."
+    },
+    {
+      "id": 478,
+      "start_word": 6278,
+      "end_word": 6286,
+      "start": 2295.86,
+      "end": 2297.94,
+      "text": "And it was all over the AP Newswire."
+    },
+    {
+      "id": 479,
+      "start_word": 6286,
+      "end_word": 6304,
+      "start": 2298.38,
+      "end": 2306.32,
+      "text": "But all this story said something like anonymous internet provider, you know, suicide government and overturns Patriot Act."
+    },
+    {
+      "id": 480,
+      "start_word": 6304,
+      "end_word": 6311,
+      "start": 2306.52,
+      "end": 2309.36,
+      "text": "Hot dog, he overturned the Patriot Act."
+    },
+    {
+      "id": 481,
+      "start_word": 6311,
+      "end_word": 6313,
+      "start": 2309.54,
+      "end": 2310.54,
+      "text": "Congrats, Nick."
+    },
+    {
+      "id": 482,
+      "start_word": 6313,
+      "end_word": 6314,
+      "start": 2310.84,
+      "end": 2311.34,
+      "text": "Jeez."
+    },
+    {
+      "id": 483,
+      "start_word": 6314,
+      "end_word": 6320,
+      "start": 2312.2,
+      "end": 2314.48,
+      "text": "But this wasn't the Supreme Court."
+    },
+    {
+      "id": 484,
+      "start_word": 6320,
+      "end_word": 6328,
+      "start": 2314.48,
+      "end": 2316.7,
+      "text": "This was a district court in New York."
+    },
+    {
+      "id": 485,
+      "start_word": 6328,
+      "end_word": 6338,
+      "start": 2317.14,
+      "end": 2320.34,
+      "text": "And immediately upon the judge ruling that it was unconstitutional,"
+    },
+    {
+      "id": 486,
+      "start_word": 6338,
+      "end_word": 6348,
+      "start": 2321.0,
+      "end": 2324.52,
+      "text": "the DOJ appealed the case, meaning they wanted a retrial."
+    },
+    {
+      "id": 487,
+      "start_word": 6348,
+      "end_word": 6355,
+      "start": 2324.52,
+      "end": 2326.68,
+      "text": "But this time in a higher court."
+    },
+    {
+      "id": 488,
+      "start_word": 6355,
+      "end_word": 6367,
+      "start": 2327.16,
+      "end": 2330.7,
+      "text": "What happened was the judge issued a decision saying, this is unconstitutional."
+    },
+    {
+      "id": 489,
+      "start_word": 6367,
+      "end_word": 6375,
+      "start": 2331.76,
+      "end": 2336.98,
+      "text": "But I'm issuing a stay on the decision."
+    },
+    {
+      "id": 490,
+      "start_word": 6375,
+      "end_word": 6393,
+      "start": 2337.9,
+      "end": 2342.82,
+      "text": "And so what the decision was, it said that the government could no longer issue national security letters."
+    },
+    {
+      "id": 491,
+      "start_word": 6393,
+      "end_word": 6396,
+      "start": 2343.26,
+      "end": 2344.04,
+      "text": "They were unconstitutional."
+    },
+    {
+      "id": 492,
+      "start_word": 6396,
+      "end_word": 6405,
+      "start": 2344.3,
+      "end": 2346.68,
+      "text": "The government could no longer issue national security letters."
+    },
+    {
+      "id": 493,
+      "start_word": 6405,
+      "end_word": 6409,
+      "start": 2347.0,
+      "end": 2349.64,
+      "text": "You busted that up."
+    },
+    {
+      "id": 494,
+      "start_word": 6409,
+      "end_word": 6410,
+      "start": 2349.88,
+      "end": 2350.16,
+      "text": "Sort,"
+    },
+    {
+      "id": 495,
+      "start_word": 6410,
+      "end_word": 6414,
+      "start": 2350.9,
+      "end": 2351.86,
+      "text": "that's the whole thing."
+    },
+    {
+      "id": 496,
+      "start_word": 6414,
+      "end_word": 6435,
+      "start": 2351.9,
+      "end": 2363.72,
+      "text": "And then the judge issued the stay saying that essentially it's like he paused his order while the government is appealing."
+    },
+    {
+      "id": 497,
+      "start_word": 6435,
+      "end_word": 6444,
+      "start": 2364.12,
+      "end": 2366.94,
+      "text": "The government issued a notice of intent to appeal."
+    },
+    {
+      "id": 498,
+      "start_word": 6444,
+      "end_word": 6453,
+      "start": 2367.68,
+      "end": 2369.82,
+      "text": "And so he said, OK, you can't do it."
+    },
+    {
+      "id": 499,
+      "start_word": 6453,
+      "end_word": 6468,
+      "start": 2369.82,
+      "end": 2373.66,
+      "text": "But I'm pausing the order that says that you can't do it while you appeal."
+    },
+    {
+      "id": 500,
+      "start_word": 6468,
+      "end_word": 6475,
+      "start": 2374.6,
+      "end": 2376.86,
+      "text": "Ah, how maddening to win the case."
+    },
+    {
+      "id": 501,
+      "start_word": 6475,
+      "end_word": 6480,
+      "start": 2377.06,
+      "end": 2378.86,
+      "text": "But then nothing has changed."
+    },
+    {
+      "id": 502,
+      "start_word": 6480,
+      "end_word": 6488,
+      "start": 2378.96,
+      "end": 2381.2,
+      "text": "The Patriot Act was not, in fact, overturned."
+    },
+    {
+      "id": 503,
+      "start_word": 6488,
+      "end_word": 6506,
+      "start": 2381.34,
+      "end": 2385.36,
+      "text": "And this meant he was still under a gag order and could not talk about any of this."
+    },
+    {
+      "id": 504,
+      "start_word": 6506,
+      "end_word": 6541,
+      "start": 2385.56,
+      "end": 2393.74,
+      "text": "So they won the first district court and are now advancing to the next level, to defeat the next boss, which meant that this case is now going to the second circuit court of appeals."
+    },
+    {
+      "id": 505,
+      "start_word": 6541,
+      "end_word": 6567,
+      "start": 2393.88,
+      "end": 2401.7,
+      "text": "And since John Ashcroft was no longer the attorney general, the case got changed to dough versus Gonzalez, which was the attorney general at the time."
+    },
+    {
+      "id": 506,
+      "start_word": 6567,
+      "end_word": 6574,
+      "start": 2402.12,
+      "end": 2403.82,
+      "text": "And a new fighter entered the ring."
+    },
+    {
+      "id": 507,
+      "start_word": 6574,
+      "end_word": 6578,
+      "start": 2404.36,
+      "end": 2405.84,
+      "text": "Four librarians from Connecticut."
+    },
+    {
+      "id": 508,
+      "start_word": 6578,
+      "end_word": 6581,
+      "start": 2406.48,
+      "end": 2407.3,
+      "text": "Yeah, get this."
+    },
+    {
+      "id": 509,
+      "start_word": 6581,
+      "end_word": 6616,
+      "start": 2407.5,
+      "end": 2417.34,
+      "text": "The win from the first case made enough news that when a library and Connecticut got issued an NSL, the librarians there formed up and said, let's go to the ACLU and fight this too."
+    },
+    {
+      "id": 510,
+      "start_word": 6616,
+      "end_word": 6627,
+      "start": 2417.8,
+      "end": 2421.98,
+      "text": "And they decided to merge my case with the librarians case."
+    },
+    {
+      "id": 511,
+      "start_word": 6627,
+      "end_word": 6635,
+      "start": 2422.18,
+      "end": 2424.58,
+      "text": "So we were now a group of plaintiffs."
+    },
+    {
+      "id": 512,
+      "start_word": 6635,
+      "end_word": 6641,
+      "start": 2425.14,
+      "end": 2426.82,
+      "text": "Great, this is even more ammo."
+    },
+    {
+      "id": 513,
+      "start_word": 6641,
+      "end_word": 6655,
+      "start": 2427.7,
+      "end": 2431.5,
+      "text": "It's kind of ironic that the FBI told a bunch of librarians to hush."
+    },
+    {
+      "id": 514,
+      "start_word": 6655,
+      "end_word": 6670,
+      "start": 2431.82,
+      "end": 2436.48,
+      "text": "But apparently they wanted information on one of the members that came to the library."
+    },
+    {
+      "id": 515,
+      "start_word": 6670,
+      "end_word": 6674,
+      "start": 2436.96,
+      "end": 2438.3,
+      "text": "Again, without a warrant."
+    },
+    {
+      "id": 516,
+      "start_word": 6674,
+      "end_word": 6701,
+      "start": 2438.4,
+      "end": 2446.32,
+      "text": "And again, you can't tell them that you gave some information to the FBI, just do it because we say because the Patriot Act says we can't."
+    },
+    {
+      "id": 517,
+      "start_word": 6701,
+      "end_word": 6714,
+      "start": 2446.32,
+      "end": 2450.3,
+      "text": "So this now bigger case went to the second circuit court of appeals."
+    },
+    {
+      "id": 518,
+      "start_word": 6714,
+      "end_word": 6725,
+      "start": 2450.9,
+      "end": 2454.56,
+      "text": "And again, neither Nick or the librarians were allowed in court."
+    },
+    {
+      "id": 519,
+      "start_word": 6725,
+      "end_word": 6735,
+      "start": 2455.22,
+      "end": 2458.04,
+      "text": "And this is where the government started to play dirty."
+    },
+    {
+      "id": 520,
+      "start_word": 6735,
+      "end_word": 6761,
+      "start": 2458.52,
+      "end": 2467.12,
+      "text": "One thing that I learned is that it's never going to be a level playing field when you're an individual and you're challenging the federal government."
+    },
+    {
+      "id": 521,
+      "start_word": 6761,
+      "end_word": 6769,
+      "start": 2467.78,
+      "end": 2469.56,
+      "text": "I mean, that's I guess that's so obvious."
+    },
+    {
+      "id": 522,
+      "start_word": 6769,
+      "end_word": 6774,
+      "start": 2469.56,
+      "end": 2470.94,
+      "text": "It's like, OK, Captain obvious,"
+    },
+    {
+      "id": 523,
+      "start_word": 6774,
+      "end_word": 6785,
+      "start": 2471.56,
+      "end": 2474.52,
+      "text": "during the trial, the government made a change to the law."
+    },
+    {
+      "id": 524,
+      "start_word": 6785,
+      "end_word": 6802,
+      "start": 2474.8,
+      "end": 2478.66,
+      "text": "Simply clarifying that if you get an NSL yet, you are allowed to speak to a lawyer."
+    },
+    {
+      "id": 525,
+      "start_word": 6802,
+      "end_word": 6810,
+      "start": 2479.18,
+      "end": 2480.94,
+      "text": "So they at least made that much clear."
+    },
+    {
+      "id": 526,
+      "start_word": 6810,
+      "end_word": 6827,
+      "start": 2481.52,
+      "end": 2487.24,
+      "text": "And so the judge said, well, we can't continue this case now because the law has changed."
+    },
+    {
+      "id": 527,
+      "start_word": 6827,
+      "end_word": 6852,
+      "start": 2487.42,
+      "end": 2496.94,
+      "text": "And the law that you started suing about in 2004, the 2004 version of the law is different from the current version of the law."
+    },
+    {
+      "id": 528,
+      "start_word": 6852,
+      "end_word": 6858,
+      "start": 2497.18,
+      "end": 2498.92,
+      "text": "Therefore, the whole case is moot."
+    },
+    {
+      "id": 529,
+      "start_word": 6858,
+      "end_word": 6885,
+      "start": 2498.92,
+      "end": 2506.6,
+      "text": "You have to go back to step one again and start over and challenge it at the same lowest court with this new version of the law."
+    },
+    {
+      "id": 530,
+      "start_word": 6885,
+      "end_word": 6896,
+      "start": 2507.32,
+      "end": 2510.12,
+      "text": "Oh my gosh, going back to the beginning and starting over."
+    },
+    {
+      "id": 531,
+      "start_word": 6896,
+      "end_word": 6937,
+      "start": 2510.64,
+      "end": 2519.34,
+      "text": "Ah, man, if this was me, I would have ripped up that original letter and said, OK, well, if you think this NSL is no longer valid in court, said, I guess it's no longer valid for me to follow either."
+    },
+    {
+      "id": 532,
+      "start_word": 6937,
+      "end_word": 6942,
+      "start": 2519.86,
+      "end": 2520.68,
+      "text": "But he didn't do that."
+    },
+    {
+      "id": 533,
+      "start_word": 6942,
+      "end_word": 6950,
+      "start": 2520.82,
+      "end": 2522.96,
+      "text": "He felt set back, but he wasn't done."
+    },
+    {
+      "id": 534,
+      "start_word": 6950,
+      "end_word": 6966,
+      "start": 2523.54,
+      "end": 2527.1,
+      "text": "So this was early like six or seven years of my life under a gag order."
+    },
+    {
+      "id": 535,
+      "start_word": 6966,
+      "end_word": 6974,
+      "start": 2527.1,
+      "end": 2530.02,
+      "text": "Yeah, it's so badening he can't tell anyone."
+    },
+    {
+      "id": 536,
+      "start_word": 6974,
+      "end_word": 6993,
+      "start": 2530.22,
+      "end": 2534.94,
+      "text": "Like he can't report this to the news or say something like, look how unfair the government is being."
+    },
+    {
+      "id": 537,
+      "start_word": 6993,
+      "end_word": 7024,
+      "start": 2535.24,
+      "end": 2543.28,
+      "text": "He's under a very strict gag order because if he tells anyone he'd be in big trouble and since he wants to win this lawsuit, he needs to do everything right."
+    },
+    {
+      "id": 538,
+      "start_word": 7024,
+      "end_word": 7060,
+      "start": 2543.98,
+      "end": 2553.3,
+      "text": "So him and the librarians and the ACLU went back to that first district court that they already won at and saw the same judge again and that same judge declared that NSLs are still unconstitutional."
+    },
+    {
+      "id": 539,
+      "start_word": 7060,
+      "end_word": 7082,
+      "start": 2553.78,
+      "end": 2560.4,
+      "text": "Of course, but a court case like this takes that's one of time and money and effort, but they won it again."
+    },
+    {
+      "id": 540,
+      "start_word": 7082,
+      "end_word": 7089,
+      "start": 2560.7,
+      "end": 2562.9,
+      "text": "And the government appealed this case again."
+    },
+    {
+      "id": 541,
+      "start_word": 7089,
+      "end_word": 7107,
+      "start": 2562.9,
+      "end": 2568.2,
+      "text": "So the judge issued a stay, which means nothing is actually changed until the appeal process is complete."
+    },
+    {
+      "id": 542,
+      "start_word": 7107,
+      "end_word": 7131,
+      "start": 2568.56,
+      "end": 2575.06,
+      "text": "And this brought them back to the second circuit court of appeals again, which is where they were forced to start over last time."
+    },
+    {
+      "id": 543,
+      "start_word": 7131,
+      "end_word": 7150,
+      "start": 2575.06,
+      "end": 2580.62,
+      "text": "But at this point, there was yet another attorney judge also this case was renamed to Doe versus Bucacy."
+    },
+    {
+      "id": 544,
+      "start_word": 7150,
+      "end_word": 7157,
+      "start": 2581.02,
+      "end": 2583.3,
+      "text": "And that court case, they won too."
+    },
+    {
+      "id": 545,
+      "start_word": 7157,
+      "end_word": 7169,
+      "start": 2583.34,
+      "end": 2587.44,
+      "text": "Well, mostly the judge declared the suppression of speech to be unconstitutional,"
+    },
+    {
+      "id": 546,
+      "start_word": 7169,
+      "end_word": 7190,
+      "start": 2588.12,
+      "end": 2594.44,
+      "text": "but again, the judge issued a stay on it, which means nothing actually changes until the government finishes their appeal process."
+    },
+    {
+      "id": 547,
+      "start_word": 7190,
+      "end_word": 7206,
+      "start": 2594.66,
+      "end": 2601.62,
+      "text": "Six or seven years into the suit, the government decided to withdraw the letter from me."
+    },
+    {
+      "id": 548,
+      "start_word": 7206,
+      "end_word": 7225,
+      "start": 2601.78,
+      "end": 2606.7,
+      "text": "Because I think they saw we were headed to the Supreme Court and they were likely to lose again."
+    },
+    {
+      "id": 549,
+      "start_word": 7225,
+      "end_word": 7240,
+      "start": 2607.06,
+      "end": 2611.04,
+      "text": "And if that happened, then it would just be final and it would apply nationally."
+    },
+    {
+      "id": 550,
+      "start_word": 7240,
+      "end_word": 7248,
+      "start": 2612.74,
+      "end": 2615.72,
+      "text": "So the government decided to withdraw the letter."
+    },
+    {
+      "id": 551,
+      "start_word": 7248,
+      "end_word": 7262,
+      "start": 2615.96,
+      "end": 2619.7,
+      "text": "They said, okay, forget the letter, forget that we issued this letter to you."
+    },
+    {
+      "id": 552,
+      "start_word": 7262,
+      "end_word": 7276,
+      "start": 2620.16,
+      "end": 2624.64,
+      "text": "And as I mentioned earlier, you have to have standing to bring a lawsuit."
+    },
+    {
+      "id": 553,
+      "start_word": 7276,
+      "end_word": 7281,
+      "start": 2624.64,
+      "end": 2625.58,
+      "text": "No, you don't have standing."
+    },
+    {
+      "id": 554,
+      "start_word": 7281,
+      "end_word": 7287,
+      "start": 2625.82,
+      "end": 2626.96,
+      "text": "No, you no longer have standing."
+    },
+    {
+      "id": 555,
+      "start_word": 7287,
+      "end_word": 7306,
+      "start": 2627.54,
+      "end": 2632.7,
+      "text": "The way the courts work in America is that you need to be an involved party to sue someone."
+    },
+    {
+      "id": 556,
+      "start_word": 7306,
+      "end_word": 7324,
+      "start": 2632.94,
+      "end": 2637.74,
+      "text": "You can't just sue someone on behalf of someone else or for the potential of a problem happening."
+    },
+    {
+      "id": 557,
+      "start_word": 7324,
+      "end_word": 7339,
+      "start": 2637.74,
+      "end": 2640.98,
+      "text": "There has to be a problem and you have to be part of that problem."
+    },
+    {
+      "id": 558,
+      "start_word": 7339,
+      "end_word": 7357,
+      "start": 2641.58,
+      "end": 2647.22,
+      "text": "And now since he didn't have a letter, he had no ability to take this to court anymore."
+    },
+    {
+      "id": 559,
+      "start_word": 7357,
+      "end_word": 7369,
+      "start": 2647.96,
+      "end": 2650.54,
+      "text": "And so he had no choice, but to drop this whole crusade."
+    },
+    {
+      "id": 560,
+      "start_word": 7369,
+      "end_word": 7386,
+      "start": 2651.12,
+      "end": 2657.58,
+      "text": "Because when the government withdrew the letter from him, it essentially meant that they won the case."
+    },
+    {
+      "id": 561,
+      "start_word": 7386,
+      "end_word": 7392,
+      "start": 2658.3,
+      "end": 2660.88,
+      "text": "The lawsuit was no longer valid."
+    },
+    {
+      "id": 562,
+      "start_word": 7392,
+      "end_word": 7397,
+      "start": 2662.22,
+      "end": 2664.06,
+      "text": "But the funny thing was,"
+    },
+    {
+      "id": 563,
+      "start_word": 7397,
+      "end_word": 7406,
+      "start": 2664.74,
+      "end": 2667.54,
+      "text": "you know, I'm using funny in a light way."
+    },
+    {
+      "id": 564,
+      "start_word": 7406,
+      "end_word": 7422,
+      "start": 2667.96,
+      "end": 2672.12,
+      "text": "They withdrew the letter, but they decided to try to leave the gag order in place."
+    },
+    {
+      "id": 565,
+      "start_word": 7422,
+      "end_word": 7429,
+      "start": 2672.2,
+      "end": 2673.92,
+      "text": "So I still couldn't talk about it."
+    },
+    {
+      "id": 566,
+      "start_word": 7429,
+      "end_word": 7434,
+      "start": 2674.0,
+      "end": 2675.9,
+      "text": "God, this is so maddening."
+    },
+    {
+      "id": 567,
+      "start_word": 7434,
+      "end_word": 7440,
+      "start": 2676.44,
+      "end": 2678.98,
+      "text": "He was still gagged for life."
+    },
+    {
+      "id": 568,
+      "start_word": 7440,
+      "end_word": 7461,
+      "start": 2679.04,
+      "end": 2685.74,
+      "text": "And yeah, these NSLs would gag you for life because there's no expiration on when you're allowed to talk about things."
+    },
+    {
+      "id": 569,
+      "start_word": 7461,
+      "end_word": 7486,
+      "start": 2685.8,
+      "end": 2692.22,
+      "text": "If you get an NSL for the rest of your life, you're never allowed to tell anyone ever that you got one except your lawyer."
+    },
+    {
+      "id": 570,
+      "start_word": 7486,
+      "end_word": 7501,
+      "start": 2692.78,
+      "end": 2696.26,
+      "text": "So he went back to the district court to try to remove this gag order."
+    },
+    {
+      "id": 571,
+      "start_word": 7501,
+      "end_word": 7512,
+      "start": 2696.6,
+      "end": 2699.34,
+      "text": "But this time just for him, not for the whole country."
+    },
+    {
+      "id": 572,
+      "start_word": 7512,
+      "end_word": 7521,
+      "start": 2699.9,
+      "end": 2701.92,
+      "text": "And by this time, the attorney general was holder."
+    },
+    {
+      "id": 573,
+      "start_word": 7521,
+      "end_word": 7529,
+      "start": 2702.24,
+      "end": 2705.18,
+      "text": "So this case changed to dough versus holder."
+    },
+    {
+      "id": 574,
+      "start_word": 7529,
+      "end_word": 7539,
+      "start": 2706.06,
+      "end": 2708.58,
+      "text": "We made a settlement with the government at that point."
+    },
+    {
+      "id": 575,
+      "start_word": 7539,
+      "end_word": 7555,
+      "start": 2709.4,
+      "end": 2714.58,
+      "text": "And sometimes I think when people hear settlement, they think that means someone paid someone else."
+    },
+    {
+      "id": 576,
+      "start_word": 7555,
+      "end_word": 7563,
+      "start": 2714.86,
+      "end": 2716.96,
+      "text": "Usually those are like settlements and civil suits."
+    },
+    {
+      "id": 577,
+      "start_word": 7563,
+      "end_word": 7567,
+      "start": 2717.1,
+      "end": 2717.74,
+      "text": "But this was different."
+    },
+    {
+      "id": 578,
+      "start_word": 7567,
+      "end_word": 7572,
+      "start": 2717.88,
+      "end": 2718.72,
+      "text": "This was just an agreement."
+    },
+    {
+      "id": 579,
+      "start_word": 7572,
+      "end_word": 7584,
+      "start": 2719.4,
+      "end": 2724.02,
+      "text": "And the agreement was, I would stop fighting in this particular case."
+    },
+    {
+      "id": 580,
+      "start_word": 7584,
+      "end_word": 7598,
+      "start": 2724.66,
+      "end": 2728.22,
+      "text": "And they would ungag me and let me tell the story of what happened."
+    },
+    {
+      "id": 581,
+      "start_word": 7598,
+      "end_word": 7614,
+      "start": 2728.64,
+      "end": 2732.66,
+      "text": "And so I felt like I needed to be able to go public with the story."
+    },
+    {
+      "id": 582,
+      "start_word": 7614,
+      "end_word": 7636,
+      "start": 2733.12,
+      "end": 2738.76,
+      "text": "By the time that case was over, Nick was finally allowed to reveal his real name and put it on the case."
+    },
+    {
+      "id": 583,
+      "start_word": 7636,
+      "end_word": 7646,
+      "start": 2739.14,
+      "end": 2741.66,
+      "text": "And at that point, the attorney general was Loretta Lynch."
+    },
+    {
+      "id": 584,
+      "start_word": 7646,
+      "end_word": 7661,
+      "start": 2741.84,
+      "end": 2747.28,
+      "text": "So this case ended up being called Merrill versus Lynch, almost like the investment firm."
+    },
+    {
+      "id": 585,
+      "start_word": 7661,
+      "end_word": 7673,
+      "start": 2747.92,
+      "end": 2751.28,
+      "text": "So this cleared up all three of the constitutional violations he faced."
+    },
+    {
+      "id": 586,
+      "start_word": 7673,
+      "end_word": 7688,
+      "start": 2751.52,
+      "end": 2754.5,
+      "text": "When they amended the law, they said, you can in fact talk with the lawyers."
+    },
+    {
+      "id": 587,
+      "start_word": 7688,
+      "end_word": 7694,
+      "start": 2754.64,
+      "end": 2755.74,
+      "text": "So that fixed the fifth amendment."
+    },
+    {
+      "id": 588,
+      "start_word": 7694,
+      "end_word": 7709,
+      "start": 2756.38,
+      "end": 2760.42,
+      "text": "And when they withdrew the NSL, they were no longer asking for a worthless search."
+    },
+    {
+      "id": 589,
+      "start_word": 7709,
+      "end_word": 7723,
+      "start": 2760.96,
+      "end": 2764.24,
+      "text": "Another this gag order was removed that cleared up to the first amendment issue."
+    },
+    {
+      "id": 590,
+      "start_word": 7723,
+      "end_word": 7742,
+      "start": 2764.52,
+      "end": 2769.32,
+      "text": "But again, just for him, everyone else who got these NSLs still were not allowed to talk about him."
+    },
+    {
+      "id": 591,
+      "start_word": 7742,
+      "end_word": 7770,
+      "start": 2770.08,
+      "end": 2777.82,
+      "text": "But now that they retracted the NSL and lifted the gag order, he can't fight it in court anymore, which in my opinion is such a shady move."
+    },
+    {
+      "id": 592,
+      "start_word": 7770,
+      "end_word": 7787,
+      "start": 2777.92,
+      "end": 2781.88,
+      "text": "Because I think they took it back because he was probably gonna win in the Supreme Court."
+    },
+    {
+      "id": 593,
+      "start_word": 7787,
+      "end_word": 7806,
+      "start": 2782.4,
+      "end": 2787.62,
+      "text": "The government should be serving the people, not fighting them, playing dirty like this to keep the upper hand."
+    },
+    {
+      "id": 594,
+      "start_word": 7806,
+      "end_word": 7818,
+      "start": 2788.24,
+      "end": 2792.26,
+      "text": "And the government also withdrew their NSL that they gave the librarians."
+    },
+    {
+      "id": 595,
+      "start_word": 7818,
+      "end_word": 7826,
+      "start": 2792.84,
+      "end": 2795.3,
+      "text": "So the librarians didn't have any standing either."
+    },
+    {
+      "id": 596,
+      "start_word": 7826,
+      "end_word": 7833,
+      "start": 2796.72,
+      "end": 2800.36,
+      "text": "And that's all you can do, right?"
+    },
+    {
+      "id": 597,
+      "start_word": 7833,
+      "end_word": 7839,
+      "start": 2800.44,
+      "end": 2802.36,
+      "text": "Because you're no longer have standing."
+    },
+    {
+      "id": 598,
+      "start_word": 7839,
+      "end_word": 7841,
+      "start": 2803.16,
+      "end": 2803.88,
+      "text": "Pretty much,"
+    },
+    {
+      "id": 599,
+      "start_word": 7841,
+      "end_word": 7842,
+      "start": 2804.56,
+      "end": 2804.56,
+      "text": "yeah."
+    },
+    {
+      "id": 600,
+      "start_word": 7842,
+      "end_word": 7866,
+      "start": 2804.62,
+      "end": 2814.76,
+      "text": "I mean, what happened though, I guess afterwards, was that other companies started to fight these national security letters, which hadn't been happening previously."
+    },
+    {
+      "id": 601,
+      "start_word": 7866,
+      "end_word": 7875,
+      "start": 2815.62,
+      "end": 2817.54,
+      "text": "Yes, in fact, more people did fight these letters."
+    },
+    {
+      "id": 602,
+      "start_word": 7875,
+      "end_word": 7883,
+      "start": 2817.68,
+      "end": 2820.16,
+      "text": "And one person in particular was Cindy Cohen."
+    },
+    {
+      "id": 603,
+      "start_word": 7883,
+      "end_word": 7889,
+      "start": 2820.48,
+      "end": 2821.88,
+      "text": "Yeah, my name is Cindy Cohen."
+    },
+    {
+      "id": 604,
+      "start_word": 7889,
+      "end_word": 7898,
+      "start": 2821.96,
+      "end": 2824.9,
+      "text": "I'm the executive director of the Electronic Frontier Foundation."
+    },
+    {
+      "id": 605,
+      "start_word": 7898,
+      "end_word": 7900,
+      "start": 2825.22,
+      "end": 2826.24,
+      "text": "Executive director."
+    },
+    {
+      "id": 606,
+      "start_word": 7900,
+      "end_word": 7908,
+      "start": 2827.62,
+      "end": 2831.08,
+      "text": "But you've been a lawyer there as well."
+    },
+    {
+      "id": 607,
+      "start_word": 7908,
+      "end_word": 7918,
+      "start": 2831.38,
+      "end": 2835.92,
+      "text": "Yes, I was the legal director from 2000 to 2015."
+    },
+    {
+      "id": 608,
+      "start_word": 7918,
+      "end_word": 7928,
+      "start": 2836.44,
+      "end": 2840.74,
+      "text": "And I've been the executive director since 2015 till today."
+    },
+    {
+      "id": 609,
+      "start_word": 7928,
+      "end_word": 7953,
+      "start": 2842.04,
+      "end": 2853.38,
+      "text": "And in both capacities, I have served as counsel in impact litigation trying to push the law in ways that protect people's privacy and security."
+    },
+    {
+      "id": 610,
+      "start_word": 7953,
+      "end_word": 7973,
+      "start": 2853.86,
+      "end": 2860.68,
+      "text": "And in 2007, both Cindy and Nick saw a report that got released from the Inspector General about these NSLs."
+    },
+    {
+      "id": 611,
+      "start_word": 7973,
+      "end_word": 7979,
+      "start": 2860.68,
+      "end": 2864.56,
+      "text": "It said since 2001 through 2005,"
+    },
+    {
+      "id": 612,
+      "start_word": 7979,
+      "end_word": 7989,
+      "start": 2865.44,
+      "end": 2868.26,
+      "text": "they had put out hundreds of thousands of these letters."
+    },
+    {
+      "id": 613,
+      "start_word": 7989,
+      "end_word": 8007,
+      "start": 2868.74,
+      "end": 2874.4,
+      "text": "But the thing that surprised me was that only 550 people were prosecuted for terrorism in that time."
+    },
+    {
+      "id": 614,
+      "start_word": 8007,
+      "end_word": 8008,
+      "start": 2874.52,
+      "end": 2875.16,
+      "text": "Correct,"
+    },
+    {
+      "id": 615,
+      "start_word": 8008,
+      "end_word": 8009,
+      "start": 2875.8,
+      "end": 2876.28,
+      "text": "correct."
+    },
+    {
+      "id": 616,
+      "start_word": 8009,
+      "end_word": 8051,
+      "start": 2876.9,
+      "end": 2892.18,
+      "text": "And so it just showed you that they were really using this tool way broadly compared to how often it was actually being used in ways that I think most people would think were reasonable, which is to try to investigate terrorists."
+    },
+    {
+      "id": 617,
+      "start_word": 8051,
+      "end_word": 8076,
+      "start": 2892.58,
+      "end": 2900.46,
+      "text": "Yeah, because if this power was granted in the Patriot Act response to 9 -11, then it should be used to prevent more terrorist activity,"
+    },
+    {
+      "id": 618,
+      "start_word": 8076,
+      "end_word": 8077,
+      "start": 2901.08,
+      "end": 2901.36,
+      "text": "right?"
+    },
+    {
+      "id": 619,
+      "start_word": 8077,
+      "end_word": 8107,
+      "start": 2901.36,
+      "end": 2912.04,
+      "text": "And if hundreds of thousands of letters are being sent which aren't terrorism related, does that prove the government is abusing this power, using it for other reasons, maybe overreaching?"
+    },
+    {
+      "id": 620,
+      "start_word": 8107,
+      "end_word": 8139,
+      "start": 2912.48,
+      "end": 2923.34,
+      "text": "I mean, I just think that it's important that we have a moment where we decide whether these tools that we give the government are worth it and are they being abused?"
+    },
+    {
+      "id": 621,
+      "start_word": 8139,
+      "end_word": 8148,
+      "start": 2923.56,
+      "end": 2926.48,
+      "text": "Are they vulnerable to abuse, which NSLs clearly are?"
+    },
+    {
+      "id": 622,
+      "start_word": 8148,
+      "end_word": 8155,
+      "start": 2926.5,
+      "end": 2928.02,
+      "text": "And are they in fact being abused?"
+    },
+    {
+      "id": 623,
+      "start_word": 8155,
+      "end_word": 8168,
+      "start": 2928.42,
+      "end": 2933.08,
+      "text": "Which these numbers really demonstrate, there's got to be something going on here,"
+    },
+    {
+      "id": 624,
+      "start_word": 8168,
+      "end_word": 8169,
+      "start": 2933.98,
+      "end": 2934.22,
+      "text": "right?"
+    },
+    {
+      "id": 625,
+      "start_word": 8169,
+      "end_word": 8203,
+      "start": 2934.62,
+      "end": 2945.1,
+      "text": "Like the number of people who had their information handed over to the FBI versus how many people they actually were able to prosecute shows that there's some kind of disconnect going on here."
+    },
+    {
+      "id": 626,
+      "start_word": 8203,
+      "end_word": 8223,
+      "start": 2945.1,
+      "end": 2949.88,
+      "text": "And I don't think the disconnect is there are hundreds of thousands of terrorists running around that they're not catching."
+    },
+    {
+      "id": 627,
+      "start_word": 8223,
+      "end_word": 8276,
+      "start": 2950.72,
+      "end": 2967.8,
+      "text": "I think that when you give the government this powerful the tool and you don't put checks and balances on it and in this particular instance, you make it secret and so you gag the companies that are impacted by it from ever telling anybody what happened is just a recipe for abuse."
+    },
+    {
+      "id": 628,
+      "start_word": 8276,
+      "end_word": 8292,
+      "start": 2968.3,
+      "end": 2973.0,
+      "text": "And so Cindy and her legal team at the EFF had seen Nick's case play out."
+    },
+    {
+      "id": 629,
+      "start_word": 8292,
+      "end_word": 8300,
+      "start": 2973.0,
+      "end": 2975.14,
+      "text": "I was itching to join the fight too."
+    },
+    {
+      "id": 630,
+      "start_word": 8300,
+      "end_word": 8312,
+      "start": 2975.42,
+      "end": 2978.24,
+      "text": "And if you don't know, the EFF is the Electronic Frontier Foundation."
+    },
+    {
+      "id": 631,
+      "start_word": 8312,
+      "end_word": 8321,
+      "start": 2978.38,
+      "end": 2982.0,
+      "text": "It's an organization dedicated to protecting our rights online."
+    },
+    {
+      "id": 632,
+      "start_word": 8321,
+      "end_word": 8336,
+      "start": 2982.22,
+      "end": 2987.34,
+      "text": "And after Nick made this whole thing public, someone brought their NSL to the EFF."
+    },
+    {
+      "id": 633,
+      "start_word": 8336,
+      "end_word": 8349,
+      "start": 2987.98,
+      "end": 2992.16,
+      "text": "Well, so the first case we brought forth on a smallish telephone company"
+    },
+    {
+      "id": 634,
+      "start_word": 8349,
+      "end_word": 8363,
+      "start": 2992.82,
+      "end": 2998.14,
+      "text": "and they called me and they wanted to fight the NSL that they received."
+    },
+    {
+      "id": 635,
+      "start_word": 8363,
+      "end_word": 8377,
+      "start": 2998.34,
+      "end": 3002.78,
+      "text": "And we were able to reveal their names to the public for six years."
+    },
+    {
+      "id": 636,
+      "start_word": 8377,
+      "end_word": 8416,
+      "start": 3003.4,
+      "end": 3018.36,
+      "text": "We had to fight this secret battle and sealed courtrooms and with secret briefs and things like that before we were finally able to reveal to the public that our client was a little phone company called Trito Mobile."
+    },
+    {
+      "id": 637,
+      "start_word": 8416,
+      "end_word": 8424,
+      "start": 3019.06,
+      "end": 3020.62,
+      "text": "Could the client even be in the courtroom?"
+    },
+    {
+      "id": 638,
+      "start_word": 8424,
+      "end_word": 8435,
+      "start": 3021.32,
+      "end": 3023.94,
+      "text": "Yeah, they were in the courtroom, but the courtroom was cleared."
+    },
+    {
+      "id": 639,
+      "start_word": 8435,
+      "end_word": 8466,
+      "start": 3025.02,
+      "end": 3033.4,
+      "text": "The general counsel could be in the courtroom, but they weren't able to tell their board of directors what was going on or much less, you know, kind of more broadly."
+    },
+    {
+      "id": 640,
+      "start_word": 8466,
+      "end_word": 8480,
+      "start": 3033.68,
+      "end": 3037.62,
+      "text": "And EFF wasn't able to tell its board of directors that we were involved."
+    },
+    {
+      "id": 641,
+      "start_word": 8480,
+      "end_word": 8484,
+      "start": 3038.2,
+      "end": 3039.76,
+      "text": "Well, that's so crazy."
+    },
+    {
+      "id": 642,
+      "start_word": 8484,
+      "end_word": 8500,
+      "start": 3040.34,
+      "end": 3044.7,
+      "text": "So this company, the only one person in the company knew they were in this lawsuit."
+    },
+    {
+      "id": 643,
+      "start_word": 8500,
+      "end_word": 8509,
+      "start": 3045.16,
+      "end": 3047.4,
+      "text": "And there were maybe three people in the company."
+    },
+    {
+      "id": 644,
+      "start_word": 8509,
+      "end_word": 8534,
+      "start": 3047.64,
+      "end": 3055.94,
+      "text": "There was the president, their head of policy and their general counsel and probably at least one tech because they had to get the information."
+    },
+    {
+      "id": 645,
+      "start_word": 8534,
+      "end_word": 8552,
+      "start": 3056.28,
+      "end": 3060.7,
+      "text": "And for us, it was just the lawyers who were involved in the case in our legal secretary."
+    },
+    {
+      "id": 646,
+      "start_word": 8552,
+      "end_word": 8568,
+      "start": 3061.72,
+      "end": 3066.7,
+      "text": "We couldn't tell the board of directors of the leadership at EFF who our clients were."
+    },
+    {
+      "id": 647,
+      "start_word": 8568,
+      "end_word": 8581,
+      "start": 3066.74,
+      "end": 3070.66,
+      "text": "They knew we were doing case, but they know on behalf of whom."
+    },
+    {
+      "id": 648,
+      "start_word": 8581,
+      "end_word": 8595,
+      "start": 3070.94,
+      "end": 3074.16,
+      "text": "Gosh, not even the board of directors can know that someone got an NSL."
+    },
+    {
+      "id": 649,
+      "start_word": 8595,
+      "end_word": 8598,
+      "start": 3074.2,
+      "end": 3075.12,
+      "text": "This is crazy."
+    },
+    {
+      "id": 650,
+      "start_word": 8598,
+      "end_word": 8624,
+      "start": 3075.6,
+      "end": 3085.18,
+      "text": "I really wanted to talk with Cindy about this because she just published a new book called Privacy's Defender, where she documented her battle with NSL's."
+    },
+    {
+      "id": 651,
+      "start_word": 8624,
+      "end_word": 8634,
+      "start": 3085.18,
+      "end": 3088.58,
+      "text": "So Cindy and her client, the telecom provider called Credo,"
+    },
+    {
+      "id": 652,
+      "start_word": 8634,
+      "end_word": 8643,
+      "start": 3089.32,
+      "end": 3092.44,
+      "text": "sued the government over this NSL, that Credo got."
+    },
+    {
+      "id": 653,
+      "start_word": 8643,
+      "end_word": 8646,
+      "start": 3093.06,
+      "end": 3093.66,
+      "text": "And guess what?"
+    },
+    {
+      "id": 654,
+      "start_word": 8646,
+      "end_word": 8657,
+      "start": 3094.28,
+      "end": 3097.68,
+      "text": "Immediately upon suing the government, the government sued her client back."
+    },
+    {
+      "id": 655,
+      "start_word": 8657,
+      "end_word": 8660,
+      "start": 3097.68,
+      "end": 3098.32,
+      "text": "They sure did."
+    },
+    {
+      "id": 656,
+      "start_word": 8660,
+      "end_word": 8668,
+      "start": 3098.82,
+      "end": 3100.9,
+      "text": "What is, what, how, why would they sue?"
+    },
+    {
+      "id": 657,
+      "start_word": 8668,
+      "end_word": 8670,
+      "start": 3101.4,
+      "end": 3102.06,
+      "text": "I mean,"
+    },
+    {
+      "id": 658,
+      "start_word": 8670,
+      "end_word": 8686,
+      "start": 3102.74,
+      "end": 3108.38,
+      "text": "they had some cockamamie theory that they had to as a result of the Mckazy decision."
+    },
+    {
+      "id": 659,
+      "start_word": 8686,
+      "end_word": 8706,
+      "start": 3108.5,
+      "end": 3112.02,
+      "text": "It didn't make a lot of sense to us and it didn't make a lot of sense to the judge."
+    },
+    {
+      "id": 660,
+      "start_word": 8706,
+      "end_word": 8737,
+      "start": 3112.6,
+      "end": 3126.84,
+      "text": "But they claimed that we were interfering, essentially there are clients who are interfering with the investigation by seeking to determine whether the NSL was valid or not under the Constitution."
+    },
+    {
+      "id": 661,
+      "start_word": 8737,
+      "end_word": 8746,
+      "start": 3127.98,
+      "end": 3131.06,
+      "text": "It was pretty, it was pretty surprising and outrageous,"
+    },
+    {
+      "id": 662,
+      "start_word": 8746,
+      "end_word": 8747,
+      "start": 3131.68,
+      "end": 3131.74,
+      "text": "right?"
+    },
+    {
+      "id": 663,
+      "start_word": 8747,
+      "end_word": 8756,
+      "start": 3131.84,
+      "end": 3134.38,
+      "text": "I mean, this is a company that was gagged."
+    },
+    {
+      "id": 664,
+      "start_word": 8756,
+      "end_word": 8762,
+      "start": 3135.04,
+      "end": 3136.34,
+      "text": "They couldn't tell their own board."
+    },
+    {
+      "id": 665,
+      "start_word": 8762,
+      "end_word": 8770,
+      "start": 3136.42,
+      "end": 3138.58,
+      "text": "They only had several people who could tell."
+    },
+    {
+      "id": 666,
+      "start_word": 8770,
+      "end_word": 8784,
+      "start": 3138.66,
+      "end": 3142.5,
+      "text": "They tried to stand up in court and then they got sued for it."
+    },
+    {
+      "id": 667,
+      "start_word": 8784,
+      "end_word": 8798,
+      "start": 3142.5,
+      "end": 3148.18,
+      "text": "And basically called kind of, you know, un -American and interfering with the investigation."
+    },
+    {
+      "id": 668,
+      "start_word": 8798,
+      "end_word": 8803,
+      "start": 3148.6,
+      "end": 3150.64,
+      "text": "Like it was really aggressive."
+    },
+    {
+      "id": 669,
+      "start_word": 8803,
+      "end_word": 8808,
+      "start": 3151.06,
+      "end": 3152.92,
+      "text": "And what an intimidation move."
+    },
+    {
+      "id": 670,
+      "start_word": 8808,
+      "end_word": 8819,
+      "start": 3152.94,
+      "end": 3155.92,
+      "text": "It's already scary enough to go into battle against the government."
+    },
+    {
+      "id": 671,
+      "start_word": 8819,
+      "end_word": 8843,
+      "start": 3156.28,
+      "end": 3162.18,
+      "text": "But now for the government to choose to go into battle against you, the government should be working with the people not fighting them."
+    },
+    {
+      "id": 672,
+      "start_word": 8843,
+      "end_word": 8853,
+      "start": 3162.24,
+      "end": 3164.52,
+      "text": "And there's such a big and scary entity to fight."
+    },
+    {
+      "id": 673,
+      "start_word": 8853,
+      "end_word": 8873,
+      "start": 3164.54,
+      "end": 3168.62,
+      "text": "You've really got to be sure that what you're doing is the right thing when you will fight the government."
+    },
+    {
+      "id": 674,
+      "start_word": 8873,
+      "end_word": 8898,
+      "start": 3169.18,
+      "end": 3175.08,
+      "text": "And her client did in fact think this was the right move and wasn't pressured to back down even after being sued by the government."
+    },
+    {
+      "id": 675,
+      "start_word": 8898,
+      "end_word": 8945,
+      "start": 3175.36,
+      "end": 3188.56,
+      "text": "And so we were hoping to be able to tell our judge in the Northern District of California, which goes up to the Ninth Circuit, that, you know, the Mckazy Court was right that there were problems here, but they were wrong about what would fix it."
+    },
+    {
+      "id": 676,
+      "start_word": 8945,
+      "end_word": 8962,
+      "start": 3188.62,
+      "end": 3192.58,
+      "text": "And the only thing that would fix it would be to throw the statute out as unconstitutional."
+    },
+    {
+      "id": 677,
+      "start_word": 8962,
+      "end_word": 8980,
+      "start": 3193.3,
+      "end": 3198.5,
+      "text": "So that was our job was to try to build on what the ACLU and Nick had done."
+    },
+    {
+      "id": 678,
+      "start_word": 8980,
+      "end_word": 9019,
+      "start": 3198.5,
+      "end": 3214.32,
+      "text": "And we were able to do that, you know, the initial decision from the judge agreed with us, not only that the statute was unconstitutional, the NSL's were unconstitutional, but that what the Mckazy Court had done wasn't sufficient."
+    },
+    {
+      "id": 679,
+      "start_word": 9019,
+      "end_word": 9034,
+      "start": 3215.88,
+      "end": 3219.66,
+      "text": "And so that was the initial decision, which was great, it was a great ruling."
+    },
+    {
+      "id": 680,
+      "start_word": 9034,
+      "end_word": 9060,
+      "start": 3220.04,
+      "end": 3228.02,
+      "text": "But even though they won, the judge once again issued a stay, saying while the NSL is unconstitutional, nothing actually changes until the government can appeal."
+    },
+    {
+      "id": 681,
+      "start_word": 9060,
+      "end_word": 9085,
+      "start": 3228.02,
+      "end": 3234.18,
+      "text": "And so the case was going to have to go to the appeals court next and they had to wait to see what happened there."
+    },
+    {
+      "id": 682,
+      "start_word": 9085,
+      "end_word": 9097,
+      "start": 3234.52,
+      "end": 3237.2,
+      "text": "So just as we won the first case on behalf of Credo,"
+    },
+    {
+      "id": 683,
+      "start_word": 9097,
+      "end_word": 9117,
+      "start": 3238.34,
+      "end": 3245.26,
+      "text": "we had heard from Cloudflare, who is a service provider that helps protect against DDoS attacks and things like that."
+    },
+    {
+      "id": 684,
+      "start_word": 9117,
+      "end_word": 9130,
+      "start": 3245.44,
+      "end": 3250.6,
+      "text": "And Cloudflare had received an NSL and they saw what we were doing."
+    },
+    {
+      "id": 685,
+      "start_word": 9130,
+      "end_word": 9148,
+      "start": 3250.74,
+      "end": 3253.84,
+      "text": "They didn't know who our client was, but they knew that we were fighting this in the court."
+    },
+    {
+      "id": 686,
+      "start_word": 9148,
+      "end_word": 9165,
+      "start": 3253.86,
+      "end": 3257.52,
+      "text": "So they came to us and said, we got one of these two, will you represent us?"
+    },
+    {
+      "id": 687,
+      "start_word": 9165,
+      "end_word": 9177,
+      "start": 3257.52,
+      "end": 3261.26,
+      "text": "So just as we actually got the first decision from the judge,"
+    },
+    {
+      "id": 688,
+      "start_word": 9177,
+      "end_word": 9186,
+      "start": 3261.9,
+      "end": 3264.3,
+      "text": "the same day we filed on behalf of Cloudflare."
+    },
+    {
+      "id": 689,
+      "start_word": 9186,
+      "end_word": 9194,
+      "start": 3264.4,
+      "end": 3266.12,
+      "text": "And that was already in the works beforehand."
+    },
+    {
+      "id": 690,
+      "start_word": 9194,
+      "end_word": 9214,
+      "start": 3266.26,
+      "end": 3271.08,
+      "text": "We didn't really know when the decision was going to come out, but the timing was very kind of advantageous."
+    },
+    {
+      "id": 691,
+      "start_word": 9214,
+      "end_word": 9235,
+      "start": 3271.24,
+      "end": 3275.24,
+      "text": "And so we thought, well, we just won the first one, we'll go back in and we'll win the second one."
+    },
+    {
+      "id": 692,
+      "start_word": 9235,
+      "end_word": 9241,
+      "start": 3275.24,
+      "end": 3276.7,
+      "text": "And it didn't go that way."
+    },
+    {
+      "id": 693,
+      "start_word": 9241,
+      "end_word": 9250,
+      "start": 3276.98,
+      "end": 3279.4,
+      "text": "So the EFF started calling these the alphabet cases."
+    },
+    {
+      "id": 694,
+      "start_word": 9250,
+      "end_word": 9266,
+      "start": 3279.7,
+      "end": 3282.62,
+      "text": "Since they couldn't use their client names, they had to just come up with code names."
+    },
+    {
+      "id": 695,
+      "start_word": 9266,
+      "end_word": 9278,
+      "start": 3282.98,
+      "end": 3286.36,
+      "text": "So this case with Credo, the telecom provider, was called case Q."
+    },
+    {
+      "id": 696,
+      "start_word": 9278,
+      "end_word": 9287,
+      "start": 3286.36,
+      "end": 3289.08,
+      "text": "And the case with Cloudflare, they called case Z."
+    },
+    {
+      "id": 697,
+      "start_word": 9287,
+      "end_word": 9302,
+      "start": 3289.64,
+      "end": 3295.36,
+      "text": "And strangely, almost immediately upon Credo winning their first case, they got served another NSL."
+    },
+    {
+      "id": 698,
+      "start_word": 9302,
+      "end_word": 9310,
+      "start": 3295.6,
+      "end": 3298.2,
+      "text": "Yeah, so right away, they issued another one."
+    },
+    {
+      "id": 699,
+      "start_word": 9310,
+      "end_word": 9315,
+      "start": 3298.56,
+      "end": 3300.94,
+      "text": "And we were very surprised."
+    },
+    {
+      "id": 700,
+      "start_word": 9315,
+      "end_word": 9364,
+      "start": 3302.94,
+      "end": 3320.96,
+      "text": "And one of the things I think that signaled to us is that the FBI had gotten really used to this tool, and really wasn't ready to stop using it, even though they'd gotten a bad decision, which was made us feel vindicated that we were going to keep"
+    },
+    {
+      "id": 701,
+      "start_word": 9364,
+      "end_word": 9375,
+      "start": 3320.96,
+      "end": 3325.9,
+      "text": "fighting for these, that it wasn't one in done for them."
+    },
+    {
+      "id": 702,
+      "start_word": 9375,
+      "end_word": 9387,
+      "start": 3326.12,
+      "end": 3328.68,
+      "text": "They liked having this authority and they were going to keep pushing."
+    },
+    {
+      "id": 703,
+      "start_word": 9387,
+      "end_word": 9393,
+      "start": 3329.4,
+      "end": 3330.58,
+      "text": "So we had to keep pushing."
+    },
+    {
+      "id": 704,
+      "start_word": 9393,
+      "end_word": 9403,
+      "start": 3330.96,
+      "end": 3334.66,
+      "text": "Okay, well, another NSL means another lawsuit against the government."
+    },
+    {
+      "id": 705,
+      "start_word": 9403,
+      "end_word": 9410,
+      "start": 3335.06,
+      "end": 3336.94,
+      "text": "So the EFF called that case W."
+    },
+    {
+      "id": 706,
+      "start_word": 9410,
+      "end_word": 9430,
+      "start": 3337.22,
+      "end": 3343.26,
+      "text": "And now had three lawsuits against the US government declaring these things are unconstitutional and the law should be changed."
+    },
+    {
+      "id": 707,
+      "start_word": 9430,
+      "end_word": 9449,
+      "start": 3343.8,
+      "end": 3348.42,
+      "text": "And so every time you sued the government in each of these cases, the government sued you right back."
+    },
+    {
+      "id": 708,
+      "start_word": 9449,
+      "end_word": 9453,
+      "start": 3349.0,
+      "end": 3349.9,
+      "text": "Yeah, I think so."
+    },
+    {
+      "id": 709,
+      "start_word": 9453,
+      "end_word": 9461,
+      "start": 3350.06,
+      "end": 3352.4,
+      "text": "They definitely did for the first Credo case."
+    },
+    {
+      "id": 710,
+      "start_word": 9461,
+      "end_word": 9481,
+      "start": 3352.4,
+      "end": 3358.1,
+      "text": "I think they might have stopped at some point because the judge told them not to, but they definitely did."
+    },
+    {
+      "id": 711,
+      "start_word": 9481,
+      "end_word": 9492,
+      "start": 3358.74,
+      "end": 3361.04,
+      "text": "Because she didn't think that was right for them to do."
+    },
+    {
+      "id": 712,
+      "start_word": 9492,
+      "end_word": 9511,
+      "start": 3361.34,
+      "end": 3366.34,
+      "text": "So just when she felt like she was getting momentum on these cases, the government started to play unfair."
+    },
+    {
+      "id": 713,
+      "start_word": 9511,
+      "end_word": 9524,
+      "start": 3366.88,
+      "end": 3371.8,
+      "text": "And then while the case was going on, Congress actually amended the statute"
+    },
+    {
+      "id": 714,
+      "start_word": 9524,
+      "end_word": 9546,
+      "start": 3372.44,
+      "end": 3382.26,
+      "text": "and wrote a lot of those Mucazy processes into it and also said basically that these gag orders couldn't be eternal anymore."
+    },
+    {
+      "id": 715,
+      "start_word": 9546,
+      "end_word": 9584,
+      "start": 3384.16,
+      "end": 3396.96,
+      "text": "They are three up to three years initially, but then there has to be an evaluation about whether there's still an ongoing reason to have the gag and the FBI is supposed to file a declaration about it."
+    },
+    {
+      "id": 716,
+      "start_word": 9584,
+      "end_word": 9597,
+      "start": 3396.96,
+      "end": 3400.18,
+      "text": "And if they don't have an ongoing reason to have a gag order,"
+    },
+    {
+      "id": 717,
+      "start_word": 9597,
+      "end_word": 9602,
+      "start": 3400.78,
+      "end": 3402.14,
+      "text": "they should let the gag."
+    },
+    {
+      "id": 718,
+      "start_word": 9602,
+      "end_word": 9608,
+      "start": 3402.28,
+      "end": 3404.36,
+      "text": "So because this statute got amended,"
+    },
+    {
+      "id": 719,
+      "start_word": 9608,
+      "end_word": 9627,
+      "start": 3404.98,
+      "end": 3411.36,
+      "text": "this meant all her cases had to be resched and retried in the lower courts, starting from square one."
+    },
+    {
+      "id": 720,
+      "start_word": 9627,
+      "end_word": 9643,
+      "start": 3412.12,
+      "end": 3415.62,
+      "text": "So she went back to the lower court and saw the same judge she saw before."
+    },
+    {
+      "id": 721,
+      "start_word": 9643,
+      "end_word": 9676,
+      "start": 3416.16,
+      "end": 3425.56,
+      "text": "However, this change they made is actually a big step forward because previously when you got an NSL, you were silenced for life, but now they decided to reduce that to three years."
+    },
+    {
+      "id": 722,
+      "start_word": 9676,
+      "end_word": 9689,
+      "start": 3426.04,
+      "end": 3428.8,
+      "text": "However, it's still very limited of what you could say even after that."
+    },
+    {
+      "id": 723,
+      "start_word": 9689,
+      "end_word": 9704,
+      "start": 3428.8,
+      "end": 3432.56,
+      "text": "I think you can say you received an NSL, but you can't say who for."
+    },
+    {
+      "id": 724,
+      "start_word": 9704,
+      "end_word": 9740,
+      "start": 3432.64,
+      "end": 3445.94,
+      "text": "After the new statute got passed, the court sent us back down to the lower court and Judge Ilston, who was the judge who we'd had in the lower court said, well, they fixed it enough."
+    },
+    {
+      "id": 725,
+      "start_word": 9740,
+      "end_word": 9744,
+      "start": 3447.06,
+      "end": 3448.36,
+      "text": "It's not eternal anymore."
+    },
+    {
+      "id": 726,
+      "start_word": 9744,
+      "end_word": 9748,
+      "start": 3448.36,
+      "end": 3450.08,
+      "text": "We've got this process."
+    },
+    {
+      "id": 727,
+      "start_word": 9748,
+      "end_word": 9763,
+      "start": 3450.6,
+      "end": 3454.94,
+      "text": "They're not gonna be suing people for seeking this and you can tell your lawyers."
+    },
+    {
+      "id": 728,
+      "start_word": 9763,
+      "end_word": 9782,
+      "start": 3455.4,
+      "end": 3461.46,
+      "text": "So that's enough to bring it within the first, the first amendment, the gag orders in the first amendment."
+    },
+    {
+      "id": 729,
+      "start_word": 9782,
+      "end_word": 9787,
+      "start": 3462.68,
+      "end": 3464.42,
+      "text": "This was a big blow."
+    },
+    {
+      "id": 730,
+      "start_word": 9787,
+      "end_word": 9810,
+      "start": 3464.76,
+      "end": 3473.14,
+      "text": "The same judge who emphatically thought these NSLs were unconstitutional seemed to have lost her courage in her ruling and changed her mind."
+    },
+    {
+      "id": 731,
+      "start_word": 9810,
+      "end_word": 9826,
+      "start": 3473.78,
+      "end": 3479.6,
+      "text": "They tried to appeal the decision, but the court basically said, no, it's over, go home."
+    },
+    {
+      "id": 732,
+      "start_word": 9826,
+      "end_word": 9839,
+      "start": 3480.82,
+      "end": 3484.36,
+      "text": "And that was it for the EFF who tried to fight this too."
+    },
+    {
+      "id": 733,
+      "start_word": 9839,
+      "end_word": 9848,
+      "start": 3484.98,
+      "end": 3487.68,
+      "text": "After that ruling, the courts were done with them."
+    },
+    {
+      "id": 734,
+      "start_word": 9848,
+      "end_word": 9880,
+      "start": 3488.34,
+      "end": 3498.36,
+      "text": "And so the status today is that this is still going on and we have no idea how many NSLs are being issued and very little has changed since this battle started."
+    },
+    {
+      "id": 735,
+      "start_word": 9880,
+      "end_word": 9938,
+      "start": 3498.5,
+      "end": 3515.24,
+      "text": "We know that Google got these NSLs because they also thought it was unconstitutional and they also sued the government and they were able to get as far as the ninth circuit court of appeals in California, but the judge there ruled on the side of the NSL saying, no, Google, you have to comply with these letters."
+    },
+    {
+      "id": 736,
+      "start_word": 9938,
+      "end_word": 9960,
+      "start": 3516.08,
+      "end": 3524.14,
+      "text": "And so even Google couldn't get this to change and was forced to give the FBI whatever data they were asking for."
+    },
+    {
+      "id": 737,
+      "start_word": 9960,
+      "end_word": 9971,
+      "start": 3524.5,
+      "end": 3528.04,
+      "text": "Cindy still thinks that more needs to change about these NSLs."
+    },
+    {
+      "id": 738,
+      "start_word": 9971,
+      "end_word": 9974,
+      "start": 3528.04,
+      "end": 3529.0,
+      "text": "It's not great."
+    },
+    {
+      "id": 739,
+      "start_word": 9974,
+      "end_word": 9981,
+      "start": 3529.08,
+      "end": 3530.42,
+      "text": "Let me tell you, I'm not happy."
+    },
+    {
+      "id": 740,
+      "start_word": 9981,
+      "end_word": 10031,
+      "start": 3530.78,
+      "end": 3549.0,
+      "text": "I would like NSLs to require the FBI to go to a judge first and ask for the judge, show the judge what they're doing in their investigation and say, is there enough here for me to go to the ISP and ask for this information about a particular person?"
+    },
+    {
+      "id": 741,
+      "start_word": 10031,
+      "end_word": 10076,
+      "start": 3549.74,
+      "end": 3561.92,
+      "text": "I don't know that it needs to be a full probable cause warrant like the Fourth Amendment requires, but there's plenty of kind of in -between sorts of court orders for this kind of information and it ought to fit in one of those categories."
+    },
+    {
+      "id": 742,
+      "start_word": 10076,
+      "end_word": 10082,
+      "start": 3562.34,
+      "end": 3563.74,
+      "text": "That's what ought to have happened."
+    },
+    {
+      "id": 743,
+      "start_word": 10082,
+      "end_word": 10102,
+      "start": 3564.16,
+      "end": 3570.04,
+      "text": "So we're still far from where it needed to be, but we're also pretty far from what the FBI wanted."
+    },
+    {
+      "id": 744,
+      "start_word": 10102,
+      "end_word": 10124,
+      "start": 3574.04,
+      "end": 3579.42,
+      "text": "What I learned from Cindy's book and Nick's case is that there's three ways that you can deal with this particular issue."
+    },
+    {
+      "id": 745,
+      "start_word": 10124,
+      "end_word": 10136,
+      "start": 3579.66,
+      "end": 3583.4,
+      "text": "You can do legislation where you petition Congress to change the law."
+    },
+    {
+      "id": 746,
+      "start_word": 10136,
+      "end_word": 10153,
+      "start": 3583.76,
+      "end": 3588.58,
+      "text": "We know how hard that is, especially when it comes to such a secretive thing like NSLs."
+    },
+    {
+      "id": 747,
+      "start_word": 10153,
+      "end_word": 10174,
+      "start": 3588.58,
+      "end": 3594.02,
+      "text": "There's just not enough people who know about this, to be outraged, to make a meaningful petition to get this changed."
+    },
+    {
+      "id": 748,
+      "start_word": 10174,
+      "end_word": 10213,
+      "start": 3594.32,
+      "end": 3603.74,
+      "text": "And because these NSLs come with a gag order, if you get hit with one, you can't go to Congress and say, hey, look at how terrible of a situation I'm in because you're not allowed to tell anybody."
+    },
+    {
+      "id": 749,
+      "start_word": 10213,
+      "end_word": 10223,
+      "start": 3604.3,
+      "end": 3607.78,
+      "text": "So Congress just doesn't do anything to help us here."
+    },
+    {
+      "id": 750,
+      "start_word": 10223,
+      "end_word": 10271,
+      "start": 3607.78,
+      "end": 3621.52,
+      "text": "And the second thing is litigation, which is exactly what Cindy and Nick did to go through the court system, which is supposed to be the check and balance to laws and has the power to overturn laws and write new laws, but that didn't work for them."
+    },
+    {
+      "id": 751,
+      "start_word": 10271,
+      "end_word": 10277,
+      "start": 3621.96,
+      "end": 3623.36,
+      "text": "And then what's the third way?"
+    },
+    {
+      "id": 752,
+      "start_word": 10277,
+      "end_word": 10282,
+      "start": 3623.36,
+      "end": 3624.76,
+      "text": "The third way is technology."
+    },
+    {
+      "id": 753,
+      "start_word": 10282,
+      "end_word": 10296,
+      "start": 3625.66,
+      "end": 3630.26,
+      "text": "Like what if we build systems that make it harder to spy on people?"
+    },
+    {
+      "id": 754,
+      "start_word": 10296,
+      "end_word": 10314,
+      "start": 3630.26,
+      "end": 3637.34,
+      "text": "Why are all the systems that we have for communication so transparent and so just open to surveillance?"
+    },
+    {
+      "id": 755,
+      "start_word": 10314,
+      "end_word": 10319,
+      "start": 3638.08,
+      "end": 3639.34,
+      "text": "Yeah, it's a good point."
+    },
+    {
+      "id": 756,
+      "start_word": 10319,
+      "end_word": 10325,
+      "start": 3639.72,
+      "end": 3642.2,
+      "text": "Can technology alone solve this problem?"
+    },
+    {
+      "id": 757,
+      "start_word": 10325,
+      "end_word": 10328,
+      "start": 3642.86,
+      "end": 3643.66,
+      "text": "I think so."
+    },
+    {
+      "id": 758,
+      "start_word": 10328,
+      "end_word": 10342,
+      "start": 3644.02,
+      "end": 3648.34,
+      "text": "Just in my lifetime, there has been an extraordinary boom in math and cryptography."
+    },
+    {
+      "id": 759,
+      "start_word": 10342,
+      "end_word": 10356,
+      "start": 3648.78,
+      "end": 3651.28,
+      "text": "And we could do things now that we've never been able to do before."
+    },
+    {
+      "id": 760,
+      "start_word": 10356,
+      "end_word": 10369,
+      "start": 3651.68,
+      "end": 3656.0,
+      "text": "The best encryption today still holds up against the best cracking tools around."
+    },
+    {
+      "id": 761,
+      "start_word": 10369,
+      "end_word": 10392,
+      "start": 3656.5,
+      "end": 3663.58,
+      "text": "So can we create companies in such a manner than encrypt user data in such a way that an NSL would be pointless?"
+    },
+    {
+      "id": 762,
+      "start_word": 10392,
+      "end_word": 10399,
+      "start": 3664.56,
+      "end": 3666.22,
+      "text": "That's what Nick set out to do."
+    },
+    {
+      "id": 763,
+      "start_word": 10399,
+      "end_word": 10409,
+      "start": 3667.04,
+      "end": 3671.12,
+      "text": "And I learned about a philosophy called privacy by design."
+    },
+    {
+      "id": 764,
+      "start_word": 10409,
+      "end_word": 10438,
+      "start": 3672.8,
+      "end": 3682.18,
+      "text": "And privacy by design means that when you're building something from like the first meeting you have when you're conceptualizing something, you think about how to make it private."
+    },
+    {
+      "id": 765,
+      "start_word": 10438,
+      "end_word": 10470,
+      "start": 3682.58,
+      "end": 3694.28,
+      "text": "I decided to sort of go off in this third direction of technology thinking that like, I believe in math, I believe in encryption, I believe in all this kind of stuff."
+    },
+    {
+      "id": 766,
+      "start_word": 10470,
+      "end_word": 10485,
+      "start": 3694.92,
+      "end": 3699.36,
+      "text": "And I think that we as technologists can do something to make the problem better."
+    },
+    {
+      "id": 767,
+      "start_word": 10485,
+      "end_word": 10492,
+      "start": 3699.82,
+      "end": 3701.7,
+      "text": "So he pivoted with his company, Calix."
+    },
+    {
+      "id": 768,
+      "start_word": 10492,
+      "end_word": 10512,
+      "start": 3701.8,
+      "end": 3706.88,
+      "text": "Instead of it being an ISP, he turned it into a privacy focused company which created a bunch of things."
+    },
+    {
+      "id": 769,
+      "start_word": 10512,
+      "end_word": 10528,
+      "start": 3706.92,
+      "end": 3711.7,
+      "text": "But the stuff that they're most notable for is the Calix OS and the Calix hotspot."
+    },
+    {
+      "id": 770,
+      "start_word": 10528,
+      "end_word": 10564,
+      "start": 3712.1,
+      "end": 3720.26,
+      "text": "See, Nick wanted to help us many people as possible become more private and thought that the best way that he could do this is to create a mobile operating system that is private by design."
+    },
+    {
+      "id": 771,
+      "start_word": 10564,
+      "end_word": 10576,
+      "start": 3720.68,
+      "end": 3723.98,
+      "text": "He thought this would have the biggest impact since phones are ubiquitous,"
+    },
+    {
+      "id": 772,
+      "start_word": 10576,
+      "end_word": 10582,
+      "start": 3724.82,
+      "end": 3726.5,
+      "text": "worldwide and everyone's online with them."
+    },
+    {
+      "id": 773,
+      "start_word": 10582,
+      "end_word": 10586,
+      "start": 3726.74,
+      "end": 3728.06,
+      "text": "They're cheap and everywhere."
+    },
+    {
+      "id": 774,
+      "start_word": 10586,
+      "end_word": 10598,
+      "start": 3728.54,
+      "end": 3732.48,
+      "text": "The two dominating mobile OS's today are Apple's iOS and Google's Android."
+    },
+    {
+      "id": 775,
+      "start_word": 10598,
+      "end_word": 10627,
+      "start": 3732.66,
+      "end": 3741.52,
+      "text": "And since we know they probably both comply with NSLs, any activity you do on there means the government can ask for it whenever they want without a warrant."
+    },
+    {
+      "id": 776,
+      "start_word": 10627,
+      "end_word": 10641,
+      "start": 3742.36,
+      "end": 3747.18,
+      "text": "So what about an alternative phone OS that doesn't know anything about its users?"
+    },
+    {
+      "id": 777,
+      "start_word": 10641,
+      "end_word": 10660,
+      "start": 3747.66,
+      "end": 3753.28,
+      "text": "That way if the government sent an NSL to Calix, they wouldn't have a clue who's using their OS."
+    },
+    {
+      "id": 778,
+      "start_word": 10660,
+      "end_word": 10688,
+      "start": 3753.94,
+      "end": 3760.88,
+      "text": "What they did is they took the Android OS, ripped out all the Google stuff, so it stopped sending telemetry to Google or even Calix for that matter."
+    },
+    {
+      "id": 779,
+      "start_word": 10688,
+      "end_word": 10700,
+      "start": 3761.5,
+      "end": 3764.62,
+      "text": "I personally use Graphine OS on my phone which is very similar."
+    },
+    {
+      "id": 780,
+      "start_word": 10700,
+      "end_word": 10712,
+      "start": 3764.94,
+      "end": 3767.82,
+      "text": "There's no trace of Google on my phone and I love it."
+    },
+    {
+      "id": 781,
+      "start_word": 10712,
+      "end_word": 10718,
+      "start": 3768.24,
+      "end": 3770.16,
+      "text": "So funded, they rely on donations."
+    },
+    {
+      "id": 782,
+      "start_word": 10718,
+      "end_word": 10735,
+      "start": 3770.34,
+      "end": 3774.76,
+      "text": "But they also have a hotspot service at the offer which I actually paid for in use."
+    },
+    {
+      "id": 783,
+      "start_word": 10735,
+      "end_word": 10756,
+      "start": 3775.22,
+      "end": 3779.38,
+      "text": "You basically give them a yearly donation and they send you a Wi -Fi hotspot that works good for a year."
+    },
+    {
+      "id": 784,
+      "start_word": 10756,
+      "end_word": 10765,
+      "start": 3779.66,
+      "end": 3781.58,
+      "text": "And the hotspot is not connected to my name."
+    },
+    {
+      "id": 785,
+      "start_word": 10765,
+      "end_word": 10792,
+      "start": 3781.88,
+      "end": 3789.42,
+      "text": "I paid for it anonymously using cash at DEF CON and the only thing they have on me is my email address which is a burger email."
+    },
+    {
+      "id": 786,
+      "start_word": 10792,
+      "end_word": 10812,
+      "start": 3789.8,
+      "end": 3794.78,
+      "text": "And this little hotspot has been doing great for me for years and it's going really well for Calix too."
+    },
+    {
+      "id": 787,
+      "start_word": 10812,
+      "end_word": 10831,
+      "start": 3794.78,
+      "end": 3800.64,
+      "text": "I've seen their booth at DEF CON year after year but Nick has recently started a whole new project."
+    },
+    {
+      "id": 788,
+      "start_word": 10831,
+      "end_word": 10847,
+      "start": 3800.64,
+      "end": 3806.54,
+      "text": "I started a mobile phone company trying to use the whole principle of privacy by design"
+    },
+    {
+      "id": 789,
+      "start_word": 10847,
+      "end_word": 10856,
+      "start": 3807.2,
+      "end": 3810.98,
+      "text": "to be more private than the existing phone companies."
+    },
+    {
+      "id": 790,
+      "start_word": 10856,
+      "end_word": 10890,
+      "start": 3811.36,
+      "end": 3825.6,
+      "text": "You know, there's been a lot of historic stuff that led to the phone companies keeping tons of records about people, about their communications, about who they communicate with, collecting all kinds of metadata,"
+    },
+    {
+      "id": 791,
+      "start_word": 10890,
+      "end_word": 10893,
+      "start": 3826.22,
+      "end": 3827.42,
+      "text": "collecting location data."
+    },
+    {
+      "id": 792,
+      "start_word": 10893,
+      "end_word": 10901,
+      "start": 3828.58,
+      "end": 3831.94,
+      "text": "And I think that companies can do better."
+    },
+    {
+      "id": 793,
+      "start_word": 10901,
+      "end_word": 10928,
+      "start": 3833.12,
+      "end": 3842.38,
+      "text": "And so I built a company called Freelie, the concept of which is that you can sign up for it and give almost no information about yourself."
+    },
+    {
+      "id": 794,
+      "start_word": 10928,
+      "end_word": 10943,
+      "start": 3842.5,
+      "end": 3845.3,
+      "text": "In fact, you can sign up and give as little as just your zip code."
+    },
+    {
+      "id": 795,
+      "start_word": 10943,
+      "end_word": 10953,
+      "start": 3845.84,
+      "end": 3848.42,
+      "text": "First off, he doesn't wanna know who his customers are."
+    },
+    {
+      "id": 796,
+      "start_word": 10953,
+      "end_word": 10977,
+      "start": 3848.58,
+      "end": 3855.12,
+      "text": "So he made it impossible to connect the dots between who the paying user is and what phone number they have or SIM card."
+    },
+    {
+      "id": 797,
+      "start_word": 10977,
+      "end_word": 10997,
+      "start": 3855.6,
+      "end": 3860.7,
+      "text": "And the way he did that is kind of like buying chips in a casino or tokens on an arcade."
+    },
+    {
+      "id": 798,
+      "start_word": 10997,
+      "end_word": 11020,
+      "start": 3861.04,
+      "end": 3865.62,
+      "text": "In those places, you go to the cashier, you had them cash and they give you chips or tokens to play the games."
+    },
+    {
+      "id": 799,
+      "start_word": 11020,
+      "end_word": 11051,
+      "start": 3866.32,
+      "end": 3874.08,
+      "text": "And none of the games have any way to know exactly who was playing since the tokens aren't connected to your name, it can be mixed around with other people's tokens."
+    },
+    {
+      "id": 800,
+      "start_word": 11051,
+      "end_word": 11090,
+      "start": 3874.8,
+      "end": 3887.3,
+      "text": "So he's customers by sort of an anonymous voucher using their credit card or if they wish in an anonymous way, like through cryptocurrency, then they can redeem that voucher at freely in order to get their phone service."
+    },
+    {
+      "id": 801,
+      "start_word": 11090,
+      "end_word": 11100,
+      "start": 3887.6,
+      "end": 3890.48,
+      "text": "So it's not possible to trace who had what voucher."
+    },
+    {
+      "id": 802,
+      "start_word": 11100,
+      "end_word": 11111,
+      "start": 3890.92,
+      "end": 3893.36,
+      "text": "At least that's the simplified version, the way I understand it."
+    },
+    {
+      "id": 803,
+      "start_word": 11111,
+      "end_word": 11127,
+      "start": 3893.44,
+      "end": 3897.9,
+      "text": "He uses a ton of encryption, which is really interesting and amazing but it's very geeky."
+    },
+    {
+      "id": 804,
+      "start_word": 11127,
+      "end_word": 11137,
+      "start": 3898.12,
+      "end": 3900.96,
+      "text": "And I just love how tech actually solves these problems."
+    },
+    {
+      "id": 805,
+      "start_word": 11137,
+      "end_word": 11187,
+      "start": 3901.52,
+      "end": 3916.68,
+      "text": "And second, he logs as little as possible, which I believe is what he's legally required to retain, which is zip codes for customers for tax reasons and aggregate call data just to show how many minutes were spent like calling between the northwest and southwest regions of the US."
+    },
+    {
+      "id": 806,
+      "start_word": 11187,
+      "end_word": 11205,
+      "start": 3916.96,
+      "end": 3920.76,
+      "text": "Oh, and I think he monitors how much bandwidth users have so that he can charge them appropriately."
+    },
+    {
+      "id": 807,
+      "start_word": 11205,
+      "end_word": 11220,
+      "start": 3920.84,
+      "end": 3926.38,
+      "text": "It's not perfect privacy, but it's far more private than the average cell phone provider."
+    },
+    {
+      "id": 808,
+      "start_word": 11220,
+      "end_word": 11260,
+      "start": 3926.92,
+      "end": 3939.38,
+      "text": "And that makes me think, if this is something that Nick can just up and make because he cares about his customers privacy that much, then how come our cell providers don't take our privacy as seriously as Nick does?"
+    },
+    {
+      "id": 809,
+      "start_word": 11260,
+      "end_word": 11281,
+      "start": 3940.14,
+      "end": 3946.86,
+      "text": "So this is what it looks like when technology fights back to solve a problem that Nick saw with the NSLs."
+    },
+    {
+      "id": 810,
+      "start_word": 11281,
+      "end_word": 11291,
+      "start": 3947.12,
+      "end": 3949.42,
+      "text": "But it solves way more than just the NSL problem."
+    },
+    {
+      "id": 811,
+      "start_word": 11291,
+      "end_word": 11297,
+      "start": 3949.74,
+      "end": 3951.94,
+      "text": "It enhances privacy for all users."
+    },
+    {
+      "id": 812,
+      "start_word": 11297,
+      "end_word": 11313,
+      "start": 3952.44,
+      "end": 3956.12,
+      "text": "So many of these services we pay for, they just sell our data to data brokers."
+    },
+    {
+      "id": 813,
+      "start_word": 11313,
+      "end_word": 11323,
+      "start": 3956.82,
+      "end": 3959.66,
+      "text": "And Nick doesn't even have your data to sell it."
+    },
+    {
+      "id": 814,
+      "start_word": 11323,
+      "end_word": 11345,
+      "start": 3959.78,
+      "end": 3966.92,
+      "text": "Yeah, we just talked about how I hit with the NSL and for the government wanting data from one of your customers."
+    },
+    {
+      "id": 815,
+      "start_word": 11345,
+      "end_word": 11378,
+      "start": 3967.28,
+      "end": 3979.76,
+      "text": "I have a feeling that I may be a conspiracy theory that all these ISPs, I know ISPs, but mobile carriers have back doors with the government to allow them to see everything."
+    },
+    {
+      "id": 816,
+      "start_word": 11378,
+      "end_word": 11402,
+      "start": 3980.04,
+      "end": 3985.56,
+      "text": "And I have a feeling that the government's going to come to your knocking on your door again asking to see some customer data."
+    },
+    {
+      "id": 817,
+      "start_word": 11402,
+      "end_word": 11413,
+      "start": 3985.84,
+      "end": 3988.14,
+      "text": "And this is all going to start over all over again."
+    },
+    {
+      "id": 818,
+      "start_word": 11413,
+      "end_word": 11415,
+      "start": 3989.08,
+      "end": 3989.6,
+      "text": "You know,"
+    },
+    {
+      "id": 819,
+      "start_word": 11415,
+      "end_word": 11417,
+      "start": 3990.28,
+      "end": 3990.7,
+      "text": "it may."
+    },
+    {
+      "id": 820,
+      "start_word": 11417,
+      "end_word": 11433,
+      "start": 3991.38,
+      "end": 3996.28,
+      "text": "I mean, clearly I'm a sucker for punishment or a slow learner or something like that."
+    },
+    {
+      "id": 821,
+      "start_word": 11433,
+      "end_word": 11463,
+      "start": 3996.92,
+      "end": 4005.5,
+      "text": "But I'm actually trying to draw upon all my experiences in the past and make it easier for me to actually just be able to say, like, no, that's impossible."
+    },
+    {
+      "id": 822,
+      "start_word": 11463,
+      "end_word": 11470,
+      "start": 4005.96,
+      "end": 4007.64,
+      "text": "You can't get blood from the stone."
+    },
+    {
+      "id": 823,
+      "start_word": 11470,
+      "end_word": 11477,
+      "start": 4008.78,
+      "end": 4010.7,
+      "text": "I don't know who the customers are."
+    },
+    {
+      "id": 824,
+      "start_word": 11477,
+      "end_word": 11485,
+      "start": 4011.3,
+      "end": 4013.74,
+      "text": "And I can't connect phone numbers to identities."
+    },
+    {
+      "id": 825,
+      "start_word": 11485,
+      "end_word": 11501,
+      "start": 4015.8,
+      "end": 4020.6,
+      "text": "And honestly, I wish I could help you solve whatever problem you're trying to figure out."
+    },
+    {
+      "id": 826,
+      "start_word": 11501,
+      "end_word": 11505,
+      "start": 4020.96,
+      "end": 4022.54,
+      "text": "But I simply can't."
+    },
+    {
+      "id": 827,
+      "start_word": 11505,
+      "end_word": 11515,
+      "start": 4022.54,
+      "end": 4024.52,
+      "text": "And you're going to have to figure out another way"
+    },
+    {
+      "id": 828,
+      "start_word": 11515,
+      "end_word": 11524,
+      "start": 4025.68,
+      "end": 4027.98,
+      "text": "to track down whoever it is you're looking for."
+    },
+    {
+      "id": 829,
+      "start_word": 11524,
+      "end_word": 11541,
+      "start": 4037.39,
+      "end": 4041.55,
+      "text": "A big thank you to Nick Merrill for coming on this show and telling us about NSLs."
+    },
+    {
+      "id": 830,
+      "start_word": 11541,
+      "end_word": 11550,
+      "start": 4041.57,
+      "end": 4043.91,
+      "text": "He was the first person ever to challenge it."
+    },
+    {
+      "id": 831,
+      "start_word": 11550,
+      "end_word": 11554,
+      "start": 4043.91,
+      "end": 4045.31,
+      "text": "What a brave soul."
+    },
+    {
+      "id": 832,
+      "start_word": 11554,
+      "end_word": 11578,
+      "start": 4045.81,
+      "end": 4053.71,
+      "text": "You can learn more about his companies by visiting calex .com and freelie .com, which has spelled P -H -R -D -E -L -I."
+    },
+    {
+      "id": 833,
+      "start_word": 11578,
+      "end_word": 11594,
+      "start": 4054.33,
+      "end": 4058.21,
+      "text": "Also, thank you to Cindy Cohen for coming on and telling us about her NSL fights."
+    },
+    {
+      "id": 834,
+      "start_word": 11594,
+      "end_word": 11607,
+      "start": 4058.43,
+      "end": 4061.37,
+      "text": "And you should definitely check out her book, which is called Privacy's Defender."
+    },
+    {
+      "id": 835,
+      "start_word": 11607,
+      "end_word": 11611,
+      "start": 4061.67,
+      "end": 4062.85,
+      "text": "It's a great book."
+    },
+    {
+      "id": 836,
+      "start_word": 11611,
+      "end_word": 11621,
+      "start": 4063.07,
+      "end": 4064.91,
+      "text": "And only one part of it goes in the NSLs."
+    },
+    {
+      "id": 837,
+      "start_word": 11621,
+      "end_word": 11647,
+      "start": 4064.91,
+      "end": 4070.47,
+      "text": "And there are other parts that are very interesting about a bunch of other times that she sued the government to fight for our digital rights."
+    },
+    {
+      "id": 838,
+      "start_word": 11647,
+      "end_word": 11700,
+      "start": 4070.83,
+      "end": 4088.89,
+      "text": "Yes, I wrote the book in part because I think there is some really good history of hackers and people who care about security more generally, really standing up for what's right, doing things as courageous as what Nick did, but even doing things that don't quite put yourself at that level of"
+    },
+    {
+      "id": 839,
+      "start_word": 11700,
+      "end_word": 11701,
+      "start": 4088.89,
+      "end": 4089.17,
+      "text": "risk."
+    },
+    {
+      "id": 840,
+      "start_word": 11701,
+      "end_word": 11708,
+      "start": 4089.17,
+      "end": 4090.91,
+      "text": "But really stand up for what's right."
+    },
+    {
+      "id": 841,
+      "start_word": 11708,
+      "end_word": 11734,
+      "start": 4090.93,
+      "end": 4098.81,
+      "text": "And I wanted to collect some of these stories and tell them because I feel like there's a lot of people who feel powerless right now."
+    },
+    {
+      "id": 842,
+      "start_word": 11734,
+      "end_word": 11744,
+      "start": 4099.37,
+      "end": 4102.33,
+      "text": "And while that's an understandable feeling, it's not really true."
+    },
+    {
+      "id": 843,
+      "start_word": 11744,
+      "end_word": 11758,
+      "start": 4102.39,
+      "end": 4106.87,
+      "text": "There's a lot of courage in these stories that is important for people today."
+    },
+    {
+      "id": 844,
+      "start_word": 11758,
+      "end_word": 11766,
+      "start": 4107.31,
+      "end": 4109.29,
+      "text": "Once again, that book is called Privacy's Defender."
+    },
+    {
+      "id": 845,
+      "start_word": 11766,
+      "end_word": 11792,
+      "start": 4109.89,
+      "end": 4117.77,
+      "text": "And she wrote this at the end of her 26 -year -long career at the EFF, because she just stepped down as Executive Director last month."
+    },
+    {
+      "id": 846,
+      "start_word": 11792,
+      "end_word": 11799,
+      "start": 4117.77,
+      "end": 4119.01,
+      "text": "So thank you for all your work."
+    },
+    {
+      "id": 847,
+      "start_word": 11799,
+      "end_word": 11816,
+      "start": 4119.19,
+      "end": 4124.25,
+      "text": "Defending our digital rights Cindy, the internet would not be the same if it wasn't for you."
+    },
+    {
+      "id": 848,
+      "start_word": 11816,
+      "end_word": 11829,
+      "start": 4124.89,
+      "end": 4128.51,
+      "text": "Listen, everyone, I'm putting the final touches on a second podcast I'm making."
+    },
+    {
+      "id": 849,
+      "start_word": 11829,
+      "end_word": 11844,
+      "start": 4128.73,
+      "end": 4132.51,
+      "text": "It's a five -part limited series, and the show is going to be called low."
+    },
+    {
+      "id": 850,
+      "start_word": 11844,
+      "end_word": 11850,
+      "start": 4132.83,
+      "end": 4134.63,
+      "text": "And I'm so excited about it."
+    },
+    {
+      "id": 851,
+      "start_word": 11850,
+      "end_word": 11859,
+      "start": 4134.83,
+      "end": 4137.29,
+      "text": "I've been working on this story for eight years."
+    },
+    {
+      "id": 852,
+      "start_word": 11859,
+      "end_word": 11873,
+      "start": 4137.81,
+      "end": 4143.01,
+      "text": "And it's by far the craziest and darkest and wildest story I've ever heard."
+    },
+    {
+      "id": 853,
+      "start_word": 11873,
+      "end_word": 11878,
+      "start": 4143.23,
+      "end": 4144.79,
+      "text": "Much less, anyone tell me."
+    },
+    {
+      "id": 854,
+      "start_word": 11878,
+      "end_word": 11908,
+      "start": 4145.35,
+      "end": 4153.65,
+      "text": "But listen, if you want to be the first to hear it, you need to pitch in by going to plus .darknetdairies .com and sign up for our plus feed."
+    },
+    {
+      "id": 855,
+      "start_word": 11908,
+      "end_word": 11919,
+      "start": 4153.77,
+      "end": 4156.31,
+      "text": "You'll get bonus episodes and add free version of the show."
+    },
+    {
+      "id": 856,
+      "start_word": 11919,
+      "end_word": 11934,
+      "start": 4156.63,
+      "end": 4160.79,
+      "text": "And you'll be able to listen to this new podcast way sooner than everyone else."
+    },
+    {
+      "id": 857,
+      "start_word": 11934,
+      "end_word": 11945,
+      "start": 4161.61,
+      "end": 4166.19,
+      "text": "So please visit plus .darknetdairies .com and help support the show."
+    },
+    {
+      "id": 858,
+      "start_word": 11945,
+      "end_word": 11947,
+      "start": 4166.65,
+      "end": 4167.09,
+      "text": "Thank you."
+    },
+    {
+      "id": 859,
+      "start_word": 11947,
+      "end_word": 11959,
+      "start": 4167.69,
+      "end": 4171.03,
+      "text": "This episode was created by me, the Club Matay Attic, Jackry Sider."
+    },
+    {
+      "id": 860,
+      "start_word": 11959,
+      "end_word": 11971,
+      "start": 4171.17,
+      "end": 4174.93,
+      "text": "Our editor is the Packet Grabber, Tristan Ledger, mixing by Proximity Sound."
+    },
+    {
+      "id": 861,
+      "start_word": 11971,
+      "end_word": 11980,
+      "start": 4174.93,
+      "end": 4177.43,
+      "text": "Our intro music is by the mysterious Breakmaster Sonder."
+    },
+    {
+      "id": 862,
+      "start_word": 11980,
+      "end_word": 11988,
+      "start": 4178.27,
+      "end": 4181.59,
+      "text": "Remember, the cloud is just someone else's computer"
+    },
+    {
+      "id": 863,
+      "start_word": 11988,
+      "end_word": 11994,
+      "start": 4182.3,
+      "end": 4184.11,
+      "text": "who might be sharing your data."
+    },
+    {
+      "id": 864,
+      "start_word": 11994,
+      "end_word": 11997,
+      "start": 4184.99,
+      "end": 4186.65,
+      "text": "This is Darknetdairies."
+    }
+  ],
+  "prediction": {
+    "spans": [
+      {
+        "startSentence": 23,
+        "endSentence": 47
+      },
+      {
+        "startSentence": 425,
+        "endSentence": 442
+      },
+      {
+        "startSentence": 854,
+        "endSentence": 858
+      }
+    ]
+  },
+  "sentenceSpans": [
+    {
+      "startSentence": 23,
+      "endSentence": 47
+    },
+    {
+      "startSentence": 425,
+      "endSentence": 442
+    },
+    {
+      "startSentence": 854,
+      "endSentence": 858
+    }
+  ],
+  "rawResponseText": "{\n  \"spans\": [\n    {\n      \"startSentence\": 23,\n      \"endSentence\": 47\n    },\n    {\n      \"startSentence\": 425,\n      \"endSentence\": 442\n    },\n    {\n      \"startSentence\": 854,\n      \"endSentence\": 858\n    }\n  ]\n}",
+  "usageMetadata": {
+    "promptTokenCount": 45260,
+    "candidatesTokenCount": 92,
+    "totalTokenCount": 46702,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 45260
+      }
+    ],
+    "thoughtsTokenCount": 1350,
+    "serviceTier": "standard"
+  },
+  "cost": {
+    "promptTokens": 45260,
+    "candidateTokens": 92,
+    "thinkingTokens": 1350,
+    "totalTokens": 46702,
+    "inputCostUsd": 0.06789,
+    "outputAndThinkingCostUsd": 0.010815,
+    "totalCostUsd": 0.078705
+  },
+  "score": {
+    "slug": "darknet-diaries",
+    "split": "holdout",
+    "durationSeconds": 4186.65,
+    "precision": 1.0,
+    "recall": 1.0,
+    "truePositives": 4,
+    "falsePositives": 0,
+    "falseNegatives": 0,
+    "timeWeighted": {
+      "truePositiveSeconds": 196.12,
+      "falsePositiveSeconds": 4.8,
+      "falseNegativeSeconds": 20.46,
+      "precision": 0.9761,
+      "recall": 0.9055,
+      "predictedAdSeconds": 200.92,
+      "goldenAdSeconds": 216.58
+    },
+    "contentLossSecondsPerListeningHour": 4.127,
+    "missedAdSecondsPerListeningHour": 17.593,
+    "boundary": {
+      "matched": 4,
+      "medianAbsDeltaStart": 10.23,
+      "medianAbsDeltaEnd": 0.0,
+      "maxAbsDeltaStart": 57.36,
+      "maxAbsDeltaEnd": 60.5,
+      "within3sBoth": 1
+    },
+    "failureModes": [
+      {
+        "mode": "end-bleed",
+        "pred": {
+          "start": 110.25,
+          "end": 223.31
+        },
+        "gold": {
+          "start": 110.25,
+          "end": 162.81
+        },
+        "deltaStart": 0.0,
+        "deltaEnd": 60.5
+      },
+      {
+        "mode": "early-start",
+        "pred": {
+          "start": 110.25,
+          "end": 223.31
+        },
+        "gold": {
+          "start": 167.61,
+          "end": 223.31
+        },
+        "deltaStart": -57.36,
+        "deltaEnd": 0.0
+      },
+      {
+        "mode": "late-start",
+        "pred": {
+          "start": 4145.35,
+          "end": 4167.09
+        },
+        "gold": {
+          "start": 4124.89,
+          "end": 4167.09
+        },
+        "deltaStart": 20.46,
+        "deltaEnd": 0.0
+      }
+    ],
+    "predictions": [
+      {
+        "start": 110.25,
+        "end": 223.31,
+        "excerpt": "This episode is sponsored by Threadlocker. The weird part about modern cyber attacks is how normal they look. The attacker logs in from Chrome, uses PowerShell,…"
+      },
+      {
+        "start": 2106.72,
+        "end": 2172.84,
+        "excerpt": "This episode is sponsored by NetSuite. I'm reading that each day your business is late to AI. You fall two days behind. So how do you keep up? Fortunately, ther…"
+      },
+      {
+        "start": 4145.35,
+        "end": 4167.09,
+        "excerpt": "But listen, if you want to be the first to hear it, you need to pitch in by going to plus .darknetdairies .com and sign up for our plus feed. You'll get bonus e…"
+      }
+    ]
+  }
+}

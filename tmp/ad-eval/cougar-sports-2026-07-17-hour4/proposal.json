@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "cougar-sports-2026-07-17-hour4",
+  "transcriptSha256": "7a6c5986dfea686ac11524e45d12599170c1561f0646bc4b499378f5727dd883",
+  "generatedAt": "2026-07-20T00:00:00+00:00",
+  "sources": {
+    "primary": "codex-transcript-pass",
+    "notes": "Agent-proposed starting spans for human review. These are not human-approved goldens."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 0,
+      "endWord": 81,
+      "label": "paid_dai",
+      "advertiser": "Polymarket",
+      "note": "Cold-open sports trading app spot."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 81,
+      "endWord": 161,
+      "label": "paid_dai",
+      "advertiser": "Shopify",
+      "note": "Cold-open Shopify customer testimonial spot."
+    },
+    {
+      "id": "proposal-003",
+      "startWord": 161,
+      "endWord": 214,
+      "label": "network_promo",
+      "advertiser": "ESPN The Fan / Cougar Sports",
+      "note": "Station and show bumper before episode re-entry."
+    },
+    {
+      "id": "proposal-004",
+      "startWord": 222,
+      "endWord": 262,
+      "label": "paid_host_read",
+      "advertiser": "Banner Wealth Studios",
+      "note": "Studio sponsor read and free Q&A CTA."
+    },
+    {
+      "id": "proposal-005",
+      "startWord": 300,
+      "endWord": 419,
+      "label": "paid_host_read",
+      "advertiser": "Atrium Hotel and Suites",
+      "note": "Local hotel sponsor read before hotline segment."
+    },
+    {
+      "id": "proposal-006",
+      "startWord": 1591,
+      "endWord": 1644,
+      "label": "paid_host_read",
+      "advertiser": "Atrium Hotel and Suites",
+      "note": "Mid-segment local hotel sponsor read."
+    },
+    {
+      "id": "proposal-007",
+      "startWord": 3582,
+      "endWord": 3684,
+      "label": "paid_host_read",
+      "advertiser": "Atrium Hotel and Suites",
+      "note": "Post-interview hotel sponsor recap and CTA."
+    },
+    {
+      "id": "proposal-008",
+      "startWord": 8402,
+      "endWord": 8411,
+      "label": "paid_host_read",
+      "advertiser": "Self-Serve Mattress",
+      "note": "Short segment sponsor bumper."
+    },
+    {
+      "id": "proposal-009",
+      "startWord": 8770,
+      "endWord": 8824,
+      "label": "paid_host_read",
+      "advertiser": "Cougar Sports sponsors",
+      "note": "Closing sponsor appeal and sales promise."
+    },
+    {
+      "id": "proposal-010",
+      "startWord": 8978,
+      "endWord": 9108,
+      "label": "paid_dai",
+      "advertiser": "Wealthfront",
+      "note": "Closing Wealthfront cash account spot."
+    },
+    {
+      "id": "proposal-011",
+      "startWord": 9108,
+      "endWord": 9159,
+      "label": "paid_dai",
+      "advertiser": "Toyota",
+      "note": "Closing Toyota electrified lineup spot."
+    },
+    {
+      "id": "proposal-012",
+      "startWord": 9159,
+      "endWord": 9287,
+      "label": "paid_dai",
+      "advertiser": "Wealthfront",
+      "note": "Repeated closing Wealthfront cash account spot through episode end."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "audit-001",
+      "startWord": 0,
+      "endWord": 214,
+      "reason": "Cold open contains a stacked DAI pair plus station/show bumper; verify exact transition into the host's episode content."
+    },
+    {
+      "id": "audit-002",
+      "startWord": 214,
+      "endWord": 425,
+      "reason": "Host re-entry, studio sponsor, story setup, and Atrium read are close together; verify story words are not included."
+    },
+    {
+      "id": "audit-003",
+      "startWord": 1575,
+      "endWord": 1660,
+      "reason": "Atrium read is embedded in an interview segment; verify tight start/end boundaries."
+    },
+    {
+      "id": "audit-004",
+      "startWord": 3576,
+      "endWord": 3695,
+      "reason": "Atrium recap has messy ASR near a station bumper; verify where the ad ends."
+    },
+    {
+      "id": "audit-005",
+      "startWord": 8388,
+      "endWord": 8444,
+      "reason": "Short Self-Serve Mattress bumper sits between content sentences; verify whether it should stay a separate tiny host-read span."
+    },
+    {
+      "id": "audit-006",
+      "startWord": 8729,
+      "endWord": 8824,
+      "reason": "Closing episode housekeeping flows into sponsor appeal; verify the exact first sponsor word."
+    },
+    {
+      "id": "audit-007",
+      "startWord": 8888,
+      "endWord": 9287,
+      "reason": "Personal sign-off flows into closing DAI stack; verify the Wealthfront start and Toyota split."
+    },
+    {
+      "id": "audit-008",
+      "startWord": 3715,
+      "endWord": 4008,
+      "reason": "Deep-dive audit: likely missed repeated studio sponsor + Self-Serve Mattress host-read block after the World of BYU Sports bumper; verify exact start/end before re-approving."
+    }
+  ]
+}

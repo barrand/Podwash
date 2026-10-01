@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "ai-daily-brief",
+  "transcriptSha256": "2ec97b535d575b5b7263d350f6928ba4d1fcf5b608dd3b852fa823dfb5a2ef7b",
+  "sources": {
+    "primary": "codex-transcript-pass",
+    "notes": "Agent-proposed starting spans for human review. These are not human-approved goldens. No local LLM was used."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 81,
+      "endWord": 135,
+      "label": "membership_cta",
+      "advertiser": "AI Daily Brief",
+      "note": "Opening sponsor thanks plus ad-free Patreon/Apple Podcasts and sponsor-contact CTA. Consider splitting or trimming if you only want paid reads skipped."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 1968,
+      "endWord": 2080,
+      "label": "paid_host_read",
+      "advertiser": "KPMG",
+      "note": "Midroll sponsor read after headlines; ends before Blitzy read."
+    },
+    {
+      "id": "proposal-003",
+      "startWord": 2080,
+      "endWord": 2226,
+      "label": "paid_host_read",
+      "advertiser": "Blitzy",
+      "note": "Midroll sponsor read; ends before Retool read."
+    },
+    {
+      "id": "proposal-004",
+      "startWord": 2226,
+      "endWord": 2371,
+      "label": "paid_host_read",
+      "advertiser": "Retool",
+      "note": "Midroll sponsor read; ends before Hyperagent read."
+    },
+    {
+      "id": "proposal-005",
+      "startWord": 2371,
+      "endWord": 2509,
+      "label": "paid_host_read",
+      "advertiser": "Hyperagent",
+      "note": "Midroll sponsor read; ASR includes Airtable as the builder. Keep 'Welcome back to the AI Daily Brief' as content."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "audit-opening-announcements",
+      "startWord": 70,
+      "endWord": 180,
+      "reason": "Opening announcement mixes sponsor thanks, ad-free CTA, sponsor inquiry, and a show/programming tease; verify exactly what should be skipped."
+    },
+    {
+      "id": "audit-headlines-to-midroll",
+      "startWord": 1945,
+      "endWord": 1985,
+      "reason": "Main midroll begins immediately after the headlines handoff; verify the ad starts at the KPMG question, not before."
+    },
+    {
+      "id": "audit-sponsor-stack-splits",
+      "startWord": 2060,
+      "endWord": 2390,
+      "reason": "Long four-sponsor stack; keep adjacent split spans if advertiser-level labels matter."
+    },
+    {
+      "id": "audit-midroll-reentry",
+      "startWord": 2495,
+      "endWord": 2530,
+      "reason": "Hyperagent ends right before 'Welcome back to the AI Daily Brief'; verify no story re-entry is highlighted."
+    }
+  ]
+}

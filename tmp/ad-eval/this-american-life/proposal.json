@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "this-american-life",
+  "transcriptSha256": "17a3caff267db3a46fb89eb38066299fee1daeb0455b66d272e517aa705288ad",
+  "sources": {
+    "primary": "codex-transcript-pass",
+    "notes": "Agent-proposed starting spans for human review. These are not human-approved goldens."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 0,
+      "endWord": 77,
+      "label": "paid_dai",
+      "advertiser": "Squarespace",
+      "note": "Cold-open website builder spot before episode warning and story."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 1285,
+      "endWord": 1364,
+      "label": "paid_dai",
+      "advertiser": "Schwab",
+      "note": "Midroll self-directed investing spot."
+    },
+    {
+      "id": "proposal-003",
+      "startWord": 1364,
+      "endWord": 1461,
+      "label": "paid_dai",
+      "advertiser": "Capella University",
+      "note": "Midroll university spot."
+    },
+    {
+      "id": "proposal-004",
+      "startWord": 1461,
+      "endWord": 1496,
+      "label": "paid_dai",
+      "advertiser": "Capital One",
+      "note": "Midroll bank spot; keep 'It's American life. Act One.' as content."
+    },
+    {
+      "id": "proposal-005",
+      "startWord": 4932,
+      "endWord": 5010,
+      "label": "paid_dai",
+      "advertiser": "Schwab",
+      "note": "Act-break investing spot after the break tease."
+    },
+    {
+      "id": "proposal-006",
+      "startWord": 5010,
+      "endWord": 5101,
+      "label": "paid_dai",
+      "advertiser": "Whole Foods Market",
+      "note": "Act-break grocery spot."
+    },
+    {
+      "id": "proposal-007",
+      "startWord": 5101,
+      "endWord": 5197,
+      "label": "paid_dai",
+      "advertiser": "Capella University",
+      "note": "Act-break university spot; keep re-entry into Act Three as content."
+    },
+    {
+      "id": "proposal-008",
+      "startWord": 11545,
+      "endWord": 11679,
+      "label": "membership_cta",
+      "advertiser": "This American Life Partners",
+      "note": "Life Partners acknowledgement and membership CTA."
+    },
+    {
+      "id": "proposal-009",
+      "startWord": 11730,
+      "endWord": 11828,
+      "label": "network_promo",
+      "advertiser": "This American Life",
+      "note": "Next-week episode promo."
+    },
+    {
+      "id": "proposal-010",
+      "startWord": 11828,
+      "endWord": 11890,
+      "label": "membership_cta",
+      "advertiser": "NPR Plus",
+      "note": "NPR Plus membership/support promo at episode end."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "audit-cold-open-warning-boundary",
+      "startWord": 0,
+      "endWord": 110,
+      "reason": "Cold-open Squarespace ad runs into an episode content warning; verify the ad stops before the warning."
+    },
+    {
+      "id": "audit-act-one-reentry",
+      "startWord": 1454,
+      "endWord": 1505,
+      "reason": "Capital One ends immediately before 'It's American life. Act One.'; verify no story re-entry is highlighted."
+    },
+    {
+      "id": "audit-break-stack-reentry",
+      "startWord": 4918,
+      "endWord": 5205,
+      "reason": "Long break stack after the tease; verify exact start after the program-continues bumper and exact end before Act Three."
+    },
+    {
+      "id": "audit-outro-membership-vs-content",
+      "startWord": 11530,
+      "endWord": 11690,
+      "reason": "Outro includes credits, Life Partners acknowledgement, and CTA; decide what should be skipped versus preserved."
+    },
+    {
+      "id": "audit-next-week-promo",
+      "startWord": 11730,
+      "endWord": 11828,
+      "reason": "Next-week promo is suggested as superfluous/network promo; delete if you want show previews treated as content."
+    },
+    {
+      "id": "audit-npr-plus-ending",
+      "startWord": 11828,
+      "endWord": 11890,
+      "reason": "Episode ends with NPR Plus support copy; verify label and full ending boundary."
+    }
+  ]
+}

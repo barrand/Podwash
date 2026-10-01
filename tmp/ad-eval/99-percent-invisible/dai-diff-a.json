@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "slug": "99-percent-invisible",
+  "model": "mlx-community/whisper-large-v3-mlx",
+  "engine": "mlx",
+  "originalWordCount": 7514,
+  "alternateWordCount": 7720,
+  "predictedSpans": [
+    {
+      "start": 3.64,
+      "end": 61.22
+    },
+    {
+      "start": 1699.78,
+      "end": 1710.42
+    },
+    {
+      "start": 1716.86,
+      "end": 1782.22
+    },
+    {
+      "start": 1787.06,
+      "end": 1802.92
+    },
+    {
+      "start": 1808.72,
+      "end": 1820.82
+    },
+    {
+      "start": 1824.88,
+      "end": 1836.4
+    },
+    {
+      "start": 2732.88,
+      "end": 2754.36
+    }
+  ],
+  "timeWeighted": {
+    "truePositiveSeconds": 190.98,
+    "falsePositiveSeconds": 3.56,
+    "falseNegativeSeconds": 106.42,
+    "precision": 0.9817,
+    "recall": 0.6422,
+    "predictedAdSeconds": 194.54,
+    "goldenAdSeconds": 297.4
+  }
+}

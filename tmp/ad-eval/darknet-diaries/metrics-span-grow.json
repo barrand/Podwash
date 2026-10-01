@@ -1,0 +1,28 @@
+{
+  "slug": "darknet-diaries",
+  "detector": "span-grow",
+  "precision": 0.8,
+  "recall": 1.0,
+  "truePositives": 4,
+  "falsePositives": 1,
+  "falseNegatives": 0,
+  "predictionCount": 5,
+  "goldenCount": 4,
+  "boundary": {
+    "matched": 4,
+    "medianAbsDeltaStart": 0.215,
+    "medianAbsDeltaEnd": 0.89,
+    "maxAbsDeltaStart": 0.24,
+    "maxAbsDeltaEnd": 10.78,
+    "within3sBoth": 3
+  },
+  "falsePositivesDetail": [
+    {
+      "start": 4044.91,
+      "end": 4065.13,
+      "excerpt": "soul. You can learn more about his companies by visiting calex .com and freelie .com, which has spelled P -H -R -D -E -L -I. Also, thank you to Cindy Cohen for \u2026"
+    }
+  ],
+  "falseNegativesDetail": [],
+  "goldenSource": "golden.json"
+}

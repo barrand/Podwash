@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "engine": "mlx-whisper",
+  "engineVersion": "0.4.3",
+  "model": "mlx-community/whisper-large-v3-mlx",
+  "modelRevision": "49e6aa286ad60c14352c404340ded53710378a11",
+  "language": "en",
+  "wordTimestamps": true,
+  "conditionOnPreviousText": false,
+  "temperatureFallback": [
+    0.0,
+    0.2,
+    0.4
+  ],
+  "initialPrompt": "The Dan Le Batard Show. Giannis Antetokounmpo. Miami Heat. Microphones. And Tony. | Local Hour",
+  "hallucinationSilenceThreshold": 2.0,
+  "audioFile": "audio.mp3",
+  "audioSha256": "b91e6d864ca4506abd6beddf6855d56bbaaa8cde5f1efdd3a74e29a5dd5711ee",
+  "metadataSha256": "b91e65aa7817026c15286d1f910951d6fc75a2a8f66f53ed75a612496c60b196",
+  "audioDuration": 2665.795711,
+  "transcriptSha256": "ce6a4467f2afaab5e508eec029cc8b7a1fc4a412cdf57989f0068a46a8a1d7bb",
+  "transcriptionSeconds": 615.932,
+  "validation": {
+    "wordCount": 8401,
+    "firstWordStart": 0.0,
+    "lastWordEnd": 2665.14,
+    "audioCoverage": 0.999754,
+    "overlappingWordStarts": 0,
+    "maxSilenceGap": 11.58,
+    "maxSilenceGapAfter": 1994.68
+  }
+}

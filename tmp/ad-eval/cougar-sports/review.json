@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "cougar-sports",
+  "status": "approved",
+  "revision": 130,
+  "transcriptSha256": "eb2938592dd75451de685a9707afb7edc9031e0fd5dfc5fa7da538474060b8c3",
+  "proposalSha256": "3738c877f92d66a1b19eaa725c69ce7f301d5f3d5714c117fedb585cf6a4ef80",
+  "reviewedThroughWord": 9760,
+  "resumeWord": 4261,
+  "spans": [
+    {
+      "id": "human-25",
+      "startWord": 0,
+      "endWord": 267,
+      "label": "paid_dai",
+      "advertiser": "",
+      "note": "",
+      "origin": "human-edited",
+      "proposalId": null
+    },
+    {
+      "id": "span-5",
+      "startWord": 327,
+      "endWord": 350,
+      "label": "paid_host_read",
+      "advertiser": "Pander Wealth Studios",
+      "note": "Local studio sponsor read.",
+      "origin": "human-edited",
+      "proposalId": "proposal-005"
+    },
+    {
+      "id": "span-6",
+      "startWord": 441,
+      "endWord": 455,
+      "label": "paid_host_read",
+      "advertiser": "Atrium Hotel and Suites",
+      "note": "Local sponsor bridge before interview.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-006"
+    },
+    {
+      "id": "span-7",
+      "startWord": 4432,
+      "endWord": 4467,
+      "label": "paid_host_read",
+      "advertiser": "Atrium Hotel and Suites",
+      "note": "Midroll local sponsor read.",
+      "origin": "human-edited",
+      "proposalId": "proposal-007"
+    },
+    {
+      "id": "span-9",
+      "startWord": 4467,
+      "endWord": 4503,
+      "label": "network_promo",
+      "advertiser": "Cougar Sports",
+      "note": "Station/show sponsor-bumper language.",
+      "origin": "human-edited",
+      "proposalId": "proposal-009"
+    },
+    {
+      "id": "span-10",
+      "startWord": 4528,
+      "endWord": 4570,
+      "label": "paid_host_read",
+      "advertiser": "Pander Wealth Studios",
+      "note": "Studio sponsor read.",
+      "origin": "human-edited",
+      "proposalId": "proposal-010"
+    },
+    {
+      "id": "span-11",
+      "startWord": 4675,
+      "endWord": 4805,
+      "label": "paid_host_read",
+      "advertiser": "Self Serve Mattress",
+      "note": "Local mattress sponsor read.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-011"
+    },
+    {
+      "id": "span-12",
+      "startWord": 9513,
+      "endWord": 9590,
+      "label": "paid_host_read",
+      "advertiser": "Cougar Sports sponsors",
+      "note": "Closing sponsor appeal and station sales pitch.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-012"
+    },
+    {
+      "id": "span-13",
+      "startWord": 9590,
+      "endWord": 9690,
+      "label": "paid_dai",
+      "advertiser": "OnDeck",
+      "note": "Closing small-business line of credit spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-013"
+    },
+    {
+      "id": "span-14",
+      "startWord": 9690,
+      "endWord": 9760,
+      "label": "paid_dai",
+      "advertiser": "SpinQuest",
+      "note": "Closing social casino spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-014"
+    }
+  ],
+  "auditDecisions": {
+    "audit-cold-open-boundaries": true
+  },
+  "attested": true,
+  "reviewer": "Brian",
+  "createdAt": "2026-07-19T21:24:41.227893+00:00",
+  "updatedAt": "2026-07-21T23:34:58.614475+00:00",
+  "approvedAt": "2026-07-21T23:34:58.623524+00:00"
+}

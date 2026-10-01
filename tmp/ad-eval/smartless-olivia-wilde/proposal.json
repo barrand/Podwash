@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "smartless-olivia-wilde",
+  "transcriptSha256": "40829adfe18100c940de60dd4aca92b63c711ebbed0a316896847e984e0e1195",
+  "generatedAt": "2026-07-20T00:00:00+00:00",
+  "sources": {
+    "primary": "codex-transcript-pass",
+    "notes": "Agent-proposed starting spans for human review. CPU faster-whisper transcript because MLX/Metal crashed after interruption."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 0,
+      "endWord": 110,
+      "label": "paid_dai",
+      "advertiser": "Coca-Cola Zero Sugar",
+      "note": "Cold-open Coke Zero spot."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 110,
+      "endWord": 222,
+      "label": "paid_dai",
+      "advertiser": "Hilton Honors",
+      "note": "Cold-open Paris Hilton / Hilton Honors spot."
+    },
+    {
+      "id": "proposal-003",
+      "startWord": 222,
+      "endWord": 330,
+      "label": "paid_dai",
+      "advertiser": "Amazon Health AI",
+      "note": "Cold-open Amazon Health AI presenter spot before SmartLess intro."
+    },
+    {
+      "id": "proposal-004",
+      "startWord": 4078,
+      "endWord": 4243,
+      "label": "paid_dai",
+      "advertiser": "Harvey",
+      "note": "AI-for-law sponsor spot."
+    },
+    {
+      "id": "proposal-005",
+      "startWord": 4243,
+      "endWord": 4387,
+      "label": "paid_dai",
+      "advertiser": "Skinny Pop",
+      "note": "Skinny Pop Popcorn spot."
+    },
+    {
+      "id": "proposal-006",
+      "startWord": 4387,
+      "endWord": 4490,
+      "label": "paid_dai",
+      "advertiser": "Allstate",
+      "note": "Allstate home-insurance spot before back-to-show."
+    },
+    {
+      "id": "proposal-007",
+      "startWord": 8655,
+      "endWord": 8785,
+      "label": "paid_host_read",
+      "advertiser": "Helix",
+      "note": "Helix mattress host-read with helixsleep.com/smartlists CTA."
+    },
+    {
+      "id": "proposal-008",
+      "startWord": 13013,
+      "endWord": 13105,
+      "label": "paid_dai",
+      "advertiser": "BiOptimizers Magnesium Breakthrough",
+      "note": "Magnesium Breakthrough spot with code HHS."
+    },
+    {
+      "id": "proposal-009",
+      "startWord": 13105,
+      "endWord": 13174,
+      "label": "paid_dai",
+      "advertiser": "Capella University",
+      "note": "Capella University spot through episode end."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "audit-001",
+      "startWord": 0,
+      "endWord": 340,
+      "reason": "Cold open contains three back-to-back produced spots; verify the exact SmartLess intro re-entry."
+    },
+    {
+      "id": "audit-002",
+      "startWord": 4070,
+      "endWord": 4500,
+      "reason": "Midroll stack appears Harvey → Skinny Pop → Allstate; verify the split boundaries and back-to-show marker."
+    },
+    {
+      "id": "audit-003",
+      "startWord": 8640,
+      "endWord": 8800,
+      "reason": "Helix host-read returns with 'And back to the show'; verify exact ad end."
+    },
+    {
+      "id": "audit-004",
+      "startWord": 12840,
+      "endWord": 13013,
+      "reason": "Live SmartLess/Hollywood Bowl promo and 'Smiles' joke precede the closing ad stack; likely content, but verify."
+    },
+    {
+      "id": "audit-005",
+      "startWord": 13013,
+      "endWord": 13174,
+      "reason": "Closing stack runs Magnesium Breakthrough → Capella through episode end; verify split and start after 'Smiles' bit."
+    }
+  ]
+}

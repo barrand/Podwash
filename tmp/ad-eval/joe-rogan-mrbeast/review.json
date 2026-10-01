@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "joe-rogan-mrbeast",
+  "status": "approved",
+  "revision": 23,
+  "transcriptSha256": "7e44ce6177df02045098d083971f3a3c2b923012a603d1924e90459d03e73532",
+  "proposalSha256": "b5fc646cd8b7177d822ecf2bfb2a4993651efa7ebe8630d1e3395b0266dbb77f",
+  "reviewedThroughWord": 39046,
+  "resumeWord": 38944,
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 1540,
+      "endWord": 1689,
+      "label": "paid_host_read",
+      "advertiser": "DraftKings",
+      "note": "Sports/event-trading sponsor read ending with dkng.co promo disclosure.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-001"
+    },
+    {
+      "id": "span-2",
+      "startWord": 1689,
+      "endWord": 1912,
+      "label": "paid_host_read",
+      "advertiser": "The Farmer's Dog",
+      "note": "Farmer's Dog sponsor read with thefarmersdog.com/rogan CTA.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-002"
+    },
+    {
+      "id": "span-3",
+      "startWord": 7634,
+      "endWord": 7819,
+      "label": "paid_host_read",
+      "advertiser": "Dodge",
+      "note": "Dodge Charger Scat Pack sponsor read.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-003"
+    },
+    {
+      "id": "span-4",
+      "startWord": 7819,
+      "endWord": 7904,
+      "label": "paid_host_read",
+      "advertiser": "Squarespace",
+      "note": "Squarespace sponsor read with squarespace.com/rogan and code ROGAN.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-004"
+    },
+    {
+      "id": "span-5",
+      "startWord": 12000,
+      "endWord": 12161,
+      "label": "paid_host_read",
+      "advertiser": "BlueChew",
+      "note": "BlueChew sponsor read with code ROGAN and safety info.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-005"
+    },
+    {
+      "id": "span-6",
+      "startWord": 15194,
+      "endWord": 15350,
+      "label": "paid_host_read",
+      "advertiser": "Manscaped",
+      "note": "Manscaped Dome Shaver Pro read with code ROGAN15.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-006"
+    },
+    {
+      "id": "span-7",
+      "startWord": 15350,
+      "endWord": 15486,
+      "label": "paid_host_read",
+      "advertiser": "LifeLock",
+      "note": "LifeLock identity-theft protection read with LifeLock.com/JRE CTA.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-007"
+    },
+    {
+      "id": "span-8",
+      "startWord": 20891,
+      "endWord": 21052,
+      "label": "paid_host_read",
+      "advertiser": "BlueChew",
+      "note": "Repeated BlueChew sponsor read.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-008"
+    },
+    {
+      "id": "span-9",
+      "startWord": 21052,
+      "endWord": 21199,
+      "label": "paid_host_read",
+      "advertiser": "Cardiff",
+      "note": "Small-business funding sponsor read with cardiff.co/spotify CTA.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-009"
+    },
+    {
+      "id": "span-10",
+      "startWord": 29169,
+      "endWord": 29301,
+      "label": "paid_host_read",
+      "advertiser": "Black Rifle Coffee",
+      "note": "Black Rifle Coffee read with BlackRifleCoffee.com/JoeRogan CTA.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-010"
+    },
+    {
+      "id": "span-11",
+      "startWord": 29301,
+      "endWord": 29409,
+      "label": "paid_host_read",
+      "advertiser": "Armra",
+      "note": "Armra Colostrum read with armra.com/rogan CTA.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-011"
+    },
+    {
+      "id": "span-12",
+      "startWord": 38751,
+      "endWord": 38912,
+      "label": "paid_host_read",
+      "advertiser": "BlueChew",
+      "note": "Closing BlueChew read after final goodbye.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-012"
+    },
+    {
+      "id": "span-13",
+      "startWord": 38912,
+      "endWord": 39046,
+      "label": "paid_host_read",
+      "advertiser": "LifeLock",
+      "note": "Closing LifeLock read through episode end.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-013"
+    }
+  ],
+  "auditDecisions": {},
+  "attested": true,
+  "reviewer": "Brian",
+  "createdAt": "2026-07-20T04:31:26.162132+00:00",
+  "updatedAt": "2026-07-20T04:33:48.177963+00:00",
+  "approvedAt": "2026-07-20T04:33:48.202731+00:00"
+}

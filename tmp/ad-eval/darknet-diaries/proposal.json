@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "darknet-diaries",
+  "transcriptSha256": "7200a11869fec9afc77f6390d5e70246c74ee5458c29b2f52269f4c30284272e",
+  "sources": {
+    "primary": "codex-transcript-pass",
+    "notes": "Agent-proposed starting spans for human review. These are not human-approved goldens. ASR renders Maze as Mays in this transcript."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 253,
+      "endWord": 398,
+      "label": "paid_host_read",
+      "advertiser": "ThreatLocker",
+      "note": "Opening sponsor read after show intro; ends immediately before the Maze read."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 398,
+      "endWord": 543,
+      "label": "paid_host_read",
+      "advertiser": "Maze",
+      "note": "Opening sponsor read; ASR says Mays/mayshq. Keep 'For this episode, I sat down...' as content."
+    },
+    {
+      "id": "proposal-003",
+      "startWord": 5721,
+      "endWord": 5892,
+      "label": "paid_host_read",
+      "advertiser": "NetSuite",
+      "note": "Midroll sponsor read after the break tease; ends before the ACLU story resumes."
+    },
+    {
+      "id": "proposal-004",
+      "startWord": 11816,
+      "endWord": 11947,
+      "label": "membership_cta",
+      "advertiser": "Darknet Diaries Plus",
+      "note": "Outro CTA for the Plus feed and early access; ends before production credits."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "audit-opening-stack-reentry",
+      "startWord": 240,
+      "endWord": 560,
+      "reason": "Opening sponsor stack sits between the show intro and the episode body; verify the body starts at 'For this episode, I sat down...'."
+    },
+    {
+      "id": "audit-threadlocker-maze-split",
+      "startWord": 370,
+      "endWord": 410,
+      "reason": "ThreatLocker ends directly before Maze begins; keep split spans if you want advertiser-level labels."
+    },
+    {
+      "id": "audit-netsuite-reentry",
+      "startWord": 5705,
+      "endWord": 5910,
+      "reason": "NetSuite follows a story break tease; verify the exact re-entry at 'So Nick and ACLU...'."
+    },
+    {
+      "id": "audit-source-links-not-ad",
+      "startWord": 11545,
+      "endWord": 11620,
+      "reason": "Guest/company/book links near the ending look commercial-ish but are probably source/context, not unrelated content."
+    },
+    {
+      "id": "audit-outro-plus-vs-credits",
+      "startWord": 11800,
+      "endWord": 11970,
+      "reason": "Plus CTA runs into credits; verify the CTA stops before production credits."
+    }
+  ]
+}

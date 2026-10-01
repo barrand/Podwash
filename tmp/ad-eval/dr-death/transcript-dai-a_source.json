@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "engine": "mlx-whisper",
+  "engineVersion": "0.4.3",
+  "model": "mlx-community/whisper-large-v3-mlx",
+  "modelRevision": "49e6aa286ad60c14352c404340ded53710378a11",
+  "language": "en",
+  "wordTimestamps": true,
+  "conditionOnPreviousText": false,
+  "temperatureFallback": [
+    0.0,
+    0.2,
+    0.4
+  ],
+  "initialPrompt": "Dr. Death. What To Listen To Next: Dan Taberski's Manifesto",
+  "hallucinationSilenceThreshold": 2.0,
+  "audioFile": "audio-dai-a.bin",
+  "audioSha256": "3db6bb3b69e7addfe8ee818f0225ca44936332ad7b18321f15e5783bcca60e56",
+  "metadataSha256": "7afc7d621abf5b6395573b9f1e3f7b4690009d284513fdeb3e30142de822f403",
+  "audioDuration": 2128.195878,
+  "transcriptSha256": "cb4e82c96b09c67c4dc32bfa2ab29e9afaf5730bcc4492bbfcfd9574857c5836",
+  "transcriptionSeconds": 412.809,
+  "validation": {
+    "wordCount": 5568,
+    "firstWordStart": 0.0,
+    "lastWordEnd": 2113.86,
+    "audioCoverage": 0.993264,
+    "overlappingWordStarts": 0,
+    "maxSilenceGap": 19.98,
+    "maxSilenceGapAfter": 1568.18
+  }
+}

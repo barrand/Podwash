@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "economics-of-everyday-things",
+  "transcriptSha256": "88a2953e5de2cc1a88988abfdd8d7d456ac07c59e90d78611b5574282fadf748",
+  "sources": {
+    "primary": "codex-transcript-pass",
+    "notes": "Agent-proposed starting spans for human review. No local LLM was used."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 0,
+      "endWord": 138,
+      "label": "paid_dai",
+      "advertiser": "Kalshi",
+      "note": "Cold-open prediction market spot."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 138,
+      "endWord": 223,
+      "label": "paid_dai",
+      "advertiser": "Schwab / Thinkorswim",
+      "note": "Cold-open trading platform spot; story begins at the grocery-store anecdote."
+    },
+    {
+      "id": "proposal-003",
+      "startWord": 1680,
+      "endWord": 1820,
+      "label": "paid_dai",
+      "advertiser": "Kalshi",
+      "note": "Midroll Kalshi spot."
+    },
+    {
+      "id": "proposal-004",
+      "startWord": 1820,
+      "endWord": 1888,
+      "label": "paid_dai",
+      "advertiser": "Fidelity Trader Plus",
+      "note": "Midroll Fidelity trading platform spot."
+    },
+    {
+      "id": "proposal-005",
+      "startWord": 1888,
+      "endWord": 1965,
+      "label": "paid_dai",
+      "advertiser": "Capital One",
+      "note": "Midroll Capital One Savor card spot; content resumes with Phil Lempert."
+    },
+    {
+      "id": "proposal-006",
+      "startWord": 3330,
+      "endWord": 3391,
+      "label": "paid_dai",
+      "advertiser": "Kalshi / Fidelity",
+      "note": "Post-roll ad fragment; ASR appears to skip or garble the transition into Fidelity."
+    },
+    {
+      "id": "proposal-007",
+      "startWord": 3391,
+      "endWord": 3412,
+      "label": "paid_dai",
+      "advertiser": "Fidelity Baskets",
+      "note": "Post-roll Fidelity legal/CTA fragment."
+    },
+    {
+      "id": "proposal-008",
+      "startWord": 3412,
+      "endWord": 3484,
+      "label": "paid_dai",
+      "advertiser": "Capital One",
+      "note": "Post-roll Capital One Savor card spot."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "audit-cold-open-story-start",
+      "startWord": 0,
+      "endWord": 260,
+      "reason": "Cold open starts with ads and then story; verify whether the first story word is 'A few weeks ago'."
+    },
+    {
+      "id": "audit-midroll-reentry",
+      "startWord": 1680,
+      "endWord": 1985,
+      "reason": "Three-ad midroll resumes with Phil Lempert; verify no content is included."
+    },
+    {
+      "id": "audit-postroll-garbled",
+      "startWord": 3330,
+      "endWord": 3484,
+      "reason": "Post-roll is ASR-garbled and may have missing ad starts; verify labels and split points."
+    }
+  ]
+}

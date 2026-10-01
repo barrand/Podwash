@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "dan-le-batard-local-hour",
+  "transcriptSha256": "5363c2f67ba626e0b48dddcc03dd1c3af2fe4b1427bf893c5f2320dfe26e1048",
+  "generatedAt": "2026-07-21T05:30:00.000000+00:00",
+  "sources": {
+    "primary": "codex-deep-dive-pass",
+    "notes": "Manual reviewer-assist proposal after the keyword helper produced notes but no visible spans."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 0,
+      "endWord": 75,
+      "label": "paid_dai",
+      "advertiser": "Accenture",
+      "note": "Cold-open Accenture/Spotify advertising-operations spot."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 75,
+      "endWord": 158,
+      "label": "paid_dai",
+      "advertiser": "Comcast / Telemundo",
+      "note": "Cold-open Comcast/Telemundo soccer coverage spot."
+    },
+    {
+      "id": "proposal-003",
+      "startWord": 158,
+      "endWord": 244,
+      "label": "paid_dai",
+      "advertiser": "LinkedIn",
+      "note": "Cold-open LinkedIn campaign ad ending before show intro."
+    },
+    {
+      "id": "proposal-004",
+      "startWord": 2504,
+      "endWord": 2724,
+      "label": "paid_host_read",
+      "advertiser": "Quince",
+      "note": "Quince host-read with quince.com/Dan CTA."
+    },
+    {
+      "id": "proposal-005",
+      "startWord": 2724,
+      "endWord": 2927,
+      "label": "paid_host_read",
+      "advertiser": "NetSuite",
+      "note": "NetSuite Next host-read/sponsor-read with netsuite.ai/dlb CTA."
+    },
+    {
+      "id": "proposal-006",
+      "startWord": 2927,
+      "endWord": 3147,
+      "label": "paid_host_read",
+      "advertiser": "Kachava",
+      "note": "Kachava travel-pack host-read with kachava.com code CTA."
+    },
+    {
+      "id": "proposal-007",
+      "startWord": 6069,
+      "endWord": 6310,
+      "label": "paid_host_read",
+      "advertiser": "Miller Lite",
+      "note": "Miller Lite/Miller Time MVP host-read ending at responsibility disclaimer."
+    },
+    {
+      "id": "proposal-008",
+      "startWord": 6310,
+      "endWord": 6523,
+      "label": "paid_host_read",
+      "advertiser": "Chewy",
+      "note": "Chewy host-read with first-order/free-shipping CTA."
+    },
+    {
+      "id": "proposal-009",
+      "startWord": 8498,
+      "endWord": 8593,
+      "label": "paid_dai",
+      "advertiser": "Jägermeister",
+      "note": "Closing Jägermeister spot through episode end."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "audit-001",
+      "startWord": 0,
+      "endWord": 244,
+      "reason": "Cold-open stack contains Accenture, Comcast/Telemundo, and LinkedIn before the show intro; verify exact split points."
+    },
+    {
+      "id": "audit-002",
+      "startWord": 2504,
+      "endWord": 3147,
+      "reason": "Midroll stack contains Quince, NetSuite, and Kachava; verify exact split points and transition back to content."
+    },
+    {
+      "id": "audit-003",
+      "startWord": 6069,
+      "endWord": 6523,
+      "reason": "Midroll stack contains Miller Lite followed immediately by Chewy; verify exact boundaries."
+    },
+    {
+      "id": "audit-004",
+      "startWord": 8498,
+      "endWord": 8593,
+      "reason": "Closing Jägermeister spot runs to episode end; verify first ad word after content."
+    }
+  ]
+}

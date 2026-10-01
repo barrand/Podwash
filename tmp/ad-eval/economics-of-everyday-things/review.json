@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "economics-of-everyday-things",
+  "status": "approved",
+  "revision": 8,
+  "transcriptSha256": "88a2953e5de2cc1a88988abfdd8d7d456ac07c59e90d78611b5574282fadf748",
+  "proposalSha256": "55990aa04d059faa6162cf258b9fc3edfda7a254e6e15cefc9f0ec5ac990d339",
+  "reviewedThroughWord": 3484,
+  "resumeWord": 1801,
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 0,
+      "endWord": 138,
+      "label": "paid_dai",
+      "advertiser": "Kalshi",
+      "note": "Cold-open prediction market spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-001"
+    },
+    {
+      "id": "span-2",
+      "startWord": 138,
+      "endWord": 223,
+      "label": "paid_dai",
+      "advertiser": "Schwab / Thinkorswim",
+      "note": "Cold-open trading platform spot; story begins at the grocery-store anecdote.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-002"
+    },
+    {
+      "id": "span-3",
+      "startWord": 1680,
+      "endWord": 1820,
+      "label": "paid_dai",
+      "advertiser": "Kalshi",
+      "note": "Midroll Kalshi spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-003"
+    },
+    {
+      "id": "span-4",
+      "startWord": 1820,
+      "endWord": 1888,
+      "label": "paid_dai",
+      "advertiser": "Fidelity Trader Plus",
+      "note": "Midroll Fidelity trading platform spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-004"
+    },
+    {
+      "id": "span-5",
+      "startWord": 1888,
+      "endWord": 1965,
+      "label": "paid_dai",
+      "advertiser": "Capital One",
+      "note": "Midroll Capital One Savor card spot; content resumes with Phil Lempert.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-005"
+    },
+    {
+      "id": "span-6",
+      "startWord": 3330,
+      "endWord": 3391,
+      "label": "paid_dai",
+      "advertiser": "Kalshi / Fidelity",
+      "note": "Post-roll ad fragment; ASR appears to skip or garble the transition into Fidelity.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-006"
+    },
+    {
+      "id": "span-7",
+      "startWord": 3391,
+      "endWord": 3412,
+      "label": "paid_dai",
+      "advertiser": "Fidelity Baskets",
+      "note": "Post-roll Fidelity legal/CTA fragment.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-007"
+    },
+    {
+      "id": "span-8",
+      "startWord": 3412,
+      "endWord": 3484,
+      "label": "paid_dai",
+      "advertiser": "Capital One",
+      "note": "Post-roll Capital One Savor card spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-008"
+    }
+  ],
+  "auditDecisions": {},
+  "attested": true,
+  "reviewer": "Brian",
+  "createdAt": "2026-07-20T01:31:09.762940+00:00",
+  "updatedAt": "2026-07-20T01:34:29.412673+00:00",
+  "approvedAt": "2026-07-20T01:34:22.088894+00:00"
+}

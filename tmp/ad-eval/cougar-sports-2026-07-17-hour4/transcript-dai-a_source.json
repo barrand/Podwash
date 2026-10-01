@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "engine": "mlx-whisper",
+  "engineVersion": "0.4.3",
+  "model": "mlx-community/whisper-large-v3-mlx",
+  "modelRevision": "49e6aa286ad60c14352c404340ded53710378a11",
+  "language": "en",
+  "wordTimestamps": true,
+  "conditionOnPreviousText": false,
+  "temperatureFallback": [
+    0.0,
+    0.2,
+    0.4
+  ],
+  "initialPrompt": "Cougar Sports with Ben Criddle (BYU). 7-17-26 - Hour 4 - How will the new 5 and 5 rule affect college football recruiting and BYU football?",
+  "hallucinationSilenceThreshold": 2.0,
+  "audioFile": "audio-dai-a.bin",
+  "audioSha256": "23b35281b872498b9dc1cf035af73b5c0a7699042ac7714315ba0e18de2a7be2",
+  "metadataSha256": "6785677c4802493950c4305986f8ce3202c493c024c76d286d086ddae407bb28",
+  "audioDuration": 3153.107211,
+  "transcriptSha256": "de9e54b3bcececb29fbf2657a07a95e702d812abcc4ca2ad60ac48b55f0a8138",
+  "transcriptionSeconds": 652.066,
+  "validation": {
+    "wordCount": 9211,
+    "firstWordStart": 0.0,
+    "lastWordEnd": 3152.52,
+    "audioCoverage": 0.999814,
+    "overlappingWordStarts": 0,
+    "maxSilenceGap": 3.46,
+    "maxSilenceGapAfter": 1021.6
+  }
+}

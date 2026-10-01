@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "radiolab",
+  "status": "approved",
+  "revision": 18,
+  "transcriptSha256": "bff470d7c4114d9ca1f4a4b700bae3bb77c44dd9f525320350de0e19b19536f1",
+  "proposalSha256": "5d76fb629f15eae8983fbf521a631a095576bb9e1f008e595f9bb46817dee19f",
+  "reviewedThroughWord": 6055,
+  "resumeWord": 5756,
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 0,
+      "endWord": 10,
+      "label": "paid_dai",
+      "advertiser": "Alienware",
+      "note": "Cold-open support/URL fragment; ASR appears to have omitted most of the copy.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-001"
+    },
+    {
+      "id": "span-2",
+      "startWord": 10,
+      "endWord": 72,
+      "label": "paid_dai",
+      "advertiser": "Progressive Insurance",
+      "note": "Cold-open Progressive spot; content starts at the Radiolab bumper.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-002"
+    },
+    {
+      "id": "span-4",
+      "startWord": 1646,
+      "endWord": 1742,
+      "label": "paid_dai",
+      "advertiser": "Capital One",
+      "note": "Deep-audit proposed missed midroll after the short-break tease.",
+      "origin": "ai-proposal",
+      "proposalId": null
+    },
+    {
+      "id": "span-5",
+      "startWord": 1742,
+      "endWord": 2077,
+      "label": "paid_host_read",
+      "advertiser": "BetterHelp",
+      "note": "Deep-audit proposed missed midroll support read; ends before This American Life promo.",
+      "origin": "ai-proposal",
+      "proposalId": null
+    },
+    {
+      "id": "span-6",
+      "startWord": 2077,
+      "endWord": 2167,
+      "label": "network_promo",
+      "advertiser": "This American Life",
+      "note": "Deep-audit proposed cross-show promo before Radiolab resumes.",
+      "origin": "ai-proposal",
+      "proposalId": null
+    },
+    {
+      "id": "span-3",
+      "startWord": 6026,
+      "endWord": 6055,
+      "label": "paid_baked_in",
+      "advertiser": "Radiolab funders",
+      "note": "End-credit foundation support acknowledgements.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-003"
+    }
+  ],
+  "auditDecisions": {},
+  "attested": true,
+  "reviewer": "Brian",
+  "createdAt": "2026-07-20T01:36:28.359223+00:00",
+  "updatedAt": "2026-07-21T23:44:23.180212+00:00",
+  "approvedAt": "2026-07-21T23:44:23.185303+00:00"
+}

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "ai-news-strategy-daily",
+  "transcriptSha256": "4b061f227dd4868b77b697e070bffb7cdbec2cc06d0f6dcc9393fde1e2cd30f9",
+  "sources": {
+    "primary": "codex-transcript-pass",
+    "notes": "Agent-proposed starting point for human review. No paid ads or clear unrelated-content spans were detected from the transcript. No local LLM was used."
+  },
+  "spans": [],
+  "auditItems": [
+    {
+      "id": "audit-cold-open-no-ad",
+      "startWord": 0,
+      "endWord": 120,
+      "reason": "Episode starts directly in topic/content; verify there is no cold-open sponsor or show promo."
+    },
+    {
+      "id": "audit-substack-cleaner-mention",
+      "startWord": 2930,
+      "endWord": 3090,
+      "reason": "Outro mentions the complete cleaner on Substack and invites comments; likely in-domain content/self-follow-up, but verify whether you want it treated as skippable promo."
+    },
+    {
+      "id": "audit-episode-ending",
+      "startWord": 3100,
+      "endWord": 3236,
+      "reason": "Final comments are community/follow-up remarks rather than a paid ad; verify no unrelated outro CTA should be highlighted."
+    }
+  ]
+}

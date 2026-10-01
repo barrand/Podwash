@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "smartless-olivia-wilde",
+  "status": "approved",
+  "revision": 36,
+  "transcriptSha256": "40829adfe18100c940de60dd4aca92b63c711ebbed0a316896847e984e0e1195",
+  "proposalSha256": "5ff16913847a2990d350a2720783f09b16cbf405c4bc94eed8c62e72285db2ca",
+  "reviewedThroughWord": 13174,
+  "resumeWord": 8889,
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 0,
+      "endWord": 106,
+      "label": "paid_dai",
+      "advertiser": "Coca-Cola Zero Sugar",
+      "note": "Cold-open Coke Zero spot.",
+      "origin": "human-edited",
+      "proposalId": "proposal-001"
+    },
+    {
+      "id": "span-2",
+      "startWord": 106,
+      "endWord": 219,
+      "label": "paid_dai",
+      "advertiser": "Hilton Honors",
+      "note": "Cold-open Paris Hilton / Hilton Honors spot.",
+      "origin": "human-edited",
+      "proposalId": "proposal-002"
+    },
+    {
+      "id": "span-3",
+      "startWord": 219,
+      "endWord": 305,
+      "label": "paid_dai",
+      "advertiser": "Amazon Health AI",
+      "note": "Cold-open Amazon Health AI presenter spot before SmartLess intro.",
+      "origin": "human-edited",
+      "proposalId": "proposal-003"
+    },
+    {
+      "id": "span-4",
+      "startWord": 4059,
+      "endWord": 4238,
+      "label": "paid_dai",
+      "advertiser": "Harvey",
+      "note": "AI-for-law sponsor spot.",
+      "origin": "human-edited",
+      "proposalId": "proposal-004"
+    },
+    {
+      "id": "span-5",
+      "startWord": 4238,
+      "endWord": 4398,
+      "label": "paid_dai",
+      "advertiser": "Skinny Pop",
+      "note": "Skinny Pop Popcorn spot.",
+      "origin": "human-edited",
+      "proposalId": "proposal-005"
+    },
+    {
+      "id": "human-10",
+      "startWord": 4398,
+      "endWord": 4500,
+      "label": "paid_dai",
+      "advertiser": "",
+      "note": "",
+      "origin": "human-edited",
+      "proposalId": null
+    },
+    {
+      "id": "human-11",
+      "startWord": 8304,
+      "endWord": 8617,
+      "label": "paid_dai",
+      "advertiser": "",
+      "note": "",
+      "origin": "human-added",
+      "proposalId": null
+    },
+    {
+      "id": "span-7",
+      "startWord": 8617,
+      "endWord": 8790,
+      "label": "paid_host_read",
+      "advertiser": "Helix",
+      "note": "Helix mattress host-read with helixsleep.com/smartlists CTA.",
+      "origin": "human-edited",
+      "proposalId": "proposal-007"
+    },
+    {
+      "id": "span-8",
+      "startWord": 13013,
+      "endWord": 13105,
+      "label": "paid_dai",
+      "advertiser": "BiOptimizers Magnesium Breakthrough",
+      "note": "Magnesium Breakthrough spot with code HHS.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-008"
+    },
+    {
+      "id": "span-9",
+      "startWord": 13105,
+      "endWord": 13174,
+      "label": "paid_dai",
+      "advertiser": "Capella University",
+      "note": "Capella University spot through episode end.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-009"
+    }
+  ],
+  "auditDecisions": {},
+  "attested": true,
+  "reviewer": "Brian",
+  "createdAt": "2026-07-21T04:16:16.255655+00:00",
+  "updatedAt": "2026-07-21T04:26:39.665542+00:00",
+  "approvedAt": "2026-07-21T04:26:39.674941+00:00"
+}

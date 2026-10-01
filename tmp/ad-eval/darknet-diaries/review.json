@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "darknet-diaries",
+  "status": "approved",
+  "revision": 22,
+  "transcriptSha256": "7200a11869fec9afc77f6390d5e70246c74ee5458c29b2f52269f4c30284272e",
+  "proposalSha256": "bd5f6f1f31f1b18c5c5c872ad3f36295f404971dd7ef224f9e79c14a7746079d",
+  "reviewedThroughWord": 11997,
+  "resumeWord": 11902,
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 253,
+      "endWord": 398,
+      "label": "paid_host_read",
+      "advertiser": "ThreatLocker",
+      "note": "Opening sponsor read after show intro; ends immediately before the Maze read.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-001"
+    },
+    {
+      "id": "span-2",
+      "startWord": 398,
+      "endWord": 543,
+      "label": "paid_host_read",
+      "advertiser": "Maze",
+      "note": "Opening sponsor read; ASR says Mays/mayshq. Keep 'For this episode, I sat down...' as content.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-002"
+    },
+    {
+      "id": "span-3",
+      "startWord": 5721,
+      "endWord": 5892,
+      "label": "paid_host_read",
+      "advertiser": "NetSuite",
+      "note": "Midroll sponsor read after the break tease; ends before the ACLU story resumes.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-003"
+    },
+    {
+      "id": "span-4",
+      "startWord": 11816,
+      "endWord": 11947,
+      "label": "membership_cta",
+      "advertiser": "Darknet Diaries Plus",
+      "note": "Outro CTA for the Plus feed and early access; ends before production credits.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-004"
+    }
+  ],
+  "auditDecisions": {},
+  "attested": true,
+  "reviewer": "Brian",
+  "createdAt": "2026-07-19T22:19:36.794268+00:00",
+  "updatedAt": "2026-07-21T23:37:08.097389+00:00",
+  "approvedAt": "2026-07-21T23:37:08.105823+00:00"
+}

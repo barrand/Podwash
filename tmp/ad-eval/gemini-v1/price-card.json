@@ -1,0 +1,9 @@
+{
+  "model": "gemini-3.6-flash",
+  "currency": "USD",
+  "source": "https://ai.google.dev/gemini-api/docs/pricing",
+  "capturedAt": "2026-07-24",
+  "inputUsdPerMillionTokens": 1.5,
+  "outputAndThinkingUsdPerMillionTokens": 7.5,
+  "contextCachingUsed": false
+}

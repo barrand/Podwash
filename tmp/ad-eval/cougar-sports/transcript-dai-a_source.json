@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "engine": "mlx-whisper",
+  "engineVersion": "0.4.3",
+  "model": "mlx-community/whisper-large-v3-mlx",
+  "modelRevision": "49e6aa286ad60c14352c404340ded53710378a11",
+  "language": "en",
+  "wordTimestamps": true,
+  "conditionOnPreviousText": false,
+  "temperatureFallback": [
+    0.0,
+    0.2,
+    0.4
+  ],
+  "initialPrompt": "Cougar Sports with Ben Criddle (BYU). 7-15-26 - Hour 4 - If BYU defeats Notre Dame and Utah will they go 12-0 this season?",
+  "hallucinationSilenceThreshold": 2.0,
+  "audioFile": "audio-dai-a.bin",
+  "audioSha256": "694a01cd1ab2783959d865988aa8127874d5deeca3de0a65fc4f2d15e9ce0110",
+  "metadataSha256": "c3ab23cb603aec56d4f3f8da8f73a021c9dd3cf33f887d1e77aa1d6d4a1d7059",
+  "audioDuration": 3252.149025,
+  "transcriptSha256": "4f451ec1fa98f256d1811db3ba1fc4d84fcce3924c9b9f45bc27e7be1a3fd786",
+  "transcriptionSeconds": 520.525,
+  "validation": {
+    "wordCount": 10488,
+    "firstWordStart": 0.0,
+    "lastWordEnd": 3252.02,
+    "audioCoverage": 0.99996,
+    "overlappingWordStarts": 0,
+    "maxSilenceGap": 6.96,
+    "maxSilenceGapAfter": 2462.52
+  }
+}

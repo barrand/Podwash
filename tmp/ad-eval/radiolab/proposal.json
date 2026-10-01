@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "radiolab",
+  "transcriptSha256": "bff470d7c4114d9ca1f4a4b700bae3bb77c44dd9f525320350de0e19b19536f1",
+  "sources": {
+    "primary": "codex-transcript-pass",
+    "notes": "Agent-proposed starting spans for human review. No local LLM was used."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 0,
+      "endWord": 10,
+      "label": "paid_dai",
+      "advertiser": "Alienware",
+      "note": "Cold-open support/URL fragment; ASR appears to have omitted most of the copy."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 10,
+      "endWord": 72,
+      "label": "paid_dai",
+      "advertiser": "Progressive Insurance",
+      "note": "Cold-open Progressive spot; content starts at the Radiolab bumper."
+    },
+    {
+      "id": "proposal-003",
+      "startWord": 6026,
+      "endWord": 6055,
+      "label": "paid_baked_in",
+      "advertiser": "Radiolab funders",
+      "note": "End-credit foundation support acknowledgements."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "audit-cold-open-underwriting",
+      "startWord": 0,
+      "endWord": 90,
+      "reason": "Cold open starts with underwriting/ads and then Radiolab content; verify exact bumper boundary."
+    },
+    {
+      "id": "audit-foundation-support",
+      "startWord": 6000,
+      "endWord": 6055,
+      "reason": "End foundation support may be treated as underwriting or preserved as credits; decide policy."
+    },
+    {
+      "id": "audit-missed-capital-one-betterhelp",
+      "startWord": 1642,
+      "endWord": 2133,
+      "reason": "Deep-dive audit: likely missed midroll stack after short break — Capital One, BetterHelp, and possibly the This American Life network promo; verify boundaries before re-approving."
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "dr-death",
+  "transcriptSha256": "d9150942ae003c43847092e61adadcb6beeea420e454b891c77d6431a2104456",
+  "sources": {
+    "primary": "codex-transcript-pass",
+    "notes": "Agent-proposed starting point for human review. This is a feed-drop/cross-post style episode, so the main Manifesto payload and host framing should be treated as content unless you identify a separate inserted ad."
+  },
+  "spans": [],
+  "auditItems": [
+    {
+      "id": "audit-feed-drop-policy",
+      "startWord": 0,
+      "endWord": 5551,
+      "reason": "Feed-drop/cross-post policy: treat the main Manifesto episode and host framing as content. Only add spans if you find a separate inserted ad or standalone CTA that should be skipped."
+    }
+  ]
+}

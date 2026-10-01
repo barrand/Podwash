@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "version-history",
+  "status": "approved",
+  "revision": 5,
+  "transcriptSha256": "6b9c9768cf02c81e652a8a0b0318b6db93d7695f1bd35238f8db94b47c9e41cd",
+  "proposalSha256": "bd9263d4bfaab11541e9fdac31bdb99981a783c4bd23b84a7f9d7627d873032c",
+  "reviewedThroughWord": 12518,
+  "resumeWord": 12184,
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 88,
+      "endWord": 180,
+      "label": "paid_dai",
+      "advertiser": "Thumbtack",
+      "note": "Early ad after show intro; ASR cuts off the CTA at 'and you can'.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-001"
+    },
+    {
+      "id": "span-2",
+      "startWord": 4790,
+      "endWord": 4839,
+      "label": "paid_dai",
+      "advertiser": "Indeed / Comcast Business",
+      "note": "Very short presenter/sponsored-jobs spot before CES re-entry.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-002"
+    },
+    {
+      "id": "span-3",
+      "startWord": 12370,
+      "endWord": 12427,
+      "label": "membership_cta",
+      "advertiser": "The Verge subscription",
+      "note": "Outro subscription CTA.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-003"
+    },
+    {
+      "id": "span-4",
+      "startWord": 12443,
+      "endWord": 12518,
+      "label": "paid_dai",
+      "advertiser": "Smith's / Kroger",
+      "note": "Post-roll grocery spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-004"
+    }
+  ],
+  "auditDecisions": {},
+  "attested": true,
+  "reviewer": "Brian",
+  "createdAt": "2026-07-20T01:40:15.182492+00:00",
+  "updatedAt": "2026-07-20T01:40:22.444752+00:00",
+  "approvedAt": "2026-07-20T01:40:22.454892+00:00"
+}

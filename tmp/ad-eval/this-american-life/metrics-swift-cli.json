@@ -1,0 +1,320 @@
+{
+  "slug": "this-american-life",
+  "detector": "swift-cli",
+  "isDogfood": true,
+  "precision": 0.429,
+  "recall": 0.167,
+  "truePositives": 3,
+  "falsePositives": 4,
+  "falseNegatives": 15,
+  "predictionCount": 7,
+  "goldenCount": 18,
+  "boundary": {
+    "matched": 3,
+    "medianAbsDeltaStart": 2.98,
+    "medianAbsDeltaEnd": 3.69,
+    "maxAbsDeltaStart": 3.28,
+    "maxAbsDeltaEnd": 19.26,
+    "within3sBoth": 1
+  },
+  "timeWeighted": {
+    "truePositiveSeconds": 156.18,
+    "falsePositiveSeconds": 33.72,
+    "falseNegativeSeconds": 270.57,
+    "precision": 0.8224,
+    "recall": 0.366,
+    "predictedAdSeconds": 189.9,
+    "goldenAdSeconds": 426.75
+  },
+  "failureModes": [
+    {
+      "mode": "early-start+early-stop",
+      "pred": {
+        "start": 0.27,
+        "end": 28.23
+      },
+      "gold": {
+        "start": 3.55,
+        "end": 47.49
+      },
+      "deltaStart": -3.28,
+      "deltaEnd": -19.26
+    },
+    {
+      "mode": "early-stop",
+      "pred": {
+        "start": 519.54,
+        "end": 536.38
+      },
+      "gold": {
+        "start": 516.56,
+        "end": 540.07
+      },
+      "deltaStart": 2.98,
+      "deltaEnd": -3.69
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 565.41,
+        "end": 576.77
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 775.01,
+        "end": 790.39
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 918.59,
+        "end": 926.93
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 1857.38,
+        "end": 1950.44
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 1960.98,
+        "end": 1982.66
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 1988.02,
+        "end": 2000.92
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 2020.38,
+        "end": 2032.36
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 2041.7,
+        "end": 2050.18
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 2275.15,
+        "end": 2280.17
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 2506.23,
+        "end": 2522.13
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 3002.51,
+        "end": 3013.87
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 3579.41,
+        "end": 3585.57
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 3740.83,
+        "end": 3745.99
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 3917.36,
+        "end": 3934.25
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 4371.55,
+        "end": 4436.54
+      }
+    },
+    {
+      "mode": "false-positive",
+      "pred": {
+        "start": 1855.92,
+        "end": 1896.38
+      }
+    },
+    {
+      "mode": "false-positive",
+      "pred": {
+        "start": 1908.7,
+        "end": 1933.72
+      }
+    },
+    {
+      "mode": "false-positive",
+      "pred": {
+        "start": 4301.21,
+        "end": 4309.81
+      }
+    },
+    {
+      "mode": "false-positive",
+      "pred": {
+        "start": 4323.43,
+        "end": 4341.69
+      }
+    }
+  ],
+  "falsePositivesDetail": [
+    {
+      "start": 1855.92,
+      "end": 1896.38,
+      "excerpt": "Support for this American life comes from Schwab. At Schwab, how you invest is your choice, not theirs. That's why when it comes to managing your wealth, Schwab\u2026"
+    },
+    {
+      "start": 1908.7,
+      "end": 1933.72,
+      "excerpt": "Save today and every day at Whole Foods Market. Support for this American life and the following message come from Capella University. You know that feeling whe\u2026"
+    },
+    {
+      "start": 4301.21,
+      "end": 4309.81,
+      "excerpt": "This American Life is equivalent to public radio stations by PRX, the Public Radio Exchange. Thanks today to this American Life Partners, Helen Ingram, Scott Yo\u2026"
+    },
+    {
+      "start": 4323.43,
+      "end": 4341.69,
+      "excerpt": "The main reason we hope you do that, that you become a Life Partner, is just to support the show and help us keep doing it and keep doing stories like you heard\u2026"
+    }
+  ],
+  "falseNegativesDetail": [
+    {
+      "start": 565.41,
+      "end": 576.77,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "chance to question potential jurors. We did a little story about this on our show a couple months ago. And the judge also decided to move the trial upstairs int\u2026"
+    },
+    {
+      "start": 775.01,
+      "end": 790.39,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "jury. That's just their random opinion that this was terrorism. The judge was like, well, what they genuinely thought in the moment, seeing what they were seein\u2026"
+    },
+    {
+      "start": 918.59,
+      "end": 926.93,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "defense attorneys did. They loved to talk about this case, especially as it turns out, the guy who was going to lead the cross -examination of the"
+    },
+    {
+      "start": 1857.38,
+      "end": 1950.44,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "comes from Schwab. At Schwab, how you invest is your choice, not theirs. That's why when it comes to managing your wealth, Schwab gives you more choices. You ca\u2026"
+    },
+    {
+      "start": 1960.98,
+      "end": 1982.66,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "Cooperator. Okay, so, originally, 16 people were charged in this case. Nine of them went on trial. And the other seven, they played guilty to material support t\u2026"
+    },
+    {
+      "start": 1988.02,
+      "end": 2000.92,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "an anarchist antifa ideology. That, of course, seemed good for the government's case. Also, five of them appeared in court to testify for the prosecution. One o\u2026"
+    },
+    {
+      "start": 2020.38,
+      "end": 2032.36,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "then eventually got snuck out by a couple friends? That was Lynette. She fished him out of the field and then hit him from the cops. The authorities tracked her\u2026"
+    },
+    {
+      "start": 2041.7,
+      "end": 2050.18,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "be in some degree of anguish over what they were doing, testifying against their friends. It was hard to sit through. There was something about Lynette, though."
+    },
+    {
+      "start": 2275.15,
+      "end": 2280.17,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "there every time the doors were open. And just really immersed myself in that. It was"
+    },
+    {
+      "start": 2506.23,
+      "end": 2522.13,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "into something. But however hot Amber Heard is in The Rum Diary in Lynette's mind, Lynette is still a church lady in suburban Texas. She's a conservative. At th\u2026"
+    },
+    {
+      "start": 3002.51,
+      "end": 3013.87,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "had happened. Either it was, like, unavoidable. You know, I didn't know. I just knew that I couldn't imagine that happening for no reason. Like, there had to ha\u2026"
+    },
+    {
+      "start": 3579.41,
+      "end": 3585.57,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "colossal mistake? Right. I don't know what it is. By deciding"
+    },
+    {
+      "start": 3740.83,
+      "end": 3745.99,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "jurors was crying. The judge read the verdicts. Eight of the"
+    },
+    {
+      "start": 3917.36,
+      "end": 3934.25,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "material support. What does that mean? Well, it means the government is going to be emboldened to continue to use the law in this way, which is a danger to ever\u2026"
+    },
+    {
+      "start": 4371.55,
+      "end": 4436.54,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "when a beloved tree was mysteriously cut down in National Park in Britain, people across the country were outraged, called it slaughter. They said things like, \u2026"
+    }
+  ],
+  "goldenSource": "golden.json"
+}

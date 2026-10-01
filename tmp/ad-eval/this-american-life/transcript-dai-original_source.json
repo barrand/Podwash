@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "engine": "mlx-whisper",
+  "engineVersion": "0.4.3",
+  "model": "mlx-community/whisper-large-v3-mlx",
+  "modelRevision": "49e6aa286ad60c14352c404340ded53710378a11",
+  "language": "en",
+  "wordTimestamps": true,
+  "conditionOnPreviousText": false,
+  "temperatureFallback": [
+    0.0,
+    0.2,
+    0.4
+  ],
+  "initialPrompt": "This American Life. 891: The Test Case",
+  "hallucinationSilenceThreshold": 2.0,
+  "audioFile": "audio.mp3",
+  "audioSha256": "9d18c774135189678708f8d2355ba9538c5682ce68f04070e480acea5b6a273e",
+  "metadataSha256": "135b02dc9a24d29a3a0296863b00657c20ccc45fffc90726de0f7c5f3c7da88c",
+  "audioDuration": 4436.923756,
+  "transcriptSha256": "75bc147732f738d12a305569c3e8c945291c1a1163feb3af63b45941d43848a9",
+  "transcriptionSeconds": 1005.73,
+  "validation": {
+    "wordCount": 11407,
+    "firstWordStart": 0.0,
+    "lastWordEnd": 4436.52,
+    "audioCoverage": 0.999909,
+    "overlappingWordStarts": 0,
+    "maxSilenceGap": 29.24,
+    "maxSilenceGapAfter": 4276.86
+  }
+}

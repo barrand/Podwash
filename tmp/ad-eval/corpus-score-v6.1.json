@@ -1,0 +1,2886 @@
+{
+  "schemaVersion": 1,
+  "approachRequested": "v6.1",
+  "episodes": [
+    {
+      "slug": "99-percent-invisible",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 2754.36,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 8,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 297.4,
+        "precision": 0.0,
+        "recall": 0.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 297.4
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 388.707,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "failureModes": [
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 0.0,
+            "end": 36.96
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 37.28,
+            "end": 62.6
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1692.26,
+            "end": 1718.4
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1721.26,
+            "end": 1780.9
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1781.06,
+            "end": 1810.86
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1811.08,
+            "end": 1836.4
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 2656.82,
+            "end": 2721.76
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 2725.08,
+            "end": 2754.36
+          }
+        }
+      ],
+      "predictions": [],
+      "breakdowns": {
+        "label": {
+          "network_promo": {
+            "goldenSeconds": 64.94,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 232.46,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 232.46,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 64.94,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "unknown": {
+            "goldenSeconds": 297.4,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "ai-daily-brief",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 1872.92,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 3,
+      "falseNegatives": 5,
+      "timeWeighted": {
+        "truePositiveSeconds": 23.5,
+        "falsePositiveSeconds": 2.46,
+        "falseNegativeSeconds": 158.46,
+        "precision": 0.9052,
+        "recall": 0.1291,
+        "predictedAdSeconds": 25.96,
+        "goldenAdSeconds": 181.96
+      },
+      "contentLossSecondsPerListeningHour": 4.728,
+      "missedAdSecondsPerListeningHour": 304.581,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "failureModes": [
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 26.96,
+            "end": 41.02
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 644.64,
+            "end": 685.96
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 687.1,
+            "end": 731.44
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 732.46,
+            "end": 774.8
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 776.24,
+            "end": 816.14
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 678.24,
+            "end": 685.96
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 725.26,
+            "end": 734.36
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 772.64,
+            "end": 781.78
+          }
+        }
+      ],
+      "predictions": [
+        {
+          "start": 678.24,
+          "end": 685.96,
+          "excerpt": "Learn more at kpmg .com slash us slash sophisticated, that's kpmg .com slash us slash sophisticated."
+        },
+        {
+          "start": 725.26,
+          "end": 734.36,
+          "excerpt": "Transform the way you develop software, discover how at blitzy .com, that's b -l -i -t -z -y .com. This episode is brought to you by retool."
+        },
+        {
+          "start": 772.64,
+          "end": 781.78,
+          "excerpt": "Start building at retool .com slash AI daily. This episode of the AI daily brief is brought to you by Hyperagent, where you run fleets of agents your team can m\u2026"
+        }
+      ],
+      "breakdowns": {
+        "label": {
+          "membership_cta": {
+            "goldenSeconds": 14.06,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_host_read": {
+            "goldenSeconds": 167.9,
+            "coveredSeconds": 23.5,
+            "coverage": 0.14
+          }
+        },
+        "delivery": {
+          "unknown": {
+            "goldenSeconds": 181.96,
+            "coveredSeconds": 23.5,
+            "coverage": 0.1291
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 181.96,
+            "coveredSeconds": 23.5,
+            "coverage": 0.1291
+          }
+        }
+      }
+    },
+    {
+      "slug": "ai-news-strategy-daily",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 945.19,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 0.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 0
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 0.0,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "failureModes": [],
+      "predictions": [],
+      "breakdowns": {
+        "label": {},
+        "delivery": {},
+        "readStyle": {}
+      }
+    },
+    {
+      "slug": "armchair-expert-grant-achatz",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 6977.85,
+      "precision": 0.3333,
+      "recall": 0.1111,
+      "truePositives": 1,
+      "falsePositives": 2,
+      "falseNegatives": 8,
+      "timeWeighted": {
+        "truePositiveSeconds": 84.66,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 509.53,
+        "precision": 1.0,
+        "recall": 0.1425,
+        "predictedAdSeconds": 84.66,
+        "goldenAdSeconds": 594.19
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 262.876,
+      "boundary": {
+        "matched": 1,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 14.52,
+        "maxAbsDeltaStart": 0.0,
+        "maxAbsDeltaEnd": 14.52,
+        "within3sBoth": 0
+      },
+      "failureModes": [
+        {
+          "mode": "early-stop",
+          "pred": {
+            "start": 3565.38,
+            "end": 3615.26
+          },
+          "gold": {
+            "start": 3565.38,
+            "end": 3629.78
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": -14.52
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 42.76,
+            "end": 120.28
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 120.86,
+            "end": 224.84
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1747.4,
+            "end": 1791.6
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1792.32,
+            "end": 1844.0
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1844.76,
+            "end": 1931.54
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1952.96,
+            "end": 1994.79
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 3630.96,
+            "end": 3686.04
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 3687.42,
+            "end": 3756.14
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 120.86,
+            "end": 141.26
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 3630.96,
+            "end": 3645.34
+          }
+        }
+      ],
+      "predictions": [
+        {
+          "start": 120.86,
+          "end": 141.26,
+          "excerpt": "This episode is sponsored by BetterHelp. So Monica, here's something that really stuck with me. BetterHelp's 2026 state of stigma report surveyed 2000 Americans\u2026"
+        },
+        {
+          "start": 3565.38,
+          "end": 3615.26,
+          "excerpt": "This podcast is brought to you by Squarespace. We've talked before about Rob building our website on Squarespace, and I bring it up again, because it's a perfec\u2026"
+        },
+        {
+          "start": 3630.96,
+          "end": 3645.34,
+          "excerpt": "This episode is brought to you by SoFi, the all -in -one finance app where you can bank, borrow, and invest all in one place. Let's talk bank accounts for a sec\u2026"
+        }
+      ],
+      "breakdowns": {
+        "label": {
+          "paid_baked_in": {
+            "goldenSeconds": 77.52,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 516.67,
+            "coveredSeconds": 84.66,
+            "coverage": 0.1639
+          }
+        },
+        "delivery": {
+          "baked_in": {
+            "goldenSeconds": 77.52,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "dynamic": {
+            "goldenSeconds": 516.67,
+            "coveredSeconds": 84.66,
+            "coverage": 0.1639
+          }
+        },
+        "readStyle": {
+          "unknown": {
+            "goldenSeconds": 594.19,
+            "coveredSeconds": 84.66,
+            "coverage": 0.1425
+          }
+        }
+      }
+    },
+    {
+      "slug": "bill-simmons-kawhi",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 7119.63,
+      "precision": 0.5714,
+      "recall": 0.3636,
+      "truePositives": 4,
+      "falsePositives": 3,
+      "falseNegatives": 7,
+      "timeWeighted": {
+        "truePositiveSeconds": 195.88,
+        "falsePositiveSeconds": 5.72,
+        "falseNegativeSeconds": 245.32,
+        "precision": 0.9716,
+        "recall": 0.444,
+        "predictedAdSeconds": 201.6,
+        "goldenAdSeconds": 441.2
+      },
+      "contentLossSecondsPerListeningHour": 2.892,
+      "missedAdSecondsPerListeningHour": 124.045,
+      "boundary": {
+        "matched": 4,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 19.87,
+        "maxAbsDeltaStart": 30.34,
+        "maxAbsDeltaEnd": 36.14,
+        "within3sBoth": 1
+      },
+      "failureModes": [
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 3940.78,
+            "end": 4006.62
+          },
+          "gold": {
+            "start": 3940.78,
+            "end": 3970.48
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 36.14
+        },
+        {
+          "mode": "early-start+early-stop",
+          "pred": {
+            "start": 3940.78,
+            "end": 4006.62
+          },
+          "gold": {
+            "start": 3971.12,
+            "end": 4025.04
+          },
+          "deltaStart": -30.34,
+          "deltaEnd": -18.42
+        },
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 7030.71,
+            "end": 7081.33
+          },
+          "gold": {
+            "start": 7030.71,
+            "end": 7060.01
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 21.32
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 0.0,
+            "end": 40.13
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 128.07,
+            "end": 169.49
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 549.9,
+            "end": 611.01
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 2879.07,
+            "end": 2902.89
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 2903.63,
+            "end": 2949.51
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 7012.53,
+            "end": 7030.19
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 7060.51,
+            "end": 7119.63
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 0.0,
+            "end": 19.06
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 37.31,
+            "end": 44.71
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 2903.63,
+            "end": 2923.17
+          }
+        }
+      ],
+      "predictions": [
+        {
+          "start": 0.0,
+          "end": 19.06,
+          "excerpt": "This episode is brought to you by TikTok. Did you know you can use TikTok to connect even more with the sports you love? It's not just highlights, it's everythi\u2026"
+        },
+        {
+          "start": 37.31,
+          "end": 44.71,
+          "excerpt": "We're also brought to you by the Ringer podcast network. I put up a new rewatchables on Monday night. We did Ali, Will Smith,"
+        },
+        {
+          "start": 611.93,
+          "end": 651.07,
+          "excerpt": "This episode is brought to you by PNC Bank. In today's sports, everyone is constantly trying to outdo each other, trick formations and field shifts, constant ro\u2026"
+        },
+        {
+          "start": 2903.63,
+          "end": 2923.17,
+          "excerpt": "This episode is brought to you by Holiday Inn by IHG. If I'm ever traveling for work, where I stay is so important. I actually really care about this because so\u2026"
+        },
+        {
+          "start": 3940.78,
+          "end": 4006.62,
+          "excerpt": "This message is brought to you by Mariner. It takes the right team to help develop an athlete's talents. Managing your money works the same way. Have you ever t\u2026"
+        },
+        {
+          "start": 7030.71,
+          "end": 7081.33,
+          "excerpt": "This message is brought to you by Mariner. It takes the right team to help develop an athlete's talents. Managing your money works the same way. Have you ever t\u2026"
+        }
+      ],
+      "breakdowns": {
+        "label": {
+          "paid_dai": {
+            "goldenSeconds": 401.07,
+            "coveredSeconds": 174.0,
+            "coverage": 0.4338
+          },
+          "paid_host_read": {
+            "goldenSeconds": 40.13,
+            "coveredSeconds": 21.88,
+            "coverage": 0.5452
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 401.07,
+            "coveredSeconds": 174.0,
+            "coverage": 0.4338
+          },
+          "unknown": {
+            "goldenSeconds": 40.13,
+            "coveredSeconds": 21.88,
+            "coverage": 0.5452
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 40.13,
+            "coveredSeconds": 21.88,
+            "coverage": 0.5452
+          },
+          "unknown": {
+            "goldenSeconds": 401.07,
+            "coveredSeconds": 174.0,
+            "coverage": 0.4338
+          }
+        }
+      }
+    },
+    {
+      "slug": "cougar-sports",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 3132.44,
+      "precision": 0.6,
+      "recall": 0.3,
+      "truePositives": 3,
+      "falsePositives": 2,
+      "falseNegatives": 7,
+      "timeWeighted": {
+        "truePositiveSeconds": 88.04,
+        "falsePositiveSeconds": 42.46,
+        "falseNegativeSeconds": 175.82,
+        "precision": 0.6746,
+        "recall": 0.3337,
+        "predictedAdSeconds": 130.5,
+        "goldenAdSeconds": 263.86
+      },
+      "contentLossSecondsPerListeningHour": 48.798,
+      "missedAdSecondsPerListeningHour": 202.064,
+      "boundary": {
+        "matched": 3,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 10.6,
+        "maxAbsDeltaStart": 6.22,
+        "maxAbsDeltaEnd": 25.64,
+        "within3sBoth": 0
+      },
+      "failureModes": [
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 148.82,
+            "end": 163.62
+          },
+          "gold": {
+            "start": 148.82,
+            "end": 153.02
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 10.6
+        },
+        {
+          "mode": "early-start",
+          "pred": {
+            "start": 1421.28,
+            "end": 1442.48
+          },
+          "gold": {
+            "start": 1427.5,
+            "end": 1442.48
+          },
+          "deltaStart": -6.22,
+          "deltaEnd": 0.0
+        },
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 1512.26,
+            "end": 1576.74
+          },
+          "gold": {
+            "start": 1512.26,
+            "end": 1551.1
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 25.64
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 0.0,
+            "end": 90.42
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 115.94,
+            "end": 122.26
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1442.52,
+            "end": 1455.22
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1465.26,
+            "end": 1477.86
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 3047.84,
+            "end": 3072.76
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 3072.76,
+            "end": 3103.26
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 3104.06,
+            "end": 3132.44
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 0.0,
+            "end": 21.0
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 49.2,
+            "end": 58.22
+          }
+        }
+      ],
+      "predictions": [
+        {
+          "start": 0.0,
+          "end": 21.0,
+          "excerpt": "OnDeck is built to back small businesses like yours. Whether you're buying equipment, expanding your team, or bridging cash flow gaps, OnDeck's loans up to $400\u2026"
+        },
+        {
+          "start": 49.2,
+          "end": 58.22,
+          "excerpt": "Play SpinQuest .com and you'll never be bored again. SpinQuest is a free -to -play social casino. Void where prohibited. Visit SpinQuest .com for more details."
+        },
+        {
+          "start": 148.82,
+          "end": 163.62,
+          "excerpt": "It's going to be brought to you by Atrium Hotel and Suites, atriumhotelandsuites .com. All right. We caught up with him last year at Big 12 Media Days. It was a\u2026"
+        },
+        {
+          "start": 1421.28,
+          "end": 1442.48,
+          "excerpt": "carter stadium in the dfw mike we appreciate you man thanks so much yeah thank you all right that's our segment uh cougar nation don't go anywhere where that se\u2026"
+        },
+        {
+          "start": 1512.26,
+          "end": 1576.74,
+          "excerpt": "It's going to be brought to you by Self -Serve Mattress. SelfServeMattress .com, located in the Provo Town Center, 1200 Town Center Boulevard, 2114 Provo, Utah.\u2026"
+        }
+      ],
+      "breakdowns": {
+        "label": {
+          "network_promo": {
+            "goldenSeconds": 12.7,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 149.3,
+            "coveredSeconds": 30.02,
+            "coverage": 0.2011
+          },
+          "paid_host_read": {
+            "goldenSeconds": 101.86,
+            "coveredSeconds": 58.02,
+            "coverage": 0.5696
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 149.3,
+            "coveredSeconds": 30.02,
+            "coverage": 0.2011
+          },
+          "unknown": {
+            "goldenSeconds": 114.56,
+            "coveredSeconds": 58.02,
+            "coverage": 0.5065
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 101.86,
+            "coveredSeconds": 58.02,
+            "coverage": 0.5696
+          },
+          "unknown": {
+            "goldenSeconds": 162.0,
+            "coveredSeconds": 30.02,
+            "coverage": 0.1853
+          }
+        }
+      }
+    },
+    {
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 3210.84,
+      "precision": 0.75,
+      "recall": 0.25,
+      "truePositives": 3,
+      "falsePositives": 1,
+      "falseNegatives": 9,
+      "timeWeighted": {
+        "truePositiveSeconds": 52.82,
+        "falsePositiveSeconds": 21.74,
+        "falseNegativeSeconds": 273.56,
+        "precision": 0.7084,
+        "recall": 0.1618,
+        "predictedAdSeconds": 74.56,
+        "goldenAdSeconds": 326.38
+      },
+      "contentLossSecondsPerListeningHour": 24.375,
+      "missedAdSecondsPerListeningHour": 306.716,
+      "boundary": {
+        "matched": 3,
+        "medianAbsDeltaStart": 0.58,
+        "medianAbsDeltaEnd": 14.26,
+        "maxAbsDeltaStart": 1.24,
+        "maxAbsDeltaEnd": 22.74,
+        "within3sBoth": 0
+      },
+      "failureModes": [
+        {
+          "mode": "early-stop",
+          "pred": {
+            "start": 141.8,
+            "end": 166.58
+          },
+          "gold": {
+            "start": 142.38,
+            "end": 189.32
+          },
+          "deltaStart": -0.58,
+          "deltaEnd": -22.74
+        },
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 618.88,
+            "end": 643.2
+          },
+          "gold": {
+            "start": 618.88,
+            "end": 637.54
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 5.66
+        },
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 2959.22,
+            "end": 2977.88
+          },
+          "gold": {
+            "start": 2960.46,
+            "end": 2963.62
+          },
+          "deltaStart": -1.24,
+          "deltaEnd": 14.26
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 0.52,
+            "end": 27.6
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 27.6,
+            "end": 88.78
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 89.22,
+            "end": 113.4
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 121.18,
+            "end": 129.32
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1314.7,
+            "end": 1352.76
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 3059.5,
+            "end": 3075.5
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 3120.72,
+            "end": 3150.74
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 3152.82,
+            "end": 3175.56
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 3180.62,
+            "end": 3210.84
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 1314.7,
+            "end": 1321.5
+          }
+        }
+      ],
+      "predictions": [
+        {
+          "start": 141.8,
+          "end": 166.58,
+          "excerpt": "It's going to be brought to you by our good friends at Atrium Hotel and Hotel & Suites, your home away from home in the Dallas -Fort Worth area. If you're headi\u2026"
+        },
+        {
+          "start": 618.88,
+          "end": 643.2,
+          "excerpt": "This segment brought to you by Atrium Hotel and Suites. and Suites is your home away from home in the DFW, in the greater DFW area. If you're heading out to the\u2026"
+        },
+        {
+          "start": 1314.7,
+          "end": 1321.5,
+          "excerpt": "By the way, that segment was brought to you by Atrium Hotel & Suites, Atrium Hotel & Suites .net forward slash Cougar Sports."
+        },
+        {
+          "start": 2959.22,
+          "end": 2977.88,
+          "excerpt": "World of BYU Sports brought to you by Self -Serve Mattress, selfservemattress .com. Yeah, sorry to interrupt there, but there was a piece that Jay Drew penned, \u2026"
+        }
+      ],
+      "breakdowns": {
+        "label": {
+          "network_promo": {
+            "goldenSeconds": 24.18,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 171.24,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_host_read": {
+            "goldenSeconds": 130.96,
+            "coveredSeconds": 52.82,
+            "coverage": 0.4033
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 171.24,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 155.14,
+            "coveredSeconds": 52.82,
+            "coverage": 0.3405
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 130.96,
+            "coveredSeconds": 52.82,
+            "coverage": 0.4033
+          },
+          "unknown": {
+            "goldenSeconds": 195.42,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "dan-le-batard-local-hour",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 2665.16,
+      "precision": 1.0,
+      "recall": 0.1111,
+      "truePositives": 1,
+      "falsePositives": 0,
+      "falseNegatives": 8,
+      "timeWeighted": {
+        "truePositiveSeconds": 28.62,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 434.3,
+        "precision": 1.0,
+        "recall": 0.0618,
+        "predictedAdSeconds": 28.62,
+        "goldenAdSeconds": 462.92
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 586.636,
+      "boundary": {
+        "matched": 1,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 0.0,
+        "maxAbsDeltaStart": 0.0,
+        "maxAbsDeltaEnd": 0.0,
+        "within3sBoth": 1
+      },
+      "failureModes": [
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 30.24,
+            "end": 59.28
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 60.14,
+            "end": 89.94
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 784.25,
+            "end": 852.49
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 853.01,
+            "end": 915.03
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 920.53,
+            "end": 989.49
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1837.85,
+            "end": 1912.49
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1914.67,
+            "end": 1982.61
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 2631.5,
+            "end": 2665.16
+          }
+        }
+      ],
+      "predictions": [
+        {
+          "start": 0.14,
+          "end": 28.76,
+          "excerpt": "This episode is brought to you by Accenture. When you're advertising operations fall out of sync, everything else follows. Spotify and Accenture are working tog\u2026"
+        }
+      ],
+      "breakdowns": {
+        "label": {
+          "paid_dai": {
+            "goldenSeconds": 121.12,
+            "coveredSeconds": 28.62,
+            "coverage": 0.2363
+          },
+          "paid_host_read": {
+            "goldenSeconds": 341.8,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 121.12,
+            "coveredSeconds": 28.62,
+            "coverage": 0.2363
+          },
+          "unknown": {
+            "goldenSeconds": 341.8,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 341.8,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 121.12,
+            "coveredSeconds": 28.62,
+            "coverage": 0.2363
+          }
+        }
+      }
+    },
+    {
+      "slug": "darknet-diaries",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 4186.65,
+      "precision": 0.6667,
+      "recall": 0.5,
+      "truePositives": 2,
+      "falsePositives": 1,
+      "falseNegatives": 2,
+      "timeWeighted": {
+        "truePositiveSeconds": 136.12,
+        "falsePositiveSeconds": 4.8,
+        "falseNegativeSeconds": 80.46,
+        "precision": 0.9659,
+        "recall": 0.6285,
+        "predictedAdSeconds": 140.92,
+        "goldenAdSeconds": 216.58
+      },
+      "contentLossSecondsPerListeningHour": 4.127,
+      "missedAdSecondsPerListeningHour": 69.186,
+      "boundary": {
+        "matched": 2,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 7.08,
+        "maxAbsDeltaStart": 0.0,
+        "maxAbsDeltaEnd": 7.78,
+        "within3sBoth": 0
+      },
+      "failureModes": [
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 110.25,
+            "end": 170.59
+          },
+          "gold": {
+            "start": 110.25,
+            "end": 162.81
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 7.78
+        },
+        {
+          "mode": "early-stop",
+          "pred": {
+            "start": 2106.72,
+            "end": 2166.46
+          },
+          "gold": {
+            "start": 2106.72,
+            "end": 2172.84
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": -6.38
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 167.61,
+            "end": 223.31
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 4124.89,
+            "end": 4167.09
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 4145.35,
+            "end": 4166.19
+          }
+        }
+      ],
+      "predictions": [
+        {
+          "start": 110.25,
+          "end": 170.59,
+          "excerpt": "This episode is sponsored by Threadlocker. The weird part about modern cyber attacks is how normal they look. The attacker logs in from Chrome, uses PowerShell,\u2026"
+        },
+        {
+          "start": 2106.72,
+          "end": 2166.46,
+          "excerpt": "This episode is sponsored by NetSuite. I'm reading that each day your business is late to AI. You fall two days behind. So how do you keep up? Fortunately, ther\u2026"
+        },
+        {
+          "start": 4145.35,
+          "end": 4166.19,
+          "excerpt": "But listen, if you want to be the first to hear it, you need to pitch in by going to plus .darknetdairies .com and sign up for our plus feed. You'll get bonus e\u2026"
+        }
+      ],
+      "breakdowns": {
+        "label": {
+          "membership_cta": {
+            "goldenSeconds": 42.2,
+            "coveredSeconds": 20.84,
+            "coverage": 0.4938
+          },
+          "paid_host_read": {
+            "goldenSeconds": 174.38,
+            "coveredSeconds": 115.28,
+            "coverage": 0.6611
+          }
+        },
+        "delivery": {
+          "unknown": {
+            "goldenSeconds": 216.58,
+            "coveredSeconds": 136.12,
+            "coverage": 0.6285
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 216.58,
+            "coveredSeconds": 136.12,
+            "coverage": 0.6285
+          }
+        }
+      }
+    },
+    {
+      "slug": "dr-death",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 2113.86,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 0.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 0
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 0.0,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "failureModes": [],
+      "predictions": [],
+      "breakdowns": {
+        "label": {},
+        "delivery": {},
+        "readStyle": {}
+      }
+    },
+    {
+      "slug": "economics-of-everyday-things",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 1369.12,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 8,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 228.78,
+        "precision": 0.0,
+        "recall": 0.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 228.78
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 601.56,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "failureModes": [
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 0.0,
+            "end": 29.4
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 30.3,
+            "end": 57.62
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 632.56,
+            "end": 662.0
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 664.26,
+            "end": 691.68
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 693.36,
+            "end": 722.0
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1279.64,
+            "end": 1328.28
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1328.92,
+            "end": 1338.18
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1340.46,
+            "end": 1369.12
+          }
+        }
+      ],
+      "predictions": [],
+      "breakdowns": {
+        "label": {
+          "paid_dai": {
+            "goldenSeconds": 228.78,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 228.78,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "unknown": {
+            "goldenSeconds": 228.78,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "joe-rogan-mrbeast",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 10785.78,
+      "precision": 0.7,
+      "recall": 0.5385,
+      "truePositives": 7,
+      "falsePositives": 3,
+      "falseNegatives": 6,
+      "timeWeighted": {
+        "truePositiveSeconds": 425.32,
+        "falsePositiveSeconds": 11.52,
+        "falseNegativeSeconds": 289.62,
+        "precision": 0.9736,
+        "recall": 0.5949,
+        "predictedAdSeconds": 436.84,
+        "goldenAdSeconds": 714.94
+      },
+      "contentLossSecondsPerListeningHour": 3.845,
+      "missedAdSecondsPerListeningHour": 96.667,
+      "boundary": {
+        "matched": 7,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 15.62,
+        "maxAbsDeltaStart": 57.08,
+        "maxAbsDeltaEnd": 51.1,
+        "within3sBoth": 2
+      },
+      "failureModes": [
+        {
+          "mode": "early-stop",
+          "pred": {
+            "start": 3473.62,
+            "end": 3513.76
+          },
+          "gold": {
+            "start": 3473.62,
+            "end": 3529.38
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": -15.62
+        },
+        {
+          "mode": "early-start+early-stop",
+          "pred": {
+            "start": 4330.8,
+            "end": 4375.92
+          },
+          "gold": {
+            "start": 4340.64,
+            "end": 4401.4
+          },
+          "deltaStart": -9.84,
+          "deltaEnd": -25.48
+        },
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 5810.5,
+            "end": 5889.12
+          },
+          "gold": {
+            "start": 5810.5,
+            "end": 5867.08
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 22.04
+        },
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 10678.06,
+            "end": 10785.78
+          },
+          "gold": {
+            "start": 10678.06,
+            "end": 10734.68
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 51.1
+        },
+        {
+          "mode": "early-start",
+          "pred": {
+            "start": 10678.06,
+            "end": 10785.78
+          },
+          "gold": {
+            "start": 10735.14,
+            "end": 10785.78
+          },
+          "deltaStart": -57.08,
+          "deltaEnd": 0.0
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 418.96,
+            "end": 474.6
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 475.28,
+            "end": 552.74
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 2209.4,
+            "end": 2271.16
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 2271.62,
+            "end": 2306.26
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 5867.52,
+            "end": 5922.84
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 8114.16,
+            "end": 8155.06
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 475.28,
+            "end": 490.28
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 2209.4,
+            "end": 2234.22
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 2265.08,
+            "end": 2279.22
+          }
+        }
+      ],
+      "predictions": [
+        {
+          "start": 475.28,
+          "end": 490.28,
+          "excerpt": "This episode is brought to you by the farmer's dog. Here's a fun fact. Research shows that dogs who maintain a healthy weight can live up to two and a half year\u2026"
+        },
+        {
+          "start": 2209.4,
+          "end": 2234.22,
+          "excerpt": "This episode is brought to you by Dodge. I recently had the chance to get behind the wheel of the new gas -powered Dodge Charger Scat Pack, and it reminds me ho\u2026"
+        },
+        {
+          "start": 2265.08,
+          "end": 2279.22,
+          "excerpt": "Learn more at dodge .com. Dodge is a registered trademark of FCA US LLC. This episode is brought to you by Squarespace, the home of my website, joerogan .com."
+        },
+        {
+          "start": 3473.62,
+          "end": 3513.76,
+          "excerpt": "This episode is brought to you by Blue Chew. I'm sure you've heard of Blue Chew by now. But let me tell you what they've been up to. They've been on a mission t\u2026"
+        },
+        {
+          "start": 4330.8,
+          "end": 4375.92,
+          "excerpt": "in and then other stuff is like you know paragraph of text and you have to like use some old language like decipher the text to figure out what the words were a\u2026"
+        },
+        {
+          "start": 4401.8,
+          "end": 4452.66,
+          "excerpt": "This episode is brought to you by LifeLock. Identity theft costs more than you think. That's why LifeLock is backed by the Million Dollar Protection Package, wh\u2026"
+        },
+        {
+          "start": 5810.5,
+          "end": 5889.12,
+          "excerpt": "This episode is brought to you by Blue Chew. I'm sure you've heard of Blue Chew by now, but let me tell you what they've been up to. They've been on a mission t\u2026"
+        },
+        {
+          "start": 8055.84,
+          "end": 8116.26,
+          "excerpt": "This episode is brought to you by Black Rifle Coffee, the only coffee we drink here in the JRE Studio. Some companies only want to celebrate America when it's t\u2026"
+        },
+        {
+          "start": 10678.06,
+          "end": 10785.78,
+          "excerpt": "This episode is brought to you by Blue Chew. I'm sure you've heard of Blue Chew by now, but let me tell you what they've been up to. They've been on a mission t\u2026"
+        }
+      ],
+      "breakdowns": {
+        "label": {
+          "paid_host_read": {
+            "goldenSeconds": 714.94,
+            "coveredSeconds": 425.32,
+            "coverage": 0.5949
+          }
+        },
+        "delivery": {
+          "unknown": {
+            "goldenSeconds": 714.94,
+            "coveredSeconds": 425.32,
+            "coverage": 0.5949
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 714.94,
+            "coveredSeconds": 425.32,
+            "coverage": 0.5949
+          }
+        }
+      }
+    },
+    {
+      "slug": "locked-on-big-12",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 1485.94,
+      "precision": 1.0,
+      "recall": 0.5,
+      "truePositives": 1,
+      "falsePositives": 0,
+      "falseNegatives": 1,
+      "timeWeighted": {
+        "truePositiveSeconds": 50.22,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 30.18,
+        "precision": 1.0,
+        "recall": 0.6246,
+        "predictedAdSeconds": 50.22,
+        "goldenAdSeconds": 80.4
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 73.117,
+      "boundary": {
+        "matched": 1,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 0.74,
+        "maxAbsDeltaStart": 0.0,
+        "maxAbsDeltaEnd": 0.74,
+        "within3sBoth": 1
+      },
+      "failureModes": [
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1456.5,
+            "end": 1485.94
+          }
+        }
+      ],
+      "predictions": [
+        {
+          "start": 609.4,
+          "end": 659.62,
+          "excerpt": "Today's show is brought to you by fando. Look this weekend The finals are here one of the biggest stages in the world fandals changing the game because sometime\u2026"
+        }
+      ],
+      "breakdowns": {
+        "label": {
+          "paid_dai": {
+            "goldenSeconds": 29.44,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_host_read": {
+            "goldenSeconds": 50.96,
+            "coveredSeconds": 50.22,
+            "coverage": 0.9855
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 29.44,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 50.96,
+            "coveredSeconds": 50.22,
+            "coverage": 0.9855
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 50.96,
+            "coveredSeconds": 50.22,
+            "coverage": 0.9855
+          },
+          "unknown": {
+            "goldenSeconds": 29.44,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "pardon-my-take-larry-fitzgerald",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 8089.5,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 2,
+      "falseNegatives": 7,
+      "timeWeighted": {
+        "truePositiveSeconds": 24.78,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 406.36,
+        "precision": 1.0,
+        "recall": 0.0575,
+        "predictedAdSeconds": 24.78,
+        "goldenAdSeconds": 431.14
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 180.839,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "failureModes": [
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 0.0,
+            "end": 9.1
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 9.5,
+            "end": 38.92
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 75.32,
+            "end": 136.48
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 2849.61,
+            "end": 2947.23
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 5240.3,
+            "end": 5249.52
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 5677.67,
+            "end": 5752.95
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 7940.16,
+            "end": 8089.5
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 75.32,
+            "end": 87.78
+          }
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 5680.33,
+            "end": 5692.65
+          }
+        }
+      ],
+      "predictions": [
+        {
+          "start": 75.32,
+          "end": 87.78,
+          "excerpt": "And it's all brought to you by our friends at Twisted Tea. Summer's here and so is the Twisted Summer party pack. Twisted Tea is a refreshing hard ice tea made \u2026"
+        },
+        {
+          "start": 5680.33,
+          "end": 5692.65,
+          "excerpt": "Our Fest of the Week is going to be brought to you by our great friends over at Neutrophil. It's Tahoe Week. We are fully embracing a summer reset. And if your \u2026"
+        }
+      ],
+      "breakdowns": {
+        "label": {
+          "network_promo": {
+            "goldenSeconds": 38.52,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 149.34,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "paid_host_read": {
+            "goldenSeconds": 243.28,
+            "coveredSeconds": 24.78,
+            "coverage": 0.1019
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 149.34,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 281.8,
+            "coveredSeconds": 24.78,
+            "coverage": 0.0879
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 243.28,
+            "coveredSeconds": 24.78,
+            "coverage": 0.1019
+          },
+          "unknown": {
+            "goldenSeconds": 187.86,
+            "coveredSeconds": 0.0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "planet-money",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 2507.54,
+      "precision": 1.0,
+      "recall": 0.4286,
+      "truePositives": 3,
+      "falsePositives": 0,
+      "falseNegatives": 4,
+      "timeWeighted": {
+        "truePositiveSeconds": 61.32,
+        "falsePositiveSeconds": 0.62,
+        "falseNegativeSeconds": 96.68,
+        "precision": 0.99,
+        "recall": 0.3881,
+        "predictedAdSeconds": 61.94,
+        "goldenAdSeconds": 158.0
+      },
+      "contentLossSecondsPerListeningHour": 0.89,
+      "missedAdSecondsPerListeningHour": 138.801,
+      "boundary": {
+        "matched": 3,
+        "medianAbsDeltaStart": 0.0,
+        "medianAbsDeltaEnd": 7.28,
+        "maxAbsDeltaStart": 28.22,
+        "maxAbsDeltaEnd": 16.46,
+        "within3sBoth": 1
+      },
+      "failureModes": [
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 312.38,
+            "end": 356.44
+          },
+          "gold": {
+            "start": 312.38,
+            "end": 339.98
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 16.46
+        },
+        {
+          "mode": "early-start+early-stop",
+          "pred": {
+            "start": 312.38,
+            "end": 356.44
+          },
+          "gold": {
+            "start": 340.6,
+            "end": 363.72
+          },
+          "deltaStart": -28.22,
+          "deltaEnd": -7.28
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1384.4,
+            "end": 1407.74
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1408.18,
+            "end": 1431.72
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 2462.62,
+            "end": 2485.32
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 2487.72,
+            "end": 2507.54
+          }
+        }
+      ],
+      "predictions": [
+        {
+          "start": 0.0,
+          "end": 17.88,
+          "excerpt": "This message comes from Schwab. With the new Schwab Teen Investor Account, teens can gain hands -on investing experience and build positive money habits. It's a\u2026"
+        },
+        {
+          "start": 312.38,
+          "end": 356.44,
+          "excerpt": "This message comes from Thumbtack. Some tasks can feel easy, but home projects can bring second guesses. Is that noise normal? Is that water damage? Who should \u2026"
+        }
+      ],
+      "breakdowns": {
+        "label": {
+          "network_promo": {
+            "goldenSeconds": 112.52,
+            "coveredSeconds": 15.84,
+            "coverage": 0.1408
+          },
+          "paid_dai": {
+            "goldenSeconds": 45.48,
+            "coveredSeconds": 45.48,
+            "coverage": 1.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 45.48,
+            "coveredSeconds": 45.48,
+            "coverage": 1.0
+          },
+          "unknown": {
+            "goldenSeconds": 112.52,
+            "coveredSeconds": 15.84,
+            "coverage": 0.1408
+          }
+        },
+        "readStyle": {
+          "unknown": {
+            "goldenSeconds": 158.0,
+            "coveredSeconds": 61.32,
+            "coverage": 0.3881
+          }
+        }
+      }
+    },
+    {
+      "slug": "radiolab",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 2473.08,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 6,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 208.88,
+        "precision": 0.0,
+        "recall": 0.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 208.88
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 304.061,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "failureModes": [
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 0.0,
+            "end": 31.24
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 34.5,
+            "end": 51.56
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 703.64,
+            "end": 726.94
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 729.6,
+            "end": 828.64
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 830.24,
+            "end": 856.76
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 2461.36,
+            "end": 2473.08
+          }
+        }
+      ],
+      "predictions": [],
+      "breakdowns": {
+        "label": {
+          "network_promo": {
+            "goldenSeconds": 26.52,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_baked_in": {
+            "goldenSeconds": 11.72,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 71.6,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_host_read": {
+            "goldenSeconds": 99.04,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "baked_in": {
+            "goldenSeconds": 11.72,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "dynamic": {
+            "goldenSeconds": 71.6,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 125.56,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 99.04,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 109.84,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "search-engine",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 4685.06,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 9,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 450.4,
+        "precision": 0.0,
+        "recall": 0.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 450.4
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 346.087,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "failureModes": [
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 0.5,
+            "end": 61.1
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 64.8,
+            "end": 126.46
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1695.18,
+            "end": 1750.68
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1756.0,
+            "end": 1809.16
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 3141.76,
+            "end": 3186.76
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 3193.4,
+            "end": 3229.28
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 3256.38,
+            "end": 3295.76
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 4555.18,
+            "end": 4604.72
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 4635.38,
+            "end": 4685.06
+          }
+        }
+      ],
+      "predictions": [],
+      "breakdowns": {
+        "label": {
+          "membership_cta": {
+            "goldenSeconds": 49.54,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 175.76,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_host_read": {
+            "goldenSeconds": 225.1,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 175.76,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 274.64,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 274.64,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 175.76,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "smartless-olivia-wilde",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 4274.7,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 10,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 490.37,
+        "precision": 0.0,
+        "recall": 0.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 490.37
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 412.972,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "failureModes": [
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 0.85,
+            "end": 37.21
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 39.88,
+            "end": 69.74
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 70.76,
+            "end": 105.94
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1336.45,
+            "end": 1410.83
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1414.08,
+            "end": 1467.26
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1471.22,
+            "end": 1503.32
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 2651.61,
+            "end": 2763.51
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 2767.62,
+            "end": 2822.6
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 4211.77,
+            "end": 4248.64
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 4249.14,
+            "end": 4274.7
+          }
+        }
+      ],
+      "predictions": [],
+      "breakdowns": {
+        "label": {
+          "paid_dai": {
+            "goldenSeconds": 435.39,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_host_read": {
+            "goldenSeconds": 54.98,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 435.39,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 54.98,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 54.98,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 435.39,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "this-american-life",
+      "split": "holdout",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 4436.54,
+      "precision": 1.0,
+      "recall": 0.8889,
+      "truePositives": 8,
+      "falsePositives": 0,
+      "falseNegatives": 1,
+      "timeWeighted": {
+        "truePositiveSeconds": 215.66,
+        "falsePositiveSeconds": 8.6,
+        "falseNegativeSeconds": 30.34,
+        "precision": 0.9617,
+        "recall": 0.8767,
+        "predictedAdSeconds": 224.26,
+        "goldenAdSeconds": 246.0
+      },
+      "contentLossSecondsPerListeningHour": 6.978,
+      "missedAdSecondsPerListeningHour": 24.619,
+      "boundary": {
+        "matched": 8,
+        "medianAbsDeltaStart": 15.23,
+        "medianAbsDeltaEnd": 10.97,
+        "maxAbsDeltaStart": 61.96,
+        "maxAbsDeltaEnd": 61.56,
+        "within3sBoth": 1
+      },
+      "failureModes": [
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 459.98,
+            "end": 536.38
+          },
+          "gold": {
+            "start": 459.98,
+            "end": 490.34
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 46.04
+        },
+        {
+          "mode": "early-start+end-bleed",
+          "pred": {
+            "start": 459.98,
+            "end": 536.38
+          },
+          "gold": {
+            "start": 491.36,
+            "end": 521.32
+          },
+          "deltaStart": -31.38,
+          "deltaEnd": 15.06
+        },
+        {
+          "mode": "early-start",
+          "pred": {
+            "start": 459.98,
+            "end": 536.38
+          },
+          "gold": {
+            "start": 521.94,
+            "end": 536.38
+          },
+          "deltaStart": -61.96,
+          "deltaEnd": 0.0
+        },
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 1855.92,
+            "end": 1942.22
+          },
+          "gold": {
+            "start": 1855.92,
+            "end": 1880.66
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 61.56
+        },
+        {
+          "mode": "early-start+end-bleed",
+          "pred": {
+            "start": 1855.92,
+            "end": 1942.22
+          },
+          "gold": {
+            "start": 1881.42,
+            "end": 1911.16
+          },
+          "deltaStart": -25.5,
+          "deltaEnd": 31.06
+        },
+        {
+          "mode": "early-start",
+          "pred": {
+            "start": 1855.92,
+            "end": 1942.22
+          },
+          "gold": {
+            "start": 1912.4,
+            "end": 1942.22
+          },
+          "deltaStart": -56.48,
+          "deltaEnd": 0.0
+        },
+        {
+          "mode": "early-start+early-stop",
+          "pred": {
+            "start": 4301.21,
+            "end": 4334.81
+          },
+          "gold": {
+            "start": 4306.17,
+            "end": 4341.69
+          },
+          "deltaStart": -4.96,
+          "deltaEnd": -6.88
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 4413.08,
+            "end": 4436.54
+          }
+        }
+      ],
+      "predictions": [
+        {
+          "start": 0.27,
+          "end": 28.23,
+          "excerpt": "Support for this American life comes from Squarespace, the all -in -one platform for creating a fully custom on -brand website. Choose from a wide range of prof\u2026"
+        },
+        {
+          "start": 459.98,
+          "end": 536.38,
+          "excerpt": "Support for this American life comes from Schwab, self -directed investing, trading, full -service wealth management, automated investing, financial planning, t\u2026"
+        },
+        {
+          "start": 1855.92,
+          "end": 1942.22,
+          "excerpt": "Support for this American life comes from Schwab. At Schwab, how you invest is your choice, not theirs. That's why when it comes to managing your wealth, Schwab\u2026"
+        },
+        {
+          "start": 4301.21,
+          "end": 4334.81,
+          "excerpt": "This American Life is equivalent to public radio stations by PRX, the Public Radio Exchange. Thanks today to this American Life Partners, Helen Ingram, Scott Yo\u2026"
+        }
+      ],
+      "breakdowns": {
+        "label": {
+          "membership_cta": {
+            "goldenSeconds": 58.98,
+            "coveredSeconds": 28.64,
+            "coverage": 0.4856
+          },
+          "paid_dai": {
+            "goldenSeconds": 187.02,
+            "coveredSeconds": 187.02,
+            "coverage": 1.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 187.02,
+            "coveredSeconds": 187.02,
+            "coverage": 1.0
+          },
+          "unknown": {
+            "goldenSeconds": 58.98,
+            "coveredSeconds": 28.64,
+            "coverage": 0.4856
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 58.98,
+            "coveredSeconds": 28.64,
+            "coverage": 0.4856
+          },
+          "unknown": {
+            "goldenSeconds": 187.02,
+            "coveredSeconds": 187.02,
+            "coverage": 1.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "unexplainable",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 2022.3,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 4,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 211.38,
+        "precision": 0.0,
+        "recall": 0.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 211.38
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 376.288,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "failureModes": [
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 0.0,
+            "end": 59.92
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 740.34,
+            "end": 803.28
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 803.8,
+            "end": 868.1
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1964.62,
+            "end": 1988.84
+          }
+        }
+      ],
+      "predictions": [],
+      "breakdowns": {
+        "label": {
+          "membership_cta": {
+            "goldenSeconds": 24.22,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "network_promo": {
+            "goldenSeconds": 127.24,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 59.92,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 59.92,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 151.46,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 24.22,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 187.16,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "slug": "version-history",
+      "split": "development",
+      "approach": "heuristic-cue-v6.1",
+      "durationSeconds": 4321.6,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 4,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 86.64,
+        "precision": 0.0,
+        "recall": 0.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 86.64
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 72.173,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "failureModes": [
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 60.56,
+            "end": 89.08
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1672.76,
+            "end": 1687.74
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 4238.42,
+            "end": 4252.64
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 4292.68,
+            "end": 4321.6
+          }
+        }
+      ],
+      "predictions": [],
+      "breakdowns": {
+        "label": {
+          "membership_cta": {
+            "goldenSeconds": 14.22,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "paid_dai": {
+            "goldenSeconds": 72.42,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "delivery": {
+          "dynamic": {
+            "goldenSeconds": 72.42,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 14.22,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        },
+        "readStyle": {
+          "host": {
+            "goldenSeconds": 14.22,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          },
+          "unknown": {
+            "goldenSeconds": 72.42,
+            "coveredSeconds": 0,
+            "coverage": 0.0
+          }
+        }
+      }
+    }
+  ]
+}

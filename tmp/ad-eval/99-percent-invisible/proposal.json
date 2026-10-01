@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "99-percent-invisible",
+  "transcriptSha256": "befbeb2822a40a5cd0ec91d53391266c77f91ea97698b0485794d7938e1dc070",
+  "sources": {
+    "primary": "codex-transcript-pass",
+    "notes": "Agent-proposed starting spans for human review. These are not human-approved goldens. No local LLM was used."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 0,
+      "endWord": 97,
+      "label": "paid_dai",
+      "advertiser": "Pure Storage",
+      "note": "Cold-open data/storage spot; ASR renders the brand as Everpeer/EverPure."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 97,
+      "endWord": 173,
+      "label": "paid_dai",
+      "advertiser": "Discover",
+      "note": "Cold-open Discover cash-back spot; content starts at 'This is 99% Invisible.'"
+    },
+    {
+      "id": "proposal-003",
+      "startWord": 4693,
+      "endWord": 4767,
+      "label": "paid_dai",
+      "advertiser": "Genesis GV70",
+      "note": "Midroll car spot after the airship reappear tease."
+    },
+    {
+      "id": "proposal-004",
+      "startWord": 4767,
+      "endWord": 4975,
+      "label": "paid_dai",
+      "advertiser": "T-Mobile",
+      "note": "Midroll mobile network spot."
+    },
+    {
+      "id": "proposal-005",
+      "startWord": 4975,
+      "endWord": 5052,
+      "label": "paid_dai",
+      "advertiser": "Adobe Firefly",
+      "note": "Midroll Adobe creative AI spot."
+    },
+    {
+      "id": "proposal-006",
+      "startWord": 5052,
+      "endWord": 5128,
+      "label": "paid_dai",
+      "advertiser": "Discover",
+      "note": "Midroll Discover cash-back spot; content resumes at the Time magazine story."
+    },
+    {
+      "id": "proposal-007",
+      "startWord": 7379,
+      "endWord": 7433,
+      "label": "network_promo",
+      "advertiser": "Family Lore",
+      "note": "End-of-feature Family Lore rate/review/subscribe CTA. Delete if you consider this part of the carried episode content."
+    },
+    {
+      "id": "proposal-008",
+      "startWord": 7433,
+      "endWord": 7514,
+      "label": "paid_dai",
+      "advertiser": "Walmart",
+      "note": "Post-roll Walmart same-day delivery spot."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "audit-cold-open-reentry",
+      "startWord": 0,
+      "endWord": 190,
+      "reason": "Cold open has two paid spots and then show content; verify 'This is 99% Invisible' is not highlighted."
+    },
+    {
+      "id": "audit-midroll-stack-reentry",
+      "startWord": 4680,
+      "endWord": 5140,
+      "reason": "Four-ad midroll stack; verify exact return at the Time magazine sentence."
+    },
+    {
+      "id": "audit-family-lore-outro",
+      "startWord": 7360,
+      "endWord": 7438,
+      "reason": "Family Lore outro may be network promo or part of the featured story; decide how you want to label it."
+    }
+  ]
+}

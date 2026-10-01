@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "this-american-life",
+  "status": "approved",
+  "revision": 27,
+  "transcriptSha256": "17a3caff267db3a46fb89eb38066299fee1daeb0455b66d272e517aa705288ad",
+  "proposalSha256": "e21d5845c69e09260924354fddc888cca594eac6c87116cd8650792fb0419604",
+  "reviewedThroughWord": 11890,
+  "resumeWord": 11737,
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 0,
+      "endWord": 77,
+      "label": "paid_dai",
+      "advertiser": "Squarespace",
+      "note": "Cold-open website builder spot before episode warning and story.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-001"
+    },
+    {
+      "id": "span-2",
+      "startWord": 1285,
+      "endWord": 1364,
+      "label": "paid_dai",
+      "advertiser": "Schwab",
+      "note": "Midroll self-directed investing spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-002"
+    },
+    {
+      "id": "span-3",
+      "startWord": 1364,
+      "endWord": 1461,
+      "label": "paid_dai",
+      "advertiser": "Capella University",
+      "note": "Midroll university spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-003"
+    },
+    {
+      "id": "span-4",
+      "startWord": 1461,
+      "endWord": 1496,
+      "label": "paid_dai",
+      "advertiser": "Capital One",
+      "note": "Midroll bank spot; keep 'It's American life. Act One.' as content.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-004"
+    },
+    {
+      "id": "span-5",
+      "startWord": 4932,
+      "endWord": 5010,
+      "label": "paid_dai",
+      "advertiser": "Schwab",
+      "note": "Act-break investing spot after the break tease.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-005"
+    },
+    {
+      "id": "span-6",
+      "startWord": 5010,
+      "endWord": 5101,
+      "label": "paid_dai",
+      "advertiser": "Whole Foods Market",
+      "note": "Act-break grocery spot.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-006"
+    },
+    {
+      "id": "span-7",
+      "startWord": 5101,
+      "endWord": 5197,
+      "label": "paid_dai",
+      "advertiser": "Capella University",
+      "note": "Act-break university spot; keep re-entry into Act Three as content.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-007"
+    },
+    {
+      "id": "span-8",
+      "startWord": 11545,
+      "endWord": 11679,
+      "label": "membership_cta",
+      "advertiser": "This American Life Partners",
+      "note": "Life Partners acknowledgement and membership CTA.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-008"
+    },
+    {
+      "id": "span-10",
+      "startWord": 11828,
+      "endWord": 11890,
+      "label": "membership_cta",
+      "advertiser": "NPR Plus",
+      "note": "NPR Plus membership/support promo at episode end.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-010"
+    }
+  ],
+  "auditDecisions": {},
+  "attested": true,
+  "reviewer": "Brian",
+  "createdAt": "2026-07-19T22:11:10.947461+00:00",
+  "updatedAt": "2026-07-19T22:13:57.270495+00:00",
+  "approvedAt": "2026-07-19T22:13:57.279066+00:00"
+}

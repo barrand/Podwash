@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "pardon-my-take-larry-fitzgerald",
+  "transcriptSha256": "0c730ca66bb8707032ef88532ef11aca1ade2b187a9975a7787bff340fe7219f",
+  "generatedAt": "2026-07-21T05:55:00.000000+00:00",
+  "sources": {
+    "primary": "codex-deep-dive-pass",
+    "notes": "Manual reviewer-assist proposal after chunked faster-whisper transcription; built from sponsor openers, CTA/URL cues, and transcript scan."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 0,
+      "endWord": 25,
+      "label": "network_promo",
+      "advertiser": "Amazon Music",
+      "note": "Opening platform/ad-free availability promo before the episode."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 25,
+      "endWord": 117,
+      "label": "network_promo",
+      "advertiser": "MGM+ / The Westies",
+      "note": "Cold-open MGM+ show promo ending before the PMT episode preview."
+    },
+    {
+      "id": "proposal-003",
+      "startWord": 223,
+      "endWord": 444,
+      "label": "paid_host_read",
+      "advertiser": "Twisted Tea",
+      "note": "Twisted Tea host-read/paid sponsor segment before the show open."
+    },
+    {
+      "id": "proposal-004",
+      "startWord": 9208,
+      "endWord": 9521,
+      "label": "paid_host_read",
+      "advertiser": "DraftKings",
+      "note": "DraftKings fight-night/predictions sponsor read and legal disclaimer before Larry Fitzgerald."
+    },
+    {
+      "id": "proposal-005",
+      "startWord": 17265,
+      "endWord": 17304,
+      "label": "paid_host_read",
+      "advertiser": "Rhoback",
+      "note": "Short Rhoback promo-code sponsor question bumper inside the interview."
+    },
+    {
+      "id": "proposal-006",
+      "startWord": 18728,
+      "endWord": 18978,
+      "label": "paid_host_read",
+      "advertiser": "Nutrafol",
+      "note": "Nutrafol sponsor read before Fyre Fest of the Week."
+    },
+    {
+      "id": "proposal-007",
+      "startWord": 26697,
+      "endWord": 26786,
+      "label": "paid_dai",
+      "advertiser": "Abercrombie",
+      "note": "Closing Abercrombie inserted ad through episode end."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "audit-001",
+      "startWord": 0,
+      "endWord": 130,
+      "reason": "Cold open contains an Amazon Music/platform promo followed by MGM+ promo; verify whether to keep both as network promos."
+    },
+    {
+      "id": "audit-002",
+      "startWord": 117,
+      "endWord": 223,
+      "reason": "PMT episode preview says “presented by DraftKings”; likely title-sponsor bumper/content, but verify if you want it marked."
+    },
+    {
+      "id": "audit-003",
+      "startWord": 444,
+      "endWord": 480,
+      "reason": "Main show open repeats “presented by DraftKings. The crown is yours”; likely title-sponsor bumper/content, not a full ad."
+    },
+    {
+      "id": "audit-004",
+      "startWord": 9208,
+      "endWord": 9521,
+      "reason": "DraftKings read includes long gambling/legal disclaimer; verify the first ad word and return at “Okay, we now welcome…”."
+    },
+    {
+      "id": "audit-005",
+      "startWord": 17265,
+      "endWord": 17304,
+      "reason": "Rhoback is a tiny embedded sponsor-code bumper during interview; verify whether to keep as its own short span."
+    },
+    {
+      "id": "audit-006",
+      "startWord": 26697,
+      "endWord": 26786,
+      "reason": "Closing Abercrombie ad starts after PMT signoff; verify first ad word and episode-end boundary."
+    }
+  ]
+}

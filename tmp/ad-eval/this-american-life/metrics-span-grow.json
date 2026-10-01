@@ -1,0 +1,296 @@
+{
+  "slug": "this-american-life",
+  "detector": "span-grow",
+  "isDogfood": true,
+  "precision": 0.8,
+  "recall": 0.222,
+  "truePositives": 4,
+  "falsePositives": 1,
+  "falseNegatives": 14,
+  "predictionCount": 4,
+  "goldenCount": 18,
+  "boundary": {
+    "matched": 4,
+    "medianAbsDeltaStart": 2.635,
+    "medianAbsDeltaEnd": 6.96,
+    "maxAbsDeltaStart": 56.83,
+    "maxAbsDeltaEnd": 24.27,
+    "within3sBoth": 0
+  },
+  "timeWeighted": {
+    "truePositiveSeconds": 193.79,
+    "falsePositiveSeconds": 49.02,
+    "falseNegativeSeconds": 232.96,
+    "precision": 0.7981,
+    "recall": 0.4541,
+    "predictedAdSeconds": 242.81,
+    "goldenAdSeconds": 426.75
+  },
+  "failureModes": [
+    {
+      "mode": "early-start+early-stop",
+      "pred": {
+        "start": 0.27,
+        "end": 39.56
+      },
+      "gold": {
+        "start": 3.55,
+        "end": 47.49
+      },
+      "deltaStart": -3.28,
+      "deltaEnd": -7.93
+    },
+    {
+      "mode": "end-bleed",
+      "pred": {
+        "start": 459.73,
+        "end": 536.63
+      },
+      "gold": {
+        "start": 461.72,
+        "end": 512.36
+      },
+      "deltaStart": -1.99,
+      "deltaEnd": 24.27
+    },
+    {
+      "mode": "early-start+early-stop",
+      "pred": {
+        "start": 459.73,
+        "end": 536.63
+      },
+      "gold": {
+        "start": 516.56,
+        "end": 540.07
+      },
+      "deltaStart": -56.83,
+      "deltaEnd": -3.44
+    },
+    {
+      "mode": "early-stop",
+      "pred": {
+        "start": 1855.67,
+        "end": 1944.45
+      },
+      "gold": {
+        "start": 1857.38,
+        "end": 1950.44
+      },
+      "deltaStart": -1.71,
+      "deltaEnd": -5.99
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 565.41,
+        "end": 576.77
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 775.01,
+        "end": 790.39
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 918.59,
+        "end": 926.93
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 1960.98,
+        "end": 1982.66
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 1988.02,
+        "end": 2000.92
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 2020.38,
+        "end": 2032.36
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 2041.7,
+        "end": 2050.18
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 2275.15,
+        "end": 2280.17
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 2506.23,
+        "end": 2522.13
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 3002.51,
+        "end": 3013.87
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 3579.41,
+        "end": 3585.57
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 3740.83,
+        "end": 3745.99
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 3917.36,
+        "end": 3934.25
+      }
+    },
+    {
+      "mode": "miss",
+      "gold": {
+        "start": 4371.55,
+        "end": 4436.54
+      }
+    },
+    {
+      "mode": "false-positive",
+      "pred": {
+        "start": 4301.99,
+        "end": 4339.83
+      }
+    }
+  ],
+  "falsePositivesDetail": [
+    {
+      "start": 4301.99,
+      "end": 4339.83,
+      "excerpt": "equivalent to public radio stations by PRX, the Public Radio Exchange. Thanks today to this American Life Partners, Helen Ingram, Scott Young, and Daniel Willia\u2026"
+    }
+  ],
+  "falseNegativesDetail": [
+    {
+      "start": 565.41,
+      "end": 576.77,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "chance to question potential jurors. We did a little story about this on our show a couple months ago. And the judge also decided to move the trial upstairs int\u2026"
+    },
+    {
+      "start": 775.01,
+      "end": 790.39,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "jury. That's just their random opinion that this was terrorism. The judge was like, well, what they genuinely thought in the moment, seeing what they were seein\u2026"
+    },
+    {
+      "start": 918.59,
+      "end": 926.93,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "defense attorneys did. They loved to talk about this case, especially as it turns out, the guy who was going to lead the cross -examination of the"
+    },
+    {
+      "start": 1960.98,
+      "end": 1982.66,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "Cooperator. Okay, so, originally, 16 people were charged in this case. Nine of them went on trial. And the other seven, they played guilty to material support t\u2026"
+    },
+    {
+      "start": 1988.02,
+      "end": 2000.92,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "an anarchist antifa ideology. That, of course, seemed good for the government's case. Also, five of them appeared in court to testify for the prosecution. One o\u2026"
+    },
+    {
+      "start": 2020.38,
+      "end": 2032.36,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "then eventually got snuck out by a couple friends? That was Lynette. She fished him out of the field and then hit him from the cops. The authorities tracked her\u2026"
+    },
+    {
+      "start": 2041.7,
+      "end": 2050.18,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "be in some degree of anguish over what they were doing, testifying against their friends. It was hard to sit through. There was something about Lynette, though."
+    },
+    {
+      "start": 2275.15,
+      "end": 2280.17,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "there every time the doors were open. And just really immersed myself in that. It was"
+    },
+    {
+      "start": 2506.23,
+      "end": 2522.13,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "into something. But however hot Amber Heard is in The Rum Diary in Lynette's mind, Lynette is still a church lady in suburban Texas. She's a conservative. At th\u2026"
+    },
+    {
+      "start": 3002.51,
+      "end": 3013.87,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "had happened. Either it was, like, unavoidable. You know, I didn't know. I just knew that I couldn't imagine that happening for no reason. Like, there had to ha\u2026"
+    },
+    {
+      "start": 3579.41,
+      "end": 3585.57,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "colossal mistake? Right. I don't know what it is. By deciding"
+    },
+    {
+      "start": 3740.83,
+      "end": 3745.99,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "jurors was crying. The judge read the verdicts. Eight of the"
+    },
+    {
+      "start": 3917.36,
+      "end": 3934.25,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "material support. What does that mean? Well, it means the government is going to be emboldened to continue to use the law in this way, which is a danger to ever\u2026"
+    },
+    {
+      "start": 4371.55,
+      "end": 4436.54,
+      "kind": "diff-absent",
+      "rationale": "ASR span absent from published ad-free transcript",
+      "excerpt": "when a beloved tree was mysteriously cut down in National Park in Britain, people across the country were outraged, called it slaughter. They said things like, \u2026"
+    }
+  ],
+  "goldenSource": "golden.json"
+}

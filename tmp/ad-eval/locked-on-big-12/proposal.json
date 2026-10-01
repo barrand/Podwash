@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "locked-on-big-12",
+  "transcriptSha256": "5ca59e6c9e8d133206bc9414a26a817f168f34b863b243dc2dff64dd4a78af7e",
+  "generatedAt": "2026-07-20T00:00:00+00:00",
+  "sources": {
+    "primary": "codex-transcript-pass",
+    "notes": "Agent-proposed starting spans for human review. CPU faster-whisper transcript because MLX/Metal crashed after interruption."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 1852,
+      "endWord": 2041,
+      "label": "paid_host_read",
+      "advertiser": "FanDuel",
+      "note": "Host-read/sponsor-read FanDuel midroll. ASR mangles FanDuel as fando/fandal."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 4550,
+      "endWord": 4634,
+      "label": "paid_dai",
+      "advertiser": "Discover",
+      "note": "Closing Discover cash-back credit-card spot through episode end."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "audit-001",
+      "startWord": 0,
+      "endWord": 220,
+      "reason": "Cold open is network/show branding plus subscribe CTA; verify it should remain content and not network_promo."
+    },
+    {
+      "id": "audit-002",
+      "startWord": 1810,
+      "endWord": 2070,
+      "reason": "FanDuel read is embedded after Texas Tech content and before interview discussion resumes; verify exact first and last words."
+    },
+    {
+      "id": "audit-003",
+      "startWord": 4435,
+      "endWord": 4550,
+      "reason": "Guest plug and host sign-off flow into the Discover ad; verify no show-content words are included in the ad."
+    },
+    {
+      "id": "audit-004",
+      "startWord": 4550,
+      "endWord": 4634,
+      "reason": "Discover ad runs to episode end; verify start boundary after the final 'Nice good stuff' content."
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "bill-simmons-kawhi",
+  "transcriptSha256": "405aa15992f6e737381a09263864d407c4491a7c9afa757c2f7ca91fc54f3304",
+  "generatedAt": "2026-07-20T04:32:36.315509+00:00",
+  "sources": {
+    "primary": "keyword-cue-cluster-v1",
+    "notes": "Conservative reviewer-assist proposal from sponsor, CTA, URL, and promo cue clusters."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 0,
+      "endWord": 160,
+      "label": "paid_host_read",
+      "advertiser": "TikTok. Did you know you can use TikTok to connect even more",
+      "note": "Host-read/local sponsor cue cluster."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 11739,
+      "endWord": 12049,
+      "label": "paid_dai",
+      "advertiser": "Mariner. It takes the right team to help develop an athlete's",
+      "note": "Commercial cue cluster; dynamic/baked-in source unknown."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "deep-audit-paypal",
+      "startWord": 390,
+      "endWord": 548,
+      "reason": "Deep-dive audit: likely missed PayPal midroll after break/Pearl Jam transition; content appears to resume at “All right, House…”."
+    },
+    {
+      "id": "deep-audit-tramphia-pnc",
+      "startWord": 1570,
+      "endWord": 1723,
+      "reason": "Deep-dive audit: likely missed end of Tremfya/Trampia medical ad followed by PNC Bank read; content resumes at “All right, we’re recording…”."
+    },
+    {
+      "id": "deep-audit-workday-holiday-inn",
+      "startWord": 8628,
+      "endWord": 8806,
+      "reason": "Deep-dive audit: likely missed Workday + Holiday Inn stack after “take a break”; content resumes at “All right, Joel Embiid…”."
+    },
+    {
+      "id": "deep-audit-mariner-michelob",
+      "startWord": 11739,
+      "endWord": 12049,
+      "reason": "Deep-dive audit: existing proposal probably combines Mariner + Michelob Ultra and may include story lead-in; split/trim if needed before approving."
+    },
+    {
+      "id": "deep-audit-closing-stack",
+      "startWord": 20840,
+      "endWord": 21127,
+      "reason": "Deep-dive audit: likely closing ad stack/disclaimer — gambling helpline, Mariner, and Tremfya/Trampia through episode end."
+    }
+  ]
+}

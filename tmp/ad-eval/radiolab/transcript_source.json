@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "engine": "mlx-whisper",
+  "engineVersion": "0.4.3",
+  "model": "mlx-community/whisper-large-v3-mlx",
+  "modelRevision": "49e6aa286ad60c14352c404340ded53710378a11",
+  "language": "en",
+  "wordTimestamps": true,
+  "conditionOnPreviousText": false,
+  "temperatureFallback": [
+    0.0,
+    0.2,
+    0.4
+  ],
+  "generatedAt": "2026-07-20T00:06:42.894035+00:00",
+  "audioFile": "audio.mp3",
+  "audioSha256": "2c8d9a0cf58e7b20c986114519e8e70d27f7cc6a70e07147774e2e9b8faf8962",
+  "metadataSha256": "ccfae1901439ca83320aa81380a7f3bc79866f5e8fba88118cf16986ffab91b9",
+  "audioDuration": 2478.288875,
+  "transcriptSha256": "bff470d7c4114d9ca1f4a4b700bae3bb77c44dd9f525320350de0e19b19536f1",
+  "validation": {
+    "wordCount": 6055,
+    "firstWordStart": 0.0,
+    "lastWordEnd": 2473.08,
+    "audioCoverage": 0.997898,
+    "overlappingWordStarts": 0,
+    "maxSilenceGap": 26.88,
+    "maxSilenceGapAfter": 3.12
+  }
+}

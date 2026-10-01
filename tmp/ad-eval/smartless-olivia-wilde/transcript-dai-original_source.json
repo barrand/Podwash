@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "engine": "mlx-whisper",
+  "engineVersion": "0.4.3",
+  "model": "mlx-community/whisper-large-v3-mlx",
+  "modelRevision": "49e6aa286ad60c14352c404340ded53710378a11",
+  "language": "en",
+  "wordTimestamps": true,
+  "conditionOnPreviousText": false,
+  "temperatureFallback": [
+    0.0,
+    0.2,
+    0.4
+  ],
+  "initialPrompt": "SmartLess. \"Olivia Wilde\"",
+  "hallucinationSilenceThreshold": 2.0,
+  "audioFile": "audio.mp3",
+  "audioSha256": "968ed3b1303409cb97bbe968d41a307ca45a061c63039f7a2e9a24cbd98bec69",
+  "metadataSha256": "9bf88a88203a7d54672d8d893d11a2fed47847540012813cefd218c5c2da5080",
+  "audioDuration": 4274.938375,
+  "transcriptSha256": "6d4db08dfee44b8273e511156378767bf630ffa6a6801e7042c92b9ff709aa5a",
+  "transcriptionSeconds": 1381.192,
+  "validation": {
+    "wordCount": 13010,
+    "firstWordStart": 0.64,
+    "lastWordEnd": 4274.62,
+    "audioCoverage": 0.999926,
+    "overlappingWordStarts": 0,
+    "maxSilenceGap": 8.8,
+    "maxSilenceGapAfter": 106.0
+  }
+}

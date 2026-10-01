@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "engine": "mlx-whisper",
+  "engineVersion": "0.4.3",
+  "model": "mlx-community/whisper-large-v3-mlx",
+  "modelRevision": "49e6aa286ad60c14352c404340ded53710378a11",
+  "language": "en",
+  "wordTimestamps": true,
+  "conditionOnPreviousText": false,
+  "temperatureFallback": [
+    0.0,
+    0.2,
+    0.4
+  ],
+  "initialPrompt": "Armchair Expert with Dax Shepard. Grant Achatz (award-winning chef)",
+  "hallucinationSilenceThreshold": 2.0,
+  "audioFile": "audio.mp3",
+  "audioSha256": "de0c7dbb6322ab18cc55085bf2a4c01cf61a6b540aea44e866a6c0f5aa013cfe",
+  "metadataSha256": "73c67778a25066ec45b3235f1a40e4c813d63bd5266ca6562989c898251d7697",
+  "audioDuration": 6993.135878,
+  "transcriptSha256": "c13ff9a7f0da8a6a248ba835066c8fd361c4aa2e15f1bb8d30237639eb11787f",
+  "transcriptionSeconds": 2412.838,
+  "validation": {
+    "wordCount": 19991,
+    "firstWordStart": 0.0,
+    "lastWordEnd": 6989.02,
+    "audioCoverage": 0.999411,
+    "overlappingWordStarts": 0,
+    "maxSilenceGap": 21.88,
+    "maxSilenceGapAfter": 3752.92
+  }
+}

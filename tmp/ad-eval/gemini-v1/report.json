@@ -1,0 +1,704 @@
+{
+  "schemaVersion": 1,
+  "model": "gemini-3.6-flash",
+  "slugs": [
+    "99-percent-invisible",
+    "cougar-sports",
+    "darknet-diaries",
+    "joe-rogan-mrbeast",
+    "ai-news-strategy-daily"
+  ],
+  "priceCard": {
+    "model": "gemini-3.6-flash",
+    "currency": "USD",
+    "source": "https://ai.google.dev/gemini-api/docs/pricing",
+    "capturedAt": "2026-07-24",
+    "inputUsdPerMillionTokens": 1.5,
+    "outputAndThinkingUsdPerMillionTokens": 7.5,
+    "contextCachingUsed": false
+  },
+  "gemini": {
+    "episodeCount": 5,
+    "macroTimeWeightedPrecision": 0.9704,
+    "macroTimeWeightedRecall": 0.8726,
+    "durationWeightedPrecision": 0.9359,
+    "durationWeightedRecall": 0.8726,
+    "contentLossSeconds": 89.24,
+    "missedAdSeconds": 190.24,
+    "contentLossSecondsPerListeningHour": 14.734,
+    "missedAdSecondsPerListeningHour": 31.409,
+    "worstEpisodeTimeWeightedPrecision": 0.8952,
+    "worstEpisodeContentLossSecondsPerListeningHour": 26.729
+  },
+  "baselines": {
+    "heuristic-cue-v6.1": {
+      "episodeCount": 5,
+      "macroTimeWeightedPrecision": 0.7228,
+      "macroTimeWeightedRecall": 0.5114,
+      "durationWeightedPrecision": 0.917,
+      "durationWeightedRecall": 0.4351,
+      "contentLossSeconds": 58.78,
+      "missedAdSeconds": 843.3,
+      "contentLossSecondsPerListeningHour": 9.705,
+      "missedAdSecondsPerListeningHour": 139.232,
+      "worstEpisodeTimeWeightedPrecision": 0.0,
+      "worstEpisodeContentLossSecondsPerListeningHour": 48.798
+    },
+    "anchor-viterbi-v1": {
+      "episodeCount": 5,
+      "macroTimeWeightedPrecision": 0.9177,
+      "macroTimeWeightedRecall": 0.7657,
+      "durationWeightedPrecision": 0.9203,
+      "durationWeightedRecall": 0.7253,
+      "contentLossSeconds": 93.78,
+      "missedAdSeconds": 410.14,
+      "contentLossSecondsPerListeningHour": 15.483,
+      "missedAdSecondsPerListeningHour": 67.716,
+      "worstEpisodeTimeWeightedPrecision": 0.7805,
+      "worstEpisodeContentLossSecondsPerListeningHour": 43.602
+    }
+  },
+  "totalCostUsd": 0.54729,
+  "costPerListeningHourUsd": 0.09035984,
+  "monthlyCostAt1000ListeningHoursUsd": 90.3598,
+  "episodes": [
+    {
+      "slug": "99-percent-invisible",
+      "split": "holdout",
+      "durationSeconds": 2754.36,
+      "precision": 1.0,
+      "recall": 0.875,
+      "truePositives": 7,
+      "falsePositives": 0,
+      "falseNegatives": 1,
+      "timeWeighted": {
+        "truePositiveSeconds": 232.46,
+        "falsePositiveSeconds": 3.56,
+        "falseNegativeSeconds": 64.94,
+        "precision": 0.9849,
+        "recall": 0.7816,
+        "predictedAdSeconds": 236.02,
+        "goldenAdSeconds": 297.4
+      },
+      "contentLossSecondsPerListeningHour": 4.653,
+      "missedAdSecondsPerListeningHour": 84.878,
+      "boundary": {
+        "matched": 7,
+        "medianAbsDeltaStart": 29.0,
+        "medianAbsDeltaEnd": 25.54,
+        "maxAbsDeltaStart": 118.82,
+        "maxAbsDeltaEnd": 118.0,
+        "within3sBoth": 1
+      },
+      "failureModes": [
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 0.0,
+            "end": 62.6
+          },
+          "gold": {
+            "start": 0.0,
+            "end": 36.96
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 25.64
+        },
+        {
+          "mode": "early-start",
+          "pred": {
+            "start": 0.0,
+            "end": 62.6
+          },
+          "gold": {
+            "start": 37.28,
+            "end": 62.6
+          },
+          "deltaStart": -37.28,
+          "deltaEnd": 0.0
+        },
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 1692.26,
+            "end": 1836.4
+          },
+          "gold": {
+            "start": 1692.26,
+            "end": 1718.4
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 118.0
+        },
+        {
+          "mode": "early-start+end-bleed",
+          "pred": {
+            "start": 1692.26,
+            "end": 1836.4
+          },
+          "gold": {
+            "start": 1721.26,
+            "end": 1780.9
+          },
+          "deltaStart": -29.0,
+          "deltaEnd": 55.5
+        },
+        {
+          "mode": "early-start+end-bleed",
+          "pred": {
+            "start": 1692.26,
+            "end": 1836.4
+          },
+          "gold": {
+            "start": 1781.06,
+            "end": 1810.86
+          },
+          "deltaStart": -88.8,
+          "deltaEnd": 25.54
+        },
+        {
+          "mode": "early-start",
+          "pred": {
+            "start": 1692.26,
+            "end": 1836.4
+          },
+          "gold": {
+            "start": 1811.08,
+            "end": 1836.4
+          },
+          "deltaStart": -118.82,
+          "deltaEnd": 0.0
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 2656.82,
+            "end": 2721.76
+          }
+        }
+      ],
+      "predictions": [
+        {
+          "start": 0.0,
+          "end": 62.6,
+          "excerpt": "You simply can't run a successful business without good data. Data is at the heart of every organization, but managing it can create friction, risk, and manual \u2026"
+        },
+        {
+          "start": 1692.26,
+          "end": 1836.4,
+          "excerpt": "The Genesis GV70, with all its award -winning tech and performance, is built to thrill. So you can hit the road, hit the turns, and hit Sport Plus mode for seri\u2026"
+        },
+        {
+          "start": 2725.08,
+          "end": 2754.36,
+          "excerpt": "Welcome back to Shoot Up! Get it delivered! Contested? You're out of food and your meds, but are too tired to get up. Do you A, beg your roommate, or C, get Wal\u2026"
+        }
+      ]
+    },
+    {
+      "slug": "cougar-sports",
+      "split": "holdout",
+      "durationSeconds": 3132.44,
+      "precision": 1.0,
+      "recall": 0.6,
+      "truePositives": 6,
+      "falsePositives": 0,
+      "falseNegatives": 4,
+      "timeWeighted": {
+        "truePositiveSeconds": 189.58,
+        "falsePositiveSeconds": 0.8,
+        "falseNegativeSeconds": 74.28,
+        "precision": 0.9958,
+        "recall": 0.7185,
+        "predictedAdSeconds": 190.38,
+        "goldenAdSeconds": 263.86
+      },
+      "contentLossSecondsPerListeningHour": 0.919,
+      "missedAdSecondsPerListeningHour": 85.367,
+      "boundary": {
+        "matched": 6,
+        "medianAbsDeltaStart": 1.26,
+        "medianAbsDeltaEnd": 4.49,
+        "maxAbsDeltaStart": 34.9,
+        "maxAbsDeltaEnd": 29.18,
+        "within3sBoth": 2
+      },
+      "failureModes": [
+        {
+          "mode": "early-stop",
+          "pred": {
+            "start": 0.0,
+            "end": 80.58
+          },
+          "gold": {
+            "start": 0.0,
+            "end": 90.42
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": -9.84
+        },
+        {
+          "mode": "early-stop",
+          "pred": {
+            "start": 1512.26,
+            "end": 1542.12
+          },
+          "gold": {
+            "start": 1512.26,
+            "end": 1551.1
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": -8.98
+        },
+        {
+          "mode": "early-start+end-bleed",
+          "pred": {
+            "start": 3069.16,
+            "end": 3132.44
+          },
+          "gold": {
+            "start": 3072.76,
+            "end": 3103.26
+          },
+          "deltaStart": -3.6,
+          "deltaEnd": 29.18
+        },
+        {
+          "mode": "early-start",
+          "pred": {
+            "start": 3069.16,
+            "end": 3132.44
+          },
+          "gold": {
+            "start": 3104.06,
+            "end": 3132.44
+          },
+          "deltaStart": -34.9,
+          "deltaEnd": 0.0
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 115.94,
+            "end": 122.26
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1442.52,
+            "end": 1455.22
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 1465.26,
+            "end": 1477.86
+          }
+        },
+        {
+          "mode": "miss",
+          "gold": {
+            "start": 3047.84,
+            "end": 3072.76
+          }
+        }
+      ],
+      "predictions": [
+        {
+          "start": 0.0,
+          "end": 80.58,
+          "excerpt": "OnDeck is built to back small businesses like yours. Whether you're buying equipment, expanding your team, or bridging cash flow gaps, OnDeck's loans up to $400\u2026"
+        },
+        {
+          "start": 148.82,
+          "end": 153.02,
+          "excerpt": "It's going to be brought to you by Atrium Hotel and Suites, atriumhotelandsuites .com."
+        },
+        {
+          "start": 1430.02,
+          "end": 1442.48,
+          "excerpt": "That's at atriumhotelandsuites .com. Save 15 % right now with... 400 -531 -8. That's 801 -400 -531 -8. Or visit us at orthoprosofutah .com."
+        },
+        {
+          "start": 1512.26,
+          "end": 1542.12,
+          "excerpt": "It's going to be brought to you by Self -Serve Mattress. SelfServeMattress .com, located in the Provo Town Center, 1200 Town Center Boulevard, 2114 Provo, Utah.\u2026"
+        },
+        {
+          "start": 3069.16,
+          "end": 3132.44,
+          "excerpt": "sponsors so please give them an opportunity to earn your business uh whatever cash flow crunch on deck small business line of credit gives your business immedia\u2026"
+        }
+      ]
+    },
+    {
+      "slug": "darknet-diaries",
+      "split": "holdout",
+      "durationSeconds": 4186.65,
+      "precision": 1.0,
+      "recall": 1.0,
+      "truePositives": 4,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "timeWeighted": {
+        "truePositiveSeconds": 196.12,
+        "falsePositiveSeconds": 4.8,
+        "falseNegativeSeconds": 20.46,
+        "precision": 0.9761,
+        "recall": 0.9055,
+        "predictedAdSeconds": 200.92,
+        "goldenAdSeconds": 216.58
+      },
+      "contentLossSecondsPerListeningHour": 4.127,
+      "missedAdSecondsPerListeningHour": 17.593,
+      "boundary": {
+        "matched": 4,
+        "medianAbsDeltaStart": 10.23,
+        "medianAbsDeltaEnd": 0.0,
+        "maxAbsDeltaStart": 57.36,
+        "maxAbsDeltaEnd": 60.5,
+        "within3sBoth": 1
+      },
+      "failureModes": [
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 110.25,
+            "end": 223.31
+          },
+          "gold": {
+            "start": 110.25,
+            "end": 162.81
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 60.5
+        },
+        {
+          "mode": "early-start",
+          "pred": {
+            "start": 110.25,
+            "end": 223.31
+          },
+          "gold": {
+            "start": 167.61,
+            "end": 223.31
+          },
+          "deltaStart": -57.36,
+          "deltaEnd": 0.0
+        },
+        {
+          "mode": "late-start",
+          "pred": {
+            "start": 4145.35,
+            "end": 4167.09
+          },
+          "gold": {
+            "start": 4124.89,
+            "end": 4167.09
+          },
+          "deltaStart": 20.46,
+          "deltaEnd": 0.0
+        }
+      ],
+      "predictions": [
+        {
+          "start": 110.25,
+          "end": 223.31,
+          "excerpt": "This episode is sponsored by Threadlocker. The weird part about modern cyber attacks is how normal they look. The attacker logs in from Chrome, uses PowerShell,\u2026"
+        },
+        {
+          "start": 2106.72,
+          "end": 2172.84,
+          "excerpt": "This episode is sponsored by NetSuite. I'm reading that each day your business is late to AI. You fall two days behind. So how do you keep up? Fortunately, ther\u2026"
+        },
+        {
+          "start": 4145.35,
+          "end": 4167.09,
+          "excerpt": "But listen, if you want to be the first to hear it, you need to pitch in by going to plus .darknetdairies .com and sign up for our plus feed. You'll get bonus e\u2026"
+        }
+      ]
+    },
+    {
+      "slug": "joe-rogan-mrbeast",
+      "split": "holdout",
+      "durationSeconds": 10785.78,
+      "precision": 0.9286,
+      "recall": 1.0,
+      "truePositives": 13,
+      "falsePositives": 1,
+      "falseNegatives": 0,
+      "timeWeighted": {
+        "truePositiveSeconds": 684.38,
+        "falsePositiveSeconds": 80.08,
+        "falseNegativeSeconds": 30.56,
+        "precision": 0.8952,
+        "recall": 0.9573,
+        "predictedAdSeconds": 764.46,
+        "goldenAdSeconds": 714.94
+      },
+      "contentLossSecondsPerListeningHour": 26.729,
+      "missedAdSecondsPerListeningHour": 10.2,
+      "boundary": {
+        "matched": 13,
+        "medianAbsDeltaStart": 8.24,
+        "medianAbsDeltaEnd": 14.92,
+        "maxAbsDeltaStart": 62.22,
+        "maxAbsDeltaEnd": 72.92,
+        "within3sBoth": 0
+      },
+      "failureModes": [
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 418.96,
+            "end": 547.52
+          },
+          "gold": {
+            "start": 418.96,
+            "end": 474.6
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 72.92
+        },
+        {
+          "mode": "early-start+early-stop",
+          "pred": {
+            "start": 418.96,
+            "end": 547.52
+          },
+          "gold": {
+            "start": 475.28,
+            "end": 552.74
+          },
+          "deltaStart": -56.32,
+          "deltaEnd": -5.22
+        },
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 2209.4,
+            "end": 2306.26
+          },
+          "gold": {
+            "start": 2209.4,
+            "end": 2271.16
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 35.1
+        },
+        {
+          "mode": "early-start",
+          "pred": {
+            "start": 2209.4,
+            "end": 2306.26
+          },
+          "gold": {
+            "start": 2271.62,
+            "end": 2306.26
+          },
+          "deltaStart": -62.22,
+          "deltaEnd": 0.0
+        },
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 3473.62,
+            "end": 3534.68
+          },
+          "gold": {
+            "start": 3473.62,
+            "end": 3529.38
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 5.3
+        },
+        {
+          "mode": "late-start+end-bleed",
+          "pred": {
+            "start": 4348.88,
+            "end": 4452.66
+          },
+          "gold": {
+            "start": 4340.64,
+            "end": 4401.4
+          },
+          "deltaStart": 8.24,
+          "deltaEnd": 51.26
+        },
+        {
+          "mode": "early-start",
+          "pred": {
+            "start": 4348.88,
+            "end": 4452.66
+          },
+          "gold": {
+            "start": 4401.8,
+            "end": 4452.66
+          },
+          "deltaStart": -52.92,
+          "deltaEnd": 0.0
+        },
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 5810.5,
+            "end": 5907.92
+          },
+          "gold": {
+            "start": 5810.5,
+            "end": 5867.08
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 40.84
+        },
+        {
+          "mode": "early-start+early-stop",
+          "pred": {
+            "start": 5810.5,
+            "end": 5907.92
+          },
+          "gold": {
+            "start": 5867.52,
+            "end": 5922.84
+          },
+          "deltaStart": -57.02,
+          "deltaEnd": -14.92
+        },
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 8055.84,
+            "end": 8152.88
+          },
+          "gold": {
+            "start": 8055.84,
+            "end": 8113.84
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 39.04
+        },
+        {
+          "mode": "early-start",
+          "pred": {
+            "start": 8055.84,
+            "end": 8152.88
+          },
+          "gold": {
+            "start": 8114.16,
+            "end": 8155.06
+          },
+          "deltaStart": -58.32,
+          "deltaEnd": -2.18
+        },
+        {
+          "mode": "end-bleed",
+          "pred": {
+            "start": 10678.06,
+            "end": 10785.78
+          },
+          "gold": {
+            "start": 10678.06,
+            "end": 10734.68
+          },
+          "deltaStart": 0.0,
+          "deltaEnd": 51.1
+        },
+        {
+          "mode": "early-start",
+          "pred": {
+            "start": 10678.06,
+            "end": 10785.78
+          },
+          "gold": {
+            "start": 10735.14,
+            "end": 10785.78
+          },
+          "deltaStart": -57.08,
+          "deltaEnd": 0.0
+        },
+        {
+          "mode": "false-positive",
+          "pred": {
+            "start": 1230.6,
+            "end": 1302.62
+          }
+        }
+      ],
+      "predictions": [
+        {
+          "start": 418.96,
+          "end": 547.52,
+          "excerpt": "The Cup is down to its final matches. One trophy, one champion, DraftKings has you covered for every single one. The DraftKings app is now available in all 50 s\u2026"
+        },
+        {
+          "start": 1230.6,
+          "end": 1302.62,
+          "excerpt": "The cup is down to its final matches. One trophy, one champion. DraftKings has you covered for every single one. The DraftKings app is now available in all 50 s\u2026"
+        },
+        {
+          "start": 2209.4,
+          "end": 2306.26,
+          "excerpt": "This episode is brought to you by Dodge. I recently had the chance to get behind the wheel of the new gas -powered Dodge Charger Scat Pack, and it reminds me ho\u2026"
+        },
+        {
+          "start": 3473.62,
+          "end": 3534.68,
+          "excerpt": "This episode is brought to you by Blue Chew. I'm sure you've heard of Blue Chew by now. But let me tell you what they've been up to. They've been on a mission t\u2026"
+        },
+        {
+          "start": 4348.88,
+          "end": 4452.66,
+          "excerpt": "you're rocking the bald look this is the season when your dome is on full display that's why i've been using the dome Dome Shaver Pro from Manscaped. It's got f\u2026"
+        },
+        {
+          "start": 5810.5,
+          "end": 5907.92,
+          "excerpt": "This episode is brought to you by Blue Chew. I'm sure you've heard of Blue Chew by now, but let me tell you what they've been up to. They've been on a mission t\u2026"
+        },
+        {
+          "start": 8055.84,
+          "end": 8152.88,
+          "excerpt": "This episode is brought to you by Black Rifle Coffee, the only coffee we drink here in the JRE Studio. Some companies only want to celebrate America when it's t\u2026"
+        },
+        {
+          "start": 10678.06,
+          "end": 10785.78,
+          "excerpt": "This episode is brought to you by Blue Chew. I'm sure you've heard of Blue Chew by now, but let me tell you what they've been up to. They've been on a mission t\u2026"
+        }
+      ]
+    },
+    {
+      "slug": "ai-news-strategy-daily",
+      "split": "holdout",
+      "durationSeconds": 945.19,
+      "precision": 0.0,
+      "recall": 0.0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "timeWeighted": {
+        "truePositiveSeconds": 0.0,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 0.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "predictedAdSeconds": 0,
+        "goldenAdSeconds": 0
+      },
+      "contentLossSecondsPerListeningHour": 0.0,
+      "missedAdSecondsPerListeningHour": 0.0,
+      "boundary": {
+        "matched": 0,
+        "medianAbsDeltaStart": null,
+        "medianAbsDeltaEnd": null,
+        "maxAbsDeltaStart": null,
+        "maxAbsDeltaEnd": null,
+        "within3sBoth": 0
+      },
+      "failureModes": [],
+      "predictions": []
+    }
+  ]
+}

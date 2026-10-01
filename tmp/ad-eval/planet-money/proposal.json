@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "planet-money",
+  "transcriptSha256": "874f3d7b33ceadd6715c78c281b17500dcbc5365b2b6c640d4d4b8d0b5849bb8",
+  "sources": {
+    "primary": "codex-transcript-pass",
+    "notes": "Agent-proposed starting spans for human review. NPR network promos are labeled separately from paid spots."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 0,
+      "endWord": 58,
+      "label": "paid_dai",
+      "advertiser": "Schwab",
+      "note": "Cold-open Schwab teen investor account spot."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 831,
+      "endWord": 910,
+      "label": "paid_dai",
+      "advertiser": "Thumbtack",
+      "note": "Break spot before NPR Politics promo."
+    },
+    {
+      "id": "proposal-003",
+      "startWord": 910,
+      "endWord": 963,
+      "label": "network_promo",
+      "advertiser": "NPR Politics Podcast",
+      "note": "NPR network promo; content resumes with Planet Money Summer School."
+    },
+    {
+      "id": "proposal-004",
+      "startWord": 3875,
+      "endWord": 3947,
+      "label": "network_promo",
+      "advertiser": "Short Wave",
+      "note": "NPR network promo after break tease."
+    },
+    {
+      "id": "proposal-005",
+      "startWord": 3947,
+      "endWord": 4022,
+      "label": "network_promo",
+      "advertiser": "Fresh Air",
+      "note": "NPR network promo; content resumes with world economic tour."
+    },
+    {
+      "id": "proposal-006",
+      "startWord": 6826,
+      "endWord": 6908,
+      "label": "network_promo",
+      "advertiser": "NPR World Cup coverage",
+      "note": "NPR network promo near episode end."
+    },
+    {
+      "id": "proposal-007",
+      "startWord": 6908,
+      "endWord": 6991,
+      "label": "network_promo",
+      "advertiser": "Wait Wait... Don't Tell Me!",
+      "note": "NPR network promo at episode end."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "audit-npr-promos-policy",
+      "startWord": 831,
+      "endWord": 963,
+      "reason": "Paid ad plus NPR network promo; verify whether network promos should be skipped."
+    },
+    {
+      "id": "audit-second-break-stack",
+      "startWord": 3872,
+      "endWord": 4025,
+      "reason": "Two NPR promos sit between a break tease and content re-entry."
+    },
+    {
+      "id": "audit-end-network-promos",
+      "startWord": 6800,
+      "endWord": 6991,
+      "reason": "Episode ends with NPR promos after the next-class tease; verify exact transition."
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "locked-on-big-12",
+  "status": "approved",
+  "revision": 9,
+  "transcriptSha256": "5ca59e6c9e8d133206bc9414a26a817f168f34b863b243dc2dff64dd4a78af7e",
+  "proposalSha256": "ce8a5e93f34c305ba5d2c7f9a98f005c806321d3f81e5cc6d95f455c6552f09a",
+  "reviewedThroughWord": 4634,
+  "resumeWord": 4074,
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 1852,
+      "endWord": 2041,
+      "label": "paid_host_read",
+      "advertiser": "FanDuel",
+      "note": "Host-read/sponsor-read FanDuel midroll. ASR mangles FanDuel as fando/fandal.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-001"
+    },
+    {
+      "id": "span-2",
+      "startWord": 4550,
+      "endWord": 4634,
+      "label": "paid_dai",
+      "advertiser": "Discover",
+      "note": "Closing Discover cash-back credit-card spot through episode end.",
+      "origin": "ai-proposal",
+      "proposalId": "proposal-002"
+    }
+  ],
+  "auditDecisions": {},
+  "attested": true,
+  "reviewer": "Brian",
+  "createdAt": "2026-07-21T04:14:39.137491+00:00",
+  "updatedAt": "2026-07-21T04:15:47.732165+00:00",
+  "approvedAt": "2026-07-21T04:15:47.736016+00:00"
+}

@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "unexplainable",
+  "transcriptSha256": "220ec505bc7a7d75acd975f820fcab62cb68243ffd6d554716d304984c549bac",
+  "sources": {
+    "primary": "codex-transcript-pass",
+    "notes": "Agent-proposed starting spans for human review. No local LLM was used."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 0,
+      "endWord": 177,
+      "label": "paid_dai",
+      "advertiser": "Thumbtack",
+      "note": "Cold-open Thumbtack spot; transcript begins mid-copy."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 1815,
+      "endWord": 2015,
+      "label": "network_promo",
+      "advertiser": "Today, Explained / Comcast Business",
+      "note": "Network promo/presenter segment after break; verify if Comcast line should be separate paid ad."
+    },
+    {
+      "id": "proposal-003",
+      "startWord": 2015,
+      "endWord": 2218,
+      "label": "network_promo",
+      "advertiser": "Switched on Pop",
+      "note": "Network promo for Switched on Pop/Netflix; content resumes with the undiagnosed diseases story."
+    },
+    {
+      "id": "proposal-004",
+      "startWord": 5038,
+      "endWord": 5124,
+      "label": "membership_cta",
+      "advertiser": "Vox membership",
+      "note": "Outro Vox membership/support CTA."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "audit-cold-open-clipped",
+      "startWord": 0,
+      "endWord": 190,
+      "reason": "Transcript starts mid-Thumbtack copy; verify exact end before the health/science story."
+    },
+    {
+      "id": "audit-midroll-network-stack",
+      "startWord": 1800,
+      "endWord": 2230,
+      "reason": "Midroll has network promos and a Comcast presenter mention; verify paid vs network labels and story re-entry."
+    },
+    {
+      "id": "audit-outro-membership",
+      "startWord": 5000,
+      "endWord": 5165,
+      "reason": "Outro includes contact info, membership CTA, reviews, and credits; verify what should be skipped."
+    }
+  ]
+}

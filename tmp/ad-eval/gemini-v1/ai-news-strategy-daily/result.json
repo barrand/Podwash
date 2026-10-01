@@ -1,0 +1,1884 @@
+{
+  "schemaVersion": 1,
+  "slug": "ai-news-strategy-daily",
+  "model": "gemini-3.6-flash",
+  "createdAt": "2026-07-24T22:56:37.009251+00:00",
+  "transcriptSha256": "4b061f227dd4868b77b697e070bffb7cdbec2cc06d0f6dcc9393fde1e2cd30f9",
+  "requestSha256": "e56ec8c6f516aea35ee3c63f9c073706558777a77520504b3c62f5a986a4b544",
+  "sentenceRows": [
+    {
+      "id": 1,
+      "start_word": 0,
+      "end_word": 20,
+      "start": 0.0,
+      "end": 5.68,
+      "text": "I overbuilt my harness for fable five and chat gbt 5 .6 and I did it before they came out."
+    },
+    {
+      "id": 2,
+      "start_word": 20,
+      "end_word": 24,
+      "start": 5.88,
+      "end": 6.56,
+      "text": "I was so excited."
+    },
+    {
+      "id": 3,
+      "start_word": 24,
+      "end_word": 30,
+      "start": 6.66,
+      "end": 8.24,
+      "text": "I've been using AI a lot."
+    },
+    {
+      "id": 4,
+      "start_word": 30,
+      "end_word": 41,
+      "start": 8.24,
+      "end": 10.72,
+      "text": "I've been adding new rules and new instructions and new skills."
+    },
+    {
+      "id": 5,
+      "start_word": 41,
+      "end_word": 45,
+      "start": 10.72,
+      "end": 11.52,
+      "text": "And I've been enthusiastic."
+    },
+    {
+      "id": 6,
+      "start_word": 45,
+      "end_word": 51,
+      "start": 12.1,
+      "end": 12.92,
+      "text": "And you know what that means?"
+    },
+    {
+      "id": 7,
+      "start_word": 51,
+      "end_word": 80,
+      "start": 13.0,
+      "end": 23.1,
+      "text": "It means my everything around it, all of the skills, all of the old system prompts, all of that was bloat that kept my AI models from performing well."
+    },
+    {
+      "id": 8,
+      "start_word": 80,
+      "end_word": 90,
+      "start": 23.38,
+      "end": 26.12,
+      "text": "Every time my AI missed something, I added another rule."
+    },
+    {
+      "id": 9,
+      "start_word": 90,
+      "end_word": 96,
+      "start": 26.28,
+      "end": 27.06,
+      "text": "A lot of us do, right?"
+    },
+    {
+      "id": 10,
+      "start_word": 96,
+      "end_word": 130,
+      "start": 27.22,
+      "end": 35.52,
+      "text": "I would tell it, use these sources correctly or write in my voice or check the length in this way or read this file first, never make this mistake again, make no mistakes, right?"
+    },
+    {
+      "id": 11,
+      "start_word": 130,
+      "end_word": 141,
+      "start": 35.88,
+      "end": 38.92,
+      "text": "Every rule ended up fixing a real problem at the time."
+    },
+    {
+      "id": 12,
+      "start_word": 141,
+      "end_word": 153,
+      "start": 39.26,
+      "end": 44.16,
+      "text": "But over time, I didn't realize how bloated my harness had become."
+    },
+    {
+      "id": 13,
+      "start_word": 153,
+      "end_word": 177,
+      "start": 44.7,
+      "end": 50.42,
+      "text": "If you don't know what a harness is, that's part of the problem too, because we haven't been clear about that as a community."
+    },
+    {
+      "id": 14,
+      "start_word": 177,
+      "end_word": 185,
+      "start": 50.78,
+      "end": 54.1,
+      "text": "A harness is everything wrapped around the model."
+    },
+    {
+      "id": 15,
+      "start_word": 185,
+      "end_word": 190,
+      "start": 54.7,
+      "end": 56.3,
+      "text": "So it's your custom instructions."
+    },
+    {
+      "id": 16,
+      "start_word": 190,
+      "end_word": 194,
+      "start": 56.72,
+      "end": 57.78,
+      "text": "It's your project files."
+    },
+    {
+      "id": 17,
+      "start_word": 194,
+      "end_word": 198,
+      "start": 58.1,
+      "end": 58.92,
+      "text": "It's your saved prompts."
+    },
+    {
+      "id": 18,
+      "start_word": 198,
+      "end_word": 205,
+      "start": 59.26,
+      "end": 61.52,
+      "text": "It's your memory, your skills, your tools."
+    },
+    {
+      "id": 19,
+      "start_word": 205,
+      "end_word": 214,
+      "start": 62.18,
+      "end": 64.62,
+      "text": "It's your permissions, any checks that you run, right?"
+    },
+    {
+      "id": 20,
+      "start_word": 214,
+      "end_word": 241,
+      "start": 65.12,
+      "end": 72.8,
+      "text": "It shapes the answer before you type anything into the prompt window, because it comes with that prompt and helps the model understand what to respond with."
+    },
+    {
+      "id": 21,
+      "start_word": 241,
+      "end_word": 251,
+      "start": 72.92,
+      "end": 75.1,
+      "text": "Most of us never set out to build a harness."
+    },
+    {
+      "id": 22,
+      "start_word": 251,
+      "end_word": 260,
+      "start": 75.5,
+      "end": 78.08,
+      "text": "We built it accidentally, one correction at a time."
+    },
+    {
+      "id": 23,
+      "start_word": 260,
+      "end_word": 279,
+      "start": 78.48,
+      "end": 82.98,
+      "text": "I had no screen that showed me the full extent of the harness I built in Codex and Claude."
+    },
+    {
+      "id": 24,
+      "start_word": 279,
+      "end_word": 302,
+      "start": 83.48,
+      "end": 88.2,
+      "text": "I could see the latest rule I added if I looked for it, but I couldn't see the whole system in one place."
+    },
+    {
+      "id": 25,
+      "start_word": 302,
+      "end_word": 338,
+      "start": 88.9,
+      "end": 96.92,
+      "text": "When the AI started behaving strangely, I would often blame the model and I know a lot of people do and then I would add another rule and that would make it even more bloated, right?"
+    },
+    {
+      "id": 26,
+      "start_word": 338,
+      "end_word": 348,
+      "start": 97.26,
+      "end": 99.74,
+      "text": "So I built a skill that makes the harness visible."
+    },
+    {
+      "id": 27,
+      "start_word": 348,
+      "end_word": 389,
+      "start": 100.34,
+      "end": 113.62,
+      "text": "I'll show you six principles for building a more stable harness, including what works differently for fable five and the chat GPT 5 .6 family of models, then I'll show you how you can run the same cleaner on your setup."
+    },
+    {
+      "id": 28,
+      "start_word": 389,
+      "end_word": 394,
+      "start": 114.28,
+      "end": 115.28,
+      "text": "The goal is very simple."
+    },
+    {
+      "id": 29,
+      "start_word": 394,
+      "end_word": 399,
+      "start": 115.4,
+      "end": 117.02,
+      "text": "The models keep evolving, right?"
+    },
+    {
+      "id": 30,
+      "start_word": 399,
+      "end_word": 405,
+      "start": 117.26,
+      "end": 118.2,
+      "text": "And that's not going to change."
+    },
+    {
+      "id": 31,
+      "start_word": 405,
+      "end_word": 425,
+      "start": 118.56,
+      "end": 126.22,
+      "text": "Now, when I ran the first inventory on my setup, it found 66 reusable skills and 172 instruction related files."
+    },
+    {
+      "id": 32,
+      "start_word": 425,
+      "end_word": 429,
+      "start": 126.28,
+      "end": 127.28,
+      "text": "I've been very busy."
+    },
+    {
+      "id": 33,
+      "start_word": 429,
+      "end_word": 447,
+      "start": 127.92,
+      "end": 134.12,
+      "text": "One normal writing job could pull in an 18 ,000 word file before it even adjusted the prompt."
+    },
+    {
+      "id": 34,
+      "start_word": 447,
+      "end_word": 454,
+      "start": 134.26,
+      "end": 135.6,
+      "text": "But the number wasn't the real problem."
+    },
+    {
+      "id": 35,
+      "start_word": 454,
+      "end_word": 463,
+      "start": 135.6,
+      "end": 138.44,
+      "text": "Some of those instructions actually protect really important work."
+    },
+    {
+      "id": 36,
+      "start_word": 463,
+      "end_word": 474,
+      "start": 138.86,
+      "end": 141.98,
+      "text": "They tell the AI, which sources matter when I'm doing research."
+    },
+    {
+      "id": 37,
+      "start_word": 474,
+      "end_word": 486,
+      "start": 142.4,
+      "end": 145.98,
+      "text": "They stop it from inventing an opinion that I genuinely don't have."
+    },
+    {
+      "id": 38,
+      "start_word": 486,
+      "end_word": 494,
+      "start": 146.2,
+      "end": 147.34,
+      "text": "I don't like it when it does that."
+    },
+    {
+      "id": 39,
+      "start_word": 494,
+      "end_word": 511,
+      "start": 147.68,
+      "end": 152.06,
+      "text": "They define what it can do without asking me and what it needs to ask me about."
+    },
+    {
+      "id": 40,
+      "start_word": 511,
+      "end_word": 556,
+      "start": 152.3,
+      "end": 167.56,
+      "text": "Problem was, I couldn't tell with the new intelligence, the new models, which rules were protecting the work and which were just copies or overlaps or arriving too early or unnecessary with today's models or overlapping in a way that was confusing to the model."
+    },
+    {
+      "id": 41,
+      "start_word": 556,
+      "end_word": 575,
+      "start": 167.76,
+      "end": 171.14,
+      "text": "It's like everything around the engine in the car, all the way to what makes the wheels go, right?"
+    },
+    {
+      "id": 42,
+      "start_word": 575,
+      "end_word": 581,
+      "start": 171.28,
+      "end": 172.44,
+      "text": "The drive shaft is an example."
+    },
+    {
+      "id": 43,
+      "start_word": 581,
+      "end_word": 617,
+      "start": 172.72,
+      "end": 184.3,
+      "text": "The full chassis, all of the parts of a car that are not the engine that are required to transfer force from the engine to the wheels, that's what a harness is for an AI model."
+    },
+    {
+      "id": 44,
+      "start_word": 617,
+      "end_word": 623,
+      "start": 184.56,
+      "end": 186.08,
+      "text": "It actually makes the work possible."
+    },
+    {
+      "id": 45,
+      "start_word": 623,
+      "end_word": 640,
+      "start": 186.14,
+      "end": 190.66,
+      "text": "And we should definitely design it intentionally and not just guess and throw bolts into the car."
+    },
+    {
+      "id": 46,
+      "start_word": 640,
+      "end_word": 653,
+      "start": 190.8,
+      "end": 195.4,
+      "text": "The thing is when the model changes, the harness doesn't magically rebuild itself."
+    },
+    {
+      "id": 47,
+      "start_word": 653,
+      "end_word": 659,
+      "start": 195.72,
+      "end": 197.3,
+      "text": "Sometimes you choose the new model."
+    },
+    {
+      "id": 48,
+      "start_word": 659,
+      "end_word": 676,
+      "start": 197.4,
+      "end": 202.06,
+      "text": "Sometimes chat, GPT or cloud will actually change your default for you and retire an older model."
+    },
+    {
+      "id": 49,
+      "start_word": 676,
+      "end_word": 685,
+      "start": 202.46,
+      "end": 204.94,
+      "text": "And it will route a difficult request somewhere new."
+    },
+    {
+      "id": 50,
+      "start_word": 685,
+      "end_word": 698,
+      "start": 205.16,
+      "end": 208.14,
+      "text": "And sometimes it will even switch models in the middle of the conversation."
+    },
+    {
+      "id": 51,
+      "start_word": 698,
+      "end_word": 706,
+      "start": 209.18,
+      "end": 211.24,
+      "text": "You may not even know it happened, right?"
+    },
+    {
+      "id": 52,
+      "start_word": 706,
+      "end_word": 722,
+      "start": 211.8,
+      "end": 216.44,
+      "text": "And the old setup, the old harness, the old chassis for that car stays in place."
+    },
+    {
+      "id": 53,
+      "start_word": 722,
+      "end_word": 733,
+      "start": 216.88,
+      "end": 220.0,
+      "text": "The new model may behave very, very differently as a result."
+    },
+    {
+      "id": 54,
+      "start_word": 733,
+      "end_word": 744,
+      "start": 220.18,
+      "end": 222.28,
+      "text": "And you may wonder why you may blame the model, right?"
+    },
+    {
+      "id": 55,
+      "start_word": 744,
+      "end_word": 749,
+      "start": 222.4,
+      "end": 223.56,
+      "text": "The experience could get worse."
+    },
+    {
+      "id": 56,
+      "start_word": 749,
+      "end_word": 754,
+      "start": 223.78,
+      "end": 224.92,
+      "text": "So you add another instruction."
+    },
+    {
+      "id": 57,
+      "start_word": 754,
+      "end_word": 774,
+      "start": 225.2,
+      "end": 229.62,
+      "text": "I pointed at the setup I already use, and I ask it to clean the harness that it can see."
+    },
+    {
+      "id": 58,
+      "start_word": 774,
+      "end_word": 781,
+      "start": 229.94,
+      "end": 231.66,
+      "text": "I don't gather every prompt by hand."
+    },
+    {
+      "id": 59,
+      "start_word": 781,
+      "end_word": 791,
+      "start": 231.84,
+      "end": 234.06,
+      "text": "I don't decide what should be deleted before it starts."
+    },
+    {
+      "id": 60,
+      "start_word": 791,
+      "end_word": 801,
+      "start": 234.6,
+      "end": 237.36,
+      "text": "The skill begins by making a map of my harness."
+    },
+    {
+      "id": 61,
+      "start_word": 801,
+      "end_word": 808,
+      "start": 237.8,
+      "end": 239.28,
+      "text": "That leads to the first rule, right?"
+    },
+    {
+      "id": 62,
+      "start_word": 808,
+      "end_word": 816,
+      "start": 239.42,
+      "end": 241.12,
+      "text": "You map the harness before you clean it."
+    },
+    {
+      "id": 63,
+      "start_word": 816,
+      "end_word": 821,
+      "start": 241.18,
+      "end": 242.2,
+      "text": "It's actually a principle, right?"
+    },
+    {
+      "id": 64,
+      "start_word": 821,
+      "end_word": 832,
+      "start": 242.32,
+      "end": 244.2,
+      "text": "The skill does it, but it's because it's a good idea."
+    },
+    {
+      "id": 65,
+      "start_word": 832,
+      "end_word": 854,
+      "start": 244.58,
+      "end": 251.54,
+      "text": "The map gives every important control that you have in your harness a separate row and asks, where does this control live?"
+    },
+    {
+      "id": 66,
+      "start_word": 854,
+      "end_word": 858,
+      "start": 252.04,
+      "end": 252.82,
+      "text": "When does it load?"
+    },
+    {
+      "id": 67,
+      "start_word": 858,
+      "end_word": 863,
+      "start": 253.24,
+      "end": 254.44,
+      "text": "What job does it do?"
+    },
+    {
+      "id": 68,
+      "start_word": 863,
+      "end_word": 866,
+      "start": 254.96,
+      "end": 255.82,
+      "text": "Who owns this?"
+    },
+    {
+      "id": 69,
+      "start_word": 866,
+      "end_word": 874,
+      "start": 256.34,
+      "end": 258.04,
+      "text": "Is there any evidence that it still helps?"
+    },
+    {
+      "id": 70,
+      "start_word": 874,
+      "end_word": 882,
+      "start": 258.44,
+      "end": 261.24,
+      "text": "What problem can it create if it's misused?"
+    },
+    {
+      "id": 71,
+      "start_word": 882,
+      "end_word": 896,
+      "start": 261.96,
+      "end": 265.26,
+      "text": "And this was the first time I saw my whole harness in one place."
+    },
+    {
+      "id": 72,
+      "start_word": 896,
+      "end_word": 914,
+      "start": 265.5,
+      "end": 269.22,
+      "text": "And I don't know about you, but that's it was really illuminating how much junk there was there."
+    },
+    {
+      "id": 73,
+      "start_word": 914,
+      "end_word": 930,
+      "start": 269.46,
+      "end": 275.84,
+      "text": "It also exposed a difference that chat box to normally hides their controls are actual locks."
+    },
+    {
+      "id": 74,
+      "start_word": 930,
+      "end_word": 936,
+      "start": 275.88,
+      "end": 277.28,
+      "text": "They have teeth to them, right?"
+    },
+    {
+      "id": 75,
+      "start_word": 936,
+      "end_word": 942,
+      "start": 277.46,
+      "end": 279.04,
+      "text": "A permission can block an action."
+    },
+    {
+      "id": 76,
+      "start_word": 942,
+      "end_word": 950,
+      "start": 279.44,
+      "end": 282.2,
+      "text": "A schema can reject a broken JSON file."
+    },
+    {
+      "id": 77,
+      "start_word": 950,
+      "end_word": 960,
+      "start": 282.78,
+      "end": 285.38,
+      "text": "A test can refuse a bad result if it fails."
+    },
+    {
+      "id": 78,
+      "start_word": 960,
+      "end_word": 969,
+      "start": 286.12,
+      "end": 288.88,
+      "text": "Those are not the same kind of instruction, right?"
+    },
+    {
+      "id": 79,
+      "start_word": 969,
+      "end_word": 992,
+      "start": 289.28,
+      "end": 294.58,
+      "text": "Until you map the harness, it can all look like text to you, but it doesn't read the same way to an AI."
+    },
+    {
+      "id": 80,
+      "start_word": 992,
+      "end_word": 1008,
+      "start": 294.84,
+      "end": 299.02,
+      "text": "The second principle that I learned as I built this is to blame the right layer."
+    },
+    {
+      "id": 81,
+      "start_word": 1008,
+      "end_word": 1021,
+      "start": 299.56,
+      "end": 303.62,
+      "text": "I tested the same underlying job with fable five in two different setups."
+    },
+    {
+      "id": 82,
+      "start_word": 1021,
+      "end_word": 1030,
+      "start": 304.28,
+      "end": 307.68,
+      "text": "The compact setup gave fable the goal, the facts,"
+    },
+    {
+      "id": 83,
+      "start_word": 1030,
+      "end_word": 1042,
+      "start": 308.4,
+      "end": 311.26,
+      "text": "the permission boundary that I had for it in the finish line."
+    },
+    {
+      "id": 84,
+      "start_word": 1042,
+      "end_word": 1067,
+      "start": 311.88,
+      "end": 320.4,
+      "text": "The thicker setup, the thicker skill gave it all of that plus the full method plus of scoring system and eval plan and classification scheme."
+    },
+    {
+      "id": 85,
+      "start_word": 1067,
+      "end_word": 1084,
+      "start": 320.54,
+      "end": 325.53,
+      "text": "And the thicker version did do the job more completely the analysis that I was much richer,"
+    },
+    {
+      "id": 86,
+      "start_word": 1084,
+      "end_word": 1092,
+      "start": 326.17,
+      "end": 330.07,
+      "text": "but it also failed actual delivery requirements twice."
+    },
+    {
+      "id": 87,
+      "start_word": 1092,
+      "end_word": 1102,
+      "start": 331.13,
+      "end": 334.09,
+      "text": "One result broke the JSON, another broke the word limit."
+    },
+    {
+      "id": 88,
+      "start_word": 1102,
+      "end_word": 1119,
+      "start": 334.59,
+      "end": 339.69,
+      "text": "The compact setup finished correctly three times out of three, like all three times it finished, right?"
+    },
+    {
+      "id": 89,
+      "start_word": 1119,
+      "end_word": 1127,
+      "start": 340.19,
+      "end": 342.03,
+      "text": "That doesn't mean that short prompts always win."
+    },
+    {
+      "id": 90,
+      "start_word": 1127,
+      "end_word": 1134,
+      "start": 342.21,
+      "end": 343.29,
+      "text": "I want to be clear about that."
+    },
+    {
+      "id": 91,
+      "start_word": 1134,
+      "end_word": 1150,
+      "start": 343.45,
+      "end": 348.63,
+      "text": "It means that the model and the harness produce the work that we care about together."
+    },
+    {
+      "id": 92,
+      "start_word": 1150,
+      "end_word": 1168,
+      "start": 349.57,
+      "end": 356.49,
+      "text": "If you blame the model for everything, you will keep adding instructions to solve problems created by instructions,"
+    },
+    {
+      "id": 93,
+      "start_word": 1168,
+      "end_word": 1172,
+      "start": 357.31,
+      "end": 357.87,
+      "text": "not by the model."
+    },
+    {
+      "id": 94,
+      "start_word": 1172,
+      "end_word": 1187,
+      "start": 358.29,
+      "end": 361.77,
+      "text": "And so the cleaner skill forces a much more useful question for all of us."
+    },
+    {
+      "id": 95,
+      "start_word": 1187,
+      "end_word": 1198,
+      "start": 361.97,
+      "end": 364.47,
+      "text": "Did the model fail or did the surrounding setup fail, right?"
+    },
+    {
+      "id": 96,
+      "start_word": 1198,
+      "end_word": 1202,
+      "start": 364.65,
+      "end": 365.39,
+      "text": "Did the harness fail?"
+    },
+    {
+      "id": 97,
+      "start_word": 1202,
+      "end_word": 1208,
+      "start": 365.59,
+      "end": 366.49,
+      "text": "Let's jump to the third rule."
+    },
+    {
+      "id": 98,
+      "start_word": 1208,
+      "end_word": 1214,
+      "start": 366.55,
+      "end": 368.83,
+      "text": "The third rule is one rule,"
+    },
+    {
+      "id": 99,
+      "start_word": 1214,
+      "end_word": 1219,
+      "start": 369.47,
+      "end": 371.29,
+      "text": "one home, one owner, right?"
+    },
+    {
+      "id": 100,
+      "start_word": 1219,
+      "end_word": 1223,
+      "start": 371.49,
+      "end": 372.09,
+      "text": "It's easy to remember."
+    },
+    {
+      "id": 101,
+      "start_word": 1223,
+      "end_word": 1267,
+      "start": 372.75,
+      "end": 385.43,
+      "text": "My setup had versions of the same authorship and source rule in 15 different top level skills, indicating I cared about it a lot, but I was not getting traction or progress in any of the individual skills, so I kept working on it."
+    },
+    {
+      "id": 102,
+      "start_word": 1267,
+      "end_word": 1287,
+      "start": 385.53,
+      "end": 390.87,
+      "text": "For me, the critical thing that I care about is that I don't want AI putting words in my mouth."
+    },
+    {
+      "id": 103,
+      "start_word": 1287,
+      "end_word": 1301,
+      "start": 390.87,
+      "end": 394.05,
+      "text": "I don't want it to come back with research and pretend it's my opinion."
+    },
+    {
+      "id": 104,
+      "start_word": 1301,
+      "end_word": 1342,
+      "start": 394.61,
+      "end": 407.61,
+      "text": "And so I have 15 different versions of a skill that stops AI from reading a pile of research and coming back in my voice, because I really, really care about understanding exactly what was researched and getting the citation correct."
+    },
+    {
+      "id": 105,
+      "start_word": 1342,
+      "end_word": 1377,
+      "start": 407.93,
+      "end": 416.65,
+      "text": "So I want to keep that quality, but I sure don't need 15 different files pretending to do that once and clearly none of them quite did it right because I kept adding to it."
+    },
+    {
+      "id": 106,
+      "start_word": 1377,
+      "end_word": 1387,
+      "start": 416.81,
+      "end": 419.21,
+      "text": "Every copy is another place where the rule can drift."
+    },
+    {
+      "id": 107,
+      "start_word": 1387,
+      "end_word": 1397,
+      "start": 419.77,
+      "end": 423.15,
+      "text": "One version gets fixed after a failure of 14 don't."
+    },
+    {
+      "id": 108,
+      "start_word": 1397,
+      "end_word": 1402,
+      "start": 423.23,
+      "end": 424.09,
+      "text": "Now it's out of sync."
+    },
+    {
+      "id": 109,
+      "start_word": 1402,
+      "end_word": 1411,
+      "start": 424.19,
+      "end": 425.95,
+      "text": "Now the model has several versions of the truth."
+    },
+    {
+      "id": 110,
+      "start_word": 1411,
+      "end_word": 1417,
+      "start": 425.95,
+      "end": 426.89,
+      "text": "You see where this is going."
+    },
+    {
+      "id": 111,
+      "start_word": 1417,
+      "end_word": 1421,
+      "start": 427.03,
+      "end": 427.51,
+      "text": "This is just bad."
+    },
+    {
+      "id": 112,
+      "start_word": 1421,
+      "end_word": 1431,
+      "start": 428.15,
+      "end": 431.17,
+      "text": "The cleaner doesn't ask whether an instruction is too long."
+    },
+    {
+      "id": 113,
+      "start_word": 1431,
+      "end_word": 1435,
+      "start": 431.17,
+      "end": 432.25,
+      "text": "It's smarter than that."
+    },
+    {
+      "id": 114,
+      "start_word": 1435,
+      "end_word": 1442,
+      "start": 432.27,
+      "end": 435.47,
+      "text": "It asks what job the instruction does,"
+    },
+    {
+      "id": 115,
+      "start_word": 1442,
+      "end_word": 1447,
+      "start": 436.15,
+      "end": 437.69,
+      "text": "where that job should live,"
+    },
+    {
+      "id": 116,
+      "start_word": 1447,
+      "end_word": 1457,
+      "start": 438.35,
+      "end": 441.67,
+      "text": "and who should update it the next time something changes."
+    },
+    {
+      "id": 117,
+      "start_word": 1457,
+      "end_word": 1480,
+      "start": 442.43,
+      "end": 447.17,
+      "text": "A lot of our theme along the way here has been about making sure we load the right information at the right time."
+    },
+    {
+      "id": 118,
+      "start_word": 1480,
+      "end_word": 1488,
+      "start": 447.31,
+      "end": 449.63,
+      "text": "And the fourth rule really codes that clearly."
+    },
+    {
+      "id": 119,
+      "start_word": 1488,
+      "end_word": 1501,
+      "start": 449.95,
+      "end": 454.11,
+      "text": "It says we should load specialist knowledge when the work actually needs it."
+    },
+    {
+      "id": 120,
+      "start_word": 1501,
+      "end_word": 1515,
+      "start": 454.65,
+      "end": 459.51,
+      "text": "I had six different editorial guides that were loading whenever one writing skill ran."
+    },
+    {
+      "id": 121,
+      "start_word": 1515,
+      "end_word": 1531,
+      "start": 459.51,
+      "end": 463.27,
+      "text": "So for example, the source guide matters a lot when I'm trying to do the research."
+    },
+    {
+      "id": 122,
+      "start_word": 1531,
+      "end_word": 1558,
+      "start": 463.57,
+      "end": 470.03,
+      "text": "And if I'm looking for examples for YouTube, I need to be finding that at the time when I'm wrestling with a YouTube script for you guys."
+    },
+    {
+      "id": 123,
+      "start_word": 1558,
+      "end_word": 1563,
+      "start": 470.25,
+      "end": 471.23,
+      "text": "All of that is great."
+    },
+    {
+      "id": 124,
+      "start_word": 1563,
+      "end_word": 1591,
+      "start": 471.67,
+      "end": 478.29,
+      "text": "But if you load all of it at the beginning, you're just loading a bunch of crud into your AI that is likely to produce worse results overall."
+    },
+    {
+      "id": 125,
+      "start_word": 1591,
+      "end_word": 1610,
+      "start": 478.53,
+      "end": 483.71,
+      "text": "Your research is worse because it's thinking about YouTube examples when it really should just be thinking about research."
+    },
+    {
+      "id": 126,
+      "start_word": 1610,
+      "end_word": 1621,
+      "start": 483.95,
+      "end": 487.59,
+      "text": "So in this world, the cleaner skill keeps the library, right?"
+    },
+    {
+      "id": 127,
+      "start_word": 1621,
+      "end_word": 1630,
+      "start": 487.75,
+      "end": 489.61,
+      "text": "It keeps that library of specialist skills that's useful."
+    },
+    {
+      "id": 128,
+      "start_word": 1630,
+      "end_word": 1640,
+      "start": 490.27,
+      "end": 492.73,
+      "text": "It just changes when each part of the library appears."
+    },
+    {
+      "id": 129,
+      "start_word": 1640,
+      "end_word": 1658,
+      "start": 493.19,
+      "end": 499.63,
+      "text": "And this is where I think a lot of cleaning prompts don't really fully understand what they're doing."
+    },
+    {
+      "id": 130,
+      "start_word": 1658,
+      "end_word": 1668,
+      "start": 499.63,
+      "end": 502.67,
+      "text": "The goal is not to throw away any useful context."
+    },
+    {
+      "id": 131,
+      "start_word": 1668,
+      "end_word": 1675,
+      "start": 502.91,
+      "end": 504.63,
+      "text": "Your library can actually be quite large."
+    },
+    {
+      "id": 132,
+      "start_word": 1675,
+      "end_word": 1678,
+      "start": 504.71,
+      "end": 505.35,
+      "text": "That's not bad."
+    },
+    {
+      "id": 133,
+      "start_word": 1678,
+      "end_word": 1692,
+      "start": 505.49,
+      "end": 508.97,
+      "text": "The fifth rule is that if you have hard requirements, they need hard checks."
+    },
+    {
+      "id": 134,
+      "start_word": 1692,
+      "end_word": 1720,
+      "start": 509.23,
+      "end": 515.21,
+      "text": "And so there's a difference between telling the model that you have a point of view and asking it to wrestle with that point of view with you."
+    },
+    {
+      "id": 135,
+      "start_word": 1720,
+      "end_word": 1733,
+      "start": 515.23,
+      "end": 517.51,
+      "text": "And there's a simple rule here that the cleanest skill will check for."
+    },
+    {
+      "id": 136,
+      "start_word": 1733,
+      "end_word": 1769,
+      "start": 517.63,
+      "end": 528.55,
+      "text": "If you have those kinds of rules, 50 word type rules where it's yes or no answers that the model can test for, those should be put into a schema that the model can test against."
+    },
+    {
+      "id": 137,
+      "start_word": 1769,
+      "end_word": 1777,
+      "start": 528.77,
+      "end": 530.33,
+      "text": "And the cleaner skill can help with that."
+    },
+    {
+      "id": 138,
+      "start_word": 1777,
+      "end_word": 1795,
+      "start": 530.51,
+      "end": 534.81,
+      "text": "The key principle here is that we let the system enforce the parts that a machine can verify."
+    },
+    {
+      "id": 139,
+      "start_word": 1795,
+      "end_word": 1807,
+      "start": 535.51,
+      "end": 538.57,
+      "text": "And that makes the harness lighter and safer at the same time."
+    },
+    {
+      "id": 140,
+      "start_word": 1807,
+      "end_word": 1826,
+      "start": 538.57,
+      "end": 543.59,
+      "text": "Now the sixth and final rule is to build for the model and the product actually doing the work."
+    },
+    {
+      "id": 141,
+      "start_word": 1826,
+      "end_word": 1844,
+      "start": 543.75,
+      "end": 548.85,
+      "text": "We want to be sophisticated enough that we can actually differentiate fable five from chat GPT 5 .6."
+    },
+    {
+      "id": 142,
+      "start_word": 1844,
+      "end_word": 1873,
+      "start": 549.13,
+      "end": 556.61,
+      "text": "If you use AI a lot, you understand that fable five in cloud .ai doesn't have the same harness as fable five in cloud code or via the API."
+    },
+    {
+      "id": 143,
+      "start_word": 1873,
+      "end_word": 1899,
+      "start": 557.21,
+      "end": 563.87,
+      "text": "chat GPT 5 .6 in chat GPT work isn't the same as in codecs and doesn't expose the same controls as it does via the API."
+    },
+    {
+      "id": 144,
+      "start_word": 1899,
+      "end_word": 1903,
+      "start": 564.39,
+      "end": 565.55,
+      "text": "So the model matters."
+    },
+    {
+      "id": 145,
+      "start_word": 1903,
+      "end_word": 1924,
+      "start": 565.55,
+      "end": 572.47,
+      "text": "But the product around it determines how skills load, which tools exist, what can be checked, and what proof comes bad."
+    },
+    {
+      "id": 146,
+      "start_word": 1924,
+      "end_word": 1930,
+      "start": 572.71,
+      "end": 574.09,
+      "text": "What facts does the model need?"
+    },
+    {
+      "id": 147,
+      "start_word": 1930,
+      "end_word": 1936,
+      "start": 574.51,
+      "end": 575.67,
+      "text": "What is it allowed to do?"
+    },
+    {
+      "id": 148,
+      "start_word": 1936,
+      "end_word": 1945,
+      "start": 576.11,
+      "end": 578.25,
+      "text": "What must be true before the work is finished?"
+    },
+    {
+      "id": 149,
+      "start_word": 1945,
+      "end_word": 1949,
+      "start": 578.41,
+      "end": 579.25,
+      "text": "What's our eval effect?"
+    },
+    {
+      "id": 150,
+      "start_word": 1949,
+      "end_word": 1974,
+      "start": 579.55,
+      "end": 585.85,
+      "text": "And those core rules don't change just because I switched from cloud to chat GPT because the value on the work is the same, right?"
+    },
+    {
+      "id": 151,
+      "start_word": 1974,
+      "end_word": 1982,
+      "start": 585.99,
+      "end": 588.01,
+      "text": "We're testing the same work across both harnesses."
+    },
+    {
+      "id": 152,
+      "start_word": 1982,
+      "end_word": 1996,
+      "start": 588.23,
+      "end": 592.69,
+      "text": "That set up passed every single delivery requirement three times out of three, right?"
+    },
+    {
+      "id": 153,
+      "start_word": 1996,
+      "end_word": 2010,
+      "start": 592.87,
+      "end": 596.55,
+      "text": "Like it actually delivered what it needed to because it was suited to fable."
+    },
+    {
+      "id": 154,
+      "start_word": 2010,
+      "end_word": 2033,
+      "start": 596.77,
+      "end": 603.93,
+      "text": "And as I discussed the richer skills, the heavier harness, they produced richer analysis, but fable was unable to meet my output constraints."
+    },
+    {
+      "id": 155,
+      "start_word": 2033,
+      "end_word": 2050,
+      "start": 604.19,
+      "end": 607.93,
+      "text": "And so there were issues that fable had just because it was struggling with a thicker scale."
+    },
+    {
+      "id": 156,
+      "start_word": 2050,
+      "end_word": 2062,
+      "start": 608.03,
+      "end": 610.19,
+      "text": "And so what is this teach us about how fable works, right?"
+    },
+    {
+      "id": 157,
+      "start_word": 2062,
+      "end_word": 2093,
+      "start": 610.31,
+      "end": 619.17,
+      "text": "You give it the real outcome, you give it context that it can't infer, you give it room to inspect the problem, and you let it plan its own approach usefully."
+    },
+    {
+      "id": 158,
+      "start_word": 2093,
+      "end_word": 2133,
+      "start": 619.49,
+      "end": 628.95,
+      "text": "And then you bring in specialist material when the work reaches that phase, which the cleaner skill can help you so that you invoke it at the right time, or you can let fable invoke it at the right time."
+    },
+    {
+      "id": 159,
+      "start_word": 2133,
+      "end_word": 2169,
+      "start": 629.17,
+      "end": 641.43,
+      "text": "And what failed was narrating the entire method in that big thick skill file before fable had even seen the job and expecting all of that prompt pros to enforce like JSON and word count requirements."
+    },
+    {
+      "id": 160,
+      "start_word": 2169,
+      "end_word": 2185,
+      "start": 641.43,
+      "end": 645.45,
+      "text": "That's just not going to work really well, even if fable's very good at rule following."
+    },
+    {
+      "id": 161,
+      "start_word": 2185,
+      "end_word": 2206,
+      "start": 645.77,
+      "end": 651.51,
+      "text": "And this is not about starving fable of context, by the way, the full method helped it to notice more stuff."
+    },
+    {
+      "id": 162,
+      "start_word": 2206,
+      "end_word": 2228,
+      "start": 652.11,
+      "end": 657.77,
+      "text": "But the depth should arrive when the work needs it, not all up front in a way that confuses the model, right?"
+    },
+    {
+      "id": 163,
+      "start_word": 2228,
+      "end_word": 2252,
+      "start": 657.93,
+      "end": 667.65,
+      "text": "So here we have the audit results 66 skill roots and 172 instruction assets, 27 ,000 description characters against 8 ,000 Codex discovery budget."
+    },
+    {
+      "id": 164,
+      "start_word": 2252,
+      "end_word": 2257,
+      "start": 668.23,
+      "end": 670.47,
+      "text": "That is a big problem."
+    },
+    {
+      "id": 165,
+      "start_word": 2257,
+      "end_word": 2268,
+      "start": 670.55,
+      "end": 673.11,
+      "text": "It's a big problem because it means Codex can't read it."
+    },
+    {
+      "id": 166,
+      "start_word": 2268,
+      "end_word": 2282,
+      "start": 673.17,
+      "end": 678.89,
+      "text": "There was an 18 ,000 word content route or skill with a minimum fan."
+    },
+    {
+      "id": 167,
+      "start_word": 2282,
+      "end_word": 2295,
+      "start": 679.03,
+      "end": 682.23,
+      "text": "And basically it was a skill leading into skills that 18 ,000 words,"
+    },
+    {
+      "id": 168,
+      "start_word": 2295,
+      "end_word": 2306,
+      "start": 683.21,
+      "end": 687.69,
+      "text": "provenance governance, how you handle sources distribute across 15 different skills."
+    },
+    {
+      "id": 169,
+      "start_word": 2306,
+      "end_word": 2311,
+      "start": 687.69,
+      "end": 688.89,
+      "text": "That's what I talk about."
+    },
+    {
+      "id": 170,
+      "start_word": 2311,
+      "end_word": 2325,
+      "start": 689.33,
+      "end": 694.61,
+      "text": "And only six of the 66 root skills had a detected local eval, right?"
+    },
+    {
+      "id": 171,
+      "start_word": 2325,
+      "end_word": 2341,
+      "start": 694.85,
+      "end": 699.35,
+      "text": "I had evils on six of them, but I didn't have them on the other 60."
+    },
+    {
+      "id": 172,
+      "start_word": 2341,
+      "end_word": 2347,
+      "start": 699.99,
+      "end": 701.73,
+      "text": "And I needed to improve that."
+    },
+    {
+      "id": 173,
+      "start_word": 2347,
+      "end_word": 2355,
+      "start": 702.01,
+      "end": 703.79,
+      "text": "And it's all about consistency with Codex, right?"
+    },
+    {
+      "id": 174,
+      "start_word": 2355,
+      "end_word": 2358,
+      "start": 704.15,
+      "end": 705.19,
+      "text": "schemas, tool restrictions,"
+    },
+    {
+      "id": 175,
+      "start_word": 2358,
+      "end_word": 2375,
+      "start": 705.81,
+      "end": 709.61,
+      "text": "file checks and a run receipt, they all carry the exact same requirements from skill to skill."
+    },
+    {
+      "id": 176,
+      "start_word": 2375,
+      "end_word": 2384,
+      "start": 709.61,
+      "end": 712.65,
+      "text": "So that Codex is able to operate very consistently."
+    },
+    {
+      "id": 177,
+      "start_word": 2384,
+      "end_word": 2397,
+      "start": 713.23,
+      "end": 716.71,
+      "text": "So the Codex chat GPT cleanup is not simply make the prompt shorter."
+    },
+    {
+      "id": 178,
+      "start_word": 2397,
+      "end_word": 2416,
+      "start": 717.01,
+      "end": 722.31,
+      "text": "It's make the right route to the skill easy to find, then load the depth at the right point."
+    },
+    {
+      "id": 179,
+      "start_word": 2416,
+      "end_word": 2459,
+      "start": 723.05,
+      "end": 733.53,
+      "text": "And the receipt that you have, which is important for Codex, it records the model, the reasoning setting, the tools, the skills, the fallbacks and the checks that ran so that you can get a sense over time of where there are problems."
+    },
+    {
+      "id": 180,
+      "start_word": 2459,
+      "end_word": 2467,
+      "start": 733.67,
+      "end": 735.63,
+      "text": "It's like a diagnostic for your engine, right?"
+    },
+    {
+      "id": 181,
+      "start_word": 2467,
+      "end_word": 2474,
+      "start": 735.81,
+      "end": 736.91,
+      "text": "You can figure out what's going on."
+    },
+    {
+      "id": 182,
+      "start_word": 2474,
+      "end_word": 2496,
+      "start": 737.13,
+      "end": 743.31,
+      "text": "If we compare the two models together, Fables failure mode showed up after the method became too heavy for the delivery job,"
+    },
+    {
+      "id": 183,
+      "start_word": 2496,
+      "end_word": 2522,
+      "start": 743.93,
+      "end": 751.15,
+      "text": "whereas chat GPT 5 .6's failure mode in Codex showed up much earlier, while the system was still trying to find the right method at all."
+    },
+    {
+      "id": 184,
+      "start_word": 2522,
+      "end_word": 2535,
+      "start": 751.33,
+      "end": 754.07,
+      "text": "And it was just having trouble routing across a really huge harness layer."
+    },
+    {
+      "id": 185,
+      "start_word": 2535,
+      "end_word": 2542,
+      "start": 754.79,
+      "end": 757.69,
+      "text": "Both models benefit from selective loading, right?"
+    },
+    {
+      "id": 186,
+      "start_word": 2542,
+      "end_word": 2558,
+      "start": 757.95,
+      "end": 763.17,
+      "text": "Both benefit from including those hard checks I talked about, but for very different immediate reasons."
+    },
+    {
+      "id": 187,
+      "start_word": 2558,
+      "end_word": 2568,
+      "start": 763.63,
+      "end": 766.21,
+      "text": "And that has to do with how these models work."
+    },
+    {
+      "id": 188,
+      "start_word": 2568,
+      "end_word": 2600,
+      "start": 766.41,
+      "end": 774.63,
+      "text": "Like Fable 5 sorting through a lot of context and trying to figure out how to do the best job and kind of overloading itself is a Fable 5 way to fail."
+    },
+    {
+      "id": 189,
+      "start_word": 2600,
+      "end_word": 2605,
+      "start": 774.85,
+      "end": 776.67,
+      "text": "Harnesses grow barnacles like ships."
+    },
+    {
+      "id": 190,
+      "start_word": 2605,
+      "end_word": 2617,
+      "start": 776.97,
+      "end": 779.77,
+      "text": "Ultimately, what I want is a system that helps us work well."
+    },
+    {
+      "id": 191,
+      "start_word": 2617,
+      "end_word": 2658,
+      "start": 779.97,
+      "end": 793.07,
+      "text": "I want the harnesses to evolve and stay clean and not just collect these barnacles of extra point solutions, extra additions, extra text files, extra skills that I randomly find on the internet because I found a tweet somewhere added in."
+    },
+    {
+      "id": 192,
+      "start_word": 2658,
+      "end_word": 2688,
+      "start": 793.51,
+      "end": 799.83,
+      "text": "And now I don't know what I'm doing because, you know, chat GPT is overwhelmed or Fable 5 gets too fat a skill or whatever the failure mode may be."
+    },
+    {
+      "id": 193,
+      "start_word": 2688,
+      "end_word": 2704,
+      "start": 800.15,
+      "end": 803.55,
+      "text": "I want a clean harness that lets me get work done in a way that's efficient."
+    },
+    {
+      "id": 194,
+      "start_word": 2704,
+      "end_word": 2711,
+      "start": 804.11,
+      "end": 805.57,
+      "text": "That's why I built this cleaner skill."
+    },
+    {
+      "id": 195,
+      "start_word": 2711,
+      "end_word": 2715,
+      "start": 805.77,
+      "end": 806.61,
+      "text": "And this matters, right?"
+    },
+    {
+      "id": 196,
+      "start_word": 2715,
+      "end_word": 2740,
+      "start": 806.71,
+      "end": 812.65,
+      "text": "If you're a product manager, it means that you have like a clean simple note that loads the right PRD skills at the right time."
+    },
+    {
+      "id": 197,
+      "start_word": 2740,
+      "end_word": 2781,
+      "start": 812.65,
+      "end": 823.51,
+      "text": "If you're a developer, it means having one source of truth instead of several instruction files arguing about how the repository work, but we need to make sure that they add into the system we have in a way that's efficient."
+    },
+    {
+      "id": 198,
+      "start_word": 2781,
+      "end_word": 2818,
+      "start": 823.67,
+      "end": 835.55,
+      "text": "And if you're just using chat GPT or Claude at home or at work, it means that your old memories, your project files, your examples, your corrections stop quietly shaping answers in ways you don't necessarily intend."
+    },
+    {
+      "id": 199,
+      "start_word": 2818,
+      "end_word": 2844,
+      "start": 836.03,
+      "end": 844.63,
+      "text": "You may have given Claude or chat GPT a correction six months ago that it's remembering and over applying now that you have a new model."
+    },
+    {
+      "id": 200,
+      "start_word": 2844,
+      "end_word": 2873,
+      "start": 844.83,
+      "end": 851.55,
+      "text": "So for example, you may have told it a few months ago, you have to show me the step by step because back in November, that was really important."
+    },
+    {
+      "id": 201,
+      "start_word": 2873,
+      "end_word": 2887,
+      "start": 852.13,
+      "end": 854.27,
+      "text": "But now you don't need to do that because the models are good, right?"
+    },
+    {
+      "id": 202,
+      "start_word": 2887,
+      "end_word": 2899,
+      "start": 854.65,
+      "end": 857.11,
+      "text": "And so those are the kinds of things the cleaners go catching."
+    },
+    {
+      "id": 203,
+      "start_word": 2899,
+      "end_word": 2904,
+      "start": 857.35,
+      "end": 858.53,
+      "text": "Ultimately, the goal is simple."
+    },
+    {
+      "id": 204,
+      "start_word": 2904,
+      "end_word": 2925,
+      "start": 858.89,
+      "end": 865.09,
+      "text": "Your AI should become easier to use to do useful work because the system around it should become easier to understand."
+    },
+    {
+      "id": 205,
+      "start_word": 2925,
+      "end_word": 2936,
+      "start": 865.73,
+      "end": 869.01,
+      "text": "Once you can see that system, you can actually own it."
+    },
+    {
+      "id": 206,
+      "start_word": 2936,
+      "end_word": 2949,
+      "start": 869.37,
+      "end": 873.85,
+      "text": "You can tell which controls protect you, which need one single home, right?"
+    },
+    {
+      "id": 207,
+      "start_word": 2949,
+      "end_word": 2966,
+      "start": 874.17,
+      "end": 879.33,
+      "text": "Which should arrive later in the process, which should become real locks instead of just polite reminders."
+    },
+    {
+      "id": 208,
+      "start_word": 2966,
+      "end_word": 2976,
+      "start": 879.83,
+      "end": 881.91,
+      "text": "I put the complete cleaner over on the sub stack."
+    },
+    {
+      "id": 209,
+      "start_word": 2976,
+      "end_word": 2980,
+      "start": 881.91,
+      "end": 882.67,
+      "text": "You can find it."
+    },
+    {
+      "id": 210,
+      "start_word": 2980,
+      "end_word": 2985,
+      "start": 882.91,
+      "end": 884.07,
+      "text": "You can install it once."
+    },
+    {
+      "id": 211,
+      "start_word": 2985,
+      "end_word": 2998,
+      "start": 884.15,
+      "end": 887.25,
+      "text": "You can point it at the AI setup or project of your choosing."
+    },
+    {
+      "id": 212,
+      "start_word": 2998,
+      "end_word": 3008,
+      "start": 887.35,
+      "end": 890.31,
+      "text": "And you can just let it show everything that's accumulated."
+    },
+    {
+      "id": 213,
+      "start_word": 3008,
+      "end_word": 3020,
+      "start": 891.11,
+      "end": 893.89,
+      "text": "It gives you a map of the harness and the cleaning decisions."
+    },
+    {
+      "id": 214,
+      "start_word": 3020,
+      "end_word": 3047,
+      "start": 894.05,
+      "end": 900.97,
+      "text": "It's going to give you a plain English before and after and a receipt showing what ran when you allow it to run and run those corrections."
+    },
+    {
+      "id": 215,
+      "start_word": 3047,
+      "end_word": 3056,
+      "start": 900.97,
+      "end": 904.25,
+      "text": "You can review the changes before anything important moves."
+    },
+    {
+      "id": 216,
+      "start_word": 3056,
+      "end_word": 3069,
+      "start": 904.45,
+      "end": 906.71,
+      "text": "I don't want this to be something that surprises you in any way."
+    },
+    {
+      "id": 217,
+      "start_word": 3069,
+      "end_word": 3091,
+      "start": 906.89,
+      "end": 910.11,
+      "text": "I have a feeling that a lot of us are going to discover that we built a lot more than we realized."
+    },
+    {
+      "id": 218,
+      "start_word": 3091,
+      "end_word": 3096,
+      "start": 910.41,
+      "end": 911.49,
+      "text": "I know I certainly did."
+    },
+    {
+      "id": 219,
+      "start_word": 3096,
+      "end_word": 3122,
+      "start": 911.61,
+      "end": 917.45,
+      "text": "And so I wanted to showcase that here and show you all how bloated my arm is to become and how much I needed to clean."
+    },
+    {
+      "id": 220,
+      "start_word": 3122,
+      "end_word": 3130,
+      "start": 917.97,
+      "end": 919.45,
+      "text": "I hope this has been useful for you."
+    },
+    {
+      "id": 221,
+      "start_word": 3130,
+      "end_word": 3141,
+      "start": 919.63,
+      "end": 922.15,
+      "text": "I am going to keep drilling in on these new models."
+    },
+    {
+      "id": 222,
+      "start_word": 3141,
+      "end_word": 3147,
+      "start": 922.35,
+      "end": 923.73,
+      "text": "I'll keep updating the cleaner skill."
+    },
+    {
+      "id": 223,
+      "start_word": 3147,
+      "end_word": 3160,
+      "start": 923.83,
+      "end": 926.43,
+      "text": "Please let me know in the comments one how it works for you."
+    },
+    {
+      "id": 224,
+      "start_word": 3160,
+      "end_word": 3191,
+      "start": 926.49,
+      "end": 934.31,
+      "text": "But also, let me know what other models you'd like me to optimize the cleaner skill for because of course there are plenty of other models besides Claude and Chet GPT."
+    },
+    {
+      "id": 225,
+      "start_word": 3191,
+      "end_word": 3201,
+      "start": 934.99,
+      "end": 936.71,
+      "text": "And I'm happy to start working on that as well."
+    },
+    {
+      "id": 226,
+      "start_word": 3201,
+      "end_word": 3218,
+      "start": 937.23,
+      "end": 940.83,
+      "text": "We'd love to kind of expand this and make this more useful for the community over time."
+    },
+    {
+      "id": 227,
+      "start_word": 3218,
+      "end_word": 3236,
+      "start": 941.17,
+      "end": 945.19,
+      "text": "And I look forward to showing you what I've built with my new and improved harness on Friday."
+    }
+  ],
+  "prediction": {
+    "spans": []
+  },
+  "sentenceSpans": [],
+  "rawResponseText": "{\n  \"spans\": []\n}",
+  "usageMetadata": {
+    "promptTokenCount": 11635,
+    "candidatesTokenCount": 10,
+    "totalTokenCount": 12552,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 11635
+      }
+    ],
+    "thoughtsTokenCount": 907,
+    "serviceTier": "standard"
+  },
+  "cost": {
+    "promptTokens": 11635,
+    "candidateTokens": 10,
+    "thinkingTokens": 907,
+    "totalTokens": 12552,
+    "inputCostUsd": 0.0174525,
+    "outputAndThinkingCostUsd": 0.0068775,
+    "totalCostUsd": 0.02433
+  },
+  "score": {
+    "slug": "ai-news-strategy-daily",
+    "split": "holdout",
+    "durationSeconds": 945.19,
+    "precision": 0.0,
+    "recall": 0.0,
+    "truePositives": 0,
+    "falsePositives": 0,
+    "falseNegatives": 0,
+    "timeWeighted": {
+      "truePositiveSeconds": 0.0,
+      "falsePositiveSeconds": 0.0,
+      "falseNegativeSeconds": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "predictedAdSeconds": 0,
+      "goldenAdSeconds": 0
+    },
+    "contentLossSecondsPerListeningHour": 0.0,
+    "missedAdSecondsPerListeningHour": 0.0,
+    "boundary": {
+      "matched": 0,
+      "medianAbsDeltaStart": null,
+      "medianAbsDeltaEnd": null,
+      "maxAbsDeltaStart": null,
+      "maxAbsDeltaEnd": null,
+      "within3sBoth": 0
+    },
+    "failureModes": [],
+    "predictions": []
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "engine": "mlx-whisper",
+  "engineVersion": "0.4.3",
+  "model": "mlx-community/whisper-large-v3-mlx",
+  "modelRevision": "49e6aa286ad60c14352c404340ded53710378a11",
+  "language": "en",
+  "wordTimestamps": true,
+  "conditionOnPreviousText": false,
+  "temperatureFallback": [
+    0.0,
+    0.2,
+    0.4
+  ],
+  "initialPrompt": "The Economics of Everyday Things. 50. Self-Checkout",
+  "hallucinationSilenceThreshold": 2.0,
+  "audioFile": "audio-dai-a.bin",
+  "audioSha256": "05d05ee5b5d3338763277f9f1b422e4f6f409febfba8f8f057415b7169d4baa4",
+  "metadataSha256": "3e38554687be543a2cfae146efe2aac459a1ef88519882d804cc9bc2ed403ed9",
+  "audioDuration": 1426.781813,
+  "transcriptSha256": "0a8a5e823e52a1dde51356ae981f633ec5b8a9cc67ccbb3309518e63f0c61a20",
+  "transcriptionSeconds": 193.488,
+  "validation": {
+    "wordCount": 3541,
+    "firstWordStart": 0.0,
+    "lastWordEnd": 1426.56,
+    "audioCoverage": 0.999845,
+    "overlappingWordStarts": 0,
+    "maxSilenceGap": 22.8,
+    "maxSilenceGapAfter": 775.94
+  }
+}

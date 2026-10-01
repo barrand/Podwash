@@ -1,0 +1,88 @@
+{
+  "slug": "this-american-life",
+  "detector": "legacy",
+  "precision": 0.571,
+  "recall": 0.364,
+  "truePositives": 4,
+  "falsePositives": 3,
+  "falseNegatives": 7,
+  "predictionCount": 7,
+  "goldenCount": 11,
+  "boundary": {
+    "matched": 4,
+    "medianAbsDeltaStart": 1.53,
+    "medianAbsDeltaEnd": 1.93,
+    "maxAbsDeltaStart": 7.1,
+    "maxAbsDeltaEnd": 8.8,
+    "within3sBoth": 1
+  },
+  "falsePositivesDetail": [
+    {
+      "start": 1836.59,
+      "end": 1845.31,
+      "excerpt": "a program continues. Support for this American life comes from Schwab. Etchwab, how you invest is your choice, not theirs."
+    },
+    {
+      "start": 1903.85,
+      "end": 1919.03,
+      "excerpt": "Carvana .com today. This message comes from Capella University. You know that feeling when there's a spark building inside you that you were meant for more? Tha\u2026"
+    },
+    {
+      "start": 4322.41,
+      "end": 4337.53,
+      "excerpt": "that, that you become a life partner, is just to support the show and help us keep doing it and keep doing stories like today, which I really think other people\u2026"
+    }
+  ],
+  "falseNegativesDetail": [
+    {
+      "start": 435.12,
+      "end": 448.82,
+      "kind": "underwriting",
+      "rationale": "Mid-roll 1: Carvana",
+      "excerpt": "Support for this NPR podcast and the following message come from Carvana. Selling your car, Carvana has offered so good, they're almost inexplicable. Sell your \u2026"
+    },
+    {
+      "start": 464.8,
+      "end": 519.64,
+      "kind": "underwriting",
+      "rationale": "Mid-roll 3: Capital One + Planet Money Summer School",
+      "excerpt": "Support for this podcast and for Planet Money Summer School comes from Capital One. I'm sorry, NPR Voice of Sponsorship. Did you say Planet Money Summer School?\u2026"
+    },
+    {
+      "start": 1840.17,
+      "end": 1865.5,
+      "kind": "underwriting",
+      "rationale": "Act-break 1: Schwab",
+      "excerpt": "Support for this American life comes from Schwab. Etchwab, how you invest is your choice, not theirs. That's why when it comes to managing your wealth, Schwab g\u2026"
+    },
+    {
+      "start": 1866.15,
+      "end": 1890.75,
+      "kind": "underwriting",
+      "rationale": "Act-break 2: Mint Mobile",
+      "excerpt": "Support for this American life comes from Mint Mobile. When it comes to your wireless bill, transparency is everything. Choose from three, six, or 12 month plan\u2026"
+    },
+    {
+      "start": 1890.81,
+      "end": 1905.03,
+      "kind": "underwriting",
+      "rationale": "Act-break 3: Carvana",
+      "excerpt": "Support for this NPR podcast and the following message come from Carvana. Selling your car, Carvana has offers so good they're almost inexplicable. Sell your ca\u2026"
+    },
+    {
+      "start": 1906.23,
+      "end": 1938.27,
+      "kind": "underwriting",
+      "rationale": "Act-break 4: Capella University",
+      "excerpt": "message comes from Capella University. You know that feeling when there's a spark building inside you that you were meant for more? That's your own drive, pushi\u2026"
+    },
+    {
+      "start": 4302.57,
+      "end": 4337.89,
+      "kind": "membership",
+      "rationale": "Outro: Life Partners",
+      "excerpt": "Thanks David, this American life partner is Helen Ingram, Scott Young, Daniel Williams, to hear our many bonus episodes and get lots of other stuff, including l\u2026"
+    }
+  ],
+  "goldenSource": "golden.json"
+}

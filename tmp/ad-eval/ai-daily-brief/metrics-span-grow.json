@@ -1,0 +1,22 @@
+{
+  "slug": "ai-daily-brief",
+  "detector": "span-grow",
+  "precision": 1.0,
+  "recall": 1.0,
+  "truePositives": 5,
+  "falsePositives": 0,
+  "falseNegatives": 0,
+  "predictionCount": 2,
+  "goldenCount": 5,
+  "boundary": {
+    "matched": 5,
+    "medianAbsDeltaStart": 41.61,
+    "medianAbsDeltaEnd": 40.39,
+    "maxAbsDeltaStart": 131.85,
+    "maxAbsDeltaEnd": 130.43,
+    "within3sBoth": 0
+  },
+  "falsePositivesDetail": [],
+  "falseNegativesDetail": [],
+  "goldenSource": "golden.json"
+}

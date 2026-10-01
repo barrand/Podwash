@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "joe-rogan-mrbeast",
+  "transcriptSha256": "7e44ce6177df02045098d083971f3a3c2b923012a603d1924e90459d03e73532",
+  "generatedAt": "2026-07-20T00:00:00+00:00",
+  "sources": {
+    "primary": "codex-transcript-pass",
+    "notes": "Agent-proposed starting spans for human review. These are not human-approved goldens."
+  },
+  "spans": [
+    {
+      "id": "proposal-001",
+      "startWord": 1540,
+      "endWord": 1689,
+      "label": "paid_host_read",
+      "advertiser": "DraftKings",
+      "note": "Sports/event-trading sponsor read ending with dkng.co promo disclosure."
+    },
+    {
+      "id": "proposal-002",
+      "startWord": 1689,
+      "endWord": 1912,
+      "label": "paid_host_read",
+      "advertiser": "The Farmer's Dog",
+      "note": "Farmer's Dog sponsor read with thefarmersdog.com/rogan CTA."
+    },
+    {
+      "id": "proposal-003",
+      "startWord": 7634,
+      "endWord": 7819,
+      "label": "paid_host_read",
+      "advertiser": "Dodge",
+      "note": "Dodge Charger Scat Pack sponsor read."
+    },
+    {
+      "id": "proposal-004",
+      "startWord": 7819,
+      "endWord": 7904,
+      "label": "paid_host_read",
+      "advertiser": "Squarespace",
+      "note": "Squarespace sponsor read with squarespace.com/rogan and code ROGAN."
+    },
+    {
+      "id": "proposal-005",
+      "startWord": 12000,
+      "endWord": 12161,
+      "label": "paid_host_read",
+      "advertiser": "BlueChew",
+      "note": "BlueChew sponsor read with code ROGAN and safety info."
+    },
+    {
+      "id": "proposal-006",
+      "startWord": 15194,
+      "endWord": 15350,
+      "label": "paid_host_read",
+      "advertiser": "Manscaped",
+      "note": "Manscaped Dome Shaver Pro read with code ROGAN15."
+    },
+    {
+      "id": "proposal-007",
+      "startWord": 15350,
+      "endWord": 15486,
+      "label": "paid_host_read",
+      "advertiser": "LifeLock",
+      "note": "LifeLock identity-theft protection read with LifeLock.com/JRE CTA."
+    },
+    {
+      "id": "proposal-008",
+      "startWord": 20891,
+      "endWord": 21052,
+      "label": "paid_host_read",
+      "advertiser": "BlueChew",
+      "note": "Repeated BlueChew sponsor read."
+    },
+    {
+      "id": "proposal-009",
+      "startWord": 21052,
+      "endWord": 21199,
+      "label": "paid_host_read",
+      "advertiser": "Cardiff",
+      "note": "Small-business funding sponsor read with cardiff.co/spotify CTA."
+    },
+    {
+      "id": "proposal-010",
+      "startWord": 29169,
+      "endWord": 29301,
+      "label": "paid_host_read",
+      "advertiser": "Black Rifle Coffee",
+      "note": "Black Rifle Coffee read with BlackRifleCoffee.com/JoeRogan CTA."
+    },
+    {
+      "id": "proposal-011",
+      "startWord": 29301,
+      "endWord": 29409,
+      "label": "paid_host_read",
+      "advertiser": "Armra",
+      "note": "Armra Colostrum read with armra.com/rogan CTA."
+    },
+    {
+      "id": "proposal-012",
+      "startWord": 38751,
+      "endWord": 38912,
+      "label": "paid_host_read",
+      "advertiser": "BlueChew",
+      "note": "Closing BlueChew read after final goodbye."
+    },
+    {
+      "id": "proposal-013",
+      "startWord": 38912,
+      "endWord": 39046,
+      "label": "paid_host_read",
+      "advertiser": "LifeLock",
+      "note": "Closing LifeLock read through episode end."
+    }
+  ],
+  "auditItems": [
+    {
+      "id": "audit-001",
+      "startWord": 0,
+      "endWord": 220,
+      "reason": "Cold open appears to start with episode content, not an ad; verify no pre-roll was missed."
+    },
+    {
+      "id": "audit-002",
+      "startWord": 1450,
+      "endWord": 1920,
+      "reason": "Conversation flows into DraftKings then Farmer's Dog; verify the exact first DraftKings word and re-entry after Farmer's Dog."
+    },
+    {
+      "id": "audit-003",
+      "startWord": 7630,
+      "endWord": 7910,
+      "reason": "Dodge and Squarespace are stacked; verify the split at the 'This episode is brought to you by Squarespace' boundary."
+    },
+    {
+      "id": "audit-004",
+      "startWord": 11980,
+      "endWord": 12180,
+      "reason": "BlueChew read is embedded in zombie-game conversation; verify exact re-entry at 'Yeah, it is brutal.'"
+    },
+    {
+      "id": "audit-005",
+      "startWord": 15180,
+      "endWord": 15500,
+      "reason": "Manscaped and LifeLock stack has a tight content re-entry after 'Terms apply'; verify no story words are included."
+    },
+    {
+      "id": "audit-006",
+      "startWord": 20870,
+      "endWord": 21210,
+      "reason": "BlueChew flows into Cardiff without a normal 'this episode' cue for Cardiff; verify the split and end boundary."
+    },
+    {
+      "id": "audit-007",
+      "startWord": 29150,
+      "endWord": 29430,
+      "reason": "Black Rifle and Armra are stacked inside a conversation about ads; verify boundaries carefully."
+    },
+    {
+      "id": "audit-008",
+      "startWord": 29760,
+      "endWord": 29870,
+      "reason": "Perplexity is mentioned as an AI sponsor in conversation; likely content/context rather than an inserted ad, but verify."
+    },
+    {
+      "id": "audit-009",
+      "startWord": 38740,
+      "endWord": 39046,
+      "reason": "Closing BlueChew and LifeLock stack runs to episode end; verify exact start after the final goodbye."
+    }
+  ]
+}
