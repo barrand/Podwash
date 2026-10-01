@@ -295,14 +295,15 @@ struct AppShellView: View {
                     to: target
                 )
             },
-            onPlayNow: { model.playReadyEpisodeNow($0) },
+            onDownload: { model.requestEpisodeDownload($0) },
+            onPrepare: { model.prepareDownloadedEpisode($0) },
+            onPlay: { model.playReadyEpisode($0, context: .queue) },
             onMoveToTop: { model.moveUpNextToTop(episodeID: $0) },
             onRemoveFromUpNext: { model.removeFromUpNextWithUndo(episodeID: $0) },
             onMarkPlayed: { model.markPlayedWithUndo(episodeID: $0) },
             onRestore: { model.restoreQueueMutation($0) },
             onCommitPlayed: { model.commitQueueMutation($0) },
-            onRemoveDownload: { model.removeDownloadedAudioAndPreparation(episodeID: $0) },
-            onAddToUpNext: { model.addAndPrepare(episodeID: $0) },
+            onRemoveDownload: { model.removeEpisodeDownload($0) },
             onClearUpNext: { model.clearUpNext() },
             onRestoreUpNext: { model.restoreUpNext($0) },
             onRetry: { model.retryPreparation(episodeID: $0) },
@@ -412,11 +413,7 @@ struct AppShellView: View {
                 onDiscover: { selectedTab = .discover },
                 onRequestUnsubscribe: { unsubscribeConfirmation = $0 },
                 onRefresh: { await model.refreshAllFeeds() },
-                refreshState: model.feedRefreshState,
-                readyChoices: model.readyToPlayChoices,
-                preparationStatus: model.preparationShelfStatus,
-                onPlayReadyChoice: { model.playReadyChoice(episodeID: $0) },
-                onOpenQueue: { selectedTab = .queue }
+                refreshState: model.feedRefreshState
             )
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(for: PodcastSummary.self) { summary in

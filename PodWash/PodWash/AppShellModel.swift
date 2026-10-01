@@ -32,6 +32,11 @@ enum FeedRefreshViewState: Equatable {
     case partialFailure(FeedRefreshSummary)
 }
 
+enum EpisodePlayContext: Equatable {
+    case library
+    case queue
+}
+
 struct ReadyToPlayChoice: Identifiable, Equatable {
     let episodeID: String
     let title: String
@@ -308,7 +313,9 @@ final class AppShellModel {
             hasVerifiedLocalFile: downloadManager.localFileURL(for: episodeID) != nil,
             isAnalysisReady: warmPlanner?.isAnalysisReady(episodeID: episodeID, feedURL: lookup.feedURL) ?? false,
             durableJob: warmPlanner?.job(for: episodeID),
-            foregroundJob: foreground
+            foregroundJob: foreground,
+            hasActiveWorkOwner: warmPlanner?.hasExplicitPreparation(episodeID: episodeID) == true
+                || queueStore.queueEpisodeIDs().contains(episodeID)
         ))
     }
     /// The now-playing analysis uses the same listener-facing state as warm jobs.
@@ -1430,6 +1437,68 @@ final class AppShellModel {
     }
 
     func removeFromUpNext(episodeID: String) {
+    /// Explicit row actions never change queue membership. The planner owns the
+    /// serial download/analysis pipeline; this method only establishes intent.
+    func requestEpisodeDownload(_ episodeID: String) {
+        guard podcastStore.episodeLookup(id: episodeID) != nil else { return }
+        warmPlanner?.requestExplicitPreparation(episodeID: episodeID)
+        refreshQueuePresentation()
+        episodeListRevision &+= 1
+    }
+
+    func prepareDownloadedEpisode(_ episodeID: String) {
+        guard downloadManager.localFileURL(for: episodeID) != nil else {
+            requestEpisodeDownload(episodeID)
+            return
+        }
+        warmPlanner?.requestExplicitPreparation(episodeID: episodeID)
+        refreshQueuePresentation()
+        episodeListRevision &+= 1
+    }
+
+    func retryEpisodePreparation(_ episodeID: String) {
+        warmPlanner?.resetJobForRetry(episodeID: episodeID)
+        requestEpisodeDownload(episodeID)
+    }
+
+    /// Ready-only playback: a stale tap is a harmless no-op and can never turn
+    /// into a remote stream or a hidden preparation request.
+    func playReadyEpisode(_ episodeID: String, context: EpisodePlayContext) {
+        guard isReadyOffline(episodeID),
+              let lookup = podcastStore.episodeLookup(id: episodeID)
+        else { return }
+        if context == .queue {
+            try? queueStore.prepareForImmediatePlayback(
+                selectedEpisodeID: episodeID,
+                replacingCurrentEpisodeID: nowPlayingEpisodeID
+            )
+            refreshQueuePresentation()
+        }
+        playEpisode(lookup.episode, podcastTitle: lookup.podcastTitle, feedURL: lookup.feedURL)
+        scheduleWarmForComingUp()
+    }
+
+    func cancelEpisodePreparation(_ episodeID: String) {
+        warmPlanner?.cancelExplicitPreparation(episodeID: episodeID)
+        refreshQueuePresentation()
+        episodeListRevision &+= 1
+    }
+
+    func removeEpisodeDownload(_ episodeID: String) {
+        cancelEpisodePreparation(episodeID)
+        warmPlanner?.suppressAutomaticPreparation(episodeID: episodeID)
+        removeDownloadedAudio(episodeID: episodeID)
+        refreshQueuePresentation()
+        episodeListRevision &+= 1
+    }
+
+    func addToUpNext(_ episodeID: String) {
+        guard podcastStore.episodeLookup(id: episodeID) != nil else { return }
+        try? queueStore.add(episodeID)
+        scheduleWarmForComingUp()
+        refreshQueuePresentation()
+    }
+
         invalidateQueueActivation(episodeID: episodeID)
         let wasReady = isReadyOffline(episodeID)
         try? queueStore.remove(episodeID)

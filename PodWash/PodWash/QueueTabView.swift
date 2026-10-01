@@ -5,64 +5,57 @@
 
 import SwiftUI
 
+/// Up Next is deliberately the only collection on this screen. Downloads are
+/// episode state, not a second queue.
 struct QueueTabView: View {
     let presentation: QueuePresentation
     let bottomContentClearance: CGFloat
     let onMove: (IndexSet, Int) -> Void
-    let onPlayNow: (String) -> Void
+    let onDownload: (String) -> Void
+    let onPrepare: (String) -> Void
+    let onPlay: (String) -> Void
     let onMoveToTop: (String) -> Void
     let onRemoveFromUpNext: (String) -> QueueUndoSnapshot
     let onMarkPlayed: (String) -> QueueUndoSnapshot
     let onRestore: (QueueUndoSnapshot) -> Void
     let onCommitPlayed: (QueueUndoSnapshot) -> Void
     let onRemoveDownload: (String) -> Void
-    let onAddToUpNext: (String) -> Void
     let onClearUpNext: () -> [String]
     let onRestoreUpNext: ([String]) -> Void
     let onRetry: (String) -> Void
     let onPlayWithoutAdSkipping: (String) -> Void
     let onPlayOriginalAudio: (String) -> Void
 
-    @AppStorage("queue.downloadsExpanded") private var downloadsExpanded = false
     @State private var isReordering = false
     @State private var undo: QueueUndo?
     @State private var undoTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
-            List {
-                upNextSection
-                downloadsSection
-            }
-            .listStyle(.plain)
-            .environment(\.editMode, .constant(isReordering ? .active : .inactive))
-            .navigationTitle("Queue")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if presentation.upNext.count > 1 {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button(isReordering ? "Done" : "Reorder") {
-                            isReordering.toggle()
+            List { upNextSection }
+                .listStyle(.plain)
+                .environment(\.editMode, .constant(isReordering ? .active : .inactive))
+                .navigationTitle("Queue")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    if presentation.upNext.count > 1 {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button(isReordering ? "Done" : "Reorder") { isReordering.toggle() }
+                                .accessibilityIdentifier("queueReorder")
                         }
-                        .accessibilityIdentifier("queueReorder")
                     }
                 }
-            }
-            .accessibilityIdentifier("queueTab")
-            .safeAreaPadding(.bottom, bottomContentClearance)
-            .overlay(alignment: .bottom) {
-                if let undo {
-                    QueueUndoToast(message: undo.message) {
-                        undoTask?.cancel()
-                        undo.action()
-                        self.undo = nil
+                .accessibilityIdentifier("queueTab")
+                .safeAreaPadding(.bottom, bottomContentClearance)
+                .overlay(alignment: .bottom) {
+                    if let undo {
+                        QueueUndoToast(message: undo.message) {
+                            undoTask?.cancel(); undo.action(); self.undo = nil
+                        }
+                        .padding(.bottom, bottomContentClearance + 12)
                     }
-                    .padding(.bottom, bottomContentClearance + 12)
                 }
-            }
-            .onDisappear {
-                isReordering = false
-            }
+                .onDisappear { isReordering = false }
         }
     }
 
@@ -72,14 +65,12 @@ struct QueueTabView: View {
                 ContentUnavailableView(
                     "Nothing Up Next",
                     systemImage: "text.line.first.and.arrowtriangle.forward",
-                    description: Text("Add episodes from a podcast to prepare them for playback.")
+                    description: Text("Add episodes from a podcast to listen later.")
                 )
                 .accessibilityIdentifier("queueEmpty")
             } else {
-                ForEach(presentation.upNext) { item in
-                    upNextRow(item)
-                }
-                .onMove(perform: onMove)
+                ForEach(presentation.upNext) { item in row(item) }
+                    .onMove(perform: onMove)
             }
         } header: {
             HStack {
@@ -91,232 +82,86 @@ struct QueueTabView: View {
                         guard !ids.isEmpty else { return }
                         showUndo("Cleared Up Next") { onRestoreUpNext(ids) }
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
+                } label: { Image(systemName: "ellipsis.circle") }
                 .disabled(presentation.upNext.isEmpty)
                 .accessibilityLabel("Up Next actions")
             }
         }
     }
 
-    private func upNextRow(_ item: QueueEpisodePresentation) -> some View {
-        QueueEpisodeRow(
-            item: item,
+    private func row(_ item: QueueEpisodePresentation) -> some View {
+        EpisodeRowView(
+            episodeID: item.episodeID,
+            title: item.title,
+            presentation: EpisodeRowPresentationMapper.map(item.availability),
+            context: .queue(podcastTitle: item.podcastTitle),
             isReordering: isReordering,
-            onPlay: isReordering ? nil : { onPlayNow(item.episodeID) },
-            onRetry: onRetry,
-            onPlayWithoutAdSkipping: onPlayWithoutAdSkipping,
-            onPlayOriginalAudio: onPlayOriginalAudio
-        ) {
-            Button("Play now", systemImage: "play.fill") { onPlayNow(item.episodeID) }
-            Button("Move to top", systemImage: "arrow.up.to.line") { onMoveToTop(item.episodeID) }
-            Button("Mark as played", systemImage: "checkmark.circle") {
-                let snapshot = onMarkPlayed(item.episodeID)
-                showUndo("Marked as played", action: { onRestore(snapshot) }, onExpire: { onCommitPlayed(snapshot) })
-            }
-            Button("Remove from Up Next", systemImage: "text.badge.minus", role: .destructive) {
-                let snapshot = onRemoveFromUpNext(item.episodeID)
-                showUndo("Removed from Up Next") { onRestore(snapshot) }
-            }
-            if item.availability.hasLocalAudio || item.availability.readiness.progress != nil || item.availability.readiness.showsIndeterminateProgress {
-                Button("Remove download", systemImage: "trash", role: .destructive) { onRemoveDownload(item.episodeID) }
-            }
-        }
+            actions: EpisodeRowActions(
+                download: { onDownload(item.episodeID) },
+                prepare: { onPrepare(item.episodeID) },
+                retry: { onRetry(item.episodeID) },
+                play: { onPlay(item.episodeID) }
+            ),
+            moreMenu: { AnyView(queueMoreMenu(item)) }
+        )
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             if !isReordering {
                 Button(role: .destructive) {
                     let snapshot = onRemoveFromUpNext(item.episodeID)
                     showUndo("Removed from Up Next") { onRestore(snapshot) }
-                } label: {
-                    Label("Remove", systemImage: "trash")
-                }
+                } label: { Label("Remove", systemImage: "trash") }
             }
         }
     }
 
-    private var downloadsSection: some View {
-        Section {
-            DisclosureGroup(isExpanded: $downloadsExpanded) {
-                if presentation.downloads.isEmpty {
-                    Text("Downloaded episodes will appear here.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Saved on this device. Ready to play offline means clean-playback preparation is complete.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    ForEach(presentation.downloads) { item in
-                        QueueEpisodeRow(
-                            item: item,
-                            isReordering: false,
-                            onPlay: { onPlayNow(item.episodeID) },
-                            onRetry: onRetry,
-                            onPlayWithoutAdSkipping: onPlayWithoutAdSkipping,
-                            onPlayOriginalAudio: onPlayOriginalAudio
-                        ) {
-                            Button("Play now", systemImage: "play.fill") { onPlayNow(item.episodeID) }
-                            Button("Add to Up Next", systemImage: "text.badge.plus") { onAddToUpNext(item.episodeID) }
-                            Button("Mark as played", systemImage: "checkmark.circle") {
-                                let snapshot = onMarkPlayed(item.episodeID)
-                                showUndo("Marked as played", action: { onRestore(snapshot) }, onExpire: { onCommitPlayed(snapshot) })
-                            }
-                            Button("Remove download", systemImage: "trash", role: .destructive) { onRemoveDownload(item.episodeID) }
-                        }
-                    }
-                }
-            } label: {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Downloads (\(presentation.downloads.count))")
-                    if !presentation.downloadsSummary.text.isEmpty {
-                        Text(presentation.downloadsSummary.text)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+    @ViewBuilder private func queueMoreMenu(_ item: QueueEpisodePresentation) -> some View {
+        if case .waitingToDownload = item.availability.readiness {
+            Button("Cancel Download", systemImage: "xmark") { onRemoveDownload(item.episodeID) }
+        }
+        if case .waitingToPrepare = item.availability.readiness {
+            Button("Cancel Preparation", systemImage: "xmark") { onRemoveDownload(item.episodeID) }
+        }
+        if case .adCheckDelayed = item.availability.readiness {
+            Button("Retry now", systemImage: "arrow.clockwise") { onRetry(item.episodeID) }
+            if item.availability.hasLocalAudio {
+                Button("Play without ad skipping", systemImage: "play") { onPlayWithoutAdSkipping(item.episodeID) }
             }
-            .accessibilityIdentifier("queueDownloads")
-            .accessibilityValue(presentation.downloadsSummary.accessibilityValue)
+        }
+        if case .needsAttention = item.availability.readiness, item.availability.hasLocalAudio {
+            Button("Play original audio", systemImage: "play") { onPlayOriginalAudio(item.episodeID) }
+        }
+        Button("Move to Top", systemImage: "arrow.up.to.line") { onMoveToTop(item.episodeID) }
+        Button("Mark as Played", systemImage: "checkmark.circle") {
+            let snapshot = onMarkPlayed(item.episodeID)
+            showUndo("Marked as played", action: { onRestore(snapshot) }, onExpire: { onCommitPlayed(snapshot) })
+        }
+        Button("Remove from Up Next", systemImage: "text.badge.minus", role: .destructive) {
+            let snapshot = onRemoveFromUpNext(item.episodeID)
+            showUndo("Removed from Up Next") { onRestore(snapshot) }
+        }
+        if item.availability.hasLocalAudio {
+            Button("Remove Download", systemImage: "trash", role: .destructive) { onRemoveDownload(item.episodeID) }
         }
     }
 
     private func showUndo(_ message: String, action: @escaping () -> Void, onExpire: @escaping () -> Void = {}) {
-        undoTask?.cancel()
-        undo?.onExpire()
+        undoTask?.cancel(); undo?.onExpire()
         undo = QueueUndo(message: message, action: action, onExpire: onExpire)
         undoTask = Task {
             try? await Task.sleep(for: .seconds(5))
             guard !Task.isCancelled else { return }
-            await MainActor.run {
-                undo?.onExpire()
-                undo = nil
-            }
+            await MainActor.run { undo?.onExpire(); undo = nil }
         }
     }
 }
 
-private struct QueueEpisodeRow<MoreActions: View>: View {
-    let item: QueueEpisodePresentation
-    let isReordering: Bool
-    let onPlay: (() -> Void)?
-    let onRetry: (String) -> Void
-    let onPlayWithoutAdSkipping: (String) -> Void
-    let onPlayOriginalAudio: (String) -> Void
-    @ViewBuilder let moreActions: () -> MoreActions
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.title)
-                    .font(.body.weight(.semibold))
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Text(item.podcastTitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                HStack(spacing: 5) {
-                    Image(systemName: item.availability.readiness.iconName)
-                        .foregroundStyle(statusColor)
-                        .accessibilityHidden(true)
-                    Text(item.availability.readiness.text)
-                        .foregroundStyle(statusColor)
-                }
-                .font(.caption)
-                .fixedSize(horizontal: false, vertical: true)
-                if let progress = item.availability.readiness.progress {
-                    ProgressView(value: progress)
-                        .accessibilityIdentifier("queueActivityProgress_\(item.episodeID)")
-                        .accessibilityLabel("Download progress")
-                        .accessibilityValue("\(Int((progress * 100).rounded())) percent")
-                } else if item.availability.readiness.showsIndeterminateProgress {
-                    ProgressView()
-                        .controlSize(.small)
-                        .accessibilityIdentifier("queueActivityProgress_\(item.episodeID)")
-                        .accessibilityLabel(item.availability.readiness.text)
-                }
-                if showsRecoveryActions {
-                    HStack {
-                        Button("Retry now") { onRetry(item.episodeID) }
-                        if item.availability.hasLocalAudio {
-                            Button(recoveryPlayTitle) {
-                                if case .adCheckDelayed = item.availability.readiness {
-                                    onPlayWithoutAdSkipping(item.episodeID)
-                                } else {
-                                    onPlayOriginalAudio(item.episodeID)
-                                }
-                            }
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                }
-            }
-            Menu(content: moreActions) {
-                Image(systemName: "ellipsis.circle")
-                    .frame(width: 44, height: 44, alignment: .top)
-            }
-            .disabled(isReordering)
-            .accessibilityLabel("More actions")
-        }
-        .contentShape(Rectangle())
-        .onTapGesture { onPlay?() }
-        .accessibilityIdentifier("queueEpisode_\(item.episodeID)")
-        .accessibilityLabel(item.title)
-        .accessibilityValue("\(item.podcastTitle), \(item.availability.readiness.text)")
-        .accessibilityHint(accessibilityHint)
-    }
-
-    private var showsRecoveryActions: Bool {
-        switch item.availability.readiness {
-        case .adCheckDelayed, .needsAttention: return true
-        default: return false
-        }
-    }
-
-    private var recoveryPlayTitle: String {
-        if case .adCheckDelayed = item.availability.readiness {
-            return "Play without ad skipping"
-        }
-        return "Play original audio"
-    }
-
-    private var accessibilityHint: String {
-        if isReordering { return "Reorder mode" }
-        return item.availability.readiness.isReadyOffline
-            ? "Plays now and keeps the current episode next."
-            : "Prepares this episode, then plays it, and keeps the current episode next."
-    }
-
-    private var statusColor: Color {
-        switch item.availability.readiness.tint {
-        case .ready: return .green
-        case .secondary: return .secondary
-        case .accent: return .accentColor
-        case .warning: return .orange
-        case .danger: return .red
-        }
-    }
-}
-
-private struct QueueUndo {
-    let message: String
-    let action: () -> Void
-    let onExpire: () -> Void
-}
+private struct QueueUndo { let message: String; let action: () -> Void; let onExpire: () -> Void }
 
 private struct QueueUndoToast: View {
-    let message: String
-    let onUndo: () -> Void
-
+    let message: String; let onUndo: () -> Void
     var body: some View {
-        HStack {
-            Text(message).lineLimit(1)
-            Spacer()
-            Button("Undo", action: onUndo)
-        }
-        .font(.subheadline)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(.ultraThinMaterial, in: Capsule())
-        .padding(.horizontal)
+        HStack { Text(message).lineLimit(1); Spacer(); Button("Undo", action: onUndo) }
+            .font(.subheadline).padding(.horizontal, 16).padding(.vertical, 12)
+            .background(.ultraThinMaterial, in: Capsule()).padding(.horizontal)
     }
 }
