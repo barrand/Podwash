@@ -26,6 +26,7 @@ enum CleanPlaybackPreparation: Equatable {
 
 /// The one listener-facing answer used by Queue, Library, and mini-player copy.
 enum EpisodeReadinessStatus: Equatable {
+    case notDownloaded
     case waitingToDownload
     case downloading(progress: Double?)
     case downloadedNotPrepared
@@ -38,6 +39,7 @@ enum EpisodeReadinessStatus: Equatable {
 
     var text: String {
         switch self {
+        case .notDownloaded: return "Not downloaded"
         case .waitingToDownload: return "Waiting to download"
         case .downloading(let progress):
             guard let progress else { return "Downloading" }
@@ -55,7 +57,7 @@ enum EpisodeReadinessStatus: Equatable {
     var iconName: String {
         switch self {
         case .readyOffline: return "checkmark.circle.fill"
-        case .waitingToDownload, .downloading, .downloadedNotPrepared, .waitingToPrepare:
+        case .notDownloaded, .waitingToDownload, .downloading, .downloadedNotPrepared, .waitingToPrepare:
             return "arrow.down.circle"
         case .preparing: return "waveform"
         case .checkingAds: return "magnifyingglass"
@@ -70,7 +72,7 @@ enum EpisodeReadinessStatus: Equatable {
         case .adCheckDelayed: return .warning
         case .needsAttention: return .danger
         case .preparing, .checkingAds: return .accent
-        case .waitingToDownload, .downloading, .downloadedNotPrepared, .waitingToPrepare:
+        case .notDownloaded, .waitingToDownload, .downloading, .downloadedNotPrepared, .waitingToPrepare:
             return .secondary
         }
     }
@@ -96,6 +98,7 @@ enum EpisodeReadinessStatus: Equatable {
         case .downloadedNotPrepared: return .notPrepared
         case .adCheckDelayed: return .delayed
         case .needsAttention, .waitingToDownload: return .needsAttention
+        case .notDownloaded: return .notPrepared
         }
     }
 
@@ -132,6 +135,25 @@ struct EpisodeAvailabilityInput {
     let isAnalysisReady: Bool
     let durableJob: AnalysisJob?
     let foregroundJob: AnalysisJob?
+    /// A listener or automatic planner has claimed this episode even if the
+    /// serial worker has not created its durable job record yet.
+    let hasActiveWorkOwner: Bool
+
+    init(
+        downloadState: DownloadState,
+        hasVerifiedLocalFile: Bool,
+        isAnalysisReady: Bool,
+        durableJob: AnalysisJob?,
+        foregroundJob: AnalysisJob?,
+        hasActiveWorkOwner: Bool = false
+    ) {
+        self.downloadState = downloadState
+        self.hasVerifiedLocalFile = hasVerifiedLocalFile
+        self.isAnalysisReady = isAnalysisReady
+        self.durableJob = durableJob
+        self.foregroundJob = foregroundJob
+        self.hasActiveWorkOwner = hasActiveWorkOwner
+    }
 }
 
 /// Pure resolver: callers repair stale persistence separately, while this type
@@ -156,7 +178,11 @@ enum EpisodeAvailabilityResolver {
             if case let .needsAttention(detail) = preparation {
                 return EpisodeAvailability(localAudio: localAudio, preparation: preparation, readiness: .needsAttention(detail: detail))
             }
-            return EpisodeAvailability(localAudio: localAudio, preparation: preparation, readiness: .waitingToDownload)
+            return EpisodeAvailability(
+                localAudio: localAudio,
+                preparation: preparation,
+                readiness: input.hasActiveWorkOwner ? .waitingToDownload : .notDownloaded
+            )
         }
 
         switch preparation {

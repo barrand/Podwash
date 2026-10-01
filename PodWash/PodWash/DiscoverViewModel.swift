@@ -117,6 +117,7 @@ final class DiscoverViewModel {
             let feed = try await parser.parse(url: result.feedURL)
             try store.saveSubscription(from: result, feed: feed)
             await feedRefreshCoordinator?.recordSuccessfulValidation(feedURL: result.feedURL)
+            PodWashAnalytics.subscriptionChanged("subscribed", podcastTitle: result.title)
             subscribeState = .succeeded(index: index)
         } catch {
             subscribeState = .failed

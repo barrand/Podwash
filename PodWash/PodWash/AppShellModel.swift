@@ -32,6 +32,11 @@ enum FeedRefreshViewState: Equatable {
     case partialFailure(FeedRefreshSummary)
 }
 
+enum EpisodePlayContext: Equatable {
+    case library
+    case queue
+}
+
 struct ReadyToPlayChoice: Identifiable, Equatable {
     let episodeID: String
     let title: String
@@ -308,7 +313,9 @@ final class AppShellModel {
             hasVerifiedLocalFile: downloadManager.localFileURL(for: episodeID) != nil,
             isAnalysisReady: warmPlanner?.isAnalysisReady(episodeID: episodeID, feedURL: lookup.feedURL) ?? false,
             durableJob: warmPlanner?.job(for: episodeID),
-            foregroundJob: foreground
+            foregroundJob: foreground,
+            hasActiveWorkOwner: warmPlanner?.hasExplicitPreparation(episodeID: episodeID) == true
+                || queueStore.queueEpisodeIDs().contains(episodeID)
         ))
     }
     /// The now-playing analysis uses the same listener-facing state as warm jobs.
@@ -483,6 +490,7 @@ final class AppShellModel {
     }
 
     func seekReadyPlayback(to seconds: Double) {
+        PodWashAnalytics.action("Playback.seek")
         applyStagedRefreshIfNeeded()
         let duration = engine?.duration ?? seconds
         engine?.seek(to: min(max(0, seconds), duration))
@@ -504,6 +512,11 @@ final class AppShellModel {
     /// Synchronous when a playable URL is already available; download-before-play defers
     /// the session until a local file exists when channel cleaning is on (task-012).
     func playEpisode(_ episode: Episode, podcastTitle: String, feedURL: URL? = nil) {
+        PodWashAnalytics.episodePlaybackChanged(
+            "started",
+            episodeTitle: episode.title,
+            podcastTitle: podcastTitle
+        )
         PlaybackDiagnostics.logEpisodeTap(episodeID: episode.id, title: episode.title)
 
         if nowPlayingEpisodeID == episode.id, isPreparingPlayback {
@@ -1002,9 +1015,11 @@ final class AppShellModel {
             return
         }
         if engine.isPlaybackRequested {
+            PodWashAnalytics.action("Playback.paused")
             engine.pause()
             flushPlaybackPosition()
         } else if analysisRecoveryState == .missingArtifacts {
+            PodWashAnalytics.action("Playback.playRequested")
             startRestoredRecoveryIfNeeded()
         } else if analysisRecoveryState == .refreshAvailable {
             applyStagedRefreshIfNeeded()
@@ -1016,6 +1031,7 @@ final class AppShellModel {
         } else if playbackReadiness == .failed {
             PlaybackDiagnostics.info("miniPlayer play ignored — preparation needs attention")
         } else {
+            PodWashAnalytics.action("Playback.playRequested")
             applyStagedRefreshIfNeeded()
             engine.play()
             startQueuePreparationIfNeeded()
@@ -1039,6 +1055,7 @@ final class AppShellModel {
 
     func expandFullPlayer() {
         guard engine != nil else { return }
+        PodWashAnalytics.action("Playback.playerExpanded")
         isFullPlayerPresented = true
     }
 
@@ -1156,6 +1173,7 @@ final class AppShellModel {
     /// Core Data episode rows are removed.
     func unsubscribe(feedURL: URL) async {
         guard let feed = podcastStore.subscription(forFeedURL: feedURL) else { return }
+        let podcastTitle = feed.title
         let episodeIDs = feed.episodes.map(\.id).filter { !$0.isEmpty }
         let episodeIDSet = Set(episodeIDs)
 
@@ -1181,6 +1199,7 @@ final class AppShellModel {
         }
 
         _ = try? podcastStore.unsubscribe(feedURL: feedURL)
+        PodWashAnalytics.subscriptionChanged("unsubscribed", podcastTitle: podcastTitle)
         scheduleWarmForComingUp()
         refreshQueuePresentation()
     }
@@ -1315,6 +1334,7 @@ final class AppShellModel {
     /// The interrupted episode remains resumable instead of being dismissed from autoplay.
     func skipToNextUp() {
         guard let episodeID = nowPlayingEpisodeID else { return }
+        PodWashAnalytics.action("Playback.skipToNext")
         let position = engine?.currentTime
         queueCoordinator?.handleSkipToNext(
             episodeID: episodeID,
@@ -1323,6 +1343,7 @@ final class AppShellModel {
     }
 
     func setBinge(_ enabled: Bool, feedURL: URL) {
+        PodWashAnalytics.featureStateChanged("binge", isEnabled: enabled)
         try? podcastStore.setBinge(enabled, feedURL: feedURL)
         if !enabled, activeBingeFeedURL == feedURL {
             activeBingeFeedURL = nil
@@ -1340,6 +1361,11 @@ final class AppShellModel {
 
     private func handleEnginePlaybackEnded() {
         guard let episodeID = nowPlayingEpisodeID else { return }
+        PodWashAnalytics.episodePlaybackChanged(
+            "completed",
+            episodeTitle: nowPlayingEpisodeTitle,
+            podcastTitle: nowPlayingPodcastTitle
+        )
         let duration = engine?.duration
         queueCoordinator?.handlePlaybackEnded(episodeID: episodeID, duration: duration)
     }
@@ -1401,11 +1427,74 @@ final class AppShellModel {
 
     func addAndPrepare(episodeID: String) {
         guard podcastStore.episodeLookup(id: episodeID) != nil else { return }
+        PodWashAnalytics.action("Queue.added")
         if resumeStore.isPlayed(episodeID) {
             try? resumeStore.resetForReplay(episodeID)
         }
         try? queueStore.add(episodeID)
         didStartPreparationForCurrentSession = true
+        scheduleWarmForComingUp()
+        refreshQueuePresentation()
+    }
+
+    /// Explicit row actions never change queue membership. The planner owns the
+    /// serial download/analysis pipeline; this method only establishes intent.
+    func requestEpisodeDownload(_ episodeID: String) {
+        guard podcastStore.episodeLookup(id: episodeID) != nil else { return }
+        warmPlanner?.requestExplicitPreparation(episodeID: episodeID)
+        refreshQueuePresentation()
+        episodeListRevision &+= 1
+    }
+
+    func prepareDownloadedEpisode(_ episodeID: String) {
+        guard downloadManager.localFileURL(for: episodeID) != nil else {
+            requestEpisodeDownload(episodeID)
+            return
+        }
+        warmPlanner?.requestExplicitPreparation(episodeID: episodeID)
+        refreshQueuePresentation()
+        episodeListRevision &+= 1
+    }
+
+    func retryEpisodePreparation(_ episodeID: String) {
+        warmPlanner?.resetJobForRetry(episodeID: episodeID)
+        requestEpisodeDownload(episodeID)
+    }
+
+    /// Ready-only playback: a stale tap is a harmless no-op and can never turn
+    /// into a remote stream or a hidden preparation request.
+    func playReadyEpisode(_ episodeID: String, context: EpisodePlayContext) {
+        guard isReadyOffline(episodeID),
+              let lookup = podcastStore.episodeLookup(id: episodeID)
+        else { return }
+        if context == .queue {
+            try? queueStore.prepareForImmediatePlayback(
+                selectedEpisodeID: episodeID,
+                replacingCurrentEpisodeID: nowPlayingEpisodeID
+            )
+            refreshQueuePresentation()
+        }
+        playEpisode(lookup.episode, podcastTitle: lookup.podcastTitle, feedURL: lookup.feedURL)
+        scheduleWarmForComingUp()
+    }
+
+    func cancelEpisodePreparation(_ episodeID: String) {
+        warmPlanner?.cancelExplicitPreparation(episodeID: episodeID)
+        refreshQueuePresentation()
+        episodeListRevision &+= 1
+    }
+
+    func removeEpisodeDownload(_ episodeID: String) {
+        cancelEpisodePreparation(episodeID)
+        warmPlanner?.suppressAutomaticPreparation(episodeID: episodeID)
+        removeDownloadedAudio(episodeID: episodeID)
+        refreshQueuePresentation()
+        episodeListRevision &+= 1
+    }
+
+    func addToUpNext(_ episodeID: String) {
+        guard podcastStore.episodeLookup(id: episodeID) != nil else { return }
+        try? queueStore.add(episodeID)
         scheduleWarmForComingUp()
         refreshQueuePresentation()
     }
@@ -1420,6 +1509,7 @@ final class AppShellModel {
     }
 
     func moveUpNext(episodeID: String, to index: Int) {
+        PodWashAnalytics.action("Queue.reordered")
         try? queueStore.move(episodeID, toIndex: index)
         scheduleWarmForComingUp()
         refreshQueuePresentation()
@@ -1430,6 +1520,7 @@ final class AppShellModel {
     }
 
     func removeFromUpNext(episodeID: String) {
+        PodWashAnalytics.action("Queue.removed")
         invalidateQueueActivation(episodeID: episodeID)
         let wasReady = isReadyOffline(episodeID)
         try? queueStore.remove(episodeID)
@@ -1465,6 +1556,7 @@ final class AppShellModel {
     }
 
     func markPlayedWithUndo(episodeID: String) -> QueueUndoSnapshot {
+        PodWashAnalytics.action("Queue.markedPlayed")
         invalidateQueueActivation(episodeID: episodeID)
         let snapshot = QueueUndoSnapshot(
             episodeID: episodeID,
@@ -1499,6 +1591,7 @@ final class AppShellModel {
     /// exact prior order so the Queue tab can offer a short Undo window.
     @discardableResult
     func clearUpNext() -> [String] {
+        PodWashAnalytics.action("Queue.cleared")
         invalidateQueueActivation()
         let ids = queueStore.queueEpisodeIDs()
         for id in ids {
@@ -1654,6 +1747,7 @@ final class AppShellModel {
 
     /// Requeue the current preparation selection immediately, bypassing its scheduled retry.
     func retryPreparation(episodeID: String) {
+        PodWashAnalytics.action("Preparation.retry")
         warmPlanner?.resetJobForRetry(episodeID: episodeID)
         if var job = foregroundPreparationJob, job.episodeID == episodeID {
             job.stage = .queued

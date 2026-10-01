@@ -13,10 +13,6 @@ struct LibraryView: View {
     var onRequestUnsubscribe: (PodcastSummary) -> Void
     var onRefresh: (() async -> Void)? = nil
     var refreshState: FeedRefreshViewState = .idle
-    var readyChoices: [ReadyToPlayChoice] = []
-    var preparationStatus: String? = nil
-    var onPlayReadyChoice: ((String) -> Void)? = nil
-    var onOpenQueue: (() -> Void)? = nil
 
     var body: some View {
         Group {
@@ -39,30 +35,6 @@ struct LibraryView: View {
 
     private var subscriptionList: some View {
         List {
-            if !readyChoices.isEmpty || preparationStatus != nil {
-                Section("Ready to Play") {
-                    ForEach(readyChoices) { choice in
-                        Button {
-                            onPlayReadyChoice?(choice.episodeID)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(choice.title).fontWeight(.semibold)
-                                Text(choice.podcastTitle).font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                        .accessibilityIdentifier("readyToPlay_\(choice.episodeID)")
-                    }
-                    if readyChoices.isEmpty, let preparationStatus {
-                        HStack {
-                            Text(preparationStatus).foregroundStyle(.secondary)
-                            Spacer()
-                            Button("Queue") { onOpenQueue?() }
-                        }
-                    } else if !readyChoices.isEmpty {
-                        Button("View Queue") { onOpenQueue?() }
-                    }
-                }
-            }
             if case .partialFailure = refreshState {
                 Section {
                     HStack {

@@ -44,10 +44,15 @@ enum ImmediatePreparationOutcome: Equatable {
     private let cleaningStore: CleaningToggleStore
     private let podcastStore: PodcastStore
     private let jobStore: AnalysisJobStore
+    private let preferencesStore: EpisodePreparationPreferencesStore
     private let timing: any AppTiming
 
     private var warmGeneration = 0
     private var activeRequestIDs: [String] = []
+    /// Explicit row requests are independent from Up Next membership. They are
+    /// retained for this planner lifetime; persistence/reconciliation is owned
+    /// by the shell's durable intent store in a later migration.
+    private var explicitEpisodeIDs: Set<String>
     private var workerTask: Task<Void, Never>?
     private(set) var warmingEpisodeIDs: Set<String> = []
     private(set) var warmedEpisodeIDs: Set<String> = []
@@ -61,6 +66,7 @@ enum ImmediatePreparationOutcome: Equatable {
         cleaningStore: CleaningToggleStore,
         podcastStore: PodcastStore,
         jobStore: AnalysisJobStore = AnalysisJobStore(),
+        preferencesStore: EpisodePreparationPreferencesStore = EpisodePreparationPreferencesStore(),
         timing: any AppTiming = SystemAppTiming()
     ) {
         self.downloadManager = downloadManager
@@ -70,8 +76,10 @@ enum ImmediatePreparationOutcome: Equatable {
         self.cleaningStore = cleaningStore
         self.podcastStore = podcastStore
         self.jobStore = jobStore
+        self.preferencesStore = preferencesStore
         self.timing = timing
         self.jobs = jobStore.load()
+        self.explicitEpisodeIDs = preferencesStore.preferences.explicitEpisodeIDs
     }
 
     nonisolated deinit {}
@@ -84,7 +92,27 @@ enum ImmediatePreparationOutcome: Equatable {
     }
 
     private func reaim(requests: [PreparationRequest]) {
-        let requestIDs = requests.map { "\($0.kind)-\($0.item.episodeID)" }
+        let explicit = explicitEpisodeIDs.compactMap { id -> PreparationRequest? in
+            guard let lookup = podcastStore.episodeLookup(id: id) else { return nil }
+            return PreparationRequest(
+                item: ComingUpItem(
+                    episodeID: id,
+                    episodeTitle: lookup.episode.title,
+                    podcastTitle: lookup.podcastTitle,
+                    feedURL: lookup.feedURL,
+                    isBinge: podcastStore.isBinge(feedURL: lookup.feedURL)
+                ),
+                kind: .manualQueue
+            )
+        }
+        var seen = Set<String>()
+        let automatic = requests.filter {
+            $0.kind == .automatic
+                && !preferencesStore.preferences.automaticallySuppressedEpisodeIDs.contains($0.item.episodeID)
+        }
+        let effectiveRequests = (requests.filter { $0.kind != .automatic } + explicit + automatic)
+            .filter { seen.insert($0.item.episodeID).inserted }
+        let requestIDs = effectiveRequests.map { "\($0.kind)-\($0.item.episodeID)" }
         // Refresh events routinely deliver the same selection. Keep useful
         // work alive rather than cancelling and restarting it.
         guard requestIDs != activeRequestIDs else { return }
@@ -99,7 +127,7 @@ enum ImmediatePreparationOutcome: Equatable {
             // genuinely serial even when an adapter observes cancellation late.
             await previousTask?.value
             guard let self else { return }
-            for request in requests {
+            for request in effectiveRequests {
                 guard generation == self.warmGeneration, !Task.isCancelled else { return }
                 await self.warmOne(
                     request.item,
@@ -209,6 +237,8 @@ enum ImmediatePreparationOutcome: Equatable {
 
     func job(for episodeID: String) -> AnalysisJob? { jobs[episodeID] }
 
+    func hasExplicitPreparation(episodeID: String) -> Bool { explicitEpisodeIDs.contains(episodeID) }
+
     var allJobs: [AnalysisJob] { jobs.values.sorted { $0.updatedAt > $1.updatedAt } }
 
     func removeJob(episodeID: String) {
@@ -217,6 +247,27 @@ enum ImmediatePreparationOutcome: Equatable {
         warmingEpisodeIDs.remove(episodeID)
         jobStore.save(jobs)
         onJobsChanged?()
+    }
+
+    /// Promotes one listener-selected row without adding it to Up Next. This
+    /// shares the same serial worker and is idempotent across repeated taps.
+    func requestExplicitPreparation(episodeID: String) {
+        guard podcastStore.episodeLookup(id: episodeID) != nil else { return }
+        explicitEpisodeIDs.insert(episodeID)
+        preferencesStore.addExplicit(episodeID)
+        reaim(requests: [])
+    }
+
+    func cancelExplicitPreparation(episodeID: String) {
+        explicitEpisodeIDs.remove(episodeID)
+        preferencesStore.removeExplicit(episodeID)
+        removeJob(episodeID: episodeID)
+        reaim(requests: [])
+    }
+
+    func suppressAutomaticPreparation(episodeID: String) {
+        preferencesStore.suppressAutomatic(episodeID)
+        reaim(requests: [])
     }
 
     /// Repairs durable job markers against the actual file system and analysis
