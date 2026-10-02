@@ -66,6 +66,35 @@ sentence boundaries, one prompt/golden policy conflict, and unstable context
 for generic ad openers. The next experiment must use the exact production
 segmenter and one canonical context per decision.
 
+### Production-boundary v4 result
+
+The 33-window v4 run completed on 2026-10-02 using exact iOS segmentation,
+the revised removable-bumper role, and gap-transition choices:
+
+- cost: $0.01157197;
+- median/max latency: 228.0/390.4 ms;
+- using one combined 0.50 threshold: precision 0.9800 and recall 0.9511;
+- clean no-ad control maximum removable probability: 0.07;
+- the previously missed Cougar Sports station bumper scored 0.97 removable;
+- all pure-editorial false positives came from the bumper class, not paid-ad
+  classification;
+- separate thresholds of 0.50 for paid ads and 0.90 for bumpers produced
+  precision 0.9963 and recall 0.9492, with no pure-editorial false positive;
+- fully-ad sentence recall under those separate thresholds was 0.9920;
+- Jev selected all 8 clean ad starts correctly and 8 of 9 clean ad ends;
+- overall gap accuracy was 0.8974, but only 2 of 16 gaps adjacent to mixed
+  sentences were labeled uncertain/mixed.
+
+The main remaining loss is representational, not semantic. The production
+splitter can create long sentences containing both editorial and ad material.
+For example, one 27-second Cougar Sports sentence combines a guest list with a
+closing sponsor appeal. Jev safely labels it mixed, but the current server
+contract has no finer timestamp at which to cut it. Before expanding the
+corpus, test a production-compatible maximum-duration split using the original
+timed words. A server-only provider swap remains possible at current quality;
+improving mixed-boundary recall likely requires one client segmentation update
+or a richer word-timestamp request contract.
+
 ## Leading Jev-only architecture
 
 Use Jev for semantic decisions and deterministic server code for coverage,
@@ -221,3 +250,5 @@ boundaries.
 | 2026-10-01 | Role Choice v3 achieved P=0.9928/R=0.9281 at 0.50 with no pure-editorial false positive; retain it as the leading safety-oriented design. |
 | 2026-10-01 | Next resolve station-bumper policy and test exact production segmentation plus canonical context. |
 | 2026-10-02 | Implement v4 with exact iOS segmentation, a distinct removable-bumper role, and explicit gap-transition choices; live run pending. |
+| 2026-10-02 | V4 achieved P=0.9963/R=0.9492 with paid=0.50 and bumper=0.90; clean boundaries were 16/17 correct. |
+| 2026-10-02 | Treat long mixed production sentences as the next bottleneck; test a duration cap before broad corpus evaluation. |
