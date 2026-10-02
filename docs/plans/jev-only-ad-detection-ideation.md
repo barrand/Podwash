@@ -95,6 +95,28 @@ timed words. A server-only provider swap remains possible at current quality;
 improving mixed-boundary recall likely requires one client segmentation update
 or a richer word-timestamp request contract.
 
+### Duration-capped v5 result
+
+The frozen v5 run completed on 2026-10-02 with the production rules plus an
+18-second duration cap and the precommitted paid=0.50/bumper=0.90 decision rule:
+
+- precision 1.0000 and recall 0.9587;
+- 0.00 false-positive seconds and 38.84 missed-ad seconds;
+- no-ad control maximum removable probability: 0.05;
+- cost: $0.01164201; median/max latency: 199.1/360.8 ms;
+- fully-ad sentence recall: 0.9825;
+- every mixed sentence was conservatively retained, accounting for 22.80
+  missed-ad seconds; fully-ad fragments accounted for the remaining 16.04;
+- all 8 clean starts and 8 of 9 clean ends were selected correctly;
+- overall gap accuracy improved to 0.9124 and mixed-gap accuracy improved from
+  2/16 in v4 to 5/16.
+
+Against v4 under the same paid/bumper rule, v5 removed the remaining 3.30
+false-positive seconds and recovered 8.92 ad seconds. Do not tune further on
+the same three episodes. They are in the corpus's nominal holdout and have now
+been used repeatedly for Jev design. Freeze v5 and run complete, non-golden-
+selected scans on episodes not used during Jev prompt development.
+
 ## Leading Jev-only architecture
 
 Use Jev for semantic decisions and deterministic server code for coverage,
@@ -253,3 +275,5 @@ boundaries.
 | 2026-10-02 | V4 achieved P=0.9963/R=0.9492 with paid=0.50 and bumper=0.90; clean boundaries were 16/17 correct. |
 | 2026-10-02 | Treat long mixed production sentences as the next bottleneck; test a duration cap before broad corpus evaluation. |
 | 2026-10-02 | Implement v5 with an 18-second production duration cap and freeze paid=0.50/bumper=0.90 before the live run. |
+| 2026-10-02 | Frozen v5 achieved P=1.0000/R=0.9587 and improved both editorial safety and ad recall over v4. |
+| 2026-10-02 | Stop tuning on the three micro episodes; next run complete episodes with v5 unchanged. |
