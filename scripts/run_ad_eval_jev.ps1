@@ -1,3 +1,4 @@
+$Experiment = "role-choice-v3"
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -15,17 +16,17 @@ try {
         Write-Host "Using TYPESAFE_API_KEY already cached in this PowerShell session."
     }
 
-    python scripts\ad_eval_jev.py --dry-run
+    python scripts\ad_eval_jev.py --experiment $Experiment --dry-run
     if ($LASTEXITCODE -ne 0) {
         throw "Jev dry-run failed with exit code $LASTEXITCODE"
     }
 
-    if ((Read-Host "Run the live Jev micro-evaluation now? Type YES to continue") -ne "YES") {
+    if ((Read-Host "Run the live Jev $Experiment micro-evaluation now? Type YES to continue") -ne "YES") {
         Write-Host "Stopped before any TypeSafe request."
         return
     }
 
-    python scripts\ad_eval_jev.py
+    python scripts\ad_eval_jev.py --experiment $Experiment
     if ($LASTEXITCODE -ne 0) {
         throw "Jev live run failed with exit code $LASTEXITCODE"
     }

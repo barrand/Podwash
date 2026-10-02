@@ -24,6 +24,9 @@ from ad_eval_gemini import load_context, sentence_rows
 
 MODEL = "jev-1.13.0"
 ENDPOINT = "https://api.typesafe.ai/v1/systemone"
+PAID_PROMO_EXPERIMENT = "paid-promo-v2"
+ROLE_CHOICE_EXPERIMENT = "role-choice-v3"
+EXPERIMENTS = (PAID_PROMO_EXPERIMENT, ROLE_CHOICE_EXPERIMENT)
 POSITIVE_SLUGS = ("cougar-sports", "joe-rogan-mrbeast")
 CONTROL_SLUG = "ai-news-strategy-daily"
 PILOT_SLUGS = (*POSITIVE_SLUGS, CONTROL_SLUG)
@@ -58,6 +61,33 @@ PROMO_FALSE_CRITERION = (
     "The target sentence is a paid commercial, sponsor read, ordinary editorial content, credits, or a normal "
     "show/station identification, introduction, or closing that is not asking the listener to take promotional action."
 )
+ROLE_CRITERIA = {
+    "paid_ad": (
+        "A paid commercial, host-read sponsor message, dynamically inserted advertisement, or its opener, "
+        "disclaimer, or commercial call to action."
+    ),
+    "cross_promo": (
+        "An explicit removable promotion for another show, network property, membership, event, or fundraiser."
+    ),
+    "routine_housekeeping": (
+        "The current show's ordinary identification, opening, closing, credits, or request to subscribe to, "
+        "rate, or review the current show."
+    ),
+    "editorial_content": (
+        "Substantive discussion, reporting, interview, or storytelling, including ordinary discussion of a "
+        "company or product."
+    ),
+    "mixed_boundary": (
+        "The sentence contains both removable promotion and keep-content, or cannot safely be removed as a whole."
+    ),
+}
+ROLE_PROBABILITY_FIELDS = {
+    "paid_ad": "paidAdProbability",
+    "cross_promo": "crossPromoProbability",
+    "routine_housekeeping": "routineHousekeepingProbability",
+    "editorial_content": "editorialContentProbability",
+    "mixed_boundary": "mixedBoundaryProbability",
+}
 
 
 @dataclass(frozen=True)
@@ -145,7 +175,11 @@ def build_samples(episodes: dict[str, tuple[dict[str, Any], list[dict[str, Any]]
     return samples
 
 
-def request_payload(context: dict[str, str], rows: list[Any], sample: Sample) -> dict[str, Any]:
+def request_payload(
+    context: dict[str, str], rows: list[Any], sample: Sample, experiment: str = PAID_PROMO_EXPERIMENT
+) -> dict[str, Any]:
+    if experiment not in EXPERIMENTS:
+        raise ValueError(f"unsupported experiment {experiment}")
     context_rows = rows[sample.context_start:sample.context_end]
     target_rows = rows[sample.target_start:sample.target_end]
     state = {
@@ -164,6 +198,22 @@ def request_payload(context: dict[str, str], rows: list[Any], sample: Sample) ->
     }
     questions: dict[str, Any] = {}
     for row in target_rows:
+        if experiment == ROLE_CHOICE_EXPERIMENT:
+            questions[f"sentence-{row.id}-role"] = {
+                "type": "choice",
+                "instructions": {
+                    "task": (
+                        f"Classify the primary role of target sentence ID {row.id}. Use neighboring transcript "
+                        "text only to interpret the target, and evaluate only that target sentence."
+                    ),
+                    "removal_policy": (
+                        "When a sentence mixes removable promotion and substantive program content, select "
+                        "mixed_boundary."
+                    ),
+                },
+                "criteria": ROLE_CRITERIA,
+            }
+            continue
         questions[f"sentence-{row.id}-paid-ad"] = {
             "type": "noul",
             "instructions": (
@@ -209,10 +259,49 @@ def call_jev(api_key: str, payload: dict[str, Any]) -> dict[str, Any]:
         raise RuntimeError(f"TypeSafe request failed: {error.reason}") from error
 
 
-def parse_answers(response: dict[str, Any], target_rows: list[Any]) -> list[dict[str, Any]]:
+def parse_answers(
+    response: dict[str, Any], target_rows: list[Any], experiment: str = PAID_PROMO_EXPERIMENT
+) -> list[dict[str, Any]]:
     if not isinstance(response, dict) or response.get("model") != MODEL:
         raise ValueError(f"response must report pinned model {MODEL}")
     answers = response.get("answers")
+    if experiment == ROLE_CHOICE_EXPERIMENT:
+        expected = {f"sentence-{row.id}-role" for row in target_rows}
+        if not isinstance(answers, dict) or set(answers) != expected:
+            raise ValueError("response answers must match requested sentence IDs exactly")
+        parsed: list[dict[str, Any]] = []
+        for row in target_rows:
+            answer = answers[f"sentence-{row.id}-role"]
+            if not isinstance(answer, dict) or answer.get("type") != "choice":
+                raise ValueError(f"sentence {row.id} role: expected a Choice answer")
+            choice, confidence, probabilities = answer.get("choice"), answer.get("confidence"), answer.get("probabilities")
+            if choice not in ROLE_CRITERIA or not _is_number(confidence) or not isinstance(probabilities, dict):
+                raise ValueError(f"sentence {row.id} role: invalid choice, confidence, or probabilities")
+            if set(probabilities) != set(ROLE_CRITERIA):
+                raise ValueError(f"sentence {row.id} role: probabilities must match role criteria exactly")
+            if not 0.0 <= float(confidence) <= 1.0:
+                raise ValueError(f"sentence {row.id} role: confidence is outside 0...1")
+            if any(not _is_number(value) or not 0.0 <= float(value) <= 1.0 for value in probabilities.values()):
+                raise ValueError(f"sentence {row.id} role: probability is outside 0...1")
+            probability_sum = sum(float(value) for value in probabilities.values())
+            if not 0.98 <= probability_sum <= 1.02:
+                raise ValueError(f"sentence {row.id} role: probabilities do not sum approximately to one")
+            flattened = {
+                ROLE_PROBABILITY_FIELDS[name]: round(float(probabilities[name]), 6)
+                for name in ROLE_CRITERIA
+            }
+            parsed.append({
+                "sentence": row.id,
+                "selectedRole": choice,
+                "roleConfidence": round(float(confidence), 6),
+                **flattened,
+                "advertisementProbability": round(
+                    min(1.0, flattened["paidAdProbability"] + flattened["crossPromoProbability"]), 6
+                ),
+            })
+        return parsed
+    if experiment != PAID_PROMO_EXPERIMENT:
+        raise ValueError(f"unsupported experiment {experiment}")
     expected = {
         question_id
         for row in target_rows
@@ -268,9 +357,7 @@ def observations_for(sample: Sample, rows: list[Any], golden: dict[str, Any], an
                 "end": round(float(row.end), 3),
                 "text": row.text,
                 "goldenAdFraction": round(golden_overlap(row, list(golden["spans"])), 6),
-                "paidAdProbability": answer["paidAdProbability"],
-                "promoProbability": answer["promoProbability"],
-                "advertisementProbability": answer["advertisementProbability"],
+                **{name: value for name, value in answer.items() if name != "sentence"},
             }
         )
     return observations
@@ -284,9 +371,18 @@ def deduplicate(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for key in sorted(grouped):
         members = grouped[key]
         base = dict(members[0])
-        base["paidAdProbability"] = round(statistics.mean(row["paidAdProbability"] for row in members), 6)
-        base["promoProbability"] = round(statistics.mean(row["promoProbability"] for row in members), 6)
-        base["advertisementProbability"] = round(statistics.mean(row["advertisementProbability"] for row in members), 6)
+        averaged_fields = {
+            name
+            for name, value in base.items()
+            if _is_number(value) and (name.endswith("Probability") or name.endswith("Confidence"))
+        }
+        for name in averaged_fields:
+            base[name] = round(statistics.mean(float(row[name]) for row in members), 6)
+        if all(field in base for field in ROLE_PROBABILITY_FIELDS.values()):
+            base["selectedRole"] = max(
+                ROLE_PROBABILITY_FIELDS,
+                key=lambda role: float(base[ROLE_PROBABILITY_FIELDS[role]]),
+            )
         base["observationCount"] = len(members)
         base["samples"] = [row["sample"] for row in members]
         base.pop("sample", None)
@@ -317,7 +413,7 @@ def metrics_at(observations: list[dict[str, Any]], threshold: float) -> dict[str
     }
 
 
-def write_review(samples: list[dict[str, Any]], path: Path) -> None:
+def write_review(samples: list[dict[str, Any]], path: Path, experiment: str) -> None:
     sections: list[str] = []
     for result in samples:
         rows = []
@@ -325,17 +421,37 @@ def write_review(samples: list[dict[str, Any]], path: Path) -> None:
             probability = float(observation["advertisementProbability"])
             golden = float(observation["goldenAdFraction"])
             klass = "high" if probability >= 0.9 else "mid" if probability >= 0.5 else "low"
-            rows.append(
-                f"<tr class='{klass}'><td>{observation['sentence']}</td><td>{observation['start']:.2f}–{observation['end']:.2f}</td>"
-                f"<td>{golden:.2f}</td><td>{observation['paidAdProbability']:.3f}</td>"
-                f"<td>{observation['promoProbability']:.3f}</td><td>{probability:.3f}</td>"
-                f"<td>{html.escape(observation['text'])}</td></tr>"
+            prefix = (
+                f"<tr class='{klass}'><td>{observation['sentence']}</td>"
+                f"<td>{observation['start']:.2f}–{observation['end']:.2f}</td><td>{golden:.2f}</td>"
             )
+            if experiment == ROLE_CHOICE_EXPERIMENT:
+                probability_cells = "".join(
+                    f"<td>{observation[field]:.3f}</td>" for field in ROLE_PROBABILITY_FIELDS.values()
+                )
+                rows.append(
+                    prefix + f"<td>{html.escape(observation['selectedRole'])}</td>"
+                    f"<td>{observation['roleConfidence']:.3f}</td>{probability_cells}<td>{probability:.3f}</td>"
+                    f"<td>{html.escape(observation['text'])}</td></tr>"
+                )
+            else:
+                rows.append(
+                    prefix + f"<td>{observation['paidAdProbability']:.3f}</td>"
+                    f"<td>{observation['promoProbability']:.3f}</td><td>{probability:.3f}</td>"
+                    f"<td>{html.escape(observation['text'])}</td></tr>"
+                )
+        if experiment == ROLE_CHOICE_EXPERIMENT:
+            probability_headers = "".join(
+                f"<th>p({html.escape(role)})</th>" for role in ROLE_PROBABILITY_FIELDS
+            )
+            headers = f"<th>Role</th><th>Confidence</th>{probability_headers}<th>p(removable)</th>"
+        else:
+            headers = "<th>p(paid)</th><th>p(promo)</th><th>combined p(ad)</th>"
         sections.append(
             f"<section><h2>{html.escape(result['sample']['id'])}</h2>"
             f"<p>{html.escape(result['sample']['kind'])}; latency {result['latencyMs']:.1f} ms</p>"
             "<table><thead><tr><th>Sentence</th><th>Time</th><th>Golden ad fraction</th>"
-            "<th>p(paid)</th><th>p(promo)</th><th>combined p(ad)</th><th>Text</th></tr></thead>"
+            f"{headers}<th>Text</th></tr></thead>"
             f"<tbody>{''.join(rows)}</tbody></table></section>"
         )
     document = (
@@ -343,7 +459,7 @@ def write_review(samples: list[dict[str, Any]], path: Path) -> None:
         "<style>body{font:15px system-ui;max-width:1200px;margin:2rem auto;line-height:1.4}"
         "table{border-collapse:collapse;width:100%}th,td{padding:.35rem;border:1px solid #bbb;text-align:left}"
         ".high{background:#ffd6d6}.mid{background:#fff0c2}.low{background:#e7f5e7}section{margin:3rem 0}</style>"
-        "<h1>Jev ad-detection micro-evaluation</h1>"
+        f"<h1>Jev ad-detection micro-evaluation: {html.escape(experiment)}</h1>"
         "<p>Red = p(ad) ≥ .90; amber = ≥ .50. Review every transition between golden ad and editorial speech.</p>"
         + "\n".join(sections)
     )
@@ -355,6 +471,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workdir", type=Path, default=DEFAULT_WORKDIR)
     parser.add_argument("--corpus", type=Path, default=DEFAULT_CORPUS)
     parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument("--experiment", choices=EXPERIMENTS, default=PAID_PROMO_EXPERIMENT)
     parser.add_argument("--dry-run", action="store_true", help="Build and size all requests without contacting TypeSafe.")
     parser.add_argument("--spend-cap-usd", type=float, default=1.0)
     return parser.parse_args()
@@ -365,7 +482,8 @@ def main() -> None:
     if not 0 < args.spend_cap_usd <= 1.0:
         raise SystemExit("--spend-cap-usd must be greater than zero and no more than 1.0")
     workdir, corpus = args.workdir.resolve(), args.corpus.resolve()
-    output = (args.output or workdir / "jev-micro-v2").resolve()
+    output_name = "jev-micro-v3" if args.experiment == ROLE_CHOICE_EXPERIMENT else "jev-micro-v2"
+    output = (args.output or workdir / output_name).resolve()
     api_key = os.environ.get("TYPESAFE_API_KEY", "")
     if not args.dry_run and not api_key:
         raise SystemExit("TYPESAFE_API_KEY is required unless --dry-run is used")
@@ -378,7 +496,7 @@ def main() -> None:
     prepared: list[tuple[Sample, dict[str, Any], int, float]] = []
     for sample in samples:
         _golden, _words, rows = episodes[sample.slug]
-        payload = request_payload(load_context(workdir, sample.slug), rows, sample)
+        payload = request_payload(load_context(workdir, sample.slug), rows, sample, args.experiment)
         tokens, cost = estimated_tokens(payload), estimated_cost(payload)
         if tokens > MAX_ESTIMATED_REQUEST_TOKENS:
             raise SystemExit(f"{sample.id}: conservative estimate {tokens} exceeds {MAX_ESTIMATED_REQUEST_TOKENS} tokens")
@@ -390,6 +508,7 @@ def main() -> None:
     output.mkdir(parents=True, exist_ok=True)
     manifest = {
         "schemaVersion": 1,
+        "experiment": args.experiment,
         "model": MODEL,
         "sampleCount": len(samples),
         "projectedCostUsd": round(projected_total, 8),
@@ -434,11 +553,12 @@ def main() -> None:
         (sample_dir / "response.json").write_text(json.dumps(response, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         _golden, _words, rows = episodes[sample.slug]
         target_rows = rows[sample.target_start:sample.target_end]
-        answers = parse_answers(response, target_rows)
+        answers = parse_answers(response, target_rows, args.experiment)
         cost = usage_cost(response)
         spent += float(cost["totalCostUsd"])
         result = {
             "schemaVersion": 1,
+            "experiment": args.experiment,
             "sample": sample.__dict__,
             "createdAt": datetime.now(timezone.utc).isoformat(),
             "model": response["model"],
@@ -456,6 +576,7 @@ def main() -> None:
     control_probabilities = [row["advertisementProbability"] for row in observations if row["slug"] == CONTROL_SLUG]
     report = {
         "schemaVersion": 1,
+        "experiment": args.experiment,
         "purpose": "Jev feasibility micro-evaluation only; not a production-provider decision.",
         "model": MODEL,
         "completedAt": datetime.now(timezone.utc).isoformat(),
@@ -475,7 +596,7 @@ def main() -> None:
         "nextStep": "Inspect REVIEW.html and decide whether to design a full development/holdout comparison.",
     }
     (output / "report.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    write_review(results, output / "REVIEW.html")
+    write_review(results, output / "REVIEW.html", args.experiment)
     print(f"Wrote {output / 'report.json'}")
     print(f"Review {output / 'REVIEW.html'}")
 

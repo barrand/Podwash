@@ -190,4 +190,4 @@ boundaries.
 | 2026-10-01 | Keep the single removable-ad Noul as the sentence-level baseline. |
 | 2026-10-01 | Reject paid/promo max-OR v2 as the leading design. |
 | 2026-10-01 | Explore a fully Jev-only model layer with deterministic sequence and boundary logic. |
-| 2026-10-01 | Next proposed test is mutually exclusive role Choice on the frozen micro sample. |
+| 2026-10-01 | Implement mutually exclusive role Choice v3 on the frozen micro sample; live run pending. |

@@ -11,6 +11,7 @@ from ad_eval_gemini import sentence_rows
 from ad_eval_jev import (
     CONTROL_SLUG,
     POSITIVE_SLUGS,
+    ROLE_CHOICE_EXPERIMENT,
     Sample,
     build_samples,
     deduplicate,
@@ -86,6 +87,44 @@ class TestJevAdEval(unittest.TestCase):
         response["answers"]["sentence-2-promo"]["noul"] = 1.1
         with self.assertRaisesRegex(ValueError, "outside"):
             parse_answers(response, target_rows)
+
+    def test_role_choice_request_and_parsing(self) -> None:
+        episode_rows = rows(4)
+        sample = Sample("sample", "show", "ad-boundary", 0, 4, 1, 3, "span")
+        payload = request_payload(
+            {"show": "Show", "episode": "Episode", "showDescription": ""},
+            episode_rows,
+            sample,
+            ROLE_CHOICE_EXPERIMENT,
+        )
+        self.assertEqual(set(payload["questions"]), {"sentence-2-role", "sentence-3-role"})
+        self.assertTrue(all(question["type"] == "choice" for question in payload["questions"].values()))
+        probabilities = {
+            "paid_ad": 0.55,
+            "cross_promo": 0.25,
+            "routine_housekeeping": 0.05,
+            "editorial_content": 0.10,
+            "mixed_boundary": 0.05,
+        }
+        response = {
+            "model": "jev-1.13.0",
+            "answers": {
+                f"sentence-{row.id}-role": {
+                    "type": "choice",
+                    "choice": "paid_ad",
+                    "confidence": 0.8,
+                    "probabilities": probabilities,
+                }
+                for row in episode_rows[1:3]
+            },
+            "usage": {"input_tokens": 100, "output_tokens": 10},
+        }
+        parsed = parse_answers(response, episode_rows[1:3], ROLE_CHOICE_EXPERIMENT)
+        self.assertEqual([row["advertisementProbability"] for row in parsed], [0.8, 0.8])
+        self.assertEqual(parsed[0]["selectedRole"], "paid_ad")
+        response["answers"]["sentence-2-role"]["probabilities"]["paid_ad"] = 0.2
+        with self.assertRaisesRegex(ValueError, "sum approximately"):
+            parse_answers(response, episode_rows[1:3], ROLE_CHOICE_EXPERIMENT)
 
     def test_deduplication_and_fractional_time_scoring(self) -> None:
         observations = [
