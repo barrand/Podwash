@@ -515,7 +515,7 @@ struct SettingsView: View {
             Text("Debug cloud check")
                 .font(.headline)
 
-            Text("Uses a tiny built-in transcript to test Firebase credentials, App Check, Cloud Run, and Gemini without downloading an episode.")
+            Text("Uses a tiny built-in transcript to test cloud credentials and ad detection without downloading an episode.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -657,7 +657,7 @@ struct CloudAdDetectionConsentSheet: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("cloudConsentExplanation")
 
-                    Text("PodWash can look for likely ad breaks. To do that, it sends the text from an on-device transcript and its timestamps to Gemini. It never sends the podcast audio.")
+                    Text("PodWash can look for likely ad breaks. To do that, it sends the text from an on-device transcript and its timestamps to a cloud-based model. It never sends the podcast audio.")
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
 
