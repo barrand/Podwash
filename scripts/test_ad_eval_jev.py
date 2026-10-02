@@ -11,12 +11,15 @@ from ad_eval_gemini import sentence_rows
 from ad_eval_jev import (
     CONTROL_SLUG,
     DURATION_BOUNDARY_EXPERIMENT,
+    FULL_SCAN_EXPERIMENT,
     POSITIVE_SLUGS,
     ROLE_BOUNDARY_EXPERIMENT,
     ROLE_CHOICE_EXPERIMENT,
     Sample,
+    assemble_frozen_spans,
     boundary_metrics,
     boundary_observations_for,
+    build_full_scan_samples,
     build_samples,
     deduplicate,
     metrics_at,
@@ -59,6 +62,27 @@ class TestJevAdEval(unittest.TestCase):
         self.assertEqual(len(controls), 10)
         self.assertEqual([sample.id for sample in samples], [sample.id for sample in build_samples(episodes)])
         self.assertTrue(all(sample.target_start < sample.target_end for sample in samples))
+
+    def test_full_scan_samples_cover_every_sentence_once(self) -> None:
+        from ad_eval_jev import FULL_SCAN_SLUGS
+
+        episodes = {slug: ({"spans": []}, [], rows(25)) for slug in FULL_SCAN_SLUGS}
+        samples = build_full_scan_samples(episodes)
+        for slug in FULL_SCAN_SLUGS:
+            targets = [
+                sentence
+                for sample in samples
+                if sample.slug == slug
+                for sentence in range(sample.target_start, sample.target_end)
+            ]
+            self.assertEqual(targets, list(range(25)))
+            slug_samples = [sample for sample in samples if sample.slug == slug]
+            canonical_gaps = [
+                (left.id, right.id)
+                for sample in slug_samples
+                for left, right in target_gaps(rows(25), sample, canonical=True)
+            ]
+            self.assertEqual(canonical_gaps, [(index, index + 1) for index in range(1, 25)])
 
     def test_request_uses_batched_nouls_for_targets_only(self) -> None:
         episode_rows = rows(10)
@@ -245,6 +269,24 @@ class TestJevAdEval(unittest.TestCase):
         sample = Sample("sample", "show", "ad-boundary", 0, 3, 1, 2, "span")
         payload = request_payload({}, episode_rows, sample, DURATION_BOUNDARY_EXPERIMENT)
         self.assertTrue(any(name.endswith("-transition") for name in payload["questions"]))
+
+        full_payload = request_payload({}, episode_rows, sample, FULL_SCAN_EXPERIMENT)
+        self.assertEqual(set(full_payload["questions"]), set(payload["questions"]) - {"gap-1-2-transition"})
+
+    def test_frozen_span_assembly_uses_contiguous_sentence_ids(self) -> None:
+        observations = [
+            {"sentence": 1, "start": 0.0, "end": 1.0, "paidAdProbability": 0.6, "bumperOrCrossPromoProbability": 0.0},
+            {"sentence": 2, "start": 1.0, "end": 2.0, "paidAdProbability": 0.7, "bumperOrCrossPromoProbability": 0.0},
+            {"sentence": 3, "start": 2.0, "end": 3.0, "paidAdProbability": 0.1, "bumperOrCrossPromoProbability": 0.0},
+            {"sentence": 4, "start": 3.0, "end": 4.0, "paidAdProbability": 0.0, "bumperOrCrossPromoProbability": 0.95},
+        ]
+        self.assertEqual(
+            assemble_frozen_spans(observations),
+            [
+                {"startSentence": 1, "endSentence": 2, "start": 0.0, "end": 2.0},
+                {"startSentence": 4, "endSentence": 4, "start": 3.0, "end": 4.0},
+            ],
+        )
 
     def test_transcript_hash_is_stable_across_windows_line_endings(self) -> None:
         with TemporaryDirectory() as directory:

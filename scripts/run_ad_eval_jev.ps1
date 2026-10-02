@@ -1,4 +1,4 @@
-$Experiment = "duration-boundary-v5"
+$Experiment = "full-scan-v6"
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot

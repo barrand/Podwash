@@ -277,3 +277,4 @@ boundaries.
 | 2026-10-02 | Implement v5 with an 18-second production duration cap and freeze paid=0.50/bumper=0.90 before the live run. |
 | 2026-10-02 | Frozen v5 achieved P=1.0000/R=0.9587 and improved both editorial safety and ad recall over v4. |
 | 2026-10-02 | Stop tuning on the three micro episodes; next run complete episodes with v5 unchanged. |
+| 2026-10-02 | Implement frozen v6 full scans over all 12 Jev-untested development episodes; each sentence and gap is targeted exactly once. |

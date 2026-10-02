@@ -33,7 +33,8 @@ PAID_PROMO_EXPERIMENT = "paid-promo-v2"
 ROLE_CHOICE_EXPERIMENT = "role-choice-v3"
 ROLE_BOUNDARY_EXPERIMENT = "role-boundary-v4"
 DURATION_BOUNDARY_EXPERIMENT = "duration-boundary-v5"
-BOUNDARY_EXPERIMENTS = (ROLE_BOUNDARY_EXPERIMENT, DURATION_BOUNDARY_EXPERIMENT)
+FULL_SCAN_EXPERIMENT = "full-scan-v6"
+BOUNDARY_EXPERIMENTS = (ROLE_BOUNDARY_EXPERIMENT, DURATION_BOUNDARY_EXPERIMENT, FULL_SCAN_EXPERIMENT)
 EXPERIMENTS = (PAID_PROMO_EXPERIMENT, ROLE_CHOICE_EXPERIMENT, *BOUNDARY_EXPERIMENTS)
 POSITIVE_SLUGS = ("cougar-sports", "joe-rogan-mrbeast")
 CONTROL_SLUG = "ai-news-strategy-daily"
@@ -42,6 +43,21 @@ CONTEXT_SENTENCES = 8
 BOUNDARY_TARGET_SENTENCES = 2
 CONTROL_WINDOWS = 10
 CONTROL_TARGET_SENTENCES = 5
+FULL_SCAN_TARGET_SENTENCES = 12
+FULL_SCAN_SLUGS = (
+    "ai-daily-brief",
+    "bill-simmons-kawhi",
+    "dan-le-batard-local-hour",
+    "economics-of-everyday-things",
+    "locked-on-big-12",
+    "pardon-my-take-larry-fitzgerald",
+    "planet-money",
+    "radiolab",
+    "search-engine",
+    "smartless-olivia-wilde",
+    "unexplainable",
+    "version-history",
+)
 THRESHOLDS = (0.50, 0.70, 0.80, 0.90, 0.95)
 MAX_ESTIMATED_REQUEST_TOKENS = 20_000
 V4_MAX_ESTIMATED_REQUEST_TOKENS = 30_000
@@ -173,7 +189,7 @@ def load_episode(
     words = json.loads(transcript_path.read_text(encoding="utf-8"))
     if not isinstance(words, list) or not words:
         raise ValueError(f"{slug}: transcript has no words")
-    if experiment == DURATION_BOUNDARY_EXPERIMENT:
+    if experiment in (DURATION_BOUNDARY_EXPERIMENT, FULL_SCAN_EXPERIMENT):
         row_builder = production_duration_capped_sentence_rows
     elif experiment == ROLE_BOUNDARY_EXPERIMENT:
         row_builder = production_sentence_rows
@@ -230,7 +246,37 @@ def build_samples(episodes: dict[str, tuple[dict[str, Any], list[dict[str, Any]]
     return samples
 
 
-def target_gaps(rows: list[Any], sample: Sample) -> list[tuple[Any, Any]]:
+def build_full_scan_samples(
+    episodes: dict[str, tuple[dict[str, Any], list[dict[str, Any]], list[Any]]]
+) -> list[Sample]:
+    samples: list[Sample] = []
+    for slug in FULL_SCAN_SLUGS:
+        rows = episodes[slug][2]
+        for number, target_start in enumerate(range(0, len(rows), FULL_SCAN_TARGET_SENTENCES), start=1):
+            target_end = min(len(rows), target_start + FULL_SCAN_TARGET_SENTENCES)
+            samples.append(
+                Sample(
+                    id=f"{slug}-full-{number:04d}",
+                    slug=slug,
+                    kind="full-scan",
+                    context_start=max(0, target_start - CONTEXT_SENTENCES),
+                    context_end=min(len(rows), target_end + CONTEXT_SENTENCES),
+                    target_start=target_start,
+                    target_end=target_end,
+                )
+            )
+    return samples
+
+
+def target_gaps(
+    rows: list[Any], sample: Sample, canonical: bool = False
+) -> list[tuple[Any, Any]]:
+    if canonical:
+        first_left = sample.target_start
+        last_left = min(len(rows) - 2, sample.target_end - 1)
+        if last_left < first_left:
+            return []
+        return [(rows[index], rows[index + 1]) for index in range(first_left, last_left + 1)]
     first_left = max(sample.context_start, sample.target_start - 1)
     last_left = min(sample.context_end - 2, sample.target_end - 1)
     if last_left < first_left:
@@ -295,7 +341,7 @@ def request_payload(
             "criteria": {"true": PROMO_TRUE_CRITERION, "false": PROMO_FALSE_CRITERION},
         }
     if experiment in BOUNDARY_EXPERIMENTS:
-        for left, right in target_gaps(rows, sample):
+        for left, right in target_gaps(rows, sample, canonical=experiment == FULL_SCAN_EXPERIMENT):
             questions[f"gap-{left.id}-{right.id}-transition"] = {
                 "type": "choice",
                 "instructions": {
@@ -500,8 +546,9 @@ def boundary_observations_for(
     rows: list[Any],
     golden: dict[str, Any],
     answers: list[dict[str, Any]],
+    canonical: bool = False,
 ) -> list[dict[str, Any]]:
-    gaps = target_gaps(rows, sample)
+    gaps = target_gaps(rows, sample, canonical=canonical)
     if len(gaps) != len(answers):
         raise ValueError(f"{sample.id}: gap/answer count mismatch")
     return [
@@ -650,6 +697,63 @@ def metrics_at_role_thresholds(
     }
 
 
+def frozen_prediction(row: dict[str, Any]) -> bool:
+    return (
+        float(row["paidAdProbability"]) >= FROZEN_PAID_AD_THRESHOLD
+        or float(row["bumperOrCrossPromoProbability"]) >= FROZEN_BUMPER_THRESHOLD
+    )
+
+
+def assemble_frozen_spans(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    ordered = sorted(observations, key=lambda row: int(row["sentence"]))
+    spans: list[dict[str, Any]] = []
+    active: dict[str, Any] | None = None
+    prior_sentence: int | None = None
+    for row in ordered:
+        sentence = int(row["sentence"])
+        if frozen_prediction(row):
+            if active is None or prior_sentence is None or sentence != prior_sentence + 1:
+                if active is not None:
+                    spans.append(active)
+                active = {
+                    "startSentence": sentence,
+                    "endSentence": sentence,
+                    "start": float(row["start"]),
+                    "end": float(row["end"]),
+                }
+            else:
+                active["endSentence"] = sentence
+                active["end"] = float(row["end"])
+        elif active is not None:
+            spans.append(active)
+            active = None
+        prior_sentence = sentence
+    if active is not None:
+        spans.append(active)
+    return spans
+
+
+def full_scan_episode_summaries(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in observations:
+        grouped.setdefault(str(row["slug"]), []).append(row)
+    summaries: list[dict[str, Any]] = []
+    for slug in FULL_SCAN_SLUGS:
+        rows = grouped.get(slug, [])
+        summaries.append(
+            {
+                "slug": slug,
+                "sentenceCount": len(rows),
+                "scoredDurationSeconds": round(sum(float(row["end"]) - float(row["start"]) for row in rows), 3),
+                "metrics": metrics_at_role_thresholds(
+                    rows, FROZEN_PAID_AD_THRESHOLD, FROZEN_BUMPER_THRESHOLD
+                ),
+                "predictedSpans": assemble_frozen_spans(rows),
+            }
+        )
+    return summaries
+
+
 def write_review(samples: list[dict[str, Any]], path: Path, experiment: str) -> None:
     sections: list[str] = []
     for result in samples:
@@ -741,14 +845,16 @@ def main() -> None:
         ROLE_CHOICE_EXPERIMENT: "jev-micro-v3",
         ROLE_BOUNDARY_EXPERIMENT: "jev-micro-v4",
         DURATION_BOUNDARY_EXPERIMENT: "jev-micro-v5",
+        FULL_SCAN_EXPERIMENT: "jev-full-v6",
     }[args.experiment]
     output = (args.output or workdir / output_name).resolve()
     api_key = os.environ.get("TYPESAFE_API_KEY", "")
     if not args.dry_run and not api_key:
         raise SystemExit("TYPESAFE_API_KEY is required unless --dry-run is used")
     try:
-        episodes = {slug: load_episode(corpus, workdir, slug, args.experiment) for slug in PILOT_SLUGS}
-        samples = build_samples(episodes)
+        slugs = FULL_SCAN_SLUGS if args.experiment == FULL_SCAN_EXPERIMENT else PILOT_SLUGS
+        episodes = {slug: load_episode(corpus, workdir, slug, args.experiment) for slug in slugs}
+        samples = build_full_scan_samples(episodes) if args.experiment == FULL_SCAN_EXPERIMENT else build_samples(episodes)
     except ValueError as error:
         raise SystemExit(str(error)) from error
 
@@ -776,6 +882,7 @@ def main() -> None:
         "segmentation": {
             ROLE_BOUNDARY_EXPERIMENT: "ios-production",
             DURATION_BOUNDARY_EXPERIMENT: "ios-production-plus-18-second-cap",
+            FULL_SCAN_EXPERIMENT: "ios-production-plus-18-second-cap",
         }.get(args.experiment, "evaluation-v1"),
         "frozenDecisionRule": (
             {
@@ -783,7 +890,7 @@ def main() -> None:
                 "bumperOrCrossPromoThreshold": FROZEN_BUMPER_THRESHOLD,
                 "operator": "or",
             }
-            if args.experiment == DURATION_BOUNDARY_EXPERIMENT
+            if args.experiment in (DURATION_BOUNDARY_EXPERIMENT, FULL_SCAN_EXPERIMENT)
             else None
         ),
         "model": MODEL,
@@ -830,7 +937,11 @@ def main() -> None:
         (sample_dir / "response.json").write_text(json.dumps(response, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         _golden, _words, rows = episodes[sample.slug]
         target_rows = rows[sample.target_start:sample.target_end]
-        gaps = target_gaps(rows, sample) if args.experiment in BOUNDARY_EXPERIMENTS else []
+        gaps = (
+            target_gaps(rows, sample, canonical=args.experiment == FULL_SCAN_EXPERIMENT)
+            if args.experiment in BOUNDARY_EXPERIMENTS
+            else []
+        )
         gap_ids = {f"gap-{left.id}-{right.id}-transition" for left, right in gaps}
         answers = parse_answers(response, target_rows, args.experiment, gap_ids)
         boundary_answers = parse_boundary_answers(response, gaps) if gaps else []
@@ -847,7 +958,11 @@ def main() -> None:
             "usage": cost,
             "observations": observations_for(sample, rows, episodes[sample.slug][0], answers),
             "boundaries": boundary_observations_for(
-                sample, rows, episodes[sample.slug][0], boundary_answers
+                sample,
+                rows,
+                episodes[sample.slug][0],
+                boundary_answers,
+                canonical=args.experiment == FULL_SCAN_EXPERIMENT,
             ) if gaps else [],
         }
         result_path.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -860,6 +975,7 @@ def main() -> None:
         boundary for result in results for boundary in result.get("boundaries", [])
     ])
     control_probabilities = [row["advertisementProbability"] for row in observations if row["slug"] == CONTROL_SLUG]
+    episode_summaries = full_scan_episode_summaries(observations) if args.experiment == FULL_SCAN_EXPERIMENT else []
     report = {
         "schemaVersion": 1,
         "experiment": args.experiment,
@@ -867,6 +983,7 @@ def main() -> None:
         "model": MODEL,
         "completedAt": datetime.now(timezone.utc).isoformat(),
         "sampleCount": len(results),
+        "episodeCount": len(episode_summaries) if episode_summaries else len({result["sample"]["slug"] for result in results}),
         "uniqueSentenceCount": len(observations),
         "totalCostUsd": round(spent, 8),
         "latencyMs": {
@@ -882,11 +999,12 @@ def main() -> None:
             metrics_at_role_thresholds(
                 observations, FROZEN_PAID_AD_THRESHOLD, FROZEN_BUMPER_THRESHOLD
             )
-            if args.experiment == DURATION_BOUNDARY_EXPERIMENT
+            if args.experiment in (DURATION_BOUNDARY_EXPERIMENT, FULL_SCAN_EXPERIMENT)
             else None
         ),
         "boundaryEvaluation": boundary_metrics(boundaries) if boundaries else None,
         "boundaries": boundaries,
+        "episodes": episode_summaries,
         "observations": observations,
         "nextStep": "Inspect REVIEW.html and decide whether to design a full development/holdout comparison.",
     }
