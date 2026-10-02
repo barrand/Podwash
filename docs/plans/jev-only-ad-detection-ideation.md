@@ -38,6 +38,34 @@ the current show remain keep-content unless product policy changes explicitly.
 - The evaluator and shipped iOS client currently use different sentence
   segmentation. They must be identical before a production comparison.
 
+### Role-Choice v3 result
+
+The frozen 33-window v3 run completed on 2026-10-01 using Jev 1.13.0:
+
+- cost: $0.0068163;
+- median/max latency: 191.6/364.7 ms;
+- at threshold 0.50: precision 0.9928, recall 0.9281, 6.22 false-positive
+  seconds, and 66.70 missed-ad seconds;
+- at threshold 0.70: precision 1.0000 and recall 0.9140;
+- maximum removable probability in the no-ad control: 0.02;
+- no purely editorial sentence reached 0.50; the 6.22 false-positive seconds
+  at 0.50 came from the editorial portions of mixed boundary sentences;
+- fully-ad sentences alone had 0.9786 recall at 0.50. About 47.94 of the
+  66.70 missed seconds were ad portions of mixed boundary sentences.
+
+The competing roles successfully protected routine housekeeping: the v2 false
+positive asking listeners to download, rate, and review the current show fell
+from 0.80 removable probability to 0.00. However, the Cougar Sports station
+bumper also fell to 0.05 because the v3 policy described current-show/station
+identification as housekeeping while its golden labels that produced bumper as
+removable. Resolve that policy contradiction before another prompt revision.
+
+V3 is the strongest safety-oriented semantic design so far, but it is not yet a
+standalone production result. Its aggregate recall is limited mainly by mixed
+sentence boundaries, one prompt/golden policy conflict, and unstable context
+for generic ad openers. The next experiment must use the exact production
+segmenter and one canonical context per decision.
+
 ## Leading Jev-only architecture
 
 Use Jev for semantic decisions and deterministic server code for coverage,
@@ -190,4 +218,5 @@ boundaries.
 | 2026-10-01 | Keep the single removable-ad Noul as the sentence-level baseline. |
 | 2026-10-01 | Reject paid/promo max-OR v2 as the leading design. |
 | 2026-10-01 | Explore a fully Jev-only model layer with deterministic sequence and boundary logic. |
-| 2026-10-01 | Implement mutually exclusive role Choice v3 on the frozen micro sample; live run pending. |
+| 2026-10-01 | Role Choice v3 achieved P=0.9928/R=0.9281 at 0.50 with no pure-editorial false positive; retain it as the leading safety-oriented design. |
+| 2026-10-01 | Next resolve station-bumper policy and test exact production segmentation plus canonical context. |
