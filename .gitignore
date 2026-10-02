@@ -69,3 +69,6 @@ GoogleService-Info.plist
 Models/
 
 # Ad detection eval harness (downloaded audio + transcripts)
+tmp/ad-eval/jev-smoke/
+tmp/ad-eval/jev-micro-v1/
+tmp/ad-eval/jev-micro-v2/

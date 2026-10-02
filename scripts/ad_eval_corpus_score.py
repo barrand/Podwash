@@ -20,7 +20,9 @@ DEFAULT_WORKDIR = ROOT / "tmp" / "ad-eval"
 
 
 def sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    # Goldens were generated from LF JSON. Git's Windows checkout conversion
+    # must not make an otherwise identical transcript fail its provenance gate.
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def load_corpus(corpus: Path, workdir: Path) -> tuple[dict[str, str], dict[str, dict[str, Any]]]:
