@@ -136,8 +136,9 @@ def sentence_rows(words: list[dict[str, Any]]) -> list[SentenceRow]:
     return rows
 
 
-def production_sentence_rows(words: list[dict[str, Any]]) -> list[SentenceRow]:
-    """Mirror ``CloudAdSpanClient.sentences`` while retaining source word ranges."""
+def _production_sentence_rows(
+    words: list[dict[str, Any]], max_duration_seconds: float | None
+) -> list[SentenceRow]:
     rows: list[SentenceRow] = []
     current: list[tuple[int, dict[str, Any]]] = []
 
@@ -168,10 +169,25 @@ def production_sentence_rows(words: list[dict[str, Any]]) -> list[SentenceRow]:
         if current and start - float(current[-1][1]["end"]) >= 18.0:
             finish()
         current.append((index, word))
-        if any(mark in str(word["word"]) for mark in ".?!") or len(current) >= 80:
+        duration = end - float(current[0][1]["start"])
+        if (
+            any(mark in str(word["word"]) for mark in ".?!")
+            or len(current) >= 80
+            or (max_duration_seconds is not None and duration >= max_duration_seconds)
+        ):
             finish()
     finish()
     return rows
+
+
+def production_sentence_rows(words: list[dict[str, Any]]) -> list[SentenceRow]:
+    """Mirror ``CloudAdSpanClient.sentences`` while retaining source word ranges."""
+    return _production_sentence_rows(words, max_duration_seconds=None)
+
+
+def production_duration_capped_sentence_rows(words: list[dict[str, Any]]) -> list[SentenceRow]:
+    """Candidate iOS segmentation with the production rules plus an 18-second cap."""
+    return _production_sentence_rows(words, max_duration_seconds=18.0)
 
 
 def clean_text(value: str, limit: int) -> str:

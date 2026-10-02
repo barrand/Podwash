@@ -252,3 +252,4 @@ boundaries.
 | 2026-10-02 | Implement v4 with exact iOS segmentation, a distinct removable-bumper role, and explicit gap-transition choices; live run pending. |
 | 2026-10-02 | V4 achieved P=0.9963/R=0.9492 with paid=0.50 and bumper=0.90; clean boundaries were 16/17 correct. |
 | 2026-10-02 | Treat long mixed production sentences as the next bottleneck; test a duration cap before broad corpus evaluation. |
+| 2026-10-02 | Implement v5 with an 18-second production duration cap and freeze paid=0.50/bumper=0.90 before the live run. |

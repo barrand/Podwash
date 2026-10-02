@@ -6,6 +6,7 @@ import unittest
 from ad_eval_gemini import (
     MAX_SENTENCE_SECONDS,
     build_user_prompt,
+    production_duration_capped_sentence_rows,
     production_sentence_rows,
     extract_response,
     request_payload,
@@ -33,6 +34,14 @@ class TestGeminiAdEval(unittest.TestCase):
         self.assertEqual([(row.start_word, row.end_word) for row in result], [(0, 1), (1, 2), (2, 3)])
         long = production_sentence_rows([word("token", i * 0.1, i * 0.1 + 0.05) for i in range(81)])
         self.assertEqual([row.end_word - row.start_word for row in long], [80, 1])
+
+    def test_candidate_production_rows_add_duration_cap(self) -> None:
+        source = [word("token", index * 0.5, index * 0.5 + 0.1) for index in range(50)]
+        current = production_sentence_rows(source)
+        candidate = production_duration_capped_sentence_rows(source)
+        self.assertEqual(len(current), 1)
+        self.assertEqual(len(candidate), 2)
+        self.assertGreaterEqual(candidate[0].end - candidate[0].start, 18.0)
 
     def test_sentence_rows_use_punctuation_gap_and_max_duration(self) -> None:
         words = [

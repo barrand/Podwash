@@ -19,7 +19,12 @@ from pathlib import Path
 from typing import Any
 
 from ad_eval_corpus_score import DEFAULT_CORPUS, DEFAULT_WORKDIR, sha256
-from ad_eval_gemini import load_context, production_sentence_rows, sentence_rows
+from ad_eval_gemini import (
+    load_context,
+    production_duration_capped_sentence_rows,
+    production_sentence_rows,
+    sentence_rows,
+)
 
 
 MODEL = "jev-1.13.0"
@@ -27,7 +32,9 @@ ENDPOINT = "https://api.typesafe.ai/v1/systemone"
 PAID_PROMO_EXPERIMENT = "paid-promo-v2"
 ROLE_CHOICE_EXPERIMENT = "role-choice-v3"
 ROLE_BOUNDARY_EXPERIMENT = "role-boundary-v4"
-EXPERIMENTS = (PAID_PROMO_EXPERIMENT, ROLE_CHOICE_EXPERIMENT, ROLE_BOUNDARY_EXPERIMENT)
+DURATION_BOUNDARY_EXPERIMENT = "duration-boundary-v5"
+BOUNDARY_EXPERIMENTS = (ROLE_BOUNDARY_EXPERIMENT, DURATION_BOUNDARY_EXPERIMENT)
+EXPERIMENTS = (PAID_PROMO_EXPERIMENT, ROLE_CHOICE_EXPERIMENT, *BOUNDARY_EXPERIMENTS)
 POSITIVE_SLUGS = ("cougar-sports", "joe-rogan-mrbeast")
 CONTROL_SLUG = "ai-news-strategy-daily"
 PILOT_SLUGS = (*POSITIVE_SLUGS, CONTROL_SLUG)
@@ -38,6 +45,8 @@ CONTROL_TARGET_SENTENCES = 5
 THRESHOLDS = (0.50, 0.70, 0.80, 0.90, 0.95)
 MAX_ESTIMATED_REQUEST_TOKENS = 20_000
 V4_MAX_ESTIMATED_REQUEST_TOKENS = 30_000
+FROZEN_PAID_AD_THRESHOLD = 0.50
+FROZEN_BUMPER_THRESHOLD = 0.90
 PRICE_CARD = {
     "model": MODEL,
     "currency": "USD",
@@ -123,7 +132,7 @@ BOUNDARY_CRITERIA = {
 def role_config(experiment: str) -> tuple[dict[str, str], dict[str, str]]:
     if experiment == ROLE_CHOICE_EXPERIMENT:
         return ROLE_CRITERIA_V3, ROLE_PROBABILITY_FIELDS_V3
-    if experiment == ROLE_BOUNDARY_EXPERIMENT:
+    if experiment in BOUNDARY_EXPERIMENTS:
         return ROLE_CRITERIA_V4, ROLE_PROBABILITY_FIELDS_V4
     raise ValueError(f"experiment {experiment} does not use role choices")
 
@@ -164,7 +173,12 @@ def load_episode(
     words = json.loads(transcript_path.read_text(encoding="utf-8"))
     if not isinstance(words, list) or not words:
         raise ValueError(f"{slug}: transcript has no words")
-    row_builder = production_sentence_rows if experiment == ROLE_BOUNDARY_EXPERIMENT else sentence_rows
+    if experiment == DURATION_BOUNDARY_EXPERIMENT:
+        row_builder = production_duration_capped_sentence_rows
+    elif experiment == ROLE_BOUNDARY_EXPERIMENT:
+        row_builder = production_sentence_rows
+    else:
+        row_builder = sentence_rows
     return golden, words, row_builder(words)
 
 
@@ -247,7 +261,7 @@ def request_payload(
     }
     questions: dict[str, Any] = {}
     for row in target_rows:
-        if experiment in (ROLE_CHOICE_EXPERIMENT, ROLE_BOUNDARY_EXPERIMENT):
+        if experiment == ROLE_CHOICE_EXPERIMENT or experiment in BOUNDARY_EXPERIMENTS:
             criteria, _fields = role_config(experiment)
             questions[f"sentence-{row.id}-role"] = {
                 "type": "choice",
@@ -280,7 +294,7 @@ def request_payload(
             ),
             "criteria": {"true": PROMO_TRUE_CRITERION, "false": PROMO_FALSE_CRITERION},
         }
-    if experiment == ROLE_BOUNDARY_EXPERIMENT:
+    if experiment in BOUNDARY_EXPERIMENTS:
         for left, right in target_gaps(rows, sample):
             questions[f"gap-{left.id}-{right.id}-transition"] = {
                 "type": "choice",
@@ -328,10 +342,10 @@ def parse_answers(
     if not isinstance(response, dict) or response.get("model") != MODEL:
         raise ValueError(f"response must report pinned model {MODEL}")
     answers = response.get("answers")
-    if experiment in (ROLE_CHOICE_EXPERIMENT, ROLE_BOUNDARY_EXPERIMENT):
+    if experiment == ROLE_CHOICE_EXPERIMENT or experiment in BOUNDARY_EXPERIMENTS:
         criteria, probability_fields = role_config(experiment)
         expected = {f"sentence-{row.id}-role" for row in target_rows}
-        if experiment == ROLE_BOUNDARY_EXPERIMENT:
+        if experiment in BOUNDARY_EXPERIMENTS:
             expected |= expected_gap_ids or set()
         if not isinstance(answers, dict) or set(answers) != expected:
             raise ValueError("response answers must match requested sentence IDs exactly")
@@ -358,7 +372,7 @@ def parse_answers(
             }
             removable_role = (
                 "removable_bumper_or_cross_promo"
-                if experiment == ROLE_BOUNDARY_EXPERIMENT
+                if experiment in BOUNDARY_EXPERIMENTS
                 else "cross_promo"
             )
             parsed.append({
@@ -605,6 +619,37 @@ def metrics_at(observations: list[dict[str, Any]], threshold: float) -> dict[str
     }
 
 
+def metrics_at_role_thresholds(
+    observations: list[dict[str, Any]], paid_threshold: float, bumper_threshold: float
+) -> dict[str, Any]:
+    tp = fp = fn = tn = 0.0
+    for row in observations:
+        duration = float(row["end"]) - float(row["start"])
+        golden = duration * float(row["goldenAdFraction"])
+        editorial = duration - golden
+        predicted = (
+            float(row["paidAdProbability"]) >= paid_threshold
+            or float(row["bumperOrCrossPromoProbability"]) >= bumper_threshold
+        )
+        if predicted:
+            tp += golden
+            fp += editorial
+        else:
+            fn += golden
+            tn += editorial
+    return {
+        "paidAdThreshold": paid_threshold,
+        "bumperOrCrossPromoThreshold": bumper_threshold,
+        "operator": "or",
+        "truePositiveSeconds": round(tp, 3),
+        "falsePositiveSeconds": round(fp, 3),
+        "falseNegativeSeconds": round(fn, 3),
+        "trueNegativeSeconds": round(tn, 3),
+        "precision": round(tp / (tp + fp), 4) if tp + fp else 1.0,
+        "recall": round(tp / (tp + fn), 4) if tp + fn else 1.0,
+    }
+
+
 def write_review(samples: list[dict[str, Any]], path: Path, experiment: str) -> None:
     sections: list[str] = []
     for result in samples:
@@ -617,7 +662,7 @@ def write_review(samples: list[dict[str, Any]], path: Path, experiment: str) -> 
                 f"<tr class='{klass}'><td>{observation['sentence']}</td>"
                 f"<td>{observation['start']:.2f}–{observation['end']:.2f}</td><td>{golden:.2f}</td>"
             )
-            if experiment in (ROLE_CHOICE_EXPERIMENT, ROLE_BOUNDARY_EXPERIMENT):
+            if experiment == ROLE_CHOICE_EXPERIMENT or experiment in BOUNDARY_EXPERIMENTS:
                 _criteria, probability_fields = role_config(experiment)
                 probability_cells = "".join(
                     f"<td>{observation[field]:.3f}</td>" for field in probability_fields.values()
@@ -633,7 +678,7 @@ def write_review(samples: list[dict[str, Any]], path: Path, experiment: str) -> 
                     f"<td>{observation['promoProbability']:.3f}</td><td>{probability:.3f}</td>"
                     f"<td>{html.escape(observation['text'])}</td></tr>"
                 )
-        if experiment in (ROLE_CHOICE_EXPERIMENT, ROLE_BOUNDARY_EXPERIMENT):
+        if experiment == ROLE_CHOICE_EXPERIMENT or experiment in BOUNDARY_EXPERIMENTS:
             _criteria, probability_fields = role_config(experiment)
             probability_headers = "".join(
                 f"<th>p({html.escape(role)})</th>" for role in probability_fields
@@ -642,7 +687,7 @@ def write_review(samples: list[dict[str, Any]], path: Path, experiment: str) -> 
         else:
             headers = "<th>p(paid)</th><th>p(promo)</th><th>combined p(ad)</th>"
         boundary_table = ""
-        if experiment == ROLE_BOUNDARY_EXPERIMENT:
+        if experiment in BOUNDARY_EXPERIMENTS:
             boundary_rows = "".join(
                 f"<tr><td>{row['leftSentence']}→{row['rightSentence']}</td>"
                 f"<td>{html.escape(row['goldenTransition'])}</td>"
@@ -695,6 +740,7 @@ def main() -> None:
         PAID_PROMO_EXPERIMENT: "jev-micro-v2",
         ROLE_CHOICE_EXPERIMENT: "jev-micro-v3",
         ROLE_BOUNDARY_EXPERIMENT: "jev-micro-v4",
+        DURATION_BOUNDARY_EXPERIMENT: "jev-micro-v5",
     }[args.experiment]
     output = (args.output or workdir / output_name).resolve()
     api_key = os.environ.get("TYPESAFE_API_KEY", "")
@@ -713,7 +759,7 @@ def main() -> None:
         tokens, cost = estimated_tokens(payload), estimated_cost(payload)
         request_limit = (
             V4_MAX_ESTIMATED_REQUEST_TOKENS
-            if args.experiment == ROLE_BOUNDARY_EXPERIMENT
+            if args.experiment in BOUNDARY_EXPERIMENTS
             else MAX_ESTIMATED_REQUEST_TOKENS
         )
         if tokens > request_limit:
@@ -727,7 +773,19 @@ def main() -> None:
     manifest = {
         "schemaVersion": 1,
         "experiment": args.experiment,
-        "segmentation": "ios-production" if args.experiment == ROLE_BOUNDARY_EXPERIMENT else "evaluation-v1",
+        "segmentation": {
+            ROLE_BOUNDARY_EXPERIMENT: "ios-production",
+            DURATION_BOUNDARY_EXPERIMENT: "ios-production-plus-18-second-cap",
+        }.get(args.experiment, "evaluation-v1"),
+        "frozenDecisionRule": (
+            {
+                "paidAdThreshold": FROZEN_PAID_AD_THRESHOLD,
+                "bumperOrCrossPromoThreshold": FROZEN_BUMPER_THRESHOLD,
+                "operator": "or",
+            }
+            if args.experiment == DURATION_BOUNDARY_EXPERIMENT
+            else None
+        ),
         "model": MODEL,
         "sampleCount": len(samples),
         "projectedCostUsd": round(projected_total, 8),
@@ -772,7 +830,7 @@ def main() -> None:
         (sample_dir / "response.json").write_text(json.dumps(response, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         _golden, _words, rows = episodes[sample.slug]
         target_rows = rows[sample.target_start:sample.target_end]
-        gaps = target_gaps(rows, sample) if args.experiment == ROLE_BOUNDARY_EXPERIMENT else []
+        gaps = target_gaps(rows, sample) if args.experiment in BOUNDARY_EXPERIMENTS else []
         gap_ids = {f"gap-{left.id}-{right.id}-transition" for left, right in gaps}
         answers = parse_answers(response, target_rows, args.experiment, gap_ids)
         boundary_answers = parse_boundary_answers(response, gaps) if gaps else []
@@ -820,6 +878,13 @@ def main() -> None:
             "maximumAdvertisementProbability": round(max(control_probabilities), 6) if control_probabilities else None,
         },
         "thresholdSweep": [metrics_at(observations, threshold) for threshold in THRESHOLDS],
+        "frozenDecisionRule": (
+            metrics_at_role_thresholds(
+                observations, FROZEN_PAID_AD_THRESHOLD, FROZEN_BUMPER_THRESHOLD
+            )
+            if args.experiment == DURATION_BOUNDARY_EXPERIMENT
+            else None
+        ),
         "boundaryEvaluation": boundary_metrics(boundaries) if boundaries else None,
         "boundaries": boundaries,
         "observations": observations,

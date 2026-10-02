@@ -10,6 +10,7 @@ from ad_eval_corpus_score import sha256
 from ad_eval_gemini import sentence_rows
 from ad_eval_jev import (
     CONTROL_SLUG,
+    DURATION_BOUNDARY_EXPERIMENT,
     POSITIVE_SLUGS,
     ROLE_BOUNDARY_EXPERIMENT,
     ROLE_CHOICE_EXPERIMENT,
@@ -19,6 +20,7 @@ from ad_eval_jev import (
     build_samples,
     deduplicate,
     metrics_at,
+    metrics_at_role_thresholds,
     parse_answers,
     parse_boundary_answers,
     request_payload,
@@ -210,6 +212,39 @@ class TestJevAdEval(unittest.TestCase):
         self.assertEqual(metrics["falseNegativeSeconds"], 2.5)
         self.assertEqual(metrics["precision"], 1.0)
         self.assertEqual(metrics["recall"], 0.8)
+
+    def test_frozen_role_thresholds_are_independent(self) -> None:
+        observations = [
+            {
+                "start": 0.0,
+                "end": 10.0,
+                "goldenAdFraction": 1.0,
+                "paidAdProbability": 0.6,
+                "bumperOrCrossPromoProbability": 0.1,
+            },
+            {
+                "start": 10.0,
+                "end": 20.0,
+                "goldenAdFraction": 1.0,
+                "paidAdProbability": 0.1,
+                "bumperOrCrossPromoProbability": 0.95,
+            },
+            {
+                "start": 20.0,
+                "end": 30.0,
+                "goldenAdFraction": 0.0,
+                "paidAdProbability": 0.1,
+                "bumperOrCrossPromoProbability": 0.8,
+            },
+        ]
+        result = metrics_at_role_thresholds(observations, 0.5, 0.9)
+        self.assertEqual(result["precision"], 1.0)
+        self.assertEqual(result["recall"], 1.0)
+
+        episode_rows = rows(3)
+        sample = Sample("sample", "show", "ad-boundary", 0, 3, 1, 2, "span")
+        payload = request_payload({}, episode_rows, sample, DURATION_BOUNDARY_EXPERIMENT)
+        self.assertTrue(any(name.endswith("-transition") for name in payload["questions"]))
 
     def test_transcript_hash_is_stable_across_windows_line_endings(self) -> None:
         with TemporaryDirectory() as directory:
