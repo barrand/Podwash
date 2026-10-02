@@ -262,6 +262,42 @@ boundaries.
 - What relative penalty should evaluation assign to one second of deleted
   editorial content versus one second of missed advertising?
 
+## Audit-derived policy draft: classify first, filter second
+
+Do not use "unrelated to the episode topic" as the removal rule. Topic drift is
+useful supporting evidence, but by itself would wrongly remove tangents, quoted
+material, credits, guest discussion, and documentary examples. Classify the
+speaker's function and commercial intent first, preserve that category in the
+server response, and let listener settings decide which categories to skip.
+
+| Category | Classification rule | Suggested default |
+| --- | --- | --- |
+| Paid ad | A current commercial, sponsor read, DAI creative, disclaimer, or CTA. | Skip |
+| Cross-show/network promo | A produced teaser or explicit invitation to consume another show or network property. | Listener setting |
+| Membership/subscription appeal | An explicit request to pay, subscribe, donate, or join an ad-free feed, including its value statement. | Listener setting |
+| Current-show housekeeping | Follow/rate/review requests, schedule notes, thanks, greetings, and ordinary sign-offs without a paid conversion pitch. | Keep |
+| Production credit/network ID | Identity or attribution without a promotional claim or listener action. | Keep |
+| Quoted or archival commercial | Commercial material played as the object of reporting, criticism, history, or discussion, with nearby editorial framing. | Keep |
+| Mixed boundary | One model sentence contains both removable and keep material. Split deterministically when possible; otherwise keep the whole sentence. | Keep safely |
+
+Applied to the Version History outro: remove the explicit "subscribe to The
+Verge" appeal through "It's what enables us to do all of this stuff." Keep
+"Thank you so much," "We'll see you next time," and the bare Vox Media
+production credit. Applied to the Philips Living Colors clip: keep it because
+the host explicitly introduces and discusses the historical commercial as
+episode evidence.
+
+The next Jev candidate should add the RSS episode description, explicitly teach
+the quoted/archival-commercial exception, and split the current broad promo role
+into typed promotional outputs. This is a new experiment; frozen v6 and its raw
+artifacts remain unchanged.
+
+**Preset decision (2026-10-02):** listener-facing settings are Paid Ads Only,
+Clean Listening, and Maximum Trim. Previews and recaps are editorial invariants
+and are never removable, including under Maximum Trim. The detailed taxonomy,
+API, cache, and iOS plan lives in
+[`typed-removal-presets.md`](typed-removal-presets.md).
+
 ## Decision log
 
 | Date | Decision or finding |
@@ -278,3 +314,5 @@ boundaries.
 | 2026-10-02 | Frozen v5 achieved P=1.0000/R=0.9587 and improved both editorial safety and ad recall over v4. |
 | 2026-10-02 | Stop tuning on the three micro episodes; next run complete episodes with v5 unchanged. |
 | 2026-10-02 | Implement frozen v6 full scans over all 12 Jev-untested development episodes; each sentence and gap is targeted exactly once. |
+| 2026-10-02 | Golden audit found missing Duracell and Starbucks midrolls in Version History and an overlong membership-CTA boundary; corrected both while keeping frozen v6 outputs unchanged. |
+| 2026-10-02 | Draft typed removal policy: classify paid ads, cross-promos, and membership appeals separately; keep ordinary sign-offs, bare credits, and editorially framed archival commercials. |

@@ -29,13 +29,31 @@
       "proposalId": "proposal-002"
     },
     {
+      "id": "span-5",
+      "startWord": 7947,
+      "endWord": 8011,
+      "label": "paid_dai",
+      "advertiser": "Duracell",
+      "note": "Produced Duracell spot featuring Messi during the midroll break.",
+      "origin": "human-added"
+    },
+    {
+      "id": "span-6",
+      "startWord": 8011,
+      "endWord": 8053,
+      "label": "paid_dai",
+      "advertiser": "Starbucks Frappuccino",
+      "note": "Produced Starbucks Frappuccino grocery spot immediately after Duracell.",
+      "origin": "human-added"
+    },
+    {
       "id": "span-3",
-      "startWord": 12370,
-      "endWord": 12427,
+      "startWord": 12369,
+      "endWord": 12418,
       "label": "membership_cta",
       "advertiser": "The Verge subscription",
-      "note": "Outro subscription CTA.",
-      "origin": "ai-proposal",
+      "note": "Outro subscription CTA through the value statement; excludes the ordinary thank-you and sign-off.",
+      "origin": "human-edited",
       "proposalId": "proposal-003"
     },
     {
