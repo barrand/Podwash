@@ -6,6 +6,7 @@ import unittest
 from ad_eval_gemini import (
     MAX_SENTENCE_SECONDS,
     build_user_prompt,
+    production_sentence_rows,
     extract_response,
     request_payload,
     sentence_rows,
@@ -20,6 +21,19 @@ def word(text: str, start: float, end: float) -> dict:
 
 
 class TestGeminiAdEval(unittest.TestCase):
+    def test_production_sentence_rows_match_ios_rules(self) -> None:
+        source = [
+            word("Hello...there", 0.0, 0.2),
+            word("Next", 0.3, 0.5),
+            word("after-gap", 18.5, 18.8),
+            {"word": "invalid", "start": 20.0, "end": 19.0},
+        ]
+        result = production_sentence_rows(source)
+        self.assertEqual([row.text for row in result], ["Hello...there", "Next", "after-gap"])
+        self.assertEqual([(row.start_word, row.end_word) for row in result], [(0, 1), (1, 2), (2, 3)])
+        long = production_sentence_rows([word("token", i * 0.1, i * 0.1 + 0.05) for i in range(81)])
+        self.assertEqual([row.end_word - row.start_word for row in long], [80, 1])
+
     def test_sentence_rows_use_punctuation_gap_and_max_duration(self) -> None:
         words = [
             word("Hello", 0.0, 0.2), word("there.", 0.2, 0.5),

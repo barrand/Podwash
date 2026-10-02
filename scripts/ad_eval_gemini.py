@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import html
 import json
+import math
 import os
 import re
 import sys
@@ -132,6 +133,44 @@ def sentence_rows(words: list[dict[str, Any]]) -> list[SentenceRow]:
         )
         start_word = index + 1
         current = []
+    return rows
+
+
+def production_sentence_rows(words: list[dict[str, Any]]) -> list[SentenceRow]:
+    """Mirror ``CloudAdSpanClient.sentences`` while retaining source word ranges."""
+    rows: list[SentenceRow] = []
+    current: list[tuple[int, dict[str, Any]]] = []
+
+    def finish() -> None:
+        nonlocal current
+        if not current:
+            return
+        first_index, first = current[0]
+        last_index, last = current[-1]
+        text = " ".join(str(word["word"]) for _, word in current).strip()
+        if text:
+            rows.append(
+                SentenceRow(
+                    id=len(rows) + 1,
+                    start_word=first_index,
+                    end_word=last_index + 1,
+                    start=float(first["start"]),
+                    end=float(last["end"]),
+                    text=text,
+                )
+            )
+        current = []
+
+    for index, word in enumerate(words):
+        start, end = float(word["start"]), float(word["end"])
+        if not math.isfinite(start) or not math.isfinite(end) or end <= start:
+            continue
+        if current and start - float(current[-1][1]["end"]) >= 18.0:
+            finish()
+        current.append((index, word))
+        if any(mark in str(word["word"]) for mark in ".?!") or len(current) >= 80:
+            finish()
+    finish()
     return rows
 
 

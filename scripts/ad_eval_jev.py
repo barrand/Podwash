@@ -19,14 +19,15 @@ from pathlib import Path
 from typing import Any
 
 from ad_eval_corpus_score import DEFAULT_CORPUS, DEFAULT_WORKDIR, sha256
-from ad_eval_gemini import load_context, sentence_rows
+from ad_eval_gemini import load_context, production_sentence_rows, sentence_rows
 
 
 MODEL = "jev-1.13.0"
 ENDPOINT = "https://api.typesafe.ai/v1/systemone"
 PAID_PROMO_EXPERIMENT = "paid-promo-v2"
 ROLE_CHOICE_EXPERIMENT = "role-choice-v3"
-EXPERIMENTS = (PAID_PROMO_EXPERIMENT, ROLE_CHOICE_EXPERIMENT)
+ROLE_BOUNDARY_EXPERIMENT = "role-boundary-v4"
+EXPERIMENTS = (PAID_PROMO_EXPERIMENT, ROLE_CHOICE_EXPERIMENT, ROLE_BOUNDARY_EXPERIMENT)
 POSITIVE_SLUGS = ("cougar-sports", "joe-rogan-mrbeast")
 CONTROL_SLUG = "ai-news-strategy-daily"
 PILOT_SLUGS = (*POSITIVE_SLUGS, CONTROL_SLUG)
@@ -36,6 +37,7 @@ CONTROL_WINDOWS = 10
 CONTROL_TARGET_SENTENCES = 5
 THRESHOLDS = (0.50, 0.70, 0.80, 0.90, 0.95)
 MAX_ESTIMATED_REQUEST_TOKENS = 20_000
+V4_MAX_ESTIMATED_REQUEST_TOKENS = 30_000
 PRICE_CARD = {
     "model": MODEL,
     "currency": "USD",
@@ -61,7 +63,7 @@ PROMO_FALSE_CRITERION = (
     "The target sentence is a paid commercial, sponsor read, ordinary editorial content, credits, or a normal "
     "show/station identification, introduction, or closing that is not asking the listener to take promotional action."
 )
-ROLE_CRITERIA = {
+ROLE_CRITERIA_V3 = {
     "paid_ad": (
         "A paid commercial, host-read sponsor message, dynamically inserted advertisement, or its opener, "
         "disclaimer, or commercial call to action."
@@ -81,13 +83,49 @@ ROLE_CRITERIA = {
         "The sentence contains both removable promotion and keep-content, or cannot safely be removed as a whole."
     ),
 }
-ROLE_PROBABILITY_FIELDS = {
+ROLE_PROBABILITY_FIELDS_V3 = {
     "paid_ad": "paidAdProbability",
     "cross_promo": "crossPromoProbability",
     "routine_housekeeping": "routineHousekeepingProbability",
     "editorial_content": "editorialContentProbability",
     "mixed_boundary": "mixedBoundaryProbability",
 }
+ROLE_CRITERIA_V4 = {
+    "paid_ad": ROLE_CRITERIA_V3["paid_ad"],
+    "removable_bumper_or_cross_promo": (
+        "A separately produced station or network bumper, scripted programming tease between segments, explicit "
+        "promotion for another show or network property, membership appeal, event promotion, or fundraiser. "
+        "A bumper may identify the current station or show without a listener call to action."
+    ),
+    "routine_housekeeping": (
+        "The current host's ordinary live show identification, opening, closing, credits, welcome-back, or request "
+        "to subscribe to, rate, or review the current show; exclude separately produced station/network bumpers."
+    ),
+    "editorial_content": ROLE_CRITERIA_V3["editorial_content"],
+    "mixed_boundary": ROLE_CRITERIA_V3["mixed_boundary"],
+}
+ROLE_PROBABILITY_FIELDS_V4 = {
+    "paid_ad": "paidAdProbability",
+    "removable_bumper_or_cross_promo": "bumperOrCrossPromoProbability",
+    "routine_housekeeping": "routineHousekeepingProbability",
+    "editorial_content": "editorialContentProbability",
+    "mixed_boundary": "mixedBoundaryProbability",
+}
+BOUNDARY_CRITERIA = {
+    "removable_begins": "Keep-content is before the marked gap and removable advertising or promotion begins after it.",
+    "removable_ends": "Removable advertising or promotion is before the marked gap and keep-content begins after it.",
+    "same_removable_continues": "Both sentences belong to the same removable advertisement or promotion.",
+    "same_keep_continues": "Both sentences are keep-content rather than removable advertising or promotion.",
+    "uncertain_or_mixed": "At least one sentence mixes roles, or the transition cannot safely be placed at this gap.",
+}
+
+
+def role_config(experiment: str) -> tuple[dict[str, str], dict[str, str]]:
+    if experiment == ROLE_CHOICE_EXPERIMENT:
+        return ROLE_CRITERIA_V3, ROLE_PROBABILITY_FIELDS_V3
+    if experiment == ROLE_BOUNDARY_EXPERIMENT:
+        return ROLE_CRITERIA_V4, ROLE_PROBABILITY_FIELDS_V4
+    raise ValueError(f"experiment {experiment} does not use role choices")
 
 
 @dataclass(frozen=True)
@@ -111,7 +149,9 @@ def request_sha256(payload: dict[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def load_episode(corpus: Path, workdir: Path, slug: str) -> tuple[dict[str, Any], list[dict[str, Any]], list[Any]]:
+def load_episode(
+    corpus: Path, workdir: Path, slug: str, experiment: str = PAID_PROMO_EXPERIMENT
+) -> tuple[dict[str, Any], list[dict[str, Any]], list[Any]]:
     golden_path = corpus / "goldens" / f"{slug}.json"
     transcript_path = workdir / slug / "transcript.json"
     if not transcript_path.exists():
@@ -124,7 +164,8 @@ def load_episode(corpus: Path, workdir: Path, slug: str) -> tuple[dict[str, Any]
     words = json.loads(transcript_path.read_text(encoding="utf-8"))
     if not isinstance(words, list) or not words:
         raise ValueError(f"{slug}: transcript has no words")
-    return golden, words, sentence_rows(words)
+    row_builder = production_sentence_rows if experiment == ROLE_BOUNDARY_EXPERIMENT else sentence_rows
+    return golden, words, row_builder(words)
 
 
 def overlap_seconds(start: float, end: float, golden: dict[str, Any]) -> float:
@@ -175,6 +216,14 @@ def build_samples(episodes: dict[str, tuple[dict[str, Any], list[dict[str, Any]]
     return samples
 
 
+def target_gaps(rows: list[Any], sample: Sample) -> list[tuple[Any, Any]]:
+    first_left = max(sample.context_start, sample.target_start - 1)
+    last_left = min(sample.context_end - 2, sample.target_end - 1)
+    if last_left < first_left:
+        return []
+    return [(rows[index], rows[index + 1]) for index in range(first_left, last_left + 1)]
+
+
 def request_payload(
     context: dict[str, str], rows: list[Any], sample: Sample, experiment: str = PAID_PROMO_EXPERIMENT
 ) -> dict[str, Any]:
@@ -198,7 +247,8 @@ def request_payload(
     }
     questions: dict[str, Any] = {}
     for row in target_rows:
-        if experiment == ROLE_CHOICE_EXPERIMENT:
+        if experiment in (ROLE_CHOICE_EXPERIMENT, ROLE_BOUNDARY_EXPERIMENT):
+            criteria, _fields = role_config(experiment)
             questions[f"sentence-{row.id}-role"] = {
                 "type": "choice",
                 "instructions": {
@@ -211,7 +261,7 @@ def request_payload(
                         "mixed_boundary."
                     ),
                 },
-                "criteria": ROLE_CRITERIA,
+                "criteria": criteria,
             }
             continue
         questions[f"sentence-{row.id}-paid-ad"] = {
@@ -230,6 +280,18 @@ def request_payload(
             ),
             "criteria": {"true": PROMO_TRUE_CRITERION, "false": PROMO_FALSE_CRITERION},
         }
+    if experiment == ROLE_BOUNDARY_EXPERIMENT:
+        for left, right in target_gaps(rows, sample):
+            questions[f"gap-{left.id}-{right.id}-transition"] = {
+                "type": "choice",
+                "instructions": {
+                    "task": (
+                        f"Classify the content transition at the gap between sentence IDs {left.id} and {right.id}."
+                    ),
+                    "safety": "Use uncertain_or_mixed whenever the gap is not a safe whole-sentence removal boundary.",
+                },
+                "criteria": BOUNDARY_CRITERIA,
+            }
     return {"state": state, "model": MODEL, "questions": questions}
 
 
@@ -260,13 +322,17 @@ def call_jev(api_key: str, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def parse_answers(
-    response: dict[str, Any], target_rows: list[Any], experiment: str = PAID_PROMO_EXPERIMENT
+    response: dict[str, Any], target_rows: list[Any], experiment: str = PAID_PROMO_EXPERIMENT,
+    expected_gap_ids: set[str] | None = None,
 ) -> list[dict[str, Any]]:
     if not isinstance(response, dict) or response.get("model") != MODEL:
         raise ValueError(f"response must report pinned model {MODEL}")
     answers = response.get("answers")
-    if experiment == ROLE_CHOICE_EXPERIMENT:
+    if experiment in (ROLE_CHOICE_EXPERIMENT, ROLE_BOUNDARY_EXPERIMENT):
+        criteria, probability_fields = role_config(experiment)
         expected = {f"sentence-{row.id}-role" for row in target_rows}
+        if experiment == ROLE_BOUNDARY_EXPERIMENT:
+            expected |= expected_gap_ids or set()
         if not isinstance(answers, dict) or set(answers) != expected:
             raise ValueError("response answers must match requested sentence IDs exactly")
         parsed: list[dict[str, Any]] = []
@@ -275,9 +341,9 @@ def parse_answers(
             if not isinstance(answer, dict) or answer.get("type") != "choice":
                 raise ValueError(f"sentence {row.id} role: expected a Choice answer")
             choice, confidence, probabilities = answer.get("choice"), answer.get("confidence"), answer.get("probabilities")
-            if choice not in ROLE_CRITERIA or not _is_number(confidence) or not isinstance(probabilities, dict):
+            if choice not in criteria or not _is_number(confidence) or not isinstance(probabilities, dict):
                 raise ValueError(f"sentence {row.id} role: invalid choice, confidence, or probabilities")
-            if set(probabilities) != set(ROLE_CRITERIA):
+            if set(probabilities) != set(criteria):
                 raise ValueError(f"sentence {row.id} role: probabilities must match role criteria exactly")
             if not 0.0 <= float(confidence) <= 1.0:
                 raise ValueError(f"sentence {row.id} role: confidence is outside 0...1")
@@ -287,16 +353,21 @@ def parse_answers(
             if not 0.98 <= probability_sum <= 1.02:
                 raise ValueError(f"sentence {row.id} role: probabilities do not sum approximately to one")
             flattened = {
-                ROLE_PROBABILITY_FIELDS[name]: round(float(probabilities[name]), 6)
-                for name in ROLE_CRITERIA
+                probability_fields[name]: round(float(probabilities[name]), 6)
+                for name in criteria
             }
+            removable_role = (
+                "removable_bumper_or_cross_promo"
+                if experiment == ROLE_BOUNDARY_EXPERIMENT
+                else "cross_promo"
+            )
             parsed.append({
                 "sentence": row.id,
                 "selectedRole": choice,
                 "roleConfidence": round(float(confidence), 6),
                 **flattened,
                 "advertisementProbability": round(
-                    min(1.0, flattened["paidAdProbability"] + flattened["crossPromoProbability"]), 6
+                    min(1.0, flattened["paidAdProbability"] + flattened[probability_fields[removable_role]]), 6
                 ),
             })
         return parsed
@@ -327,6 +398,39 @@ def parse_answers(
                 "advertisementProbability": max(probabilities.values()),
             }
         )
+    return parsed
+
+
+def parse_boundary_answers(response: dict[str, Any], gaps: list[tuple[Any, Any]]) -> list[dict[str, Any]]:
+    answers = response.get("answers") if isinstance(response, dict) else None
+    if not isinstance(answers, dict):
+        raise ValueError("response answers must be an object")
+    parsed: list[dict[str, Any]] = []
+    for left, right in gaps:
+        question_id = f"gap-{left.id}-{right.id}-transition"
+        answer = answers.get(question_id)
+        if not isinstance(answer, dict) or answer.get("type") != "choice":
+            raise ValueError(f"gap {left.id}-{right.id}: expected a Choice answer")
+        choice, confidence, probabilities = answer.get("choice"), answer.get("confidence"), answer.get("probabilities")
+        if choice not in BOUNDARY_CRITERIA or not _is_number(confidence) or not isinstance(probabilities, dict):
+            raise ValueError(f"gap {left.id}-{right.id}: invalid choice, confidence, or probabilities")
+        if set(probabilities) != set(BOUNDARY_CRITERIA):
+            raise ValueError(f"gap {left.id}-{right.id}: probabilities must match transition criteria exactly")
+        if not 0.0 <= float(confidence) <= 1.0:
+            raise ValueError(f"gap {left.id}-{right.id}: confidence is outside 0...1")
+        if any(not _is_number(value) or not 0.0 <= float(value) <= 1.0 for value in probabilities.values()):
+            raise ValueError(f"gap {left.id}-{right.id}: probability is outside 0...1")
+        if not 0.98 <= sum(float(value) for value in probabilities.values()) <= 1.02:
+            raise ValueError(f"gap {left.id}-{right.id}: probabilities do not sum approximately to one")
+        parsed.append({
+            "leftSentence": left.id,
+            "rightSentence": right.id,
+            "selectedTransition": choice,
+            "transitionConfidence": round(float(confidence), 6),
+            "transitionProbabilities": {
+                name: round(float(probabilities[name]), 6) for name in BOUNDARY_CRITERIA
+            },
+        })
     return parsed
 
 
@@ -363,6 +467,86 @@ def observations_for(sample: Sample, rows: list[Any], golden: dict[str, Any], an
     return observations
 
 
+def expected_transition(left: Any, right: Any, golden: dict[str, Any]) -> str:
+    left_fraction = golden_overlap(left, list(golden["spans"]))
+    right_fraction = golden_overlap(right, list(golden["spans"]))
+    if 0.0 < left_fraction < 1.0 or 0.0 < right_fraction < 1.0:
+        return "uncertain_or_mixed"
+    if left_fraction == 0.0 and right_fraction == 1.0:
+        return "removable_begins"
+    if left_fraction == 1.0 and right_fraction == 0.0:
+        return "removable_ends"
+    if left_fraction == 1.0 and right_fraction == 1.0:
+        return "same_removable_continues"
+    return "same_keep_continues"
+
+
+def boundary_observations_for(
+    sample: Sample,
+    rows: list[Any],
+    golden: dict[str, Any],
+    answers: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    gaps = target_gaps(rows, sample)
+    if len(gaps) != len(answers):
+        raise ValueError(f"{sample.id}: gap/answer count mismatch")
+    return [
+        {
+            "sample": sample.id,
+            "slug": sample.slug,
+            "leftSentence": left.id,
+            "rightSentence": right.id,
+            "gapStart": round(float(left.end), 3),
+            "gapEnd": round(float(right.start), 3),
+            "leftText": left.text,
+            "rightText": right.text,
+            "goldenTransition": expected_transition(left, right, golden),
+            **answer,
+        }
+        for (left, right), answer in zip(gaps, answers)
+    ]
+
+
+def deduplicate_boundaries(boundaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    grouped: dict[tuple[str, int, int], list[dict[str, Any]]] = {}
+    for boundary in boundaries:
+        key = (boundary["slug"], boundary["leftSentence"], boundary["rightSentence"])
+        grouped.setdefault(key, []).append(boundary)
+    result: list[dict[str, Any]] = []
+    for key in sorted(grouped):
+        members = grouped[key]
+        base = dict(members[0])
+        base["transitionConfidence"] = round(
+            statistics.mean(float(row["transitionConfidence"]) for row in members), 6
+        )
+        base["transitionProbabilities"] = {
+            name: round(statistics.mean(float(row["transitionProbabilities"][name]) for row in members), 6)
+            for name in BOUNDARY_CRITERIA
+        }
+        base["selectedTransition"] = max(
+            BOUNDARY_CRITERIA, key=lambda name: float(base["transitionProbabilities"][name])
+        )
+        base["observationCount"] = len(members)
+        base["samples"] = [row["sample"] for row in members]
+        base.pop("sample", None)
+        result.append(base)
+    return result
+
+
+def boundary_metrics(boundaries: list[dict[str, Any]]) -> dict[str, Any]:
+    confusion: dict[str, dict[str, int]] = {}
+    correct = 0
+    for row in boundaries:
+        expected, selected = row["goldenTransition"], row["selectedTransition"]
+        confusion.setdefault(expected, {})[selected] = confusion.setdefault(expected, {}).get(selected, 0) + 1
+        correct += int(expected == selected)
+    return {
+        "gapCount": len(boundaries),
+        "accuracy": round(correct / len(boundaries), 4) if boundaries else None,
+        "confusion": confusion,
+    }
+
+
 def deduplicate(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
     grouped: dict[tuple[str, int], list[dict[str, Any]]] = {}
     for observation in observations:
@@ -378,10 +562,18 @@ def deduplicate(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
         }
         for name in averaged_fields:
             base[name] = round(statistics.mean(float(row[name]) for row in members), 6)
-        if all(field in base for field in ROLE_PROBABILITY_FIELDS.values()):
+        role_fields = next(
+            (
+                fields
+                for fields in (ROLE_PROBABILITY_FIELDS_V3, ROLE_PROBABILITY_FIELDS_V4)
+                if all(field in base for field in fields.values())
+            ),
+            None,
+        )
+        if role_fields:
             base["selectedRole"] = max(
-                ROLE_PROBABILITY_FIELDS,
-                key=lambda role: float(base[ROLE_PROBABILITY_FIELDS[role]]),
+                role_fields,
+                key=lambda role: float(base[role_fields[role]]),
             )
         base["observationCount"] = len(members)
         base["samples"] = [row["sample"] for row in members]
@@ -425,9 +617,10 @@ def write_review(samples: list[dict[str, Any]], path: Path, experiment: str) -> 
                 f"<tr class='{klass}'><td>{observation['sentence']}</td>"
                 f"<td>{observation['start']:.2f}–{observation['end']:.2f}</td><td>{golden:.2f}</td>"
             )
-            if experiment == ROLE_CHOICE_EXPERIMENT:
+            if experiment in (ROLE_CHOICE_EXPERIMENT, ROLE_BOUNDARY_EXPERIMENT):
+                _criteria, probability_fields = role_config(experiment)
                 probability_cells = "".join(
-                    f"<td>{observation[field]:.3f}</td>" for field in ROLE_PROBABILITY_FIELDS.values()
+                    f"<td>{observation[field]:.3f}</td>" for field in probability_fields.values()
                 )
                 rows.append(
                     prefix + f"<td>{html.escape(observation['selectedRole'])}</td>"
@@ -440,19 +633,35 @@ def write_review(samples: list[dict[str, Any]], path: Path, experiment: str) -> 
                     f"<td>{observation['promoProbability']:.3f}</td><td>{probability:.3f}</td>"
                     f"<td>{html.escape(observation['text'])}</td></tr>"
                 )
-        if experiment == ROLE_CHOICE_EXPERIMENT:
+        if experiment in (ROLE_CHOICE_EXPERIMENT, ROLE_BOUNDARY_EXPERIMENT):
+            _criteria, probability_fields = role_config(experiment)
             probability_headers = "".join(
-                f"<th>p({html.escape(role)})</th>" for role in ROLE_PROBABILITY_FIELDS
+                f"<th>p({html.escape(role)})</th>" for role in probability_fields
             )
             headers = f"<th>Role</th><th>Confidence</th>{probability_headers}<th>p(removable)</th>"
         else:
             headers = "<th>p(paid)</th><th>p(promo)</th><th>combined p(ad)</th>"
+        boundary_table = ""
+        if experiment == ROLE_BOUNDARY_EXPERIMENT:
+            boundary_rows = "".join(
+                f"<tr><td>{row['leftSentence']}→{row['rightSentence']}</td>"
+                f"<td>{html.escape(row['goldenTransition'])}</td>"
+                f"<td>{html.escape(row['selectedTransition'])}</td>"
+                f"<td>{row['transitionConfidence']:.3f}</td>"
+                f"<td>{html.escape(row['leftText'])}</td><td>{html.escape(row['rightText'])}</td></tr>"
+                for row in result.get("boundaries", [])
+            )
+            boundary_table = (
+                "<h3>Gap transitions</h3><table><thead><tr><th>Gap</th><th>Golden</th><th>Selected</th>"
+                "<th>Confidence</th><th>Before</th><th>After</th></tr></thead>"
+                f"<tbody>{boundary_rows}</tbody></table>"
+            )
         sections.append(
             f"<section><h2>{html.escape(result['sample']['id'])}</h2>"
             f"<p>{html.escape(result['sample']['kind'])}; latency {result['latencyMs']:.1f} ms</p>"
             "<table><thead><tr><th>Sentence</th><th>Time</th><th>Golden ad fraction</th>"
             f"{headers}<th>Text</th></tr></thead>"
-            f"<tbody>{''.join(rows)}</tbody></table></section>"
+            f"<tbody>{''.join(rows)}</tbody></table>{boundary_table}</section>"
         )
     document = (
         "<!doctype html><meta charset=utf-8><title>Jev ad-detection micro-evaluation</title>"
@@ -482,13 +691,17 @@ def main() -> None:
     if not 0 < args.spend_cap_usd <= 1.0:
         raise SystemExit("--spend-cap-usd must be greater than zero and no more than 1.0")
     workdir, corpus = args.workdir.resolve(), args.corpus.resolve()
-    output_name = "jev-micro-v3" if args.experiment == ROLE_CHOICE_EXPERIMENT else "jev-micro-v2"
+    output_name = {
+        PAID_PROMO_EXPERIMENT: "jev-micro-v2",
+        ROLE_CHOICE_EXPERIMENT: "jev-micro-v3",
+        ROLE_BOUNDARY_EXPERIMENT: "jev-micro-v4",
+    }[args.experiment]
     output = (args.output or workdir / output_name).resolve()
     api_key = os.environ.get("TYPESAFE_API_KEY", "")
     if not args.dry_run and not api_key:
         raise SystemExit("TYPESAFE_API_KEY is required unless --dry-run is used")
     try:
-        episodes = {slug: load_episode(corpus, workdir, slug) for slug in PILOT_SLUGS}
+        episodes = {slug: load_episode(corpus, workdir, slug, args.experiment) for slug in PILOT_SLUGS}
         samples = build_samples(episodes)
     except ValueError as error:
         raise SystemExit(str(error)) from error
@@ -498,8 +711,13 @@ def main() -> None:
         _golden, _words, rows = episodes[sample.slug]
         payload = request_payload(load_context(workdir, sample.slug), rows, sample, args.experiment)
         tokens, cost = estimated_tokens(payload), estimated_cost(payload)
-        if tokens > MAX_ESTIMATED_REQUEST_TOKENS:
-            raise SystemExit(f"{sample.id}: conservative estimate {tokens} exceeds {MAX_ESTIMATED_REQUEST_TOKENS} tokens")
+        request_limit = (
+            V4_MAX_ESTIMATED_REQUEST_TOKENS
+            if args.experiment == ROLE_BOUNDARY_EXPERIMENT
+            else MAX_ESTIMATED_REQUEST_TOKENS
+        )
+        if tokens > request_limit:
+            raise SystemExit(f"{sample.id}: conservative estimate {tokens} exceeds {request_limit} tokens")
         prepared.append((sample, payload, tokens, cost))
     projected_total = sum(row[3] for row in prepared)
     if projected_total > args.spend_cap_usd:
@@ -509,6 +727,7 @@ def main() -> None:
     manifest = {
         "schemaVersion": 1,
         "experiment": args.experiment,
+        "segmentation": "ios-production" if args.experiment == ROLE_BOUNDARY_EXPERIMENT else "evaluation-v1",
         "model": MODEL,
         "sampleCount": len(samples),
         "projectedCostUsd": round(projected_total, 8),
@@ -525,7 +744,7 @@ def main() -> None:
         (sample_dir / "request.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     if args.dry_run:
         largest = max(prepared, key=lambda row: row[2])
-        print(f"Dry run: {len(samples)} windows, {sum(len(p['questions']) for _, p, _, _ in prepared)} sentence questions")
+        print(f"Dry run: {len(samples)} windows, {sum(len(p['questions']) for _, p, _, _ in prepared)} questions")
         print(f"Largest request: {largest[0].id}, conservative estimate {largest[2]:,} tokens")
         print(f"Projected total cost <= ${projected_total:.5f}")
         return
@@ -553,7 +772,10 @@ def main() -> None:
         (sample_dir / "response.json").write_text(json.dumps(response, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         _golden, _words, rows = episodes[sample.slug]
         target_rows = rows[sample.target_start:sample.target_end]
-        answers = parse_answers(response, target_rows, args.experiment)
+        gaps = target_gaps(rows, sample) if args.experiment == ROLE_BOUNDARY_EXPERIMENT else []
+        gap_ids = {f"gap-{left.id}-{right.id}-transition" for left, right in gaps}
+        answers = parse_answers(response, target_rows, args.experiment, gap_ids)
+        boundary_answers = parse_boundary_answers(response, gaps) if gaps else []
         cost = usage_cost(response)
         spent += float(cost["totalCostUsd"])
         result = {
@@ -566,6 +788,9 @@ def main() -> None:
             "latencyMs": latency_ms,
             "usage": cost,
             "observations": observations_for(sample, rows, episodes[sample.slug][0], answers),
+            "boundaries": boundary_observations_for(
+                sample, rows, episodes[sample.slug][0], boundary_answers
+            ) if gaps else [],
         }
         result_path.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         results.append(result)
@@ -573,6 +798,9 @@ def main() -> None:
             raise SystemExit(f"actual spend ${spent:.4f} exceeded the cap; stopping")
 
     observations = deduplicate([observation for result in results for observation in result["observations"]])
+    boundaries = deduplicate_boundaries([
+        boundary for result in results for boundary in result.get("boundaries", [])
+    ])
     control_probabilities = [row["advertisementProbability"] for row in observations if row["slug"] == CONTROL_SLUG]
     report = {
         "schemaVersion": 1,
@@ -592,6 +820,8 @@ def main() -> None:
             "maximumAdvertisementProbability": round(max(control_probabilities), 6) if control_probabilities else None,
         },
         "thresholdSweep": [metrics_at(observations, threshold) for threshold in THRESHOLDS],
+        "boundaryEvaluation": boundary_metrics(boundaries) if boundaries else None,
+        "boundaries": boundaries,
         "observations": observations,
         "nextStep": "Inspect REVIEW.html and decide whether to design a full development/holdout comparison.",
     }

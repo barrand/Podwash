@@ -1,4 +1,4 @@
-$Experiment = "role-choice-v3"
+$Experiment = "role-boundary-v4"
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot

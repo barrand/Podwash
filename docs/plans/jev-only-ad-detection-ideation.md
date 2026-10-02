@@ -220,3 +220,4 @@ boundaries.
 | 2026-10-01 | Explore a fully Jev-only model layer with deterministic sequence and boundary logic. |
 | 2026-10-01 | Role Choice v3 achieved P=0.9928/R=0.9281 at 0.50 with no pure-editorial false positive; retain it as the leading safety-oriented design. |
 | 2026-10-01 | Next resolve station-bumper policy and test exact production segmentation plus canonical context. |
+| 2026-10-02 | Implement v4 with exact iOS segmentation, a distinct removable-bumper role, and explicit gap-transition choices; live run pending. |

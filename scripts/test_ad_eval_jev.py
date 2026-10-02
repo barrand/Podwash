@@ -11,13 +11,18 @@ from ad_eval_gemini import sentence_rows
 from ad_eval_jev import (
     CONTROL_SLUG,
     POSITIVE_SLUGS,
+    ROLE_BOUNDARY_EXPERIMENT,
     ROLE_CHOICE_EXPERIMENT,
     Sample,
+    boundary_metrics,
+    boundary_observations_for,
     build_samples,
     deduplicate,
     metrics_at,
     parse_answers,
+    parse_boundary_answers,
     request_payload,
+    target_gaps,
 )
 
 
@@ -125,6 +130,71 @@ class TestJevAdEval(unittest.TestCase):
         response["answers"]["sentence-2-role"]["probabilities"]["paid_ad"] = 0.2
         with self.assertRaisesRegex(ValueError, "sum approximately"):
             parse_answers(response, episode_rows[1:3], ROLE_CHOICE_EXPERIMENT)
+
+    def test_v4_role_and_boundary_contract(self) -> None:
+        episode_rows = rows(4)
+        sample = Sample("sample", "show", "ad-boundary", 0, 4, 1, 3, "span")
+        payload = request_payload(
+            {"show": "Show", "episode": "Episode", "showDescription": ""},
+            episode_rows,
+            sample,
+            ROLE_BOUNDARY_EXPERIMENT,
+        )
+        gaps = target_gaps(episode_rows, sample)
+        gap_ids = {f"gap-{left.id}-{right.id}-transition" for left, right in gaps}
+        self.assertEqual(
+            set(payload["questions"]),
+            {"sentence-2-role", "sentence-3-role", *gap_ids},
+        )
+        role_probabilities = {
+            "paid_ad": 0.6,
+            "removable_bumper_or_cross_promo": 0.2,
+            "routine_housekeeping": 0.05,
+            "editorial_content": 0.1,
+            "mixed_boundary": 0.05,
+        }
+        transition_probabilities = {
+            "removable_begins": 0.8,
+            "removable_ends": 0.05,
+            "same_removable_continues": 0.05,
+            "same_keep_continues": 0.05,
+            "uncertain_or_mixed": 0.05,
+        }
+        response = {
+            "model": "jev-1.13.0",
+            "answers": {
+                **{
+                    f"sentence-{row.id}-role": {
+                        "type": "choice",
+                        "choice": "paid_ad",
+                        "confidence": 0.8,
+                        "probabilities": role_probabilities,
+                    }
+                    for row in episode_rows[1:3]
+                },
+                **{
+                    question_id: {
+                        "type": "choice",
+                        "choice": "removable_begins",
+                        "confidence": 0.8,
+                        "probabilities": transition_probabilities,
+                    }
+                    for question_id in gap_ids
+                },
+            },
+            "usage": {"input_tokens": 100, "output_tokens": 10},
+        }
+        parsed = parse_answers(
+            response, episode_rows[1:3], ROLE_BOUNDARY_EXPERIMENT, gap_ids
+        )
+        self.assertEqual([row["advertisementProbability"] for row in parsed], [0.8, 0.8])
+        boundary_answers = parse_boundary_answers(response, gaps)
+        golden = {"spans": [{"start": 1.0, "end": 2.5}]}
+        observations = boundary_observations_for(
+            sample, episode_rows, golden, boundary_answers
+        )
+        self.assertEqual(observations[0]["goldenTransition"], "removable_begins")
+        self.assertEqual(boundary_metrics(observations)["gapCount"], 3)
 
     def test_deduplication_and_fractional_time_scoring(self) -> None:
         observations = [
