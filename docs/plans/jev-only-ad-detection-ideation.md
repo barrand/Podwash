@@ -292,10 +292,10 @@ the quoted/archival-commercial exception, and split the current broad promo role
 into typed promotional outputs. This is a new experiment; frozen v6 and its raw
 artifacts remain unchanged.
 
-**Preset decision (2026-10-02):** listener-facing settings are Paid Ads Only,
-Clean Listening, and Maximum Trim. Previews and recaps are editorial invariants
-and are never removable, including under Maximum Trim. The detailed taxonomy,
-API, cache, and iOS plan lives in
+**Preset decision (2026-10-02):** listener-facing settings are Skip obvious
+interruptions, Skip more interruptions, and Skip most interruptions. Previews
+and recaps are editorial invariants and are never removable, including under
+Skip most interruptions. The detailed taxonomy, API, cache, and iOS plan lives in
 [`typed-removal-presets.md`](typed-removal-presets.md).
 
 ## Decision log

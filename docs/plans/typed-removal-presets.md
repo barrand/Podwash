@@ -15,12 +15,13 @@ Three presets are the complete first-release UI:
 
 | Preset | Removes |
 | --- | --- |
-| **Paid Ads Only** | Paid commercials, host reads, DAI creatives, underwriting, and attached legal copy or CTAs. |
-| **Clean Listening** | Paid Ads Only plus other-show promos, publisher/show promotions, and membership or support appeals. |
-| **Maximum Trim** | Clean Listening plus engagement requests, production credits, network IDs, and routine sign-offs. |
+| **Skip obvious interruptions** | Paid ads and sponsor messages, including host reads, DAI creatives, underwriting, and attached legal copy or CTAs. |
+| **Skip more interruptions** | Skip obvious interruptions plus other-show promos, publisher/show promotions, and membership or support appeals. |
+| **Skip most interruptions** | Skip more interruptions plus engagement requests, production credits, network IDs, and routine sign-offs. |
 
-The listener-facing recommendation is **Clean Listening**. Paid Ads Only is the
-conservative choice; Maximum Trim is an explicit opt-in.
+The listener-facing recommendation is **Skip more interruptions**. Skip obvious
+interruptions is the conservative choice; Skip most interruptions is an
+explicit opt-in.
 
 The following are editorial invariants and must never be returned as removable
 spans in any preset:
@@ -45,13 +46,13 @@ reanalyzing old episodes.
 | --- | --- | --- |
 | `paid_ad` | Current commercial, sponsor read, DAI creative, its disclaimer, or CTA. | All |
 | `underwriting` | Sponsor/funder acknowledgement that functions as paid support. | All |
-| `cross_show_promo` | Trailer or explicit invitation to consume another show. | Clean, Maximum |
-| `publisher_promo` | Publisher/show book, merch, event, newsletter, or related property. | Clean, Maximum |
-| `membership_appeal` | Paid subscription, donation, Patreon, or ad-free feed appeal. | Clean, Maximum |
-| `engagement_request` | Follow, rate, review, contact, or free-subscription request. | Maximum |
-| `production_credit` | Crew, producer, editor, music, or staff credit. | Maximum |
-| `network_id` | Bare publisher, network, or station attribution. | Maximum |
-| `signoff` | Routine thanks, goodbye, or next-episode farewell. | Maximum |
+| `cross_show_promo` | Trailer or explicit invitation to consume another show. | Skip more, Skip most |
+| `publisher_promo` | Publisher/show book, merch, event, newsletter, or related property. | Skip more, Skip most |
+| `membership_appeal` | Paid subscription, donation, Patreon, or ad-free feed appeal. | Skip more, Skip most |
+| `engagement_request` | Follow, rate, review, contact, or free-subscription request. | Skip most |
+| `production_credit` | Crew, producer, editor, music, or staff credit. | Skip most |
+| `network_id` | Bare publisher, network, or station attribution. | Skip most |
+| `signoff` | Routine thanks, goodbye, or next-episode farewell. | Skip most |
 
 One span may have multiple reasons. For example, "read The Verge, listen to our
 podcasts, subscribe" is both `publisher_promo` and `membership_appeal`.
@@ -71,22 +72,23 @@ Settings
 ┌──────────────────────────────────────────────────────────┐
 │ Automatic skipping                                        │
 │                                                          │
-│ Skip interruptions                         Clean Listening › │
-│ Paid ads, promos, and support messages                    │
+│ Skip interruptions                 Skip more interruptions › │
+│ Ads, other-show promos, and support messages              │
 │                                                          │
 │ Preview and recap segments are always kept.               │
 └──────────────────────────────────────────────────────────┘
 
 Choose what PodWash skips
 ┌──────────────────────────────────────────────────────────┐
-│ ○ Paid Ads Only                                           │
-│   Commercials and sponsor messages                        │
+│ ○ Skip obvious interruptions                              │
+│   Paid ads and sponsor messages                           │
 │                                                          │
-│ ● Clean Listening                         Recommended     │
-│   Ads, other-show promos, and support messages            │
+│ ● Skip more interruptions                 Recommended     │
+│   Also other-show promos, publisher plugs,                │
+│   and membership/support appeals                           │
 │                                                          │
-│ ○ Maximum Trim                                              │
-│   Also skip requests, credits, network IDs, and goodbyes  │
+│ ○ Skip most interruptions                                 │
+│   Also follow requests, credits, network IDs, and sign-offs │
 │                                                          │
 │ Previews, recaps, and episode content are always kept.    │
 └──────────────────────────────────────────────────────────┘
@@ -141,7 +143,7 @@ Likely iOS touch points are `ContentSegmenting.swift`, `CloudAdSpanClient.swift`
 ## Golden policy and audit
 
 Move from `ads-only-v1` to `typed-removal-v2`. Goldens must retain a reason set
-even when a span is only removable in Maximum Trim. Profile-specific scoring is
+even when a span is only removable in Skip most interruptions. Profile-specific scoring is
 derived from the same typed golden rather than maintaining three incompatible
 binary corpora.
 
@@ -194,7 +196,7 @@ Before rollout:
 - UI-test all three picker states, accessibility labels/values, and immediate
   playback schedule recomposition.
 - Add invariant tests that previews, recaps, feed drops, and framed archival ads
-  never become removable under Maximum Trim.
+  never become removable under Skip most interruptions.
 - Golden-audit every disagreement before threshold tuning.
 - Evaluate precision, recall, editorial seconds removed, missed removable
   seconds, and boundary error independently for all three presets.
@@ -216,7 +218,7 @@ Before rollout:
 
 ## Non-goals
 
-- No preview or recap skipping, including Maximum Trim.
+- No preview or recap skipping, including Skip most interruptions.
 - No per-category switchboard in the initial listener UI.
 - No retroactive reinterpretation of old untyped span caches.
 - No production Gemini removal until the typed Jev comparison passes.
