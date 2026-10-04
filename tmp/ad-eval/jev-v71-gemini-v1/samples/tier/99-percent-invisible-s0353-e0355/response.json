@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "99-percent-invisible-s0353-e0355-tier": {
+      "type": "choice",
+      "choice": "keep_protected",
+      "confidence": 0.6,
+      "probabilities": {
+        "skip_most_only": 0.06,
+        "keep_protected": 0.68,
+        "skip_obvious": 0.18,
+        "mixed_split": 0.06,
+        "skip_more_only": 0.02
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 1926,
+    "output_tokens": 83
+  }
+}

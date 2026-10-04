@@ -1,6 +1,6 @@
 # Typed removal presets — Jev migration plan
 
-**Status:** proposed implementation plan  
+**Status:** approved direction; V7 evaluation in progress
 **Scope:** replace the single cloud "ad span" meaning with typed removable spans,
 three listener-facing skip presets, a corrected golden policy, and a Jev-backed
 server candidate. Previews and recaps are always preserved.
@@ -100,9 +100,10 @@ retranscribe, or call the server.
 
 ## API and cache contract
 
-The existing app decodes untyped `ContentSegment` values from `POST /v1/ad-spans`.
-Do not silently change that response for released clients. Introduce a versioned
-typed endpoint or negotiated schema, then migrate the app deliberately.
+There are no active App Store users requiring compatibility with the old
+untyped contract. The backend and iOS app can move to the typed contract in a
+coordinated release. Keep schema versioning for cache correctness and debugging,
+not to preserve an unused public v1 API.
 
 ```json
 {
@@ -123,7 +124,7 @@ Server responsibilities:
 1. Return all typed spans; never apply an individual listener's preset.
 2. Version cache keys by model, prompt, span schema, and transcript HMAC.
 3. Preserve exact timestamps and non-overlapping normalized spans.
-4. Preserve the current v1 endpoint until the typed client has shipped.
+4. Deploy the typed backend contract before enabling the matching iOS UI.
 
 iOS responsibilities:
 
@@ -131,8 +132,8 @@ iOS responsibilities:
 2. Decode and persist raw typed spans in `EpisodeAnalysisArtifactStore`.
 3. Filter cached spans through the active preset before `IntervalBuilder` and
    `IntervalScheduler` create playback intervals.
-4. Keep legacy untyped cached spans readable; do not reinterpret them as typed
-   results. Refresh them only through the normal cache-version migration.
+4. Invalidate old untyped span caches through the cache-version migration; no
+   compatibility decoder is required for an unreleased user base.
 5. Add the picker to `SettingsView`, persist it in `SettingsStore`, and trigger
    local schedule recomposition when it changes.
 
@@ -206,19 +207,22 @@ Before rollout:
 
 ## Delivery sequence
 
-1. Approve this taxonomy and preset behavior.
-2. Finish the typed golden audit and freeze `typed-removal-v2`.
+1. Run Jev v7 on Version History, Planet Money, and Radiolab; review its typed
+   output in Golden Retriever and correct the pilot goldens.
+2. Freeze the pilot `typed-removal-v2` goldens and validate fresh holdouts.
 3. Run Jev v7 against the corrected corpus; validate the lower-cost
    production-shaped request.
-4. Implement/version the typed server response and cache behavior.
-5. Implement the iOS typed-span model and the preset picker.
-6. Ship typed support behind a feature flag; compare it with Gemini in shadow
-   mode on fresh episodes.
-7. Promote Jev only after it meets the agreed profile-specific safety gates.
+4. Implement and deploy the typed server response and cache behavior. No
+   production playback changes yet.
+5. Implement the iOS typed-span model and preset picker against that deployed
+   contract; enable it only after end-to-end verification.
+6. Compare Jev with Gemini in shadow mode on fresh episodes, then stage typed
+   playback and the preset UI.
+7. Remove Gemini only after Jev meets the profile-specific safety gates.
 
 ## Non-goals
 
 - No preview or recap skipping, including Skip most interruptions.
 - No per-category switchboard in the initial listener UI.
-- No retroactive reinterpretation of old untyped span caches.
+- No reinterpretation of old untyped span caches; invalidate them.
 - No production Gemini removal until the typed Jev comparison passes.

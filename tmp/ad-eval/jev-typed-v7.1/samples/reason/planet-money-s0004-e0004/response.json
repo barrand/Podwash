@@ -1,0 +1,26 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "planet-money-s0004-e0004-primary-reason": {
+      "type": "choice",
+      "choice": "paid_ad",
+      "confidence": 0.99,
+      "probabilities": {
+        "underwriting": 0.0,
+        "paid_ad": 1.0
+      }
+    },
+    "planet-money-s0004-e0004-also-paid_ad": {
+      "type": "noul",
+      "noul": 0.92
+    },
+    "planet-money-s0004-e0004-also-underwriting": {
+      "type": "noul",
+      "noul": 0.18
+    }
+  },
+  "usage": {
+    "input_tokens": 1761,
+    "output_tokens": 116
+  }
+}

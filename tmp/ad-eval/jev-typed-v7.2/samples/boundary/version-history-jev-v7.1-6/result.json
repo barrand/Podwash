@@ -1,0 +1,114 @@
+{
+  "requestSha256": "d051b45392dcffdb4dc2bde35940a2a9cdeac8af5a9062aef8f0f3ac515ea1a3",
+  "latencyMs": 251.8,
+  "usage": {
+    "inputTokens": 6176,
+    "outputTokens": 508,
+    "totalCostUsd": 0.00025939
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "s622-belongs": {
+        "type": "noul",
+        "noul": 0.64
+      },
+      "s623-belongs": {
+        "type": "noul",
+        "noul": 0.63
+      },
+      "s624-belongs": {
+        "type": "noul",
+        "noul": 0.63
+      },
+      "s625-belongs": {
+        "type": "noul",
+        "noul": 0.63
+      },
+      "s626-belongs": {
+        "type": "noul",
+        "noul": 0.64
+      },
+      "s627-belongs": {
+        "type": "noul",
+        "noul": 0.64
+      },
+      "s628-belongs": {
+        "type": "noul",
+        "noul": 0.63
+      },
+      "s629-belongs": {
+        "type": "noul",
+        "noul": 0.63
+      },
+      "s630-belongs": {
+        "type": "noul",
+        "noul": 0.63
+      },
+      "s631-belongs": {
+        "type": "noul",
+        "noul": 0.64
+      },
+      "s632-belongs": {
+        "type": "noul",
+        "noul": 0.63
+      },
+      "s633-belongs": {
+        "type": "noul",
+        "noul": 0.64
+      },
+      "s634-belongs": {
+        "type": "noul",
+        "noul": 0.63
+      },
+      "s635-belongs": {
+        "type": "noul",
+        "noul": 0.63
+      },
+      "s636-belongs": {
+        "type": "noul",
+        "noul": 0.63
+      },
+      "s637-belongs": {
+        "type": "noul",
+        "noul": 0.64
+      },
+      "s638-belongs": {
+        "type": "noul",
+        "noul": 0.63
+      },
+      "s639-belongs": {
+        "type": "noul",
+        "noul": 0.63
+      },
+      "s640-belongs": {
+        "type": "noul",
+        "noul": 0.65
+      },
+      "s641-belongs": {
+        "type": "noul",
+        "noul": 0.63
+      },
+      "s642-belongs": {
+        "type": "noul",
+        "noul": 0.64
+      },
+      "s643-belongs": {
+        "type": "noul",
+        "noul": 0.63
+      },
+      "s644-belongs": {
+        "type": "noul",
+        "noul": 0.63
+      },
+      "s645-belongs": {
+        "type": "noul",
+        "noul": 0.66
+      }
+    },
+    "usage": {
+      "input_tokens": 6176,
+      "output_tokens": 508
+    }
+  }
+}

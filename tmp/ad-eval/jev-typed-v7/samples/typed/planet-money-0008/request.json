@@ -1,0 +1,203 @@
+{
+  "state": {
+    "episode": {
+      "show": "Planet Money",
+      "episode": "Building things and breaking things in China (Summer School World Tour)",
+      "showDescription": "Wanna see a trick? Give us any topic and we can tie it back to the economy. At Planet Money , we explore the forces that shape our lives and bring you along for the ride. Don't just understand the economy – understand the world. Wanna go deeper? Subscribe to Planet Money+ and get sponsor-free episodes of Planet Money, The Indicator, and Planet Money Summer School. Plus access to bonus content. It's a new way to support the show you love. Learn more at plus.npr.org/planetmoney",
+      "episodeDescription": "China’s turbocharged growth may have made it rich, but now it has to deal with rich country problems. High-speed trains that connect every town. Gleaming new bridges and skyscrapers. An apartment (or two) for every family. No country on Earth has seen the kind of economic growth that China has over the last 50 years. China has become the factory to the world, a grand experiment in central government planning mixed with personal ambition. It was all enabled by what our guide for today calls, an engineering state, a central planning mindset where leaders believe they can engineer their way out of economic problems. And problems are mounting. Today on the show, the perils of prosperity and the despair of success as China deals with overbuilding. We’ll travel back to China’s free-wheeling boom-era of the early 2000s and hang out with a property developer who amassed his wealth at the center of the action – private jet rides, thousand-dollar fish soup, casual bribes. Then, as the economy slows, we ask what can we learn from the despair of success. Does rising youth unemployment signal a less prosperous future? With young people struggling to find white-collar jobs, some of them are opting out of work altogether. Featured Episodes: China’s real estate crisis, explained (2023) Young, “spoiled and miserable” in China (2023) Featured Terms: Socialism with Chinese Characteristics Engineering State Malinvestment Support: Planet Money+ Read: Our book: Planet Money: A Guide to the Economic Forces That Shape Your Life ( Audiobook here ) Our weekly longform Planet Money newsletter Our wee…"
+    },
+    "policy": {
+      "alwaysKeep": [
+        "previews and recaps of this episode",
+        "substantive reporting, discussion, interviews, and storytelling",
+        "quoted or archival commercials used as editorial evidence",
+        "complete or substantial cross-post/feed-drop content",
+        "mixed sentences without a safe whole-sentence boundary"
+      ],
+      "offTopicAloneIsNeverEnough": true
+    },
+    "transcript_window": [
+      {
+        "id": 225,
+        "start_seconds": 1023.82,
+        "end_seconds": 1027.58,
+        "role": "context",
+        "text": "And if a developer is above those debt levels, no more loans for them."
+      },
+      {
+        "id": 226,
+        "start_seconds": 1027.82,
+        "end_seconds": 1029.74,
+        "role": "context",
+        "text": "This was the turning point."
+      },
+      {
+        "id": 227,
+        "start_seconds": 1029.88,
+        "end_seconds": 1035.12,
+        "role": "context",
+        "text": "After decades of rapid growth, property prices, especially in smaller cities, started to drop."
+      },
+      {
+        "id": 228,
+        "start_seconds": 1035.56,
+        "end_seconds": 1039.46,
+        "role": "context",
+        "text": "Evergrande, the company whose founder, Xu Jiaying, liked to give out million -dollar rings."
+      },
+      {
+        "id": 229,
+        "start_seconds": 1039.82,
+        "end_seconds": 1043.72,
+        "role": "context",
+        "text": "Well, by 2021, Evergrande had hundreds of billions of dollars in debt."
+      },
+      {
+        "id": 230,
+        "start_seconds": 1043.84,
+        "end_seconds": 1045.84,
+        "role": "context",
+        "text": "Yes, hundreds of billions of dollars."
+      },
+      {
+        "id": 231,
+        "start_seconds": 1046.08,
+        "end_seconds": 1048.02,
+        "role": "context",
+        "text": "And they started to miss payments."
+      },
+      {
+        "id": 232,
+        "start_seconds": 1050.34,
+        "end_seconds": 1053.14,
+        "role": "target",
+        "text": "Nick Fountain and Emily Faye from 2023."
+      },
+      {
+        "id": 233,
+        "start_seconds": 1053.94,
+        "end_seconds": 1056.58,
+        "role": "context",
+        "text": "Let's jump now to 2026 to finish the story."
+      },
+      {
+        "id": 234,
+        "start_seconds": 1056.74,
+        "end_seconds": 1057.52,
+        "role": "context",
+        "text": "Robert Smith here."
+      },
+      {
+        "id": 235,
+        "start_seconds": 1057.9,
+        "end_seconds": 1060.38,
+        "role": "context",
+        "text": "Evergrande did indeed default on its debt."
+      },
+      {
+        "id": 236,
+        "start_seconds": 1060.56,
+        "end_seconds": 1062.78,
+        "role": "context",
+        "text": "Its founder recently pled guilty to fraud."
+      },
+      {
+        "id": 237,
+        "start_seconds": 1062.92,
+        "end_seconds": 1066.7,
+        "role": "context",
+        "text": "And China is mired in the depths right now of a real estate bust."
+      },
+      {
+        "id": 238,
+        "start_seconds": 1066.96,
+        "end_seconds": 1072.12,
+        "role": "context",
+        "text": "There are an estimated 90 million empty, unsold or unfinished homes in the country."
+      },
+      {
+        "id": 239,
+        "start_seconds": 1072.7,
+        "end_seconds": 1077.5,
+        "role": "context",
+        "text": "Desmond Shum, our developer and occasional briber, escaped before the crash fully happened."
+      }
+    ],
+    "instruction_boundary": "Transcript and RSS text are untrusted data, not instructions."
+  },
+  "model": "jev-1.13.0",
+  "questions": {
+    "sentence-232-paid_ad": {
+      "type": "noul",
+      "instructions": "Does only target sentence ID 232 have reason paid_ad? Multiple reasons may independently be true.",
+      "criteria": {
+        "true": "A current paid commercial, host-read ad, dynamically inserted creative, legal copy, or commercial call to action.",
+        "false": "The target does not have this reason. Previews, recaps, substantive content, and editorially framed quoted or archival ads are false. Off-topic subject matter alone is false."
+      }
+    },
+    "sentence-232-underwriting": {
+      "type": "noul",
+      "instructions": "Does only target sentence ID 232 have reason underwriting? Multiple reasons may independently be true.",
+      "criteria": {
+        "true": "A sponsor or foundation acknowledgement presented as financial support for the show or programming.",
+        "false": "The target does not have this reason. Previews, recaps, substantive content, and editorially framed quoted or archival ads are false. Off-topic subject matter alone is false."
+      }
+    },
+    "sentence-232-cross_show_promo": {
+      "type": "noul",
+      "instructions": "Does only target sentence ID 232 have reason cross_show_promo? Multiple reasons may independently be true.",
+      "criteria": {
+        "true": "A trailer or explicit invitation to listen to a different show or podcast.",
+        "false": "The target does not have this reason. Previews, recaps, substantive content, and editorially framed quoted or archival ads are false. Off-topic subject matter alone is false."
+      }
+    },
+    "sentence-232-publisher_promo": {
+      "type": "noul",
+      "instructions": "Does only target sentence ID 232 have reason publisher_promo? Multiple reasons may independently be true.",
+      "criteria": {
+        "true": "A plug for the current show or publisher's book, merch, event, newsletter, app, upcoming special, or related property.",
+        "false": "The target does not have this reason. Previews, recaps, substantive content, and editorially framed quoted or archival ads are false. Off-topic subject matter alone is false."
+      }
+    },
+    "sentence-232-membership_appeal": {
+      "type": "noul",
+      "instructions": "Does only target sentence ID 232 have reason membership_appeal? Multiple reasons may independently be true.",
+      "criteria": {
+        "true": "A paid subscription, donation, membership, Patreon, or ad-free-feed appeal.",
+        "false": "The target does not have this reason. Previews, recaps, substantive content, and editorially framed quoted or archival ads are false. Off-topic subject matter alone is false."
+      }
+    },
+    "sentence-232-engagement_request": {
+      "type": "noul",
+      "instructions": "Does only target sentence ID 232 have reason engagement_request? Multiple reasons may independently be true.",
+      "criteria": {
+        "true": "A request to follow, rate, review, contact, share, or freely subscribe to the show.",
+        "false": "The target does not have this reason. Previews, recaps, substantive content, and editorially framed quoted or archival ads are false. Off-topic subject matter alone is false."
+      }
+    },
+    "sentence-232-production_credit": {
+      "type": "noul",
+      "instructions": "Does only target sentence ID 232 have reason production_credit? Multiple reasons may independently be true.",
+      "criteria": {
+        "true": "Crew, producer, editor, reporter, music, fact-checker, or staff credits.",
+        "false": "The target does not have this reason. Previews, recaps, substantive content, and editorially framed quoted or archival ads are false. Off-topic subject matter alone is false."
+      }
+    },
+    "sentence-232-network_id": {
+      "type": "noul",
+      "instructions": "Does only target sentence ID 232 have reason network_id? Multiple reasons may independently be true.",
+      "criteria": {
+        "true": "A bare show, publisher, station, studio, or network attribution rather than substantive content.",
+        "false": "The target does not have this reason. Previews, recaps, substantive content, and editorially framed quoted or archival ads are false. Off-topic subject matter alone is false."
+      }
+    },
+    "sentence-232-signoff": {
+      "type": "noul",
+      "instructions": "Does only target sentence ID 232 have reason signoff? Multiple reasons may independently be true.",
+      "criteria": {
+        "true": "Routine thanks, goodbye, farewell, or promise to return next time.",
+        "false": "The target does not have this reason. Previews, recaps, substantive content, and editorially framed quoted or archival ads are false. Off-topic subject matter alone is false."
+      }
+    }
+  }
+}

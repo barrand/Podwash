@@ -1,0 +1,40 @@
+{
+  "requestSha256": "4c9c692b69b7477324fa84e0d4e72348ae8b921874db8cd6294c4bf9a4aa67c7",
+  "latencyMs": 167.8,
+  "usage": {
+    "inputTokens": 2224,
+    "outputTokens": 168,
+    "totalCostUsd": 9.341e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "radiolab-s0188-e0190-primary-reason": {
+        "type": "choice",
+        "choice": "cross_show_promo",
+        "confidence": 0.98,
+        "probabilities": {
+          "membership_appeal": 0.0,
+          "cross_show_promo": 0.99,
+          "publisher_promo": 0.01
+        }
+      },
+      "radiolab-s0188-e0190-also-cross_show_promo": {
+        "type": "noul",
+        "noul": 0.93
+      },
+      "radiolab-s0188-e0190-also-publisher_promo": {
+        "type": "noul",
+        "noul": 0.53
+      },
+      "radiolab-s0188-e0190-also-membership_appeal": {
+        "type": "noul",
+        "noul": 0.08
+      }
+    },
+    "usage": {
+      "input_tokens": 2224,
+      "output_tokens": 168
+    }
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "sentence-691-paid_ad": {
+      "type": "noul",
+      "noul": 0.1
+    },
+    "sentence-691-underwriting": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "sentence-691-cross_show_promo": {
+      "type": "noul",
+      "noul": 0.06
+    },
+    "sentence-691-publisher_promo": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "sentence-691-membership_appeal": {
+      "type": "noul",
+      "noul": 0.12
+    },
+    "sentence-691-engagement_request": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "sentence-691-production_credit": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "sentence-691-network_id": {
+      "type": "noul",
+      "noul": 0.1
+    },
+    "sentence-691-signoff": {
+      "type": "noul",
+      "noul": 0.28
+    },
+    "sentence-693-paid_ad": {
+      "type": "noul",
+      "noul": 0.29
+    },
+    "sentence-693-underwriting": {
+      "type": "noul",
+      "noul": 0.15
+    },
+    "sentence-693-cross_show_promo": {
+      "type": "noul",
+      "noul": 0.06
+    },
+    "sentence-693-publisher_promo": {
+      "type": "noul",
+      "noul": 0.22
+    },
+    "sentence-693-membership_appeal": {
+      "type": "noul",
+      "noul": 0.13
+    },
+    "sentence-693-engagement_request": {
+      "type": "noul",
+      "noul": 0.16
+    },
+    "sentence-693-production_credit": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "sentence-693-network_id": {
+      "type": "noul",
+      "noul": 0.14
+    },
+    "sentence-693-signoff": {
+      "type": "noul",
+      "noul": 0.3
+    },
+    "sentence-694-paid_ad": {
+      "type": "noul",
+      "noul": 0.12
+    },
+    "sentence-694-underwriting": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "sentence-694-cross_show_promo": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "sentence-694-publisher_promo": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "sentence-694-membership_appeal": {
+      "type": "noul",
+      "noul": 0.11
+    },
+    "sentence-694-engagement_request": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "sentence-694-production_credit": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "sentence-694-network_id": {
+      "type": "noul",
+      "noul": 0.12
+    },
+    "sentence-694-signoff": {
+      "type": "noul",
+      "noul": 0.37
+    }
+  },
+  "usage": {
+    "input_tokens": 4605,
+    "output_tokens": 649
+  }
+}

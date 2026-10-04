@@ -1,0 +1,42 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "sentence-565-broad-role": {
+      "type": "choice",
+      "choice": "removable_candidate",
+      "confidence": 0.88,
+      "probabilities": {
+        "mixed_boundary": 0.0,
+        "protected_editorial": 0.07,
+        "removable_candidate": 0.91,
+        "editorial_content": 0.02
+      }
+    },
+    "sentence-566-broad-role": {
+      "type": "choice",
+      "choice": "removable_candidate",
+      "confidence": 0.87,
+      "probabilities": {
+        "mixed_boundary": 0.0,
+        "protected_editorial": 0.09,
+        "removable_candidate": 0.91,
+        "editorial_content": 0.0
+      }
+    },
+    "sentence-567-broad-role": {
+      "type": "choice",
+      "choice": "removable_candidate",
+      "confidence": 0.87,
+      "probabilities": {
+        "editorial_content": 0.0,
+        "protected_editorial": 0.09,
+        "mixed_boundary": 0.0,
+        "removable_candidate": 0.91
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 2008,
+    "output_tokens": 192
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "joe-rogan-mrbeast-s3080-e3092-tier": {
+      "type": "choice",
+      "choice": "mixed_split",
+      "confidence": 0.8,
+      "probabilities": {
+        "skip_more_only": 0.01,
+        "keep_protected": 0.02,
+        "mixed_split": 0.84,
+        "skip_most_only": 0.0,
+        "skip_obvious": 0.13
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 2588,
+    "output_tokens": 82
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "planet-money",
+  "transcriptSha256": "874f3d7b33ceadd6715c78c281b17500dcbc5365b2b6c640d4d4b8d0b5849bb8",
+  "status": "assistant-first-pass",
+  "spans": [
+    {"id": "pm-1", "startWord": 0, "endWord": 58, "category": "underwriting", "baselineSpanIds": ["span-1"], "note": "Schwab sponsor message."},
+    {"id": "pm-1b", "startWord": 58, "endWord": 64, "category": "network_id", "note": "Bare Planet Money / NPR identification; omitted from the first audit pass."},
+    {"id": "pm-2", "startWord": 831, "endWord": 910, "category": "paid_ad", "baselineSpanIds": ["span-2"], "note": "Thumbtack dynamic ad."},
+    {"id": "pm-3", "startWord": 910, "endWord": 963, "category": "cross_show_promo", "baselineSpanIds": ["span-3"], "note": "NPR Politics Podcast promo."},
+    {"id": "pm-4", "startWord": 3875, "endWord": 3947, "category": "cross_show_promo", "baselineSpanIds": ["span-4"], "note": "Short Wave promo."},
+    {"id": "pm-5", "startWord": 3947, "endWord": 4022, "category": "cross_show_promo", "baselineSpanIds": ["span-5"], "note": "Fresh Air promo."},
+    {"id": "pm-5b", "startWord": 5575, "endWord": 5598, "category": "cross_show_promo", "note": "Additional Fresh Air invitation directing listeners to the NPR app; omitted from the first audit pass."},
+    {"id": "pm-6", "startWord": 6700, "endWord": 6739, "category": "publisher_promo", "note": "Planet Money book plug; absent from the ads-only golden."},
+    {"id": "pm-7", "startWord": 6739, "endWord": 6766, "category": "production_credit", "note": "Episode credits; absent from the ads-only golden."},
+    {"id": "pm-8", "startWord": 6766, "endWord": 6776, "category": "network_id", "note": "Host/network identification and thanks; absent from the ads-only golden."},
+    {"id": "pm-9", "startWord": 6776, "endWord": 6826, "category": "publisher_promo", "note": "Upcoming Planet Money special; absent from the ads-only golden."},
+    {"id": "pm-10", "startWord": 6826, "endWord": 6908, "category": "cross_show_promo", "baselineSpanIds": ["span-6"], "note": "NPR World Cup promo."},
+    {"id": "pm-11", "startWord": 6908, "endWord": 6991, "category": "cross_show_promo", "baselineSpanIds": ["span-7"], "note": "Wait Wait... Don't Tell Me! promo."}
+  ],
+  "findings": [
+    "This episode is the strongest test of Skip more interruptions: the existing golden already captures other-show promos, while the audit adds a publisher book plug and an upcoming-episode plug.",
+    "The audit also adds the opening NPR network ID and a second explicit Fresh Air invitation found during V7 review.",
+    "Credits and NPR identification are deliberately separate, so they only become removable in Skip most interruptions.",
+    "The in-episode Summer School teases remain editorial and are intentionally not proposed."
+  ]
+}

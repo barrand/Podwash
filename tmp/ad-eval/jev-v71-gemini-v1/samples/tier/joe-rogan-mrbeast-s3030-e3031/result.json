@@ -1,0 +1,30 @@
+{
+  "requestSha256": "4c6c3873aa7f84d420d67a8f9371fec4f5283a536f04949760753f6f5ec356f5",
+  "latencyMs": 151.2,
+  "usage": {
+    "inputTokens": 1868,
+    "outputTokens": 84,
+    "totalCostUsd": 7.846e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "joe-rogan-mrbeast-s3030-e3031-tier": {
+        "type": "choice",
+        "choice": "skip_obvious",
+        "confidence": 0.19,
+        "probabilities": {
+          "keep_protected": 0.26,
+          "skip_more_only": 0.03,
+          "skip_obvious": 0.35,
+          "skip_most_only": 0.18,
+          "mixed_split": 0.18
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 1868,
+      "output_tokens": 84
+    }
+  }
+}

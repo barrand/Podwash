@@ -1,0 +1,30 @@
+{
+  "requestSha256": "36aaa409741568515342723000d90e1708c3431b1d6fd37133e13b55cfd6576d",
+  "latencyMs": 191.9,
+  "usage": {
+    "inputTokens": 2317,
+    "outputTokens": 78,
+    "totalCostUsd": 9.731e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "radiolab-s0191-e0195-tier": {
+        "type": "choice",
+        "choice": "skip_more_only",
+        "confidence": 0.66,
+        "probabilities": {
+          "skip_obvious": 0.09,
+          "mixed_split": 0.05,
+          "skip_most_only": 0.01,
+          "skip_more_only": 0.73,
+          "keep_protected": 0.12
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 2317,
+      "output_tokens": 78
+    }
+  }
+}

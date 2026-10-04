@@ -1,0 +1,37 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "s229-belongs": {
+      "type": "noul",
+      "noul": 0.21
+    },
+    "s230-belongs": {
+      "type": "noul",
+      "noul": 0.23
+    },
+    "s231-belongs": {
+      "type": "noul",
+      "noul": 0.23
+    },
+    "s232-belongs": {
+      "type": "noul",
+      "noul": 0.23
+    },
+    "s233-belongs": {
+      "type": "noul",
+      "noul": 0.22
+    },
+    "s234-belongs": {
+      "type": "noul",
+      "noul": 0.22
+    },
+    "s235-belongs": {
+      "type": "noul",
+      "noul": 0.22
+    }
+  },
+  "usage": {
+    "input_tokens": 3156,
+    "output_tokens": 151
+  }
+}

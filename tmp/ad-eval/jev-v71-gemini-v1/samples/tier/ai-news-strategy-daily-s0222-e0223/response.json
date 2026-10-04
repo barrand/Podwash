@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "ai-news-strategy-daily-s0222-e0223-tier": {
+      "type": "choice",
+      "choice": "keep_protected",
+      "confidence": 0.51,
+      "probabilities": {
+        "skip_obvious": 0.0,
+        "skip_more_only": 0.01,
+        "mixed_split": 0.36,
+        "keep_protected": 0.61,
+        "skip_most_only": 0.02
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 1655,
+    "output_tokens": 83
+  }
+}

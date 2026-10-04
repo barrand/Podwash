@@ -1,0 +1,36 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "planet-money-s0207-e0207-also-network_id": {
+      "type": "noul",
+      "noul": 0.13
+    },
+    "planet-money-s0207-e0207-also-signoff": {
+      "type": "noul",
+      "noul": 0.04
+    },
+    "planet-money-s0207-e0207-primary-reason": {
+      "type": "choice",
+      "choice": "signoff",
+      "confidence": 0.12,
+      "probabilities": {
+        "engagement_request": 0.21,
+        "production_credit": 0.26,
+        "signoff": 0.33,
+        "network_id": 0.2
+      }
+    },
+    "planet-money-s0207-e0207-also-engagement_request": {
+      "type": "noul",
+      "noul": 0.06
+    },
+    "planet-money-s0207-e0207-also-production_credit": {
+      "type": "noul",
+      "noul": 0.04
+    }
+  },
+  "usage": {
+    "input_tokens": 2151,
+    "output_tokens": 194
+  }
+}

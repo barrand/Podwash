@@ -1,0 +1,30 @@
+{
+  "requestSha256": "c0a20572d2d84d9158134bbc120999b3fdfc28941031e3820554013aaf497311",
+  "latencyMs": 166.6,
+  "usage": {
+    "inputTokens": 2310,
+    "outputTokens": 78,
+    "totalCostUsd": 9.702e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "planet-money-s0420-e0423-tier": {
+        "type": "choice",
+        "choice": "skip_more_only",
+        "confidence": 0.84,
+        "probabilities": {
+          "mixed_split": 0.04,
+          "skip_obvious": 0.03,
+          "skip_more_only": 0.87,
+          "skip_most_only": 0.01,
+          "keep_protected": 0.05
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 2310,
+      "output_tokens": 78
+    }
+  }
+}

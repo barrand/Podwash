@@ -1,0 +1,153 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "sentence-511-paid_ad": {
+      "type": "noul",
+      "noul": 0.11
+    },
+    "sentence-511-underwriting": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "sentence-511-cross_show_promo": {
+      "type": "noul",
+      "noul": 0.1
+    },
+    "sentence-511-publisher_promo": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "sentence-511-membership_appeal": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "sentence-511-engagement_request": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "sentence-511-production_credit": {
+      "type": "noul",
+      "noul": 0.1
+    },
+    "sentence-511-network_id": {
+      "type": "noul",
+      "noul": 0.11
+    },
+    "sentence-511-signoff": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "sentence-512-paid_ad": {
+      "type": "noul",
+      "noul": 0.1
+    },
+    "sentence-512-underwriting": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "sentence-512-cross_show_promo": {
+      "type": "noul",
+      "noul": 0.07
+    },
+    "sentence-512-publisher_promo": {
+      "type": "noul",
+      "noul": 0.06
+    },
+    "sentence-512-membership_appeal": {
+      "type": "noul",
+      "noul": 0.07
+    },
+    "sentence-512-engagement_request": {
+      "type": "noul",
+      "noul": 0.07
+    },
+    "sentence-512-production_credit": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "sentence-512-network_id": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "sentence-512-signoff": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "sentence-513-paid_ad": {
+      "type": "noul",
+      "noul": 0.1
+    },
+    "sentence-513-underwriting": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "sentence-513-cross_show_promo": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "sentence-513-publisher_promo": {
+      "type": "noul",
+      "noul": 0.07
+    },
+    "sentence-513-membership_appeal": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "sentence-513-engagement_request": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "sentence-513-production_credit": {
+      "type": "noul",
+      "noul": 0.1
+    },
+    "sentence-513-network_id": {
+      "type": "noul",
+      "noul": 0.11
+    },
+    "sentence-513-signoff": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "sentence-514-paid_ad": {
+      "type": "noul",
+      "noul": 0.51
+    },
+    "sentence-514-underwriting": {
+      "type": "noul",
+      "noul": 0.13
+    },
+    "sentence-514-cross_show_promo": {
+      "type": "noul",
+      "noul": 0.21
+    },
+    "sentence-514-publisher_promo": {
+      "type": "noul",
+      "noul": 0.52
+    },
+    "sentence-514-membership_appeal": {
+      "type": "noul",
+      "noul": 0.15
+    },
+    "sentence-514-engagement_request": {
+      "type": "noul",
+      "noul": 0.55
+    },
+    "sentence-514-production_credit": {
+      "type": "noul",
+      "noul": 0.13
+    },
+    "sentence-514-network_id": {
+      "type": "noul",
+      "noul": 0.56
+    },
+    "sentence-514-signoff": {
+      "type": "noul",
+      "noul": 0.16
+    }
+  },
+  "usage": {
+    "input_tokens": 5657,
+    "output_tokens": 864
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "cougar-sports-s0326-e0331-tier": {
+      "type": "choice",
+      "choice": "mixed_split",
+      "confidence": 0.54,
+      "probabilities": {
+        "skip_more_only": 0.06,
+        "keep_protected": 0.06,
+        "skip_most_only": 0.07,
+        "skip_obvious": 0.18,
+        "mixed_split": 0.63
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 2250,
+    "output_tokens": 79
+  }
+}

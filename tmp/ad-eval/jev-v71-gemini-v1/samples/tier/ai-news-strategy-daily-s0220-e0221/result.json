@@ -1,0 +1,30 @@
+{
+  "requestSha256": "85501d1eeeaa9049411b99eb0bbfe038eb5ec961f851d42e414d05db38fba6e8",
+  "latencyMs": 149.9,
+  "usage": {
+    "inputTokens": 1787,
+    "outputTokens": 83,
+    "totalCostUsd": 7.505e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "ai-news-strategy-daily-s0220-e0221-tier": {
+        "type": "choice",
+        "choice": "skip_most_only",
+        "confidence": 0.79,
+        "probabilities": {
+          "keep_protected": 0.1,
+          "skip_more_only": 0.01,
+          "skip_most_only": 0.84,
+          "mixed_split": 0.04,
+          "skip_obvious": 0.01
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 1787,
+      "output_tokens": 83
+    }
+  }
+}

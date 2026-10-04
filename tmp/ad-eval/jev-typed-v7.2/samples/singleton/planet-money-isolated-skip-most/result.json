@@ -1,0 +1,26 @@
+{
+  "requestSha256": "2746a9f7d1f1628447ce2e3ac724b5107c52e203b1c235190d2647b797ffebf1",
+  "latencyMs": 182.1,
+  "usage": {
+    "inputTokens": 1671,
+    "outputTokens": 54,
+    "totalCostUsd": 7.018e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "s505-standalone-skip-most": {
+        "type": "noul",
+        "noul": 0.09
+      },
+      "s507-standalone-skip-most": {
+        "type": "noul",
+        "noul": 0.08
+      }
+    },
+    "usage": {
+      "input_tokens": 1671,
+      "output_tokens": 54
+    }
+  }
+}

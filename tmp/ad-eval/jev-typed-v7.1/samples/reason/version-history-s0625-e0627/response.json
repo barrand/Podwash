@@ -1,0 +1,26 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "version-history-s0625-e0627-primary-reason": {
+      "type": "choice",
+      "choice": "paid_ad",
+      "confidence": 0.95,
+      "probabilities": {
+        "paid_ad": 0.97,
+        "underwriting": 0.03
+      }
+    },
+    "version-history-s0625-e0627-also-paid_ad": {
+      "type": "noul",
+      "noul": 0.75
+    },
+    "version-history-s0625-e0627-also-underwriting": {
+      "type": "noul",
+      "noul": 0.35
+    }
+  },
+  "usage": {
+    "input_tokens": 1944,
+    "output_tokens": 116
+  }
+}

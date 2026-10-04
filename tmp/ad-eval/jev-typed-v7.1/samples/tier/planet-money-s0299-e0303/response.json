@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "planet-money-s0299-e0303-tier": {
+      "type": "choice",
+      "choice": "skip_more_only",
+      "confidence": 0.37,
+      "probabilities": {
+        "skip_obvious": 0.02,
+        "mixed_split": 0.36,
+        "skip_most_only": 0.01,
+        "skip_more_only": 0.49,
+        "keep_protected": 0.12
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 2386,
+    "output_tokens": 78
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "requestSha256": "e60740c89d82830beb703095d04d1c312de3143aad9d15eb7960b045c5913248",
+  "latencyMs": 168.0,
+  "usage": {
+    "inputTokens": 2603,
+    "outputTokens": 116,
+    "totalCostUsd": 0.00010933
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "radiolab-s0177-e0185-primary-reason": {
+        "type": "choice",
+        "choice": "paid_ad",
+        "confidence": 0.99,
+        "probabilities": {
+          "underwriting": 0.0,
+          "paid_ad": 1.0
+        }
+      },
+      "radiolab-s0177-e0185-also-paid_ad": {
+        "type": "noul",
+        "noul": 0.96
+      },
+      "radiolab-s0177-e0185-also-underwriting": {
+        "type": "noul",
+        "noul": 0.39
+      }
+    },
+    "usage": {
+      "input_tokens": 2603,
+      "output_tokens": 116
+    }
+  }
+}

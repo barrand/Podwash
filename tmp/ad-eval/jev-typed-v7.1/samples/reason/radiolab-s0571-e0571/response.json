@@ -1,0 +1,36 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "radiolab-s0571-e0571-primary-reason": {
+      "type": "choice",
+      "choice": "engagement_request",
+      "confidence": 0.51,
+      "probabilities": {
+        "network_id": 0.17,
+        "production_credit": 0.12,
+        "signoff": 0.07,
+        "engagement_request": 0.64
+      }
+    },
+    "radiolab-s0571-e0571-also-engagement_request": {
+      "type": "noul",
+      "noul": 0.12
+    },
+    "radiolab-s0571-e0571-also-production_credit": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "radiolab-s0571-e0571-also-network_id": {
+      "type": "noul",
+      "noul": 0.18
+    },
+    "radiolab-s0571-e0571-also-signoff": {
+      "type": "noul",
+      "noul": 0.1
+    }
+  },
+  "usage": {
+    "input_tokens": 2012,
+    "output_tokens": 196
+  }
+}

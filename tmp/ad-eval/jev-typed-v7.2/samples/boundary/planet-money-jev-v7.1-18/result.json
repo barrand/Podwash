@@ -1,0 +1,46 @@
+{
+  "requestSha256": "d7baa126ff52fd651e41d4865b1e973421be927f18f1caf92bcaba6695c53809",
+  "latencyMs": 207.8,
+  "usage": {
+    "inputTokens": 3157,
+    "outputTokens": 151,
+    "totalCostUsd": 0.00013259
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "s501-belongs": {
+        "type": "noul",
+        "noul": 0.51
+      },
+      "s502-belongs": {
+        "type": "noul",
+        "noul": 0.47
+      },
+      "s503-belongs": {
+        "type": "noul",
+        "noul": 0.54
+      },
+      "s504-belongs": {
+        "type": "noul",
+        "noul": 0.49
+      },
+      "s505-belongs": {
+        "type": "noul",
+        "noul": 0.51
+      },
+      "s506-belongs": {
+        "type": "noul",
+        "noul": 0.49
+      },
+      "s507-belongs": {
+        "type": "noul",
+        "noul": 0.51
+      }
+    },
+    "usage": {
+      "input_tokens": 3157,
+      "output_tokens": 151
+    }
+  }
+}

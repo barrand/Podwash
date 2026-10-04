@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "showSlug": "radiolab",
+  "transcriptSha256": "bff470d7c4114d9ca1f4a4b700bae3bb77c44dd9f525320350de0e19b19536f1",
+  "status": "assistant-first-pass",
+  "spans": [
+    {"id": "rl-1", "startWord": 0, "endWord": 10, "category": "underwriting", "baselineSpanIds": ["span-1"], "note": "Alienware support acknowledgement."},
+    {"id": "rl-2", "startWord": 10, "endWord": 72, "category": "underwriting", "baselineSpanIds": ["span-2"], "note": "Progressive support acknowledgement."},
+    {"id": "rl-3", "startWord": 79, "endWord": 87, "category": "network_id", "note": "Radiolab / WNYC identifier; absent from the ads-only golden."},
+    {"id": "rl-4", "startWord": 1646, "endWord": 1742, "category": "underwriting", "baselineSpanIds": ["span-4"], "note": "Capital One support acknowledgement."},
+    {"id": "rl-5", "startWord": 1742, "endWord": 2077, "category": "paid_ad", "baselineSpanIds": ["span-5"], "note": "BetterHelp host-read paid ad."},
+    {"id": "rl-6", "startWord": 2077, "endWord": 2167, "category": "cross_show_promo", "baselineSpanIds": ["span-6"], "note": "This American Life promo."},
+    {"id": "rl-7", "startWord": 5906, "endWord": 6026, "category": "production_credit", "note": "Episode and staff credits; absent from the ads-only golden."},
+    {"id": "rl-8", "startWord": 6026, "endWord": 6055, "category": "underwriting", "baselineSpanIds": ["span-3"], "note": "Foundation support acknowledgements."}
+  ],
+  "findings": [
+    "Radiolab makes the policy boundary visible: sponsor acknowledgements can be skipped under Skip obvious interruptions, while the WNYC ID and credits wait for Skip most interruptions.",
+    "The BetterHelp host read remains a paid ad, not an editorial mental-health discussion.",
+    "No story material, recap, or teaser is proposed for removal."
+  ]
+}

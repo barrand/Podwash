@@ -1,0 +1,29 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "s570-belongs": {
+      "type": "noul",
+      "noul": 0.62
+    },
+    "s571-belongs": {
+      "type": "noul",
+      "noul": 0.61
+    },
+    "s572-belongs": {
+      "type": "noul",
+      "noul": 0.64
+    },
+    "s573-belongs": {
+      "type": "noul",
+      "noul": 0.63
+    },
+    "s574-belongs": {
+      "type": "noul",
+      "noul": 0.64
+    }
+  },
+  "usage": {
+    "input_tokens": 2407,
+    "output_tokens": 109
+  }
+}

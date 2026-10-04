@@ -1,0 +1,364 @@
+{
+  "state": {
+    "episode": {
+      "show": "Darknet Diaries",
+      "episode": "176: NSL",
+      "showDescription": "Explore true stories of the dark side of the Internet with host Jack Rhysider as he takes you on a journey through the chilling world of hacking, data breaches, and cyber crime. ¿Hablas español? Escucha en español aquí ➔ https://darknetdiaries.com/es/",
+      "episodeDescription": "One day Nick got a visit from the FBI demanding he give them data on one of his customers. They asked for it in the form of a National Security Letter or NSL. Something wasn’t right about this letter. It seemed to violate the constitution. So he set out to change the law. Learn more about Nicks work at calyxinstitute.org and phreeli.com . Check out Cindy’s book Privacy’s Defender: My Thirty-Year Fight Against Digital Surveillance (https://amzn.to/4gXuK2J). Sponsors Support for this show comes from ThreatLocker® . ThreatLocker® is a Zero Trust Endpoint Protection Platform that strengthens your infrastructure from the ground up. With ThreatLocker® Allowlisting and Ringfencing™, you gain a more secure approach to blocking exploits of known and unknown vulnerabilities. ThreatLocker® provides Zero Trust control at the kernel level that enables you to allow everything you need and block everything else, including ransomware! Learn more at www.threatlocker.com . Support for this episode comes from NetSuite . NetSuite gives you visibility and control of your financials, planning, budgeting, and of course - inventory - so you can manage risk, get reliable forecasts, and improve margins. NetSuite helps you identify rising costs, automate your manual business processes, and see where to save money. KNOW your numbers. KNOW your business. And get to KNOW how NetSuite can be the source of truth for your entire company. Visit www.netsuite.com/darknet to learn more. This show is sponsored by Maze . Maze uses AI agents to triage and remediate cloud vulnerabilities by figuring out what’s act…"
+    },
+    "policy": {
+      "alwaysKeep": [
+        "previews and recaps of this episode",
+        "substantive reporting, discussion, interviews, and storytelling",
+        "quoted or archival commercials used as editorial evidence",
+        "complete or substantial cross-post/feed-drop content",
+        "mixed sentences without a safe whole-sentence boundary"
+      ],
+      "offTopicAloneIsNeverEnough": true
+    },
+    "transcript_window": [
+      {
+        "id": 750,
+        "start_seconds": 3893.44,
+        "end_seconds": 3897.9,
+        "role": "context",
+        "text": "He uses a ton of encryption, which is really interesting and amazing but it's very geeky."
+      },
+      {
+        "id": 751,
+        "start_seconds": 3898.12,
+        "end_seconds": 3900.96,
+        "role": "context",
+        "text": "And I just love how tech actually solves these problems."
+      },
+      {
+        "id": 752,
+        "start_seconds": 3901.52,
+        "end_seconds": 3919.64,
+        "role": "context",
+        "text": "And second, he logs as little as possible, which I believe is what he's legally required to retain, which is zip codes for customers for tax reasons and aggregate call data just to show how many minutes were spent like calling between the northwest and southwest regions of the Oh, and I think he monitors how much bandwidth users have so that"
+      },
+      {
+        "id": 753,
+        "start_seconds": 3919.64,
+        "end_seconds": 3920.76,
+        "role": "context",
+        "text": "he can charge them appropriately."
+      },
+      {
+        "id": 754,
+        "start_seconds": 3920.84,
+        "end_seconds": 3926.38,
+        "role": "context",
+        "text": "It's not perfect privacy, but it's far more private than the average cell phone provider."
+      },
+      {
+        "id": 755,
+        "start_seconds": 3926.92,
+        "end_seconds": 3939.38,
+        "role": "context",
+        "text": "And that makes me think, if this is something that Nick can just up and make because he cares about his customers privacy that much, then how come our cell providers don't take our privacy as seriously as Nick does?"
+      },
+      {
+        "id": 756,
+        "start_seconds": 3940.14,
+        "end_seconds": 3946.86,
+        "role": "context",
+        "text": "So this is what it looks like when technology fights back to solve a problem that Nick saw with the NSLs."
+      },
+      {
+        "id": 757,
+        "start_seconds": 3947.12,
+        "end_seconds": 3949.42,
+        "role": "target",
+        "text": "But it solves way more than just the NSL problem."
+      },
+      {
+        "id": 758,
+        "start_seconds": 3949.74,
+        "end_seconds": 3951.94,
+        "role": "target",
+        "text": "It enhances privacy for all users."
+      },
+      {
+        "id": 759,
+        "start_seconds": 3952.44,
+        "end_seconds": 3956.12,
+        "role": "target",
+        "text": "So many of these services we pay for, they just sell our data to data brokers."
+      },
+      {
+        "id": 760,
+        "start_seconds": 3956.82,
+        "end_seconds": 3959.66,
+        "role": "target",
+        "text": "And Nick doesn't even have your data to sell it."
+      },
+      {
+        "id": 761,
+        "start_seconds": 3959.78,
+        "end_seconds": 3966.92,
+        "role": "target",
+        "text": "Yeah, we just talked about how I hit with the NSL and for the government wanting data from one of your customers."
+      },
+      {
+        "id": 762,
+        "start_seconds": 3967.28,
+        "end_seconds": 3979.76,
+        "role": "target",
+        "text": "have a feeling that I may be a conspiracy theory that all these ISPs, I ISPs, but mobile carriers have back doors with the government to allow them to see everything."
+      },
+      {
+        "id": 763,
+        "start_seconds": 3980.04,
+        "end_seconds": 3985.56,
+        "role": "target",
+        "text": "And I have a feeling that the government's going to come to your knocking on your door again asking to see some customer data."
+      },
+      {
+        "id": 764,
+        "start_seconds": 3985.84,
+        "end_seconds": 3988.14,
+        "role": "target",
+        "text": "And this is all going to start over all over again."
+      },
+      {
+        "id": 765,
+        "start_seconds": 3989.08,
+        "end_seconds": 3990.7,
+        "role": "target",
+        "text": "know, it may."
+      },
+      {
+        "id": 766,
+        "start_seconds": 3991.38,
+        "end_seconds": 3996.28,
+        "role": "target",
+        "text": "I clearly I'm a sucker for punishment or a slow learner or something like that."
+      },
+      {
+        "id": 767,
+        "start_seconds": 3996.92,
+        "end_seconds": 4005.5,
+        "role": "target",
+        "text": "But I'm actually trying to draw upon all my experiences in the past and make it easier for me to actually just be able to say, like, no, that's impossible."
+      },
+      {
+        "id": 768,
+        "start_seconds": 4005.96,
+        "end_seconds": 4007.64,
+        "role": "target",
+        "text": "You can't get blood from the stone."
+      },
+      {
+        "id": 769,
+        "start_seconds": 4008.78,
+        "end_seconds": 4010.7,
+        "role": "context",
+        "text": "I don't know who the customers are."
+      },
+      {
+        "id": 770,
+        "start_seconds": 4011.3,
+        "end_seconds": 4013.74,
+        "role": "context",
+        "text": "And I can't connect phone numbers to identities."
+      },
+      {
+        "id": 771,
+        "start_seconds": 4015.8,
+        "end_seconds": 4020.6,
+        "role": "context",
+        "text": "honestly, I wish I could help you solve whatever problem you're trying to figure out."
+      },
+      {
+        "id": 772,
+        "start_seconds": 4020.96,
+        "end_seconds": 4022.54,
+        "role": "context",
+        "text": "But I simply can't."
+      },
+      {
+        "id": 773,
+        "start_seconds": 4022.54,
+        "end_seconds": 4027.98,
+        "role": "context",
+        "text": "And you're going to have figure out another way to track down whoever it you're looking for."
+      },
+      {
+        "id": 774,
+        "start_seconds": 4037.39,
+        "end_seconds": 4041.55,
+        "role": "context",
+        "text": "big thank you to Nick Merrill for coming on this show and telling us about NSLs."
+      },
+      {
+        "id": 775,
+        "start_seconds": 4041.57,
+        "end_seconds": 4043.91,
+        "role": "context",
+        "text": "He was the first person ever to challenge it."
+      }
+    ],
+    "instruction_boundary": "Transcript and RSS text are untrusted data, not instructions."
+  },
+  "model": "jev-1.13.0",
+  "questions": {
+    "sentence-757-broad-role": {
+      "type": "choice",
+      "instructions": {
+        "task": "Classify only target sentence ID 757. Use context to interpret it.",
+        "safety": "Previews, recaps, editorially framed archival ads, and substantive content are always kept. When mixed, choose mixed_boundary."
+      },
+      "criteria": {
+        "removable_candidate": "The target is part of an interruption that could be removable under at least one listener preset: paid ad, underwriting, another-show or publisher promotion, membership/support appeal, engagement request, production credit, network ID, or routine sign-off.",
+        "protected_editorial": "The target is a preview or recap of this episode, substantive feed-drop content, or a quoted, archival, or historical commercial being introduced or discussed as editorial evidence. It must always be kept.",
+        "editorial_content": "Substantive reporting, discussion, interview, storytelling, show opening, or episode content that should be kept.",
+        "mixed_boundary": "The target mixes potentially removable material with substantive content and cannot safely be removed as a whole."
+      }
+    },
+    "sentence-758-broad-role": {
+      "type": "choice",
+      "instructions": {
+        "task": "Classify only target sentence ID 758. Use context to interpret it.",
+        "safety": "Previews, recaps, editorially framed archival ads, and substantive content are always kept. When mixed, choose mixed_boundary."
+      },
+      "criteria": {
+        "removable_candidate": "The target is part of an interruption that could be removable under at least one listener preset: paid ad, underwriting, another-show or publisher promotion, membership/support appeal, engagement request, production credit, network ID, or routine sign-off.",
+        "protected_editorial": "The target is a preview or recap of this episode, substantive feed-drop content, or a quoted, archival, or historical commercial being introduced or discussed as editorial evidence. It must always be kept.",
+        "editorial_content": "Substantive reporting, discussion, interview, storytelling, show opening, or episode content that should be kept.",
+        "mixed_boundary": "The target mixes potentially removable material with substantive content and cannot safely be removed as a whole."
+      }
+    },
+    "sentence-759-broad-role": {
+      "type": "choice",
+      "instructions": {
+        "task": "Classify only target sentence ID 759. Use context to interpret it.",
+        "safety": "Previews, recaps, editorially framed archival ads, and substantive content are always kept. When mixed, choose mixed_boundary."
+      },
+      "criteria": {
+        "removable_candidate": "The target is part of an interruption that could be removable under at least one listener preset: paid ad, underwriting, another-show or publisher promotion, membership/support appeal, engagement request, production credit, network ID, or routine sign-off.",
+        "protected_editorial": "The target is a preview or recap of this episode, substantive feed-drop content, or a quoted, archival, or historical commercial being introduced or discussed as editorial evidence. It must always be kept.",
+        "editorial_content": "Substantive reporting, discussion, interview, storytelling, show opening, or episode content that should be kept.",
+        "mixed_boundary": "The target mixes potentially removable material with substantive content and cannot safely be removed as a whole."
+      }
+    },
+    "sentence-760-broad-role": {
+      "type": "choice",
+      "instructions": {
+        "task": "Classify only target sentence ID 760. Use context to interpret it.",
+        "safety": "Previews, recaps, editorially framed archival ads, and substantive content are always kept. When mixed, choose mixed_boundary."
+      },
+      "criteria": {
+        "removable_candidate": "The target is part of an interruption that could be removable under at least one listener preset: paid ad, underwriting, another-show or publisher promotion, membership/support appeal, engagement request, production credit, network ID, or routine sign-off.",
+        "protected_editorial": "The target is a preview or recap of this episode, substantive feed-drop content, or a quoted, archival, or historical commercial being introduced or discussed as editorial evidence. It must always be kept.",
+        "editorial_content": "Substantive reporting, discussion, interview, storytelling, show opening, or episode content that should be kept.",
+        "mixed_boundary": "The target mixes potentially removable material with substantive content and cannot safely be removed as a whole."
+      }
+    },
+    "sentence-761-broad-role": {
+      "type": "choice",
+      "instructions": {
+        "task": "Classify only target sentence ID 761. Use context to interpret it.",
+        "safety": "Previews, recaps, editorially framed archival ads, and substantive content are always kept. When mixed, choose mixed_boundary."
+      },
+      "criteria": {
+        "removable_candidate": "The target is part of an interruption that could be removable under at least one listener preset: paid ad, underwriting, another-show or publisher promotion, membership/support appeal, engagement request, production credit, network ID, or routine sign-off.",
+        "protected_editorial": "The target is a preview or recap of this episode, substantive feed-drop content, or a quoted, archival, or historical commercial being introduced or discussed as editorial evidence. It must always be kept.",
+        "editorial_content": "Substantive reporting, discussion, interview, storytelling, show opening, or episode content that should be kept.",
+        "mixed_boundary": "The target mixes potentially removable material with substantive content and cannot safely be removed as a whole."
+      }
+    },
+    "sentence-762-broad-role": {
+      "type": "choice",
+      "instructions": {
+        "task": "Classify only target sentence ID 762. Use context to interpret it.",
+        "safety": "Previews, recaps, editorially framed archival ads, and substantive content are always kept. When mixed, choose mixed_boundary."
+      },
+      "criteria": {
+        "removable_candidate": "The target is part of an interruption that could be removable under at least one listener preset: paid ad, underwriting, another-show or publisher promotion, membership/support appeal, engagement request, production credit, network ID, or routine sign-off.",
+        "protected_editorial": "The target is a preview or recap of this episode, substantive feed-drop content, or a quoted, archival, or historical commercial being introduced or discussed as editorial evidence. It must always be kept.",
+        "editorial_content": "Substantive reporting, discussion, interview, storytelling, show opening, or episode content that should be kept.",
+        "mixed_boundary": "The target mixes potentially removable material with substantive content and cannot safely be removed as a whole."
+      }
+    },
+    "sentence-763-broad-role": {
+      "type": "choice",
+      "instructions": {
+        "task": "Classify only target sentence ID 763. Use context to interpret it.",
+        "safety": "Previews, recaps, editorially framed archival ads, and substantive content are always kept. When mixed, choose mixed_boundary."
+      },
+      "criteria": {
+        "removable_candidate": "The target is part of an interruption that could be removable under at least one listener preset: paid ad, underwriting, another-show or publisher promotion, membership/support appeal, engagement request, production credit, network ID, or routine sign-off.",
+        "protected_editorial": "The target is a preview or recap of this episode, substantive feed-drop content, or a quoted, archival, or historical commercial being introduced or discussed as editorial evidence. It must always be kept.",
+        "editorial_content": "Substantive reporting, discussion, interview, storytelling, show opening, or episode content that should be kept.",
+        "mixed_boundary": "The target mixes potentially removable material with substantive content and cannot safely be removed as a whole."
+      }
+    },
+    "sentence-764-broad-role": {
+      "type": "choice",
+      "instructions": {
+        "task": "Classify only target sentence ID 764. Use context to interpret it.",
+        "safety": "Previews, recaps, editorially framed archival ads, and substantive content are always kept. When mixed, choose mixed_boundary."
+      },
+      "criteria": {
+        "removable_candidate": "The target is part of an interruption that could be removable under at least one listener preset: paid ad, underwriting, another-show or publisher promotion, membership/support appeal, engagement request, production credit, network ID, or routine sign-off.",
+        "protected_editorial": "The target is a preview or recap of this episode, substantive feed-drop content, or a quoted, archival, or historical commercial being introduced or discussed as editorial evidence. It must always be kept.",
+        "editorial_content": "Substantive reporting, discussion, interview, storytelling, show opening, or episode content that should be kept.",
+        "mixed_boundary": "The target mixes potentially removable material with substantive content and cannot safely be removed as a whole."
+      }
+    },
+    "sentence-765-broad-role": {
+      "type": "choice",
+      "instructions": {
+        "task": "Classify only target sentence ID 765. Use context to interpret it.",
+        "safety": "Previews, recaps, editorially framed archival ads, and substantive content are always kept. When mixed, choose mixed_boundary."
+      },
+      "criteria": {
+        "removable_candidate": "The target is part of an interruption that could be removable under at least one listener preset: paid ad, underwriting, another-show or publisher promotion, membership/support appeal, engagement request, production credit, network ID, or routine sign-off.",
+        "protected_editorial": "The target is a preview or recap of this episode, substantive feed-drop content, or a quoted, archival, or historical commercial being introduced or discussed as editorial evidence. It must always be kept.",
+        "editorial_content": "Substantive reporting, discussion, interview, storytelling, show opening, or episode content that should be kept.",
+        "mixed_boundary": "The target mixes potentially removable material with substantive content and cannot safely be removed as a whole."
+      }
+    },
+    "sentence-766-broad-role": {
+      "type": "choice",
+      "instructions": {
+        "task": "Classify only target sentence ID 766. Use context to interpret it.",
+        "safety": "Previews, recaps, editorially framed archival ads, and substantive content are always kept. When mixed, choose mixed_boundary."
+      },
+      "criteria": {
+        "removable_candidate": "The target is part of an interruption that could be removable under at least one listener preset: paid ad, underwriting, another-show or publisher promotion, membership/support appeal, engagement request, production credit, network ID, or routine sign-off.",
+        "protected_editorial": "The target is a preview or recap of this episode, substantive feed-drop content, or a quoted, archival, or historical commercial being introduced or discussed as editorial evidence. It must always be kept.",
+        "editorial_content": "Substantive reporting, discussion, interview, storytelling, show opening, or episode content that should be kept.",
+        "mixed_boundary": "The target mixes potentially removable material with substantive content and cannot safely be removed as a whole."
+      }
+    },
+    "sentence-767-broad-role": {
+      "type": "choice",
+      "instructions": {
+        "task": "Classify only target sentence ID 767. Use context to interpret it.",
+        "safety": "Previews, recaps, editorially framed archival ads, and substantive content are always kept. When mixed, choose mixed_boundary."
+      },
+      "criteria": {
+        "removable_candidate": "The target is part of an interruption that could be removable under at least one listener preset: paid ad, underwriting, another-show or publisher promotion, membership/support appeal, engagement request, production credit, network ID, or routine sign-off.",
+        "protected_editorial": "The target is a preview or recap of this episode, substantive feed-drop content, or a quoted, archival, or historical commercial being introduced or discussed as editorial evidence. It must always be kept.",
+        "editorial_content": "Substantive reporting, discussion, interview, storytelling, show opening, or episode content that should be kept.",
+        "mixed_boundary": "The target mixes potentially removable material with substantive content and cannot safely be removed as a whole."
+      }
+    },
+    "sentence-768-broad-role": {
+      "type": "choice",
+      "instructions": {
+        "task": "Classify only target sentence ID 768. Use context to interpret it.",
+        "safety": "Previews, recaps, editorially framed archival ads, and substantive content are always kept. When mixed, choose mixed_boundary."
+      },
+      "criteria": {
+        "removable_candidate": "The target is part of an interruption that could be removable under at least one listener preset: paid ad, underwriting, another-show or publisher promotion, membership/support appeal, engagement request, production credit, network ID, or routine sign-off.",
+        "protected_editorial": "The target is a preview or recap of this episode, substantive feed-drop content, or a quoted, archival, or historical commercial being introduced or discussed as editorial evidence. It must always be kept.",
+        "editorial_content": "Substantive reporting, discussion, interview, storytelling, show opening, or episode content that should be kept.",
+        "mixed_boundary": "The target mixes potentially removable material with substantive content and cannot safely be removed as a whole."
+      }
+    }
+  }
+}

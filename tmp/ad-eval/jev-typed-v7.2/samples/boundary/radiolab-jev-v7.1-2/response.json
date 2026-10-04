@@ -1,0 +1,69 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "s7-belongs": {
+      "type": "noul",
+      "noul": 0.32
+    },
+    "s8-belongs": {
+      "type": "noul",
+      "noul": 0.33
+    },
+    "s9-belongs": {
+      "type": "noul",
+      "noul": 0.31
+    },
+    "s10-belongs": {
+      "type": "noul",
+      "noul": 0.37
+    },
+    "s11-belongs": {
+      "type": "noul",
+      "noul": 0.36
+    },
+    "s12-belongs": {
+      "type": "noul",
+      "noul": 0.36
+    },
+    "s13-belongs": {
+      "type": "noul",
+      "noul": 0.37
+    },
+    "s14-belongs": {
+      "type": "noul",
+      "noul": 0.36
+    },
+    "s15-belongs": {
+      "type": "noul",
+      "noul": 0.36
+    },
+    "s16-belongs": {
+      "type": "noul",
+      "noul": 0.34
+    },
+    "s17-belongs": {
+      "type": "noul",
+      "noul": 0.32
+    },
+    "s18-belongs": {
+      "type": "noul",
+      "noul": 0.35
+    },
+    "s19-belongs": {
+      "type": "noul",
+      "noul": 0.32
+    },
+    "s20-belongs": {
+      "type": "noul",
+      "noul": 0.35
+    },
+    "s21-belongs": {
+      "type": "noul",
+      "noul": 0.36
+    }
+  },
+  "usage": {
+    "input_tokens": 4432,
+    "output_tokens": 301
+  }
+}

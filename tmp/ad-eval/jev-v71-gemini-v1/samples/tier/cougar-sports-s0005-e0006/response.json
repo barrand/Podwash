@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "cougar-sports-s0005-e0006-tier": {
+      "type": "choice",
+      "choice": "skip_obvious",
+      "confidence": 0.69,
+      "probabilities": {
+        "keep_protected": 0.08,
+        "skip_more_only": 0.05,
+        "skip_most_only": 0.06,
+        "mixed_split": 0.06,
+        "skip_obvious": 0.75
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 1756,
+    "output_tokens": 81
+  }
+}

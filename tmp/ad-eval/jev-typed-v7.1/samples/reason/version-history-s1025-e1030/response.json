@@ -1,0 +1,36 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "version-history-s1025-e1030-primary-reason": {
+      "type": "choice",
+      "choice": "signoff",
+      "confidence": 0.68,
+      "probabilities": {
+        "engagement_request": 0.17,
+        "network_id": 0.06,
+        "signoff": 0.77,
+        "production_credit": 0.0
+      }
+    },
+    "version-history-s1025-e1030-also-engagement_request": {
+      "type": "noul",
+      "noul": 0.78
+    },
+    "version-history-s1025-e1030-also-production_credit": {
+      "type": "noul",
+      "noul": 0.64
+    },
+    "version-history-s1025-e1030-also-network_id": {
+      "type": "noul",
+      "noul": 0.72
+    },
+    "version-history-s1025-e1030-also-signoff": {
+      "type": "noul",
+      "noul": 0.93
+    }
+  },
+  "usage": {
+    "input_tokens": 2374,
+    "output_tokens": 194
+  }
+}

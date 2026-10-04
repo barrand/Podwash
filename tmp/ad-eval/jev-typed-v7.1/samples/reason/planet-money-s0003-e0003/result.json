@@ -1,0 +1,35 @@
+{
+  "requestSha256": "1cdbef664c6583bc3f49cc16d7ccad5b14b7a624afecdd138cf337d7e071a79d",
+  "latencyMs": 197.2,
+  "usage": {
+    "inputTokens": 1688,
+    "outputTokens": 116,
+    "totalCostUsd": 7.09e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "planet-money-s0003-e0003-primary-reason": {
+        "type": "choice",
+        "choice": "paid_ad",
+        "confidence": 0.96,
+        "probabilities": {
+          "paid_ad": 0.98,
+          "underwriting": 0.02
+        }
+      },
+      "planet-money-s0003-e0003-also-paid_ad": {
+        "type": "noul",
+        "noul": 0.83
+      },
+      "planet-money-s0003-e0003-also-underwriting": {
+        "type": "noul",
+        "noul": 0.21
+      }
+    },
+    "usage": {
+      "input_tokens": 1688,
+      "output_tokens": 116
+    }
+  }
+}

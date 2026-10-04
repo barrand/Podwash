@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "version-history-s1010-e1010-tier": {
+      "type": "choice",
+      "choice": "keep_protected",
+      "confidence": 0.37,
+      "probabilities": {
+        "mixed_split": 0.01,
+        "skip_most_only": 0.2,
+        "skip_obvious": 0.29,
+        "skip_more_only": 0.01,
+        "keep_protected": 0.49
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 1945,
+    "output_tokens": 79
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "planet-money-s0296-e0298-primary-reason": {
+      "type": "choice",
+      "choice": "cross_show_promo",
+      "confidence": 0.99,
+      "probabilities": {
+        "cross_show_promo": 0.99,
+        "membership_appeal": 0.0,
+        "publisher_promo": 0.01
+      }
+    },
+    "planet-money-s0296-e0298-also-cross_show_promo": {
+      "type": "noul",
+      "noul": 0.44
+    },
+    "planet-money-s0296-e0298-also-publisher_promo": {
+      "type": "noul",
+      "noul": 0.41
+    },
+    "planet-money-s0296-e0298-also-membership_appeal": {
+      "type": "noul",
+      "noul": 0.06
+    }
+  },
+  "usage": {
+    "input_tokens": 2268,
+    "output_tokens": 168
+  }
+}

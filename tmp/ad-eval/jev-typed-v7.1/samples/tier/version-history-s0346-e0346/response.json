@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "version-history-s0346-e0346-tier": {
+      "type": "choice",
+      "choice": "skip_obvious",
+      "confidence": 0.93,
+      "probabilities": {
+        "keep_protected": 0.02,
+        "skip_obvious": 0.94,
+        "skip_more_only": 0.01,
+        "mixed_split": 0.02,
+        "skip_most_only": 0.01
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 1937,
+    "output_tokens": 79
+  }
+}

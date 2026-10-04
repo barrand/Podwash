@@ -1,0 +1,74 @@
+{
+  "requestSha256": "d51ce859dccf16298e2a701211c53afef30af591fc0f5222624d1f9aa81225ec",
+  "latencyMs": 256.8,
+  "usage": {
+    "inputTokens": 4508,
+    "outputTokens": 298,
+    "totalCostUsd": 0.00018934
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "s185-belongs": {
+        "type": "noul",
+        "noul": 0.61
+      },
+      "s186-belongs": {
+        "type": "noul",
+        "noul": 0.58
+      },
+      "s187-belongs": {
+        "type": "noul",
+        "noul": 0.59
+      },
+      "s190-belongs": {
+        "type": "noul",
+        "noul": 0.59
+      },
+      "s191-belongs": {
+        "type": "noul",
+        "noul": 0.58
+      },
+      "s192-belongs": {
+        "type": "noul",
+        "noul": 0.59
+      },
+      "s193-belongs": {
+        "type": "noul",
+        "noul": 0.59
+      },
+      "s194-belongs": {
+        "type": "noul",
+        "noul": 0.57
+      },
+      "s188-belongs": {
+        "type": "noul",
+        "noul": 0.57
+      },
+      "s189-belongs": {
+        "type": "noul",
+        "noul": 0.59
+      },
+      "s195-belongs": {
+        "type": "noul",
+        "noul": 0.6
+      },
+      "s196-belongs": {
+        "type": "noul",
+        "noul": 0.59
+      },
+      "s197-belongs": {
+        "type": "noul",
+        "noul": 0.61
+      },
+      "s198-belongs": {
+        "type": "noul",
+        "noul": 0.6
+      }
+    },
+    "usage": {
+      "input_tokens": 4508,
+      "output_tokens": 298
+    }
+  }
+}

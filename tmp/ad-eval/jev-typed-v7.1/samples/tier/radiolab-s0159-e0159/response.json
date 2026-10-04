@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "radiolab-s0159-e0159-tier": {
+      "type": "choice",
+      "choice": "skip_obvious",
+      "confidence": 0.69,
+      "probabilities": {
+        "mixed_split": 0.03,
+        "keep_protected": 0.12,
+        "skip_obvious": 0.76,
+        "skip_more_only": 0.05,
+        "skip_most_only": 0.04
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 2117,
+    "output_tokens": 79
+  }
+}

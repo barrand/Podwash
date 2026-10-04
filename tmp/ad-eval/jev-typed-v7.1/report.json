@@ -1,0 +1,2600 @@
+{
+  "schemaVersion": 1,
+  "experiment": "typed-blocks-v7.1",
+  "status": "evaluation-only",
+  "model": "jev-1.13.0",
+  "completedAt": "2026-10-03T03:06:31.971567+00:00",
+  "sourceBroadReport": "C:\\Users\\barra\\Documents\\Projects\\PodWash\\tmp\\ad-eval\\jev-typed-v7\\report.json",
+  "sourceBroadCostUsd": 0.05777683,
+  "incrementalCostUsd": 0.01912916,
+  "episodes": [
+    {
+      "slug": "version-history",
+      "transcriptSha256": "6b9c9768cf02c81e652a8a0b0318b6db93d7695f1bd35238f8db94b47c9e41cd",
+      "initialCandidateBlockCount": 15,
+      "typedSpans": [
+        {
+          "startSentence": 7,
+          "endSentence": 16,
+          "startWord": 86,
+          "endWord": 184,
+          "start": 39.3,
+          "end": 102.58,
+          "tier": "skip_obvious",
+          "tierConfidence": 0.36,
+          "primaryReason": "paid_ad",
+          "reasons": [
+            "paid_ad"
+          ],
+          "reasonProbabilities": {
+            "paid_ad": 0.92,
+            "underwriting": 0.27
+          },
+          "id": "jev-v7.1-1"
+        },
+        {
+          "startSentence": 333,
+          "endSentence": 336,
+          "startWord": 4659,
+          "endWord": 4715,
+          "start": 1631.18,
+          "end": 1646.3,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.39,
+          "primaryReason": "cross_show_promo",
+          "reasons": [
+            "cross_show_promo",
+            "publisher_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.8,
+            "publisher_promo": 0.81,
+            "membership_appeal": 0.1
+          },
+          "id": "jev-v7.1-2"
+        },
+        {
+          "startSentence": 344,
+          "endSentence": 344,
+          "startWord": 4784,
+          "endWord": 4790,
+          "start": 1671.04,
+          "end": 1672.42,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.43,
+          "primaryReason": "publisher_promo",
+          "reasons": [
+            "publisher_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.17,
+            "publisher_promo": 0.88,
+            "membership_appeal": 0.42
+          },
+          "id": "jev-v7.1-3"
+        },
+        {
+          "startSentence": 345,
+          "endSentence": 345,
+          "startWord": 4790,
+          "endWord": 4797,
+          "start": 1672.76,
+          "end": 1675.1,
+          "tier": "skip_obvious",
+          "tierConfidence": 0.87,
+          "primaryReason": "underwriting",
+          "reasons": [
+            "paid_ad",
+            "underwriting"
+          ],
+          "reasonProbabilities": {
+            "paid_ad": 0.9,
+            "underwriting": 0.86
+          },
+          "id": "jev-v7.1-4"
+        },
+        {
+          "startSentence": 346,
+          "endSentence": 347,
+          "startWord": 4797,
+          "endWord": 4839,
+          "start": 1676.26,
+          "end": 1687.74,
+          "tier": "skip_obvious",
+          "tierConfidence": 0.93,
+          "primaryReason": "paid_ad",
+          "reasons": [
+            "paid_ad"
+          ],
+          "reasonProbabilities": {
+            "paid_ad": 0.96,
+            "underwriting": 0.25
+          },
+          "id": "jev-v7.1-5"
+        },
+        {
+          "startSentence": 625,
+          "endSentence": 642,
+          "startWord": 7947,
+          "endWord": 8053,
+          "start": 2744.44,
+          "end": 2788.78,
+          "tier": "skip_obvious",
+          "tierConfidence": 0.68,
+          "primaryReason": "paid_ad",
+          "reasons": [
+            "paid_ad"
+          ],
+          "reasonProbabilities": {
+            "paid_ad": 0.75,
+            "underwriting": 0.35
+          },
+          "id": "jev-v7.1-6"
+        },
+        {
+          "startSentence": 1012,
+          "endSentence": 1017,
+          "startWord": 12302,
+          "endWord": 12338,
+          "start": 4222.68,
+          "end": 4229.08,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.39,
+          "primaryReason": "signoff",
+          "reasons": [
+            "signoff"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.08,
+            "production_credit": 0.08,
+            "network_id": 0.19,
+            "signoff": 0.92
+          },
+          "id": "jev-v7.1-7"
+        },
+        {
+          "startSentence": 1018,
+          "endSentence": 1024,
+          "startWord": 12338,
+          "endWord": 12406,
+          "start": 4229.18,
+          "end": 4248.26,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.2,
+          "primaryReason": "membership_appeal",
+          "reasons": [
+            "cross_show_promo",
+            "membership_appeal",
+            "publisher_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.63,
+            "publisher_promo": 0.9,
+            "membership_appeal": 0.86
+          },
+          "id": "jev-v7.1-8"
+        },
+        {
+          "startSentence": 1025,
+          "endSentence": 1030,
+          "startWord": 12406,
+          "endWord": 12443,
+          "start": 4248.26,
+          "end": 4275.26,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.36,
+          "primaryReason": "signoff",
+          "reasons": [
+            "engagement_request",
+            "network_id",
+            "production_credit",
+            "signoff"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.78,
+            "production_credit": 0.64,
+            "network_id": 0.72,
+            "signoff": 0.93
+          },
+          "id": "jev-v7.1-9"
+        },
+        {
+          "startSentence": 1031,
+          "endSentence": 1037,
+          "startWord": 12443,
+          "endWord": 12518,
+          "start": 4292.68,
+          "end": 4321.6,
+          "tier": "skip_obvious",
+          "tierConfidence": 0.91,
+          "primaryReason": "paid_ad",
+          "reasons": [
+            "paid_ad"
+          ],
+          "reasonProbabilities": {
+            "paid_ad": 0.89,
+            "underwriting": 0.09
+          },
+          "id": "jev-v7.1-10"
+        }
+      ],
+      "metricsByPreset": {
+        "skip_obvious": {
+          "precision": 0.7553,
+          "recall": 0.9899,
+          "truePositiveSeconds": 113.56,
+          "falsePositiveSeconds": 36.8,
+          "falseNegativeSeconds": 1.16
+        },
+        "skip_more": {
+          "precision": 0.6647,
+          "recall": 0.9714,
+          "truePositiveSeconds": 123.6,
+          "falsePositiveSeconds": 62.34,
+          "falseNegativeSeconds": 3.64
+        },
+        "skip_most": {
+          "precision": 0.6706,
+          "recall": 0.9922,
+          "truePositiveSeconds": 147.1,
+          "falsePositiveSeconds": 72.24,
+          "falseNegativeSeconds": 1.16
+        }
+      },
+      "metricsByReason": {
+        "paid_ad": {
+          "precision": 0.7553,
+          "recall": 0.9899,
+          "truePositiveSeconds": 113.56,
+          "falsePositiveSeconds": 36.8,
+          "falseNegativeSeconds": 1.16
+        },
+        "underwriting": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "truePositiveSeconds": 0,
+          "falsePositiveSeconds": 2.34,
+          "falseNegativeSeconds": 0
+        },
+        "cross_show_promo": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "truePositiveSeconds": 0,
+          "falsePositiveSeconds": 34.2,
+          "falseNegativeSeconds": 0
+        },
+        "publisher_promo": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "truePositiveSeconds": 0,
+          "falsePositiveSeconds": 35.58,
+          "falseNegativeSeconds": 0
+        },
+        "membership_appeal": {
+          "precision": 0.5262,
+          "recall": 0.8019,
+          "truePositiveSeconds": 10.04,
+          "falsePositiveSeconds": 9.04,
+          "falseNegativeSeconds": 2.48
+        },
+        "engagement_request": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "truePositiveSeconds": 0.0,
+          "falsePositiveSeconds": 27.0,
+          "falseNegativeSeconds": 1.38
+        },
+        "production_credit": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "truePositiveSeconds": 0,
+          "falsePositiveSeconds": 27.0,
+          "falseNegativeSeconds": 0
+        },
+        "network_id": {
+          "precision": 0.6719,
+          "recall": 1.0,
+          "truePositiveSeconds": 18.14,
+          "falsePositiveSeconds": 8.86,
+          "falseNegativeSeconds": 0.0
+        },
+        "signoff": {
+          "precision": 0.0449,
+          "recall": 1.0,
+          "truePositiveSeconds": 1.5,
+          "falsePositiveSeconds": 31.9,
+          "falseNegativeSeconds": 0.0
+        }
+      }
+    },
+    {
+      "slug": "planet-money",
+      "transcriptSha256": "874f3d7b33ceadd6715c78c281b17500dcbc5365b2b6c640d4d4b8d0b5849bb8",
+      "initialCandidateBlockCount": 15,
+      "typedSpans": [
+        {
+          "startSentence": 1,
+          "endSentence": 4,
+          "startWord": 0,
+          "endWord": 58,
+          "start": 0.0,
+          "end": 17.88,
+          "tier": "skip_obvious",
+          "tierConfidence": 0.86,
+          "primaryReason": "paid_ad",
+          "reasons": [
+            "paid_ad"
+          ],
+          "reasonProbabilities": {
+            "paid_ad": 0.92,
+            "underwriting": 0.31
+          },
+          "id": "jev-v7.1-1"
+        },
+        {
+          "startSentence": 5,
+          "endSentence": 5,
+          "startWord": 58,
+          "endWord": 64,
+          "start": 18.84,
+          "end": 21.28,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.52,
+          "primaryReason": "network_id",
+          "reasons": [
+            "network_id"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.07,
+            "production_credit": 0.09,
+            "network_id": 0.77,
+            "signoff": 0.09
+          },
+          "id": "jev-v7.1-2"
+        },
+        {
+          "startSentence": 65,
+          "endSentence": 75,
+          "startWord": 831,
+          "endWord": 910,
+          "start": 312.38,
+          "end": 339.98,
+          "tier": "skip_obvious",
+          "tierConfidence": 0.7,
+          "primaryReason": "paid_ad",
+          "reasons": [
+            "paid_ad"
+          ],
+          "reasonProbabilities": {
+            "paid_ad": 0.95,
+            "underwriting": 0.22
+          },
+          "id": "jev-v7.1-3"
+        },
+        {
+          "startSentence": 76,
+          "endSentence": 79,
+          "startWord": 910,
+          "endWord": 963,
+          "start": 340.6,
+          "end": 363.72,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.62,
+          "primaryReason": "cross_show_promo",
+          "reasons": [
+            "cross_show_promo",
+            "publisher_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.95,
+            "publisher_promo": 0.91,
+            "membership_appeal": 0.1
+          },
+          "id": "jev-v7.1-4"
+        },
+        {
+          "startSentence": 207,
+          "endSentence": 207,
+          "startWord": 2627,
+          "endWord": 2630,
+          "start": 945.1,
+          "end": 945.8,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.21,
+          "primaryReason": "signoff",
+          "reasons": [
+            "signoff"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.06,
+            "production_credit": 0.04,
+            "network_id": 0.13,
+            "signoff": 0.04
+          },
+          "id": "jev-v7.1-5"
+        },
+        {
+          "startSentence": 232,
+          "endSentence": 232,
+          "startWord": 2931,
+          "endWord": 2938,
+          "start": 1050.34,
+          "end": 1053.14,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.54,
+          "primaryReason": "production_credit",
+          "reasons": [
+            "network_id",
+            "production_credit"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.07,
+            "production_credit": 0.85,
+            "network_id": 0.58,
+            "signoff": 0.26
+          },
+          "id": "jev-v7.1-6"
+        },
+        {
+          "startSentence": 295,
+          "endSentence": 295,
+          "startWord": 3875,
+          "endWord": 3890,
+          "start": 1384.4,
+          "end": 1390.16,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.46,
+          "primaryReason": "cross_show_promo",
+          "reasons": [
+            "cross_show_promo",
+            "publisher_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.66,
+            "publisher_promo": 0.53,
+            "membership_appeal": 0.08
+          },
+          "id": "jev-v7.1-7"
+        },
+        {
+          "startSentence": 296,
+          "endSentence": 298,
+          "startWord": 3890,
+          "endWord": 3921,
+          "start": 1390.4,
+          "end": 1399.4,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.29,
+          "primaryReason": "cross_show_promo",
+          "reasons": [
+            "cross_show_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.44,
+            "publisher_promo": 0.41,
+            "membership_appeal": 0.06
+          },
+          "id": "jev-v7.1-8"
+        },
+        {
+          "startSentence": 299,
+          "endSentence": 303,
+          "startWord": 3921,
+          "endWord": 3992,
+          "start": 1399.7,
+          "end": 1422.6,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.37,
+          "primaryReason": "cross_show_promo",
+          "reasons": [
+            "cross_show_promo",
+            "publisher_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.94,
+            "publisher_promo": 0.88,
+            "membership_appeal": 0.12
+          },
+          "id": "jev-v7.1-9"
+        },
+        {
+          "startSentence": 305,
+          "endSentence": 305,
+          "startWord": 4008,
+          "endWord": 4022,
+          "start": 1427.84,
+          "end": 1431.72,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.73,
+          "primaryReason": "cross_show_promo",
+          "reasons": [
+            "cross_show_promo",
+            "publisher_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.96,
+            "publisher_promo": 0.93,
+            "membership_appeal": 0.08
+          },
+          "id": "jev-v7.1-10"
+        },
+        {
+          "startSentence": 413,
+          "endSentence": 414,
+          "startWord": 5449,
+          "endWord": 5474,
+          "start": 1942.4,
+          "end": 1950.98,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.67,
+          "primaryReason": "cross_show_promo",
+          "reasons": [
+            "cross_show_promo",
+            "publisher_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.94,
+            "publisher_promo": 0.9,
+            "membership_appeal": 0.23
+          },
+          "id": "jev-v7.1-11"
+        },
+        {
+          "startSentence": 420,
+          "endSentence": 423,
+          "startWord": 5533,
+          "endWord": 5598,
+          "start": 1984.34,
+          "end": 2005.14,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.84,
+          "primaryReason": "cross_show_promo",
+          "reasons": [
+            "cross_show_promo",
+            "publisher_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.94,
+            "publisher_promo": 0.83,
+            "membership_appeal": 0.19
+          },
+          "id": "jev-v7.1-12"
+        },
+        {
+          "startSentence": 492,
+          "endSentence": 492,
+          "startWord": 6659,
+          "endWord": 6666,
+          "start": 2394.98,
+          "end": 2396.58,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.87,
+          "primaryReason": "signoff",
+          "reasons": [
+            "signoff"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.05,
+            "production_credit": 0.06,
+            "network_id": 0.15,
+            "signoff": 0.86
+          },
+          "id": "jev-v7.1-13"
+        },
+        {
+          "startSentence": 495,
+          "endSentence": 496,
+          "startWord": 6675,
+          "endWord": 6678,
+          "start": 2399.12,
+          "end": 2400.16,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.44,
+          "primaryReason": "signoff",
+          "reasons": [
+            "signoff"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.07,
+            "production_credit": 0.09,
+            "network_id": 0.16,
+            "signoff": 0.61
+          },
+          "id": "jev-v7.1-14"
+        },
+        {
+          "startSentence": 498,
+          "endSentence": 499,
+          "startWord": 6699,
+          "endWord": 6739,
+          "start": 2410.86,
+          "end": 2424.36,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.68,
+          "primaryReason": "publisher_promo",
+          "reasons": [
+            "publisher_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.24,
+            "publisher_promo": 0.95,
+            "membership_appeal": 0.1
+          },
+          "id": "jev-v7.1-15"
+        },
+        {
+          "startSentence": 500,
+          "endSentence": 502,
+          "startWord": 6739,
+          "endWord": 6766,
+          "start": 2424.9,
+          "end": 2433.88,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.95,
+          "primaryReason": "production_credit",
+          "reasons": [
+            "production_credit"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.05,
+            "production_credit": 0.96,
+            "network_id": 0.48,
+            "signoff": 0.2
+          },
+          "id": "jev-v7.1-16"
+        },
+        {
+          "startSentence": 503,
+          "endSentence": 503,
+          "startWord": 6766,
+          "endWord": 6773,
+          "start": 2434.1,
+          "end": 2436.24,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.67,
+          "primaryReason": "network_id",
+          "reasons": [
+            "network_id",
+            "signoff"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.06,
+            "production_credit": 0.15,
+            "network_id": 0.77,
+            "signoff": 0.59
+          },
+          "id": "jev-v7.1-17"
+        },
+        {
+          "startSentence": 504,
+          "endSentence": 504,
+          "startWord": 6773,
+          "endWord": 6776,
+          "start": 2436.4,
+          "end": 2437.26,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.62,
+          "primaryReason": "signoff",
+          "reasons": [
+            "signoff"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.06,
+            "production_credit": 0.08,
+            "network_id": 0.23,
+            "signoff": 0.88
+          },
+          "id": "jev-v7.1-18"
+        },
+        {
+          "startSentence": 510,
+          "endSentence": 511,
+          "startWord": 6826,
+          "endWord": 6864,
+          "start": 2462.62,
+          "end": 2472.98,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.19,
+          "primaryReason": "publisher_promo",
+          "reasons": [
+            "publisher_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.44,
+            "publisher_promo": 0.62,
+            "membership_appeal": 0.07
+          },
+          "id": "jev-v7.1-19"
+        },
+        {
+          "startSentence": 514,
+          "endSentence": 514,
+          "startWord": 6885,
+          "endWord": 6908,
+          "start": 2479.2,
+          "end": 2485.32,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.3,
+          "primaryReason": "publisher_promo",
+          "reasons": [
+            "publisher_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.32,
+            "publisher_promo": 0.91,
+            "membership_appeal": 0.13
+          },
+          "id": "jev-v7.1-20"
+        },
+        {
+          "startSentence": 515,
+          "endSentence": 520,
+          "startWord": 6908,
+          "endWord": 6991,
+          "start": 2487.72,
+          "end": 2507.54,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.83,
+          "primaryReason": "cross_show_promo",
+          "reasons": [
+            "cross_show_promo",
+            "publisher_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.95,
+            "publisher_promo": 0.86,
+            "membership_appeal": 0.07
+          },
+          "id": "jev-v7.1-21"
+        }
+      ],
+      "metricsByPreset": {
+        "skip_obvious": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "truePositiveSeconds": 45.48,
+          "falsePositiveSeconds": 0.0,
+          "falseNegativeSeconds": 0.0
+        },
+        "skip_more": {
+          "precision": 0.8714,
+          "recall": 0.8566,
+          "truePositiveSeconds": 164.98,
+          "falsePositiveSeconds": 24.34,
+          "falseNegativeSeconds": 27.62
+        },
+        "skip_most": {
+          "precision": 0.8548,
+          "recall": 0.8659,
+          "truePositiveSeconds": 179.4,
+          "falsePositiveSeconds": 30.48,
+          "falseNegativeSeconds": 27.78
+        }
+      },
+      "metricsByReason": {
+        "paid_ad": {
+          "precision": 0.6069,
+          "recall": 1.0,
+          "truePositiveSeconds": 27.6,
+          "falsePositiveSeconds": 17.88,
+          "falseNegativeSeconds": 0.0
+        },
+        "underwriting": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "truePositiveSeconds": 0,
+          "falsePositiveSeconds": 0,
+          "falseNegativeSeconds": 17.88
+        },
+        "cross_show_promo": {
+          "precision": 0.7908,
+          "recall": 0.7597,
+          "truePositiveSeconds": 90.04,
+          "falsePositiveSeconds": 23.82,
+          "falseNegativeSeconds": 28.48
+        },
+        "publisher_promo": {
+          "precision": 0.0963,
+          "recall": 0.4538,
+          "truePositiveSeconds": 12.98,
+          "falsePositiveSeconds": 121.86,
+          "falseNegativeSeconds": 15.62
+        },
+        "membership_appeal": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "truePositiveSeconds": 0,
+          "falsePositiveSeconds": 0,
+          "falseNegativeSeconds": 0
+        },
+        "engagement_request": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "truePositiveSeconds": 0,
+          "falsePositiveSeconds": 0,
+          "falseNegativeSeconds": 0
+        },
+        "production_credit": {
+          "precision": 0.7623,
+          "recall": 1.0,
+          "truePositiveSeconds": 8.98,
+          "falsePositiveSeconds": 2.8,
+          "falseNegativeSeconds": 0.0
+        },
+        "network_id": {
+          "precision": 0.6206,
+          "recall": 0.8179,
+          "truePositiveSeconds": 4.58,
+          "falsePositiveSeconds": 2.8,
+          "falseNegativeSeconds": 1.02
+        },
+        "signoff": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "truePositiveSeconds": 0,
+          "falsePositiveSeconds": 6.34,
+          "falseNegativeSeconds": 0
+        }
+      }
+    },
+    {
+      "slug": "radiolab",
+      "transcriptSha256": "bff470d7c4114d9ca1f4a4b700bae3bb77c44dd9f525320350de0e19b19536f1",
+      "initialCandidateBlockCount": 12,
+      "typedSpans": [
+        {
+          "startSentence": 1,
+          "endSentence": 9,
+          "startWord": 0,
+          "endWord": 72,
+          "start": 0.0,
+          "end": 51.56,
+          "tier": "skip_obvious",
+          "tierConfidence": 0.44,
+          "primaryReason": "paid_ad",
+          "reasons": [
+            "paid_ad",
+            "underwriting"
+          ],
+          "reasonProbabilities": {
+            "paid_ad": 0.96,
+            "underwriting": 0.86
+          },
+          "id": "jev-v7.1-1"
+        },
+        {
+          "startSentence": 10,
+          "endSentence": 18,
+          "startWord": 72,
+          "endWord": 89,
+          "start": 54.74,
+          "end": 68.2,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.58,
+          "primaryReason": "network_id",
+          "reasons": [
+            "network_id"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.08,
+            "production_credit": 0.1,
+            "network_id": 0.76,
+            "signoff": 0.16
+          },
+          "id": "jev-v7.1-2"
+        },
+        {
+          "startSentence": 41,
+          "endSentence": 41,
+          "startWord": 333,
+          "endWord": 338,
+          "start": 177.34,
+          "end": 179.2,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.77,
+          "primaryReason": "production_credit",
+          "reasons": [
+            "network_id",
+            "production_credit"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.07,
+            "production_credit": 0.92,
+            "network_id": 0.61,
+            "signoff": 0.16
+          },
+          "id": "jev-v7.1-3"
+        },
+        {
+          "startSentence": 44,
+          "endSentence": 44,
+          "startWord": 340,
+          "endWord": 355,
+          "start": 181.04,
+          "end": 184.32,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.73,
+          "primaryReason": "production_credit",
+          "reasons": [
+            "production_credit"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.06,
+            "production_credit": 0.91,
+            "network_id": 0.36,
+            "signoff": 0.2
+          },
+          "id": "jev-v7.1-4"
+        },
+        {
+          "startSentence": 159,
+          "endSentence": 166,
+          "startWord": 1646,
+          "endWord": 1734,
+          "start": 703.64,
+          "end": 724.46,
+          "tier": "skip_obvious",
+          "tierConfidence": 0.69,
+          "primaryReason": "underwriting",
+          "reasons": [
+            "paid_ad",
+            "underwriting"
+          ],
+          "reasonProbabilities": {
+            "paid_ad": 0.93,
+            "underwriting": 0.88
+          },
+          "id": "jev-v7.1-5"
+        },
+        {
+          "startSentence": 167,
+          "endSentence": 168,
+          "startWord": 1734,
+          "endWord": 1742,
+          "start": 724.46,
+          "end": 726.94,
+          "tier": "skip_obvious",
+          "tierConfidence": 0.6,
+          "primaryReason": "paid_ad",
+          "reasons": [
+            "paid_ad"
+          ],
+          "reasonProbabilities": {
+            "paid_ad": 0.92,
+            "underwriting": 0.42
+          },
+          "id": "jev-v7.1-6"
+        },
+        {
+          "startSentence": 169,
+          "endSentence": 176,
+          "startWord": 1742,
+          "endWord": 1883,
+          "start": 729.6,
+          "end": 777.6,
+          "tier": "skip_obvious",
+          "tierConfidence": 0.45,
+          "primaryReason": "paid_ad",
+          "reasons": [
+            "paid_ad",
+            "underwriting"
+          ],
+          "reasonProbabilities": {
+            "paid_ad": 0.94,
+            "underwriting": 0.9
+          },
+          "id": "jev-v7.1-7"
+        },
+        {
+          "startSentence": 177,
+          "endSentence": 187,
+          "startWord": 1883,
+          "endWord": 2075,
+          "start": 777.7,
+          "end": 827.6,
+          "tier": "skip_obvious",
+          "tierConfidence": 0.61,
+          "primaryReason": "paid_ad",
+          "reasons": [
+            "paid_ad"
+          ],
+          "reasonProbabilities": {
+            "paid_ad": 0.96,
+            "underwriting": 0.39
+          },
+          "id": "jev-v7.1-8"
+        },
+        {
+          "startSentence": 188,
+          "endSentence": 195,
+          "startWord": 2075,
+          "endWord": 2167,
+          "start": 827.6,
+          "end": 856.76,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.44,
+          "primaryReason": "cross_show_promo",
+          "reasons": [
+            "cross_show_promo",
+            "publisher_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.93,
+            "publisher_promo": 0.53,
+            "membership_appeal": 0.08
+          },
+          "id": "jev-v7.1-9"
+        },
+        {
+          "startSentence": 552,
+          "endSentence": 554,
+          "startWord": 5788,
+          "endWord": 5814,
+          "start": 2348.18,
+          "end": 2358.68,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.84,
+          "primaryReason": "production_credit",
+          "reasons": [
+            "production_credit",
+            "signoff"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.06,
+            "production_credit": 0.9,
+            "network_id": 0.28,
+            "signoff": 0.75
+          },
+          "id": "jev-v7.1-10"
+        },
+        {
+          "startSentence": 555,
+          "endSentence": 557,
+          "startWord": 5814,
+          "endWord": 5868,
+          "start": 2359.24,
+          "end": 2376.76,
+          "tier": "skip_more_only",
+          "tierConfidence": 0.28,
+          "primaryReason": "publisher_promo",
+          "reasons": [
+            "publisher_promo"
+          ],
+          "reasonProbabilities": {
+            "cross_show_promo": 0.09,
+            "publisher_promo": 0.74,
+            "membership_appeal": 0.05
+          },
+          "id": "jev-v7.1-11"
+        },
+        {
+          "startSentence": 560,
+          "endSentence": 562,
+          "startWord": 5904,
+          "endWord": 5945,
+          "start": 2388.82,
+          "end": 2406.36,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.91,
+          "primaryReason": "production_credit",
+          "reasons": [
+            "production_credit"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.06,
+            "production_credit": 0.97,
+            "network_id": 0.19,
+            "signoff": 0.29
+          },
+          "id": "jev-v7.1-12"
+        },
+        {
+          "startSentence": 563,
+          "endSentence": 566,
+          "startWord": 5945,
+          "endWord": 5969,
+          "start": 2408.18,
+          "end": 2417.84,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.9,
+          "primaryReason": "production_credit",
+          "reasons": [
+            "network_id",
+            "production_credit"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.05,
+            "production_credit": 0.84,
+            "network_id": 0.52,
+            "signoff": 0.16
+          },
+          "id": "jev-v7.1-13"
+        },
+        {
+          "startSentence": 567,
+          "endSentence": 570,
+          "startWord": 5969,
+          "endWord": 6017,
+          "start": 2418.32,
+          "end": 2455.2,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.92,
+          "primaryReason": "production_credit",
+          "reasons": [
+            "production_credit"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.06,
+            "production_credit": 0.96,
+            "network_id": 0.32,
+            "signoff": 0.21
+          },
+          "id": "jev-v7.1-14"
+        },
+        {
+          "startSentence": 571,
+          "endSentence": 571,
+          "startWord": 6017,
+          "endWord": 6026,
+          "start": 2457.6,
+          "end": 2460.88,
+          "tier": "skip_most_only",
+          "tierConfidence": 0.33,
+          "primaryReason": "engagement_request",
+          "reasons": [
+            "engagement_request"
+          ],
+          "reasonProbabilities": {
+            "engagement_request": 0.12,
+            "production_credit": 0.08,
+            "network_id": 0.18,
+            "signoff": 0.1
+          },
+          "id": "jev-v7.1-15"
+        },
+        {
+          "startSentence": 572,
+          "endSentence": 572,
+          "startWord": 6026,
+          "endWord": 6043,
+          "start": 2461.36,
+          "end": 2467.98,
+          "tier": "skip_obvious",
+          "tierConfidence": 0.48,
+          "primaryReason": "underwriting",
+          "reasons": [
+            "paid_ad",
+            "underwriting"
+          ],
+          "reasonProbabilities": {
+            "paid_ad": 0.51,
+            "underwriting": 0.9
+          },
+          "id": "jev-v7.1-16"
+        },
+        {
+          "startSentence": 573,
+          "endSentence": 574,
+          "startWord": 6043,
+          "endWord": 6055,
+          "start": 2468.64,
+          "end": 2473.08,
+          "tier": "skip_obvious",
+          "tierConfidence": 0.55,
+          "primaryReason": "underwriting",
+          "reasons": [
+            "underwriting"
+          ],
+          "reasonProbabilities": {
+            "paid_ad": 0.45,
+            "underwriting": 0.9
+          },
+          "id": "jev-v7.1-17"
+        }
+      ],
+      "metricsByPreset": {
+        "skip_obvious": {
+          "precision": 0.9823,
+          "recall": 0.9901,
+          "truePositiveSeconds": 180.56,
+          "falsePositiveSeconds": 3.26,
+          "falseNegativeSeconds": 1.8
+        },
+        "skip_more": {
+          "precision": 0.9029,
+          "recall": 0.9964,
+          "truePositiveSeconds": 208.12,
+          "falsePositiveSeconds": 22.38,
+          "falseNegativeSeconds": 0.76
+        },
+        "skip_most": {
+          "precision": 0.8575,
+          "recall": 0.9809,
+          "truePositiveSeconds": 280.38,
+          "falsePositiveSeconds": 46.58,
+          "falseNegativeSeconds": 5.46
+        }
+      },
+      "metricsByReason": {
+        "paid_ad": {
+          "precision": 0.5458,
+          "recall": 0.9885,
+          "truePositiveSeconds": 97.9,
+          "falsePositiveSeconds": 81.48,
+          "falseNegativeSeconds": 1.14
+        },
+        "underwriting": {
+          "precision": 0.61,
+          "recall": 0.9623,
+          "truePositiveSeconds": 80.18,
+          "falsePositiveSeconds": 51.26,
+          "falseNegativeSeconds": 3.14
+        },
+        "cross_show_promo": {
+          "precision": 0.9095,
+          "recall": 1.0,
+          "truePositiveSeconds": 26.52,
+          "falsePositiveSeconds": 2.64,
+          "falseNegativeSeconds": 0.0
+        },
+        "publisher_promo": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "truePositiveSeconds": 0,
+          "falsePositiveSeconds": 46.68,
+          "falseNegativeSeconds": 0
+        },
+        "membership_appeal": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "truePositiveSeconds": 0,
+          "falsePositiveSeconds": 0,
+          "falseNegativeSeconds": 0
+        },
+        "engagement_request": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "truePositiveSeconds": 0,
+          "falsePositiveSeconds": 3.28,
+          "falseNegativeSeconds": 0
+        },
+        "production_credit": {
+          "precision": 0.7925,
+          "recall": 0.8879,
+          "truePositiveSeconds": 63.18,
+          "falsePositiveSeconds": 16.54,
+          "falseNegativeSeconds": 7.98
+        },
+        "network_id": {
+          "precision": 0.2322,
+          "recall": 1.0,
+          "truePositiveSeconds": 5.8,
+          "falsePositiveSeconds": 19.18,
+          "falseNegativeSeconds": 0.0
+        },
+        "signoff": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "truePositiveSeconds": 0,
+          "falsePositiveSeconds": 10.5,
+          "falseNegativeSeconds": 0
+        }
+      }
+    }
+  ],
+  "blockDecisions": [
+    {
+      "slug": "version-history",
+      "block": "version-history-s0007-e0016",
+      "startSentence": 7,
+      "endSentence": 16,
+      "startWord": 86,
+      "endWord": 184,
+      "start": 39.3,
+      "end": 102.58,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.36,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.92,
+        "underwriting": 0.27
+      }
+    },
+    {
+      "slug": "version-history",
+      "block": "version-history-s0333-e0333",
+      "startSentence": 333,
+      "endSentence": 333,
+      "startWord": 4659,
+      "endWord": 4662,
+      "start": 1631.18,
+      "end": 1631.82,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.39,
+      "primaryReason": "cross_show_promo",
+      "reasons": [
+        "cross_show_promo",
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.8,
+        "publisher_promo": 0.81,
+        "membership_appeal": 0.1
+      }
+    },
+    {
+      "slug": "version-history",
+      "block": "version-history-s0334-e0336",
+      "startSentence": 334,
+      "endSentence": 336,
+      "startWord": 4662,
+      "endWord": 4715,
+      "start": 1631.84,
+      "end": 1646.3,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.41,
+      "primaryReason": "cross_show_promo",
+      "reasons": [
+        "cross_show_promo",
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.77,
+        "publisher_promo": 0.81,
+        "membership_appeal": 0.09
+      }
+    },
+    {
+      "slug": "version-history",
+      "block": "version-history-s0344-e0344",
+      "startSentence": 344,
+      "endSentence": 344,
+      "startWord": 4784,
+      "endWord": 4790,
+      "start": 1671.04,
+      "end": 1672.42,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.43,
+      "primaryReason": "publisher_promo",
+      "reasons": [
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.17,
+        "publisher_promo": 0.88,
+        "membership_appeal": 0.42
+      }
+    },
+    {
+      "slug": "version-history",
+      "block": "version-history-s0345-e0345",
+      "startSentence": 345,
+      "endSentence": 345,
+      "startWord": 4790,
+      "endWord": 4797,
+      "start": 1672.76,
+      "end": 1675.1,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.87,
+      "primaryReason": "underwriting",
+      "reasons": [
+        "paid_ad",
+        "underwriting"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.9,
+        "underwriting": 0.86
+      }
+    },
+    {
+      "slug": "version-history",
+      "block": "version-history-s0346-e0346",
+      "startSentence": 346,
+      "endSentence": 346,
+      "startWord": 4797,
+      "endWord": 4816,
+      "start": 1676.26,
+      "end": 1681.58,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.93,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.96,
+        "underwriting": 0.25
+      }
+    },
+    {
+      "slug": "version-history",
+      "block": "version-history-s0347-e0347",
+      "startSentence": 347,
+      "endSentence": 347,
+      "startWord": 4816,
+      "endWord": 4839,
+      "start": 1681.8,
+      "end": 1687.74,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.78,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.93,
+        "underwriting": 0.17
+      }
+    },
+    {
+      "slug": "version-history",
+      "block": "version-history-s0625-e0627",
+      "startSentence": 625,
+      "endSentence": 627,
+      "startWord": 7947,
+      "endWord": 7969,
+      "start": 2744.44,
+      "end": 2754.38,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.68,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.75,
+        "underwriting": 0.35
+      }
+    },
+    {
+      "slug": "version-history",
+      "block": "version-history-s0628-e0632",
+      "startSentence": 628,
+      "endSentence": 632,
+      "startWord": 7969,
+      "endWord": 7997,
+      "start": 2754.6,
+      "end": 2765.64,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.68,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.82,
+        "underwriting": 0.23
+      }
+    },
+    {
+      "slug": "version-history",
+      "block": "version-history-s0633-e0642",
+      "startSentence": 633,
+      "endSentence": 642,
+      "startWord": 7997,
+      "endWord": 8053,
+      "start": 2765.8,
+      "end": 2788.78,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.78,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.92,
+        "underwriting": 0.21
+      }
+    },
+    {
+      "slug": "version-history",
+      "block": "version-history-s1012-e1017",
+      "startSentence": 1012,
+      "endSentence": 1017,
+      "startWord": 12302,
+      "endWord": 12338,
+      "start": 4222.68,
+      "end": 4229.08,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.39,
+      "primaryReason": "signoff",
+      "reasons": [
+        "signoff"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.08,
+        "production_credit": 0.08,
+        "network_id": 0.19,
+        "signoff": 0.92
+      }
+    },
+    {
+      "slug": "version-history",
+      "block": "version-history-s1018-e1024",
+      "startSentence": 1018,
+      "endSentence": 1024,
+      "startWord": 12338,
+      "endWord": 12406,
+      "start": 4229.18,
+      "end": 4248.26,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.2,
+      "primaryReason": "membership_appeal",
+      "reasons": [
+        "cross_show_promo",
+        "membership_appeal",
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.63,
+        "publisher_promo": 0.9,
+        "membership_appeal": 0.86
+      }
+    },
+    {
+      "slug": "version-history",
+      "block": "version-history-s1025-e1030",
+      "startSentence": 1025,
+      "endSentence": 1030,
+      "startWord": 12406,
+      "endWord": 12443,
+      "start": 4248.26,
+      "end": 4275.26,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.36,
+      "primaryReason": "signoff",
+      "reasons": [
+        "engagement_request",
+        "network_id",
+        "production_credit",
+        "signoff"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.78,
+        "production_credit": 0.64,
+        "network_id": 0.72,
+        "signoff": 0.93
+      }
+    },
+    {
+      "slug": "version-history",
+      "block": "version-history-s1031-e1037",
+      "startSentence": 1031,
+      "endSentence": 1037,
+      "startWord": 12443,
+      "endWord": 12518,
+      "start": 4292.68,
+      "end": 4321.6,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.91,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.89,
+        "underwriting": 0.09
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0001-e0002",
+      "startSentence": 1,
+      "endSentence": 2,
+      "startWord": 0,
+      "endWord": 24,
+      "start": 0.0,
+      "end": 8.18,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.86,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.92,
+        "underwriting": 0.31
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0003-e0003",
+      "startSentence": 3,
+      "endSentence": 3,
+      "startWord": 24,
+      "endWord": 53,
+      "start": 8.42,
+      "end": 15.74,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.8,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.83,
+        "underwriting": 0.21
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0004-e0004",
+      "startSentence": 4,
+      "endSentence": 4,
+      "startWord": 53,
+      "endWord": 58,
+      "start": 15.94,
+      "end": 17.88,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.89,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.92,
+        "underwriting": 0.18
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0005-e0005",
+      "startSentence": 5,
+      "endSentence": 5,
+      "startWord": 58,
+      "endWord": 64,
+      "start": 18.84,
+      "end": 21.28,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.52,
+      "primaryReason": "network_id",
+      "reasons": [
+        "network_id"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.07,
+        "production_credit": 0.09,
+        "network_id": 0.77,
+        "signoff": 0.09
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0065-e0071",
+      "startSentence": 65,
+      "endSentence": 71,
+      "startWord": 831,
+      "endWord": 887,
+      "start": 312.38,
+      "end": 331.24,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.7,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.95,
+        "underwriting": 0.22
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0072-e0075",
+      "startSentence": 72,
+      "endSentence": 75,
+      "startWord": 887,
+      "endWord": 910,
+      "start": 331.44,
+      "end": 339.98,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.79,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.95,
+        "underwriting": 0.16
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0076-e0079",
+      "startSentence": 76,
+      "endSentence": 79,
+      "startWord": 910,
+      "endWord": 963,
+      "start": 340.6,
+      "end": 363.72,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.62,
+      "primaryReason": "cross_show_promo",
+      "reasons": [
+        "cross_show_promo",
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.95,
+        "publisher_promo": 0.91,
+        "membership_appeal": 0.1
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0207-e0207",
+      "startSentence": 207,
+      "endSentence": 207,
+      "startWord": 2627,
+      "endWord": 2630,
+      "start": 945.1,
+      "end": 945.8,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.21,
+      "primaryReason": "signoff",
+      "reasons": [
+        "signoff"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.06,
+        "production_credit": 0.04,
+        "network_id": 0.13,
+        "signoff": 0.04
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0232-e0232",
+      "startSentence": 232,
+      "endSentence": 232,
+      "startWord": 2931,
+      "endWord": 2938,
+      "start": 1050.34,
+      "end": 1053.14,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.54,
+      "primaryReason": "production_credit",
+      "reasons": [
+        "network_id",
+        "production_credit"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.07,
+        "production_credit": 0.85,
+        "network_id": 0.58,
+        "signoff": 0.26
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0295-e0295",
+      "startSentence": 295,
+      "endSentence": 295,
+      "startWord": 3875,
+      "endWord": 3890,
+      "start": 1384.4,
+      "end": 1390.16,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.46,
+      "primaryReason": "cross_show_promo",
+      "reasons": [
+        "cross_show_promo",
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.66,
+        "publisher_promo": 0.53,
+        "membership_appeal": 0.08
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0296-e0298",
+      "startSentence": 296,
+      "endSentence": 298,
+      "startWord": 3890,
+      "endWord": 3921,
+      "start": 1390.4,
+      "end": 1399.4,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.29,
+      "primaryReason": "cross_show_promo",
+      "reasons": [
+        "cross_show_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.44,
+        "publisher_promo": 0.41,
+        "membership_appeal": 0.06
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0299-e0303",
+      "startSentence": 299,
+      "endSentence": 303,
+      "startWord": 3921,
+      "endWord": 3992,
+      "start": 1399.7,
+      "end": 1422.6,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.37,
+      "primaryReason": "cross_show_promo",
+      "reasons": [
+        "cross_show_promo",
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.94,
+        "publisher_promo": 0.88,
+        "membership_appeal": 0.12
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0305-e0305",
+      "startSentence": 305,
+      "endSentence": 305,
+      "startWord": 4008,
+      "endWord": 4022,
+      "start": 1427.84,
+      "end": 1431.72,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.73,
+      "primaryReason": "cross_show_promo",
+      "reasons": [
+        "cross_show_promo",
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.96,
+        "publisher_promo": 0.93,
+        "membership_appeal": 0.08
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0413-e0414",
+      "startSentence": 413,
+      "endSentence": 414,
+      "startWord": 5449,
+      "endWord": 5474,
+      "start": 1942.4,
+      "end": 1950.98,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.67,
+      "primaryReason": "cross_show_promo",
+      "reasons": [
+        "cross_show_promo",
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.94,
+        "publisher_promo": 0.9,
+        "membership_appeal": 0.23
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0420-e0423",
+      "startSentence": 420,
+      "endSentence": 423,
+      "startWord": 5533,
+      "endWord": 5598,
+      "start": 1984.34,
+      "end": 2005.14,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.84,
+      "primaryReason": "cross_show_promo",
+      "reasons": [
+        "cross_show_promo",
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.94,
+        "publisher_promo": 0.83,
+        "membership_appeal": 0.19
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0492-e0492",
+      "startSentence": 492,
+      "endSentence": 492,
+      "startWord": 6659,
+      "endWord": 6666,
+      "start": 2394.98,
+      "end": 2396.58,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.87,
+      "primaryReason": "signoff",
+      "reasons": [
+        "signoff"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.05,
+        "production_credit": 0.06,
+        "network_id": 0.15,
+        "signoff": 0.86
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0495-e0496",
+      "startSentence": 495,
+      "endSentence": 496,
+      "startWord": 6675,
+      "endWord": 6678,
+      "start": 2399.12,
+      "end": 2400.16,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.44,
+      "primaryReason": "signoff",
+      "reasons": [
+        "signoff"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.07,
+        "production_credit": 0.09,
+        "network_id": 0.16,
+        "signoff": 0.61
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0498-e0499",
+      "startSentence": 498,
+      "endSentence": 499,
+      "startWord": 6699,
+      "endWord": 6739,
+      "start": 2410.86,
+      "end": 2424.36,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.68,
+      "primaryReason": "publisher_promo",
+      "reasons": [
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.24,
+        "publisher_promo": 0.95,
+        "membership_appeal": 0.1
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0500-e0502",
+      "startSentence": 500,
+      "endSentence": 502,
+      "startWord": 6739,
+      "endWord": 6766,
+      "start": 2424.9,
+      "end": 2433.88,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.95,
+      "primaryReason": "production_credit",
+      "reasons": [
+        "production_credit"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.05,
+        "production_credit": 0.96,
+        "network_id": 0.48,
+        "signoff": 0.2
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0503-e0503",
+      "startSentence": 503,
+      "endSentence": 503,
+      "startWord": 6766,
+      "endWord": 6773,
+      "start": 2434.1,
+      "end": 2436.24,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.67,
+      "primaryReason": "network_id",
+      "reasons": [
+        "network_id",
+        "signoff"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.06,
+        "production_credit": 0.15,
+        "network_id": 0.77,
+        "signoff": 0.59
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0504-e0504",
+      "startSentence": 504,
+      "endSentence": 504,
+      "startWord": 6773,
+      "endWord": 6776,
+      "start": 2436.4,
+      "end": 2437.26,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.62,
+      "primaryReason": "signoff",
+      "reasons": [
+        "signoff"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.06,
+        "production_credit": 0.08,
+        "network_id": 0.23,
+        "signoff": 0.88
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0510-e0511",
+      "startSentence": 510,
+      "endSentence": 511,
+      "startWord": 6826,
+      "endWord": 6864,
+      "start": 2462.62,
+      "end": 2472.98,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.19,
+      "primaryReason": "publisher_promo",
+      "reasons": [
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.44,
+        "publisher_promo": 0.62,
+        "membership_appeal": 0.07
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0514-e0514",
+      "startSentence": 514,
+      "endSentence": 514,
+      "startWord": 6885,
+      "endWord": 6908,
+      "start": 2479.2,
+      "end": 2485.32,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.3,
+      "primaryReason": "publisher_promo",
+      "reasons": [
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.32,
+        "publisher_promo": 0.91,
+        "membership_appeal": 0.13
+      }
+    },
+    {
+      "slug": "planet-money",
+      "block": "planet-money-s0515-e0520",
+      "startSentence": 515,
+      "endSentence": 520,
+      "startWord": 6908,
+      "endWord": 6991,
+      "start": 2487.72,
+      "end": 2507.54,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.83,
+      "primaryReason": "cross_show_promo",
+      "reasons": [
+        "cross_show_promo",
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.95,
+        "publisher_promo": 0.86,
+        "membership_appeal": 0.07
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0001-e0009",
+      "startSentence": 1,
+      "endSentence": 9,
+      "startWord": 0,
+      "endWord": 72,
+      "start": 0.0,
+      "end": 51.56,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.44,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad",
+        "underwriting"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.96,
+        "underwriting": 0.86
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0010-e0018",
+      "startSentence": 10,
+      "endSentence": 18,
+      "startWord": 72,
+      "endWord": 89,
+      "start": 54.74,
+      "end": 68.2,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.58,
+      "primaryReason": "network_id",
+      "reasons": [
+        "network_id"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.08,
+        "production_credit": 0.1,
+        "network_id": 0.76,
+        "signoff": 0.16
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0041-e0041",
+      "startSentence": 41,
+      "endSentence": 41,
+      "startWord": 333,
+      "endWord": 338,
+      "start": 177.34,
+      "end": 179.2,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.77,
+      "primaryReason": "production_credit",
+      "reasons": [
+        "network_id",
+        "production_credit"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.07,
+        "production_credit": 0.92,
+        "network_id": 0.61,
+        "signoff": 0.16
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0044-e0044",
+      "startSentence": 44,
+      "endSentence": 44,
+      "startWord": 340,
+      "endWord": 355,
+      "start": 181.04,
+      "end": 184.32,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.73,
+      "primaryReason": "production_credit",
+      "reasons": [
+        "production_credit"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.06,
+        "production_credit": 0.91,
+        "network_id": 0.36,
+        "signoff": 0.2
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0159-e0159",
+      "startSentence": 159,
+      "endSentence": 159,
+      "startWord": 1646,
+      "endWord": 1653,
+      "start": 703.64,
+      "end": 705.42,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.69,
+      "primaryReason": "underwriting",
+      "reasons": [
+        "paid_ad",
+        "underwriting"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.93,
+        "underwriting": 0.88
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0160-e0161",
+      "startSentence": 160,
+      "endSentence": 161,
+      "startWord": 1653,
+      "endWord": 1691,
+      "start": 705.54,
+      "end": 714.12,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.87,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad",
+        "underwriting"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.94,
+        "underwriting": 0.65
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0162-e0166",
+      "startSentence": 162,
+      "endSentence": 166,
+      "startWord": 1691,
+      "endWord": 1734,
+      "start": 714.12,
+      "end": 724.46,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.9,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad",
+        "underwriting"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.96,
+        "underwriting": 0.76
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0167-e0168",
+      "startSentence": 167,
+      "endSentence": 168,
+      "startWord": 1734,
+      "endWord": 1742,
+      "start": 724.46,
+      "end": 726.94,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.6,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.92,
+        "underwriting": 0.42
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0169-e0171",
+      "startSentence": 169,
+      "endSentence": 171,
+      "startWord": 1742,
+      "endWord": 1786,
+      "start": 729.6,
+      "end": 744.16,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.45,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad",
+        "underwriting"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.94,
+        "underwriting": 0.9
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0172-e0176",
+      "startSentence": 172,
+      "endSentence": 176,
+      "startWord": 1786,
+      "endWord": 1883,
+      "start": 744.36,
+      "end": 777.6,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.61,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad",
+        "underwriting"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.89,
+        "underwriting": 0.8
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0177-e0185",
+      "startSentence": 177,
+      "endSentence": 185,
+      "startWord": 1883,
+      "endWord": 2070,
+      "start": 777.7,
+      "end": 824.86,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.61,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.96,
+        "underwriting": 0.39
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0186-e0187",
+      "startSentence": 186,
+      "endSentence": 187,
+      "startWord": 2070,
+      "endWord": 2075,
+      "start": 824.86,
+      "end": 827.6,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.8,
+      "primaryReason": "paid_ad",
+      "reasons": [
+        "paid_ad"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.93,
+        "underwriting": 0.31
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0188-e0190",
+      "startSentence": 188,
+      "endSentence": 190,
+      "startWord": 2075,
+      "endWord": 2090,
+      "start": 827.6,
+      "end": 833.34,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.44,
+      "primaryReason": "cross_show_promo",
+      "reasons": [
+        "cross_show_promo",
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.93,
+        "publisher_promo": 0.53,
+        "membership_appeal": 0.08
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0191-e0195",
+      "startSentence": 191,
+      "endSentence": 195,
+      "startWord": 2090,
+      "endWord": 2167,
+      "start": 834.16,
+      "end": 856.76,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.66,
+      "primaryReason": "cross_show_promo",
+      "reasons": [
+        "cross_show_promo",
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.94,
+        "publisher_promo": 0.57,
+        "membership_appeal": 0.09
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0552-e0554",
+      "startSentence": 552,
+      "endSentence": 554,
+      "startWord": 5788,
+      "endWord": 5814,
+      "start": 2348.18,
+      "end": 2358.68,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.84,
+      "primaryReason": "production_credit",
+      "reasons": [
+        "production_credit",
+        "signoff"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.06,
+        "production_credit": 0.9,
+        "network_id": 0.28,
+        "signoff": 0.75
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0555-e0557",
+      "startSentence": 555,
+      "endSentence": 557,
+      "startWord": 5814,
+      "endWord": 5868,
+      "start": 2359.24,
+      "end": 2376.76,
+      "tier": "skip_more_only",
+      "tierConfidence": 0.28,
+      "primaryReason": "publisher_promo",
+      "reasons": [
+        "publisher_promo"
+      ],
+      "reasonProbabilities": {
+        "cross_show_promo": 0.09,
+        "publisher_promo": 0.74,
+        "membership_appeal": 0.05
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0560-e0560",
+      "startSentence": 560,
+      "endSentence": 560,
+      "startWord": 5904,
+      "endWord": 5930,
+      "start": 2388.82,
+      "end": 2397.02,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.91,
+      "primaryReason": "production_credit",
+      "reasons": [
+        "production_credit"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.06,
+        "production_credit": 0.97,
+        "network_id": 0.19,
+        "signoff": 0.29
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0561-e0562",
+      "startSentence": 561,
+      "endSentence": 562,
+      "startWord": 5930,
+      "endWord": 5945,
+      "start": 2402.0,
+      "end": 2406.36,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.86,
+      "primaryReason": "production_credit",
+      "reasons": [
+        "production_credit"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.07,
+        "production_credit": 0.8,
+        "network_id": 0.36,
+        "signoff": 0.17
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0563-e0566",
+      "startSentence": 563,
+      "endSentence": 566,
+      "startWord": 5945,
+      "endWord": 5969,
+      "start": 2408.18,
+      "end": 2417.84,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.9,
+      "primaryReason": "production_credit",
+      "reasons": [
+        "network_id",
+        "production_credit"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.05,
+        "production_credit": 0.84,
+        "network_id": 0.52,
+        "signoff": 0.16
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0567-e0570",
+      "startSentence": 567,
+      "endSentence": 570,
+      "startWord": 5969,
+      "endWord": 6017,
+      "start": 2418.32,
+      "end": 2455.2,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.92,
+      "primaryReason": "production_credit",
+      "reasons": [
+        "production_credit"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.06,
+        "production_credit": 0.96,
+        "network_id": 0.32,
+        "signoff": 0.21
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0571-e0571",
+      "startSentence": 571,
+      "endSentence": 571,
+      "startWord": 6017,
+      "endWord": 6026,
+      "start": 2457.6,
+      "end": 2460.88,
+      "tier": "skip_most_only",
+      "tierConfidence": 0.33,
+      "primaryReason": "engagement_request",
+      "reasons": [
+        "engagement_request"
+      ],
+      "reasonProbabilities": {
+        "engagement_request": 0.12,
+        "production_credit": 0.08,
+        "network_id": 0.18,
+        "signoff": 0.1
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0572-e0572",
+      "startSentence": 572,
+      "endSentence": 572,
+      "startWord": 6026,
+      "endWord": 6043,
+      "start": 2461.36,
+      "end": 2467.98,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.48,
+      "primaryReason": "underwriting",
+      "reasons": [
+        "paid_ad",
+        "underwriting"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.51,
+        "underwriting": 0.9
+      }
+    },
+    {
+      "slug": "radiolab",
+      "block": "radiolab-s0573-e0574",
+      "startSentence": 573,
+      "endSentence": 574,
+      "startWord": 6043,
+      "endWord": 6055,
+      "start": 2468.64,
+      "end": 2473.08,
+      "tier": "skip_obvious",
+      "tierConfidence": 0.55,
+      "primaryReason": "underwriting",
+      "reasons": [
+        "underwriting"
+      ],
+      "reasonProbabilities": {
+        "paid_ad": 0.45,
+        "underwriting": 0.9
+      }
+    }
+  ],
+  "latencyMs": {
+    "median": 164.5,
+    "max": 458.2
+  },
+  "policy": {
+    "previewsAndRecapsAlwaysKept": true,
+    "classificationUnit": "recursive candidate block"
+  }
+}

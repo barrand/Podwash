@@ -1,0 +1,26 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "radiolab-s0186-e0187-primary-reason": {
+      "type": "choice",
+      "choice": "paid_ad",
+      "confidence": 0.99,
+      "probabilities": {
+        "paid_ad": 1.0,
+        "underwriting": 0.0
+      }
+    },
+    "radiolab-s0186-e0187-also-paid_ad": {
+      "type": "noul",
+      "noul": 0.93
+    },
+    "radiolab-s0186-e0187-also-underwriting": {
+      "type": "noul",
+      "noul": 0.31
+    }
+  },
+  "usage": {
+    "input_tokens": 2099,
+    "output_tokens": 116
+  }
+}

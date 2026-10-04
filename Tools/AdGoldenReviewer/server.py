@@ -25,6 +25,9 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 DEFAULT_WORKDIR = ROOT / "tmp" / "ad-eval"
 DEFAULT_GOLDEN_DIR = ROOT / "eval" / "ad-detection" / "goldens"
 DEFAULT_GEMINI_DIR = DEFAULT_WORKDIR / "gemini-v1"
+DEFAULT_JEV_REPORT = DEFAULT_WORKDIR / "jev-full-v6" / "report.json"
+DEFAULT_JEV_V7_REPORT = DEFAULT_WORKDIR / "jev-typed-v7" / "report.json"
+DEFAULT_JEV_V71_REPORT = DEFAULT_WORKDIR / "jev-typed-v7.1" / "report.json"
 
 ALLOWED_LABELS = {
     "paid_dai",
@@ -32,6 +35,21 @@ ALLOWED_LABELS = {
     "paid_host_read",
     "network_promo",
     "membership_cta",
+}
+
+# Typed-policy audit labels deliberately live beside (rather than replace) the
+# existing golden-review labels.  The audit is exploratory: it must never
+# reopen, delete, or silently rewrite a human-approved ads-only golden.
+TYPED_AUDIT_LABELS = {
+    "paid_ad",
+    "underwriting",
+    "cross_show_promo",
+    "publisher_promo",
+    "membership_appeal",
+    "engagement_request",
+    "production_credit",
+    "network_id",
+    "signoff",
 }
 
 LABEL_METADATA = {
@@ -84,6 +102,14 @@ def file_sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def json_content_sha256(path: Path) -> str:
+    """Return a canonical JSON hash that survives Git line-ending conversion."""
+    try:
+        return hashlib.sha256(json_bytes(load_json(path))).hexdigest()
+    except (OSError, json.JSONDecodeError, TypeError):
+        return file_sha256(path)
 
 
 def json_bytes(payload: Any) -> bytes:
@@ -259,6 +285,7 @@ class EpisodeFiles:
     proposal: Path
     review: Path
     golden: Path
+    typed_audit: Path
 
 
 class ReviewStore:
@@ -299,13 +326,20 @@ class ReviewStore:
             proposal=directory / "proposal.json",
             review=directory / "review.json",
             golden=self.golden_dir / f"{slug}.json",
+            typed_audit=directory / "typed-audit.json",
         )
 
     def transcript_hash(self, files: EpisodeFiles) -> str:
-        return file_sha256(files.transcript)
+        """Hash transcript JSON by content, not checkout-specific line endings.
+
+        Golden provenance was created from canonical LF JSON.  A Windows Git
+        checkout may convert that same file to CRLF, so hashing raw bytes would
+        incorrectly make every existing review appear stale.
+        """
+        return json_content_sha256(files.transcript)
 
     def proposal_hash(self, files: EpisodeFiles) -> str:
-        return file_sha256(files.proposal) if files.proposal.exists() else ""
+        return json_content_sha256(files.proposal) if files.proposal.exists() else ""
 
     def load_proposal(self, files: EpisodeFiles, transcript_hash: str) -> dict[str, Any]:
         if not files.proposal.exists():
@@ -399,6 +433,150 @@ class ReviewStore:
             "approvedGoldenExists": files.golden.exists(),
         }
 
+    def load_typed_audit(self, slug: str) -> dict[str, Any]:
+        """Load a read-only first-pass typed-policy audit.
+
+        This endpoint is intentionally isolated from the normal review flow so
+        opening it cannot invalidate a golden or make a git change.
+        """
+        files = self.files(slug)
+        if not files.typed_audit.exists():
+            raise ReviewError("no typed-policy audit is prepared for this episode", HTTPStatus.NOT_FOUND)
+        if not files.meta.exists() or not files.transcript.exists() or not files.golden.exists():
+            raise ReviewError("typed-policy audit prerequisites are missing", HTTPStatus.NOT_FOUND)
+
+        words = load_json(files.transcript)
+        if not isinstance(words, list) or not words:
+            raise ReviewError("episode transcript is empty")
+        transcript_hash = self.transcript_hash(files)
+        audit = load_json(files.typed_audit)
+        if str(audit.get("showSlug") or "") != slug:
+            raise ReviewError("typed-policy audit show slug does not match episode")
+        if str(audit.get("transcriptSha256") or "") != transcript_hash:
+            raise ReviewError("typed-policy audit is stale for the current transcript")
+        raw_spans = audit.get("spans") or []
+        if not isinstance(raw_spans, list):
+            raise ReviewError("typed-policy audit spans must be an array")
+        spans: list[dict[str, Any]] = []
+        for raw in raw_spans:
+            try:
+                start = int(raw["startWord"])
+                end = int(raw["endWord"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ReviewError("typed-policy audit spans need integer word boundaries") from exc
+            category = str(raw.get("category") or "")
+            if category not in TYPED_AUDIT_LABELS:
+                raise ReviewError(f"invalid typed-policy category {category!r}")
+            if start < 0 or end <= start or end > len(words):
+                raise ReviewError(f"invalid typed-policy range {start}..{end}")
+            spans.append({
+                "id": str(raw.get("id") or f"audit-{len(spans) + 1}"),
+                "startWord": start,
+                "endWord": end,
+                "category": category,
+                "note": str(raw.get("note") or ""),
+                "baselineSpanIds": [str(item) for item in raw.get("baselineSpanIds") or []],
+            })
+        spans.sort(key=lambda span: (span["startWord"], span["endWord"], span["id"]))
+        for left, right in zip(spans, spans[1:]):
+            if left["endWord"] > right["startWord"]:
+                raise ReviewError("typed-policy audit spans may not overlap")
+
+        golden = load_json(files.golden)
+        # Some established ads-only goldens predate the provenance-hash format
+        # used by the local review corpus. Their word ranges are still the
+        # comparison baseline for this read-only audit, so do not reject them
+        # solely for that historical hash mismatch.
+        baseline = validate_spans(golden.get("spans") or [], len(words))
+        meta = load_json(files.meta)
+        return {
+            "slug": slug,
+            "title": str(meta.get("episodeTitle") or slug),
+            "showName": str(meta.get("showName") or meta.get("showTitle") or slug),
+            "words": words,
+            "baselineSpans": baseline,
+            "jevSpans": self.jev_spans(slug, words),
+            "audit": {**audit, "spans": spans},
+        }
+
+    def jev_spans(self, slug: str, words: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Load typed v7 spans when present, otherwise map frozen v6 spans."""
+        if DEFAULT_JEV_V71_REPORT.exists():
+            report = load_json(DEFAULT_JEV_V71_REPORT)
+            episode = next(
+                (item for item in report.get("episodes") or [] if item.get("slug") == slug),
+                None,
+            )
+            if episode:
+                return [
+                    {
+                        "id": str(span.get("id") or f"jev-v7.1-{index}"),
+                        "startWord": int(span["startWord"]),
+                        "endWord": int(span["endWord"]),
+                        "start": float(span["start"]),
+                        "end": float(span["end"]),
+                        "version": "v7.1",
+                        "tier": str(span.get("tier") or ""),
+                        "reasons": [str(reason) for reason in span.get("reasons") or []],
+                    }
+                    for index, span in enumerate(episode.get("typedSpans") or [], 1)
+                ]
+        if DEFAULT_JEV_V7_REPORT.exists():
+            report = load_json(DEFAULT_JEV_V7_REPORT)
+            episode = next(
+                (item for item in report.get("episodes") or [] if item.get("slug") == slug),
+                None,
+            )
+            if episode:
+                return [
+                    {
+                        "id": str(span.get("id") or f"jev-v7-{index}"),
+                        "startWord": int(span["startWord"]),
+                        "endWord": int(span["endWord"]),
+                        "start": float(span["start"]),
+                        "end": float(span["end"]),
+                        "version": "v7",
+                        "reasons": [str(reason) for reason in span.get("reasons") or []],
+                    }
+                    for index, span in enumerate(episode.get("typedSpans") or [], 1)
+                ]
+        if not DEFAULT_JEV_REPORT.exists():
+            return []
+        report = load_json(DEFAULT_JEV_REPORT)
+        episode = next(
+            (item for item in report.get("episodes") or [] if item.get("slug") == slug),
+            None,
+        )
+        if not episode:
+            return []
+        spans: list[dict[str, Any]] = []
+        for index, raw in enumerate(episode.get("predictedSpans") or [], 1):
+            try:
+                start_time = float(raw["start"])
+                end_time = float(raw["end"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            start_word = next(
+                (i for i, word in enumerate(words) if float(word.get("end") or 0) > start_time),
+                len(words),
+            )
+            end_word = next(
+                (i for i, word in enumerate(words) if float(word.get("start") or 0) >= end_time),
+                len(words),
+            )
+            if start_word >= end_word:
+                continue
+            spans.append({
+                "id": f"jev-v6-{index}",
+                "startWord": start_word,
+                "endWord": end_word,
+                "start": start_time,
+                "end": end_time,
+                "version": "v6",
+                "reasons": [],
+            })
+        return spans
+
     def list_episodes(self) -> list[dict[str, Any]]:
         episodes: list[dict[str, Any]] = []
         for slug in self.episode_slugs():
@@ -442,6 +620,24 @@ class ReviewStore:
                 }
             )
         return episodes
+
+    def list_typed_audits(self) -> list[dict[str, Any]]:
+        audits: list[dict[str, Any]] = []
+        for slug in self.episode_slugs():
+            files = self.files(slug)
+            if not files.typed_audit.exists():
+                continue
+            try:
+                episode = self.load_typed_audit(slug)
+            except ReviewError:
+                continue
+            audits.append({
+                "slug": slug,
+                "title": episode["title"],
+                "showName": episode["showName"],
+                "spanCount": len(episode["audit"]["spans"]),
+            })
+        return audits
 
     def gemini_episode_slugs(self) -> tuple[str, ...]:
         """Return only complete local Gemini experiment results.
@@ -735,6 +931,12 @@ class ReviewHandler(BaseHTTPRequestHandler):
             parts, raw_path = self.route()
             if parts == ["api", "episodes"]:
                 self.send_json({"episodes": self.store.list_episodes()})
+                return
+            if parts == ["api", "typed-audits"]:
+                self.send_json({"audits": self.store.list_typed_audits()})
+                return
+            if len(parts) == 3 and parts[:2] == ["api", "typed-audits"]:
+                self.send_json(self.store.load_typed_audit(parts[2]))
                 return
             if parts == ["api", "gemini", "episodes"]:
                 self.send_json({"episodes": self.store.list_gemini_episodes()})

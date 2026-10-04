@@ -1,0 +1,30 @@
+{
+  "requestSha256": "77e85a76f5665758e4af10926b30c6df99ad9ac50161f05806c1a899e8700e12",
+  "latencyMs": 141.8,
+  "usage": {
+    "inputTokens": 2231,
+    "outputTokens": 79,
+    "totalCostUsd": 9.37e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "darknet-diaries-s0804-e0813-tier": {
+        "type": "choice",
+        "choice": "mixed_split",
+        "confidence": 0.66,
+        "probabilities": {
+          "skip_more_only": 0.06,
+          "mixed_split": 0.73,
+          "skip_most_only": 0.1,
+          "keep_protected": 0.1,
+          "skip_obvious": 0.01
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 2231,
+      "output_tokens": 79
+    }
+  }
+}

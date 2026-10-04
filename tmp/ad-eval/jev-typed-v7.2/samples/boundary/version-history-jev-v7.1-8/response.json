@@ -1,0 +1,61 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "s1015-belongs": {
+      "type": "noul",
+      "noul": 0.29
+    },
+    "s1016-belongs": {
+      "type": "noul",
+      "noul": 0.31
+    },
+    "s1017-belongs": {
+      "type": "noul",
+      "noul": 0.32
+    },
+    "s1018-belongs": {
+      "type": "noul",
+      "noul": 0.3
+    },
+    "s1019-belongs": {
+      "type": "noul",
+      "noul": 0.34
+    },
+    "s1020-belongs": {
+      "type": "noul",
+      "noul": 0.34
+    },
+    "s1021-belongs": {
+      "type": "noul",
+      "noul": 0.28
+    },
+    "s1022-belongs": {
+      "type": "noul",
+      "noul": 0.32
+    },
+    "s1023-belongs": {
+      "type": "noul",
+      "noul": 0.32
+    },
+    "s1024-belongs": {
+      "type": "noul",
+      "noul": 0.32
+    },
+    "s1025-belongs": {
+      "type": "noul",
+      "noul": 0.32
+    },
+    "s1026-belongs": {
+      "type": "noul",
+      "noul": 0.31
+    },
+    "s1027-belongs": {
+      "type": "noul",
+      "noul": 0.31
+    }
+  },
+  "usage": {
+    "input_tokens": 4170,
+    "output_tokens": 290
+  }
+}

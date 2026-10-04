@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "darknet-diaries-s0053-e0053-tier": {
+      "type": "choice",
+      "choice": "keep_protected",
+      "confidence": 0.29,
+      "probabilities": {
+        "skip_obvious": 0.13,
+        "mixed_split": 0.02,
+        "skip_most_only": 0.39,
+        "keep_protected": 0.43,
+        "skip_more_only": 0.03
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 1976,
+    "output_tokens": 81
+  }
+}

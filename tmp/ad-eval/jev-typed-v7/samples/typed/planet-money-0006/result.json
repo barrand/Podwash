@@ -1,0 +1,126 @@
+{
+  "requestSha256": "4868546afe5d055a8c5aca3eead7e3f66d63f2cf614a104c5f02efaa53b0f7da",
+  "latencyMs": 185.0,
+  "usage": {
+    "inputTokens": 4643,
+    "outputTokens": 622,
+    "totalCostUsd": 0.00019501
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "sentence-77-paid_ad": {
+        "type": "noul",
+        "noul": 0.07
+      },
+      "sentence-77-underwriting": {
+        "type": "noul",
+        "noul": 0.11
+      },
+      "sentence-77-cross_show_promo": {
+        "type": "noul",
+        "noul": 0.1
+      },
+      "sentence-77-publisher_promo": {
+        "type": "noul",
+        "noul": 0.09
+      },
+      "sentence-77-membership_appeal": {
+        "type": "noul",
+        "noul": 0.08
+      },
+      "sentence-77-engagement_request": {
+        "type": "noul",
+        "noul": 0.08
+      },
+      "sentence-77-production_credit": {
+        "type": "noul",
+        "noul": 0.12
+      },
+      "sentence-77-network_id": {
+        "type": "noul",
+        "noul": 0.14
+      },
+      "sentence-77-signoff": {
+        "type": "noul",
+        "noul": 0.07
+      },
+      "sentence-78-paid_ad": {
+        "type": "noul",
+        "noul": 0.11
+      },
+      "sentence-78-underwriting": {
+        "type": "noul",
+        "noul": 0.12
+      },
+      "sentence-78-cross_show_promo": {
+        "type": "noul",
+        "noul": 0.17
+      },
+      "sentence-78-publisher_promo": {
+        "type": "noul",
+        "noul": 0.19
+      },
+      "sentence-78-membership_appeal": {
+        "type": "noul",
+        "noul": 0.11
+      },
+      "sentence-78-engagement_request": {
+        "type": "noul",
+        "noul": 0.18
+      },
+      "sentence-78-production_credit": {
+        "type": "noul",
+        "noul": 0.13
+      },
+      "sentence-78-network_id": {
+        "type": "noul",
+        "noul": 0.22
+      },
+      "sentence-78-signoff": {
+        "type": "noul",
+        "noul": 0.11
+      },
+      "sentence-79-paid_ad": {
+        "type": "noul",
+        "noul": 0.18
+      },
+      "sentence-79-underwriting": {
+        "type": "noul",
+        "noul": 0.11
+      },
+      "sentence-79-cross_show_promo": {
+        "type": "noul",
+        "noul": 0.48
+      },
+      "sentence-79-publisher_promo": {
+        "type": "noul",
+        "noul": 0.28
+      },
+      "sentence-79-membership_appeal": {
+        "type": "noul",
+        "noul": 0.15
+      },
+      "sentence-79-engagement_request": {
+        "type": "noul",
+        "noul": 0.56
+      },
+      "sentence-79-production_credit": {
+        "type": "noul",
+        "noul": 0.11
+      },
+      "sentence-79-network_id": {
+        "type": "noul",
+        "noul": 0.47
+      },
+      "sentence-79-signoff": {
+        "type": "noul",
+        "noul": 0.13
+      }
+    },
+    "usage": {
+      "input_tokens": 4643,
+      "output_tokens": 622
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "requestSha256": "2178cf2beaf0228a9a9d3675aeafd24543c4958bce266fc3971bfd23bc708057",
+  "latencyMs": 274.2,
+  "usage": {
+    "inputTokens": 2054,
+    "outputTokens": 116,
+    "totalCostUsd": 8.627e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "version-history-s0628-e0632-primary-reason": {
+        "type": "choice",
+        "choice": "paid_ad",
+        "confidence": 0.98,
+        "probabilities": {
+          "paid_ad": 0.99,
+          "underwriting": 0.01
+        }
+      },
+      "version-history-s0628-e0632-also-paid_ad": {
+        "type": "noul",
+        "noul": 0.82
+      },
+      "version-history-s0628-e0632-also-underwriting": {
+        "type": "noul",
+        "noul": 0.23
+      }
+    },
+    "usage": {
+      "input_tokens": 2054,
+      "output_tokens": 116
+    }
+  }
+}

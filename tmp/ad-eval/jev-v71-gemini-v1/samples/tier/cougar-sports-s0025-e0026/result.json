@@ -1,0 +1,30 @@
+{
+  "requestSha256": "049f89492f9b8c4fa20e12ae7e6bfe2d223056db7a217c7f68e0567960d38b0d",
+  "latencyMs": 152.1,
+  "usage": {
+    "inputTokens": 1905,
+    "outputTokens": 81,
+    "totalCostUsd": 8.001e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "cougar-sports-s0025-e0026-tier": {
+        "type": "choice",
+        "choice": "skip_obvious",
+        "confidence": 0.82,
+        "probabilities": {
+          "skip_most_only": 0.01,
+          "skip_more_only": 0.02,
+          "mixed_split": 0.06,
+          "keep_protected": 0.05,
+          "skip_obvious": 0.86
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 1905,
+      "output_tokens": 81
+    }
+  }
+}

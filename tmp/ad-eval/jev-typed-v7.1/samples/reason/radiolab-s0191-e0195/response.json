@@ -1,0 +1,31 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "radiolab-s0191-e0195-primary-reason": {
+      "type": "choice",
+      "choice": "cross_show_promo",
+      "confidence": 0.99,
+      "probabilities": {
+        "membership_appeal": 0.0,
+        "publisher_promo": 0.0,
+        "cross_show_promo": 1.0
+      }
+    },
+    "radiolab-s0191-e0195-also-cross_show_promo": {
+      "type": "noul",
+      "noul": 0.94
+    },
+    "radiolab-s0191-e0195-also-publisher_promo": {
+      "type": "noul",
+      "noul": 0.57
+    },
+    "radiolab-s0191-e0195-also-membership_appeal": {
+      "type": "noul",
+      "noul": 0.09
+    }
+  },
+  "usage": {
+    "input_tokens": 2305,
+    "output_tokens": 168
+  }
+}

@@ -1,0 +1,4527 @@
+{
+  "schemaVersion": 1,
+  "experiment": "gemini-typed-v7.2-comparison",
+  "model": "gemini-3.6-flash",
+  "createdAt": "2026-10-03T04:35:07.652063+00:00",
+  "transcriptSha256": "874f3d7b33ceadd6715c78c281b17500dcbc5365b2b6c640d4d4b8d0b5849bb8",
+  "requestSha256": "85dd461f36cf45dbb75e845fdda3b08eab0fa5c8bb7b2628a78ee4376e190c69",
+  "sentenceRows": [
+    {
+      "id": 1,
+      "start_word": 0,
+      "end_word": 5,
+      "start": 0.0,
+      "end": 1.76,
+      "text": "This message comes from Schwab."
+    },
+    {
+      "id": 2,
+      "start_word": 5,
+      "end_word": 24,
+      "start": 1.8,
+      "end": 8.18,
+      "text": "With the new Schwab Teen Investor Account, teens can gain hands -on investing experience and build positive money habits."
+    },
+    {
+      "id": 3,
+      "start_word": 24,
+      "end_word": 53,
+      "start": 8.42,
+      "end": 15.74,
+      "text": "It's an account co -owned by you and your teen, so you can monitor and engage with the account while your teen learns how to invest and manage money."
+    },
+    {
+      "id": 4,
+      "start_word": 53,
+      "end_word": 58,
+      "start": 15.94,
+      "end": 17.88,
+      "text": "Learn more at schwab .com."
+    },
+    {
+      "id": 5,
+      "start_word": 58,
+      "end_word": 64,
+      "start": 18.84,
+      "end": 21.28,
+      "text": "This is Planet Money from NPR."
+    },
+    {
+      "id": 6,
+      "start_word": 64,
+      "end_word": 83,
+      "start": 24.54,
+      "end": 30.64,
+      "text": "The world is filled with big economic ideas that could help us live better here in the United States."
+    },
+    {
+      "id": 7,
+      "start_word": 83,
+      "end_word": 92,
+      "start": 30.82,
+      "end": 33.58,
+      "text": "So this summer, we've decided to collect them all."
+    },
+    {
+      "id": 8,
+      "start_word": 92,
+      "end_word": 115,
+      "start": 42.46,
+      "end": 51.4,
+      "text": "Willkommen and bienvenue to Planet Money Summer School World Tour, the only international educational experience that doesn't have a carry -on weight limit."
+    },
+    {
+      "id": 9,
+      "start_word": 115,
+      "end_word": 119,
+      "start": 51.58,
+      "end": 52.66,
+      "text": "Bring the extra shoes."
+    },
+    {
+      "id": 10,
+      "start_word": 119,
+      "end_word": 144,
+      "start": 52.96,
+      "end": 59.98,
+      "text": "All summer long, we are traveling through the seven continents and looking for economic lessons that can help us understand the place we call home."
+    },
+    {
+      "id": 11,
+      "start_word": 144,
+      "end_word": 167,
+      "start": 60.22,
+      "end": 66.72,
+      "text": "There are hundreds of ways to create jobs, keep prices low, and make us all richer, or screw up a perfectly good economy."
+    },
+    {
+      "id": 12,
+      "start_word": 167,
+      "end_word": 171,
+      "start": 67.18,
+      "end": 68.26,
+      "text": "Let's learn from them."
+    },
+    {
+      "id": 13,
+      "start_word": 171,
+      "end_word": 173,
+      "start": 68.6,
+      "end": 69.38,
+      "text": "Today's journey?"
+    },
+    {
+      "id": 14,
+      "start_word": 173,
+      "end_word": 181,
+      "start": 69.64,
+      "end": 72.1,
+      "text": "China and the perils of an engineering economy."
+    },
+    {
+      "id": 15,
+      "start_word": 181,
+      "end_word": 184,
+      "start": 72.68,
+      "end": 73.52,
+      "text": "I'm Robert Smith."
+    },
+    {
+      "id": 16,
+      "start_word": 184,
+      "end_word": 203,
+      "start": 82.6,
+      "end": 88.24,
+      "text": "No country on Earth has seen the kind of economic growth that China has over the last 50 years."
+    },
+    {
+      "id": 17,
+      "start_word": 203,
+      "end_word": 221,
+      "start": 88.46,
+      "end": 95.22,
+      "text": "China has become the factory to the world, a grand experiment in central government planning and personal ambition."
+    },
+    {
+      "id": 18,
+      "start_word": 221,
+      "end_word": 238,
+      "start": 95.58,
+      "end": 101.22,
+      "text": "Along the way, China has created enormous wealth and pulled 800 million people out of extreme poverty."
+    },
+    {
+      "id": 19,
+      "start_word": 238,
+      "end_word": 244,
+      "start": 101.46,
+      "end": 103.5,
+      "text": "It has been a wild trip."
+    },
+    {
+      "id": 20,
+      "start_word": 244,
+      "end_word": 255,
+      "start": 103.74,
+      "end": 107.66,
+      "text": "In 2012, Planet Money traveled to China marvel at the progress."
+    },
+    {
+      "id": 21,
+      "start_word": 255,
+      "end_word": 273,
+      "start": 108.32,
+      "end": 113.86,
+      "text": "Ladies and gentlemen, it is a great pleasure to have you on board the Beijing -Shanghai Express train."
+    },
+    {
+      "id": 22,
+      "start_word": 273,
+      "end_word": 282,
+      "start": 114.4,
+      "end": 116.5,
+      "text": "Ladies and gentlemen, this is not just any train."
+    },
+    {
+      "id": 23,
+      "start_word": 282,
+      "end_word": 296,
+      "start": 116.6,
+      "end": 120.74,
+      "text": "This is part of China's new bullet train network, the largest in the world."
+    },
+    {
+      "id": 24,
+      "start_word": 296,
+      "end_word": 304,
+      "start": 120.92,
+      "end": 123.72,
+      "text": "Tops out at over 300 kilometers per hour."
+    },
+    {
+      "id": 25,
+      "start_word": 304,
+      "end_word": 309,
+      "start": 123.78,
+      "end": 125.0,
+      "text": "That's 200 miles an hour."
+    },
+    {
+      "id": 26,
+      "start_word": 309,
+      "end_word": 314,
+      "start": 125.12,
+      "end": 126.8,
+      "text": "It makes Amtrak look primitive."
+    },
+    {
+      "id": 27,
+      "start_word": 314,
+      "end_word": 326,
+      "start": 127.24,
+      "end": 131.48,
+      "text": "Of course, now China is a rich country facing rich country problems."
+    },
+    {
+      "id": 28,
+      "start_word": 326,
+      "end_word": 344,
+      "start": 131.8,
+      "end": 138.54,
+      "text": "Bubbles bursting, young people resentful, and we can learn a lot from China about the despairs of success."
+    },
+    {
+      "id": 29,
+      "start_word": 344,
+      "end_word": 363,
+      "start": 138.88,
+      "end": 145.62,
+      "text": "And our guest professor today says we should pay attention because our two countries have the same economic soul."
+    },
+    {
+      "id": 30,
+      "start_word": 363,
+      "end_word": 366,
+      "start": 145.98,
+      "end": 147.36,
+      "text": "Americans are crazy."
+    },
+    {
+      "id": 31,
+      "start_word": 366,
+      "end_word": 369,
+      "start": 147.96,
+      "end": 149.36,
+      "text": "Chinese are crazy."
+    },
+    {
+      "id": 32,
+      "start_word": 369,
+      "end_word": 378,
+      "start": 149.78,
+      "end": 152.92,
+      "text": "These are two countries full of these crazy hustlers."
+    },
+    {
+      "id": 33,
+      "start_word": 378,
+      "end_word": 399,
+      "start": 153.24,
+      "end": 160.3,
+      "text": "Dan Wong is a fellow at Stanford University's Hoover Institution and the author of Breakneck, China's Quest to Engineer the Future."
+    },
+    {
+      "id": 34,
+      "start_word": 399,
+      "end_word": 418,
+      "start": 160.54,
+      "end": 167.32,
+      "text": "It's no accident that the future is being invented in Shenzhen and in Silicon Valley as well as Beijing."
+    },
+    {
+      "id": 35,
+      "start_word": 418,
+      "end_word": 441,
+      "start": 167.6,
+      "end": 173.96,
+      "text": "And I think that more countries around the world need to appreciate sort of this crazy household energy that both the U .S."
+    },
+    {
+      "id": 36,
+      "start_word": 441,
+      "end_word": 444,
+      "start": 173.96,
+      "end": 174.52,
+      "text": "and China have."
+    },
+    {
+      "id": 37,
+      "start_word": 444,
+      "end_word": 457,
+      "start": 174.86,
+      "end": 178.96,
+      "text": "Dan, we consider you the perfect person to be our guest professor today."
+    },
+    {
+      "id": 38,
+      "start_word": 457,
+      "end_word": 471,
+      "start": 179.22,
+      "end": 182.86,
+      "text": "You were born in China, you've lived in both China and the U .S.,"
+    },
+    {
+      "id": 39,
+      "start_word": 471,
+      "end_word": 486,
+      "start": 182.86,
+      "end": 186.72,
+      "text": "and in Canada, I should say, and you're about to travel back to China now."
+    },
+    {
+      "id": 40,
+      "start_word": 486,
+      "end_word": 504,
+      "start": 186.98,
+      "end": 195.0,
+      "text": "And you've developed this fascinating theory about how China grew so fast and why that's creating problems now."
+    },
+    {
+      "id": 41,
+      "start_word": 504,
+      "end_word": 508,
+      "start": 195.24,
+      "end": 196.08,
+      "text": "What is the theory?"
+    },
+    {
+      "id": 42,
+      "start_word": 508,
+      "end_word": 536,
+      "start": 196.72,
+      "end": 205.92,
+      "text": "China is a country I call the engineering state because at various points in the recent past, the entirety of the senior leadership have had degrees in engineering."
+    },
+    {
+      "id": 43,
+      "start_word": 536,
+      "end_word": 542,
+      "start": 206.28,
+      "end": 207.82,
+      "text": "What do engineers like to do?"
+    },
+    {
+      "id": 44,
+      "start_word": 542,
+      "end_word": 572,
+      "start": 207.92,
+      "end": 218.82,
+      "text": "They like to build, build, build, whether that is a hydraulic dam or a coal plant or solar, wind, nuclear, a lot of homes, roads, bridges, high -speed rail everywhere."
+    },
+    {
+      "id": 45,
+      "start_word": 572,
+      "end_word": 590,
+      "start": 219.44,
+      "end": 225.5,
+      "text": "They can also be awfully literal -minded at treating society as if it were just another building material."
+    },
+    {
+      "id": 46,
+      "start_word": 590,
+      "end_word": 607,
+      "start": 226.72,
+      "end": 233.38,
+      "text": "idea of the engineering state, that every problem is solvable with enough money, manpower, or duct tape."
+    },
+    {
+      "id": 47,
+      "start_word": 607,
+      "end_word": 616,
+      "start": 233.58,
+      "end": 236.66,
+      "text": "And it isn't just a metaphor, I should say."
+    },
+    {
+      "id": 48,
+      "start_word": 616,
+      "end_word": 639,
+      "start": 236.7,
+      "end": 244.58,
+      "text": "In your book, you talk about how the people in charge of the government have actual engineering degrees, chemical engineering degrees, mechanical engineering."
+    },
+    {
+      "id": 49,
+      "start_word": 639,
+      "end_word": 642,
+      "start": 244.86,
+      "end": 245.98,
+      "text": "Oh, hydraulic engineering."
+    },
+    {
+      "id": 50,
+      "start_word": 642,
+      "end_word": 650,
+      "start": 246.3,
+      "end": 248.98,
+      "text": "And the prior general secretary built a dam."
+    },
+    {
+      "id": 51,
+      "start_word": 650,
+      "end_word": 660,
+      "start": 249.12,
+      "end": 252.92,
+      "text": "The present general secretary had his undergraduate in chemical engineering."
+    },
+    {
+      "id": 52,
+      "start_word": 660,
+      "end_word": 684,
+      "start": 253.2,
+      "end": 263.68,
+      "text": "And these are people who as if it were just another hydraulic flow to be shifted around and blocked and rechanneled as they wish."
+    },
+    {
+      "id": 53,
+      "start_word": 684,
+      "end_word": 698,
+      "start": 263.98,
+      "end": 267.5,
+      "text": "I should say Dan Wong is going to be our guide on today's show."
+    },
+    {
+      "id": 54,
+      "start_word": 698,
+      "end_word": 719,
+      "start": 267.84,
+      "end": 273.5,
+      "text": "And in his book, he pointed out that the United States has more of a lawyer culture than an engineering culture."
+    },
+    {
+      "id": 55,
+      "start_word": 719,
+      "end_word": 722,
+      "start": 273.8,
+      "end": 274.62,
+      "text": "Most U .S."
+    },
+    {
+      "id": 56,
+      "start_word": 722,
+      "end_word": 740,
+      "start": 274.64,
+      "end": 279.72,
+      "text": "politicians couldn't build a dam, but they would know how to use the law to slow things down."
+    },
+    {
+      "id": 57,
+      "start_word": 740,
+      "end_word": 747,
+      "start": 280.0,
+      "end": 281.76,
+      "text": "So China builds the high -speed trains."
+    },
+    {
+      "id": 58,
+      "start_word": 747,
+      "end_word": 750,
+      "start": 282.0,
+      "end": 282.72,
+      "text": "The U .S."
+    },
+    {
+      "id": 59,
+      "start_word": 750,
+      "end_word": 761,
+      "start": 282.72,
+      "end": 284.88,
+      "text": "goes to court for years over where the tracks should go."
+    },
+    {
+      "id": 60,
+      "start_word": 761,
+      "end_word": 764,
+      "start": 284.96,
+      "end": 285.72,
+      "text": "That's the difference."
+    },
+    {
+      "id": 61,
+      "start_word": 764,
+      "end_word": 789,
+      "start": 288.2,
+      "end": 295.2,
+      "text": "Today we'll have two case studies about the perils of the Chinese engineering state, and Dan will return with lessons we can take from it."
+    },
+    {
+      "id": 62,
+      "start_word": 789,
+      "end_word": 810,
+      "start": 295.36,
+      "end": 301.48,
+      "text": "It's easy to get jealous of all the growth in China, but every boom has a bust growing inside of it."
+    },
+    {
+      "id": 63,
+      "start_word": 810,
+      "end_word": 823,
+      "start": 301.62,
+      "end": 306.56,
+      "text": "Rapid economic growth can lead to more debt, more risk, and more chaos."
+    },
+    {
+      "id": 64,
+      "start_word": 823,
+      "end_word": 831,
+      "start": 306.84,
+      "end": 309.56,
+      "text": "It's a cautionary tale ahead after the break."
+    },
+    {
+      "id": 65,
+      "start_word": 831,
+      "end_word": 836,
+      "start": 312.38,
+      "end": 314.34,
+      "text": "This message comes from Thumbtack."
+    },
+    {
+      "id": 66,
+      "start_word": 836,
+      "end_word": 848,
+      "start": 314.34,
+      "end": 318.62,
+      "text": "Some tasks can feel easy, but home projects can bring second guesses."
+    },
+    {
+      "id": 67,
+      "start_word": 848,
+      "end_word": 852,
+      "start": 318.86,
+      "end": 320.22,
+      "text": "Is that noise normal?"
+    },
+    {
+      "id": 68,
+      "start_word": 852,
+      "end_word": 856,
+      "start": 320.5,
+      "end": 321.66,
+      "text": "Is that water damage?"
+    },
+    {
+      "id": 69,
+      "start_word": 856,
+      "end_word": 860,
+      "start": 321.88,
+      "end": 322.92,
+      "text": "Who should be called?"
+    },
+    {
+      "id": 70,
+      "start_word": 860,
+      "end_word": 865,
+      "start": 323.16,
+      "end": 324.78,
+      "text": "That's where Thumbtack comes in."
+    },
+    {
+      "id": 71,
+      "start_word": 865,
+      "end_word": 887,
+      "start": 324.88,
+      "end": 331.24,
+      "text": "Just upload a photo or voice note, and it uses AI -powered search to match with the right top -rated local pro."
+    },
+    {
+      "id": 72,
+      "start_word": 887,
+      "end_word": 897,
+      "start": 331.44,
+      "end": 335.44,
+      "text": "So instead of guessing, there's clarity and confidence when hiring."
+    },
+    {
+      "id": 73,
+      "start_word": 897,
+      "end_word": 904,
+      "start": 335.66,
+      "end": 338.06,
+      "text": "For your next home project, try Thumbtack."
+    },
+    {
+      "id": 74,
+      "start_word": 904,
+      "end_word": 909,
+      "start": 338.22,
+      "end": 339.8,
+      "text": "Hire the right pro today."
+    },
+    {
+      "id": 75,
+      "start_word": 909,
+      "end_word": 910,
+      "start": 339.8,
+      "end": 339.98,
+      "text": "Day."
+    },
+    {
+      "id": 76,
+      "start_word": 910,
+      "end_word": 926,
+      "start": 340.6,
+      "end": 348.88,
+      "text": "This week on the NPR Politics Podcast, President Trump is trying to tie Democrats to communism."
+    },
+    {
+      "id": 77,
+      "start_word": 926,
+      "end_word": 938,
+      "start": 349.3,
+      "end": 356.44,
+      "text": "Both he and his team feel this is resonating with his base."
+    },
+    {
+      "id": 78,
+      "start_word": 938,
+      "end_word": 956,
+      "start": 356.72,
+      "end": 361.28,
+      "text": "Why the White House is pushing communism as a new line of attack ahead of this year's midterms."
+    },
+    {
+      "id": 79,
+      "start_word": 956,
+      "end_word": 963,
+      "start": 361.4,
+      "end": 363.72,
+      "text": "Listen now on the NPR Politics Podcast."
+    },
+    {
+      "id": 80,
+      "start_word": 963,
+      "end_word": 985,
+      "start": 364.66,
+      "end": 372.74,
+      "text": "Planet Money Summer School World Tour has arrived in Shanghai, Professor for the Grand Tour is Dan Wong from the Hoover Institution."
+    },
+    {
+      "id": 81,
+      "start_word": 985,
+      "end_word": 987,
+      "start": 372.76,
+      "end": 373.16,
+      "text": "Hey, Dan."
+    },
+    {
+      "id": 82,
+      "start_word": 987,
+      "end_word": 994,
+      "start": 373.78,
+      "end": 375.48,
+      "text": "It's great to be in class, friends."
+    },
+    {
+      "id": 83,
+      "start_word": 994,
+      "end_word": 1014,
+      "start": 376.88,
+      "end": 383.32,
+      "text": "Anyone who's been to China is just immediately struck by how much they can build, how fast they can build."
+    },
+    {
+      "id": 84,
+      "start_word": 1014,
+      "end_word": 1020,
+      "start": 383.7,
+      "end": 385.4,
+      "text": "As you've said, build, build, build."
+    },
+    {
+      "id": 85,
+      "start_word": 1020,
+      "end_word": 1033,
+      "start": 385.86,
+      "end": 391.1,
+      "text": "You see the neon -covered skyscrapers, highways, bridges, factories as big as cities."
+    },
+    {
+      "id": 86,
+      "start_word": 1033,
+      "end_word": 1050,
+      "start": 391.76,
+      "end": 395.84,
+      "text": "Do you have one image that sticks with you as a symbol of what they can accomplish?"
+    },
+    {
+      "id": 87,
+      "start_word": 1050,
+      "end_word": 1075,
+      "start": 395.84,
+      "end": 405.7,
+      "text": "In the summer of 2021, my two friends and I cycled this really mountainous province called Guizhou, China's fourth poorest province in the mountainous southwest."
+    },
+    {
+      "id": 88,
+      "start_word": 1075,
+      "end_word": 1093,
+      "start": 406.14,
+      "end": 411.84,
+      "text": "And what I saw were these very tall bridges that were some of the highest in the world."
+    },
+    {
+      "id": 89,
+      "start_word": 1093,
+      "end_word": 1118,
+      "start": 412.06,
+      "end": 420.62,
+      "text": "And afterwards, I looked up some of these bridges and I found that this one province of Guizhou has 50 of the world's tallest bridges."
+    },
+    {
+      "id": 90,
+      "start_word": 1118,
+      "end_word": 1128,
+      "start": 420.78,
+      "end": 423.48,
+      "text": "50 of the world's tallest bridges, not China's highest bridges."
+    },
+    {
+      "id": 91,
+      "start_word": 1128,
+      "end_word": 1129,
+      "start": 423.48,
+      "end": 423.74,
+      "text": "bridges."
+    },
+    {
+      "id": 92,
+      "start_word": 1129,
+      "end_word": 1148,
+      "start": 423.8,
+      "end": 430.26,
+      "text": "This province of about 40 million people, again, one of the poorest in China, has something like 13 airports."
+    },
+    {
+      "id": 93,
+      "start_word": 1148,
+      "end_word": 1154,
+      "start": 430.7,
+      "end": 432.44,
+      "text": "There you have the engineering state."
+    },
+    {
+      "id": 94,
+      "start_word": 1154,
+      "end_word": 1155,
+      "start": 433.52,
+      "end": 434.0,
+      "text": "Okay."
+    },
+    {
+      "id": 95,
+      "start_word": 1155,
+      "end_word": 1186,
+      "start": 434.0,
+      "end": 444.24,
+      "text": "Keep this image in your mind, the bridges, the airports, build, build, build, as you listen to our first case study, which is the perfect illustration of the dangers of growth."
+    },
+    {
+      "id": 96,
+      "start_word": 1186,
+      "end_word": 1202,
+      "start": 444.46,
+      "end": 448.92,
+      "text": "When there's money to be made, no one thinks, maybe we should slow down a bit."
+    },
+    {
+      "id": 97,
+      "start_word": 1202,
+      "end_word": 1221,
+      "start": 449.14,
+      "end": 454.76,
+      "text": "It's an excerpt from a 2023 Planet Money episode about the boom and bust of China's real estate sector."
+    },
+    {
+      "id": 98,
+      "start_word": 1221,
+      "end_word": 1258,
+      "start": 455.2,
+      "end": 466.24,
+      "text": "Nick Fountain and Emily Feng take us behind the scenes of China's go -go years to meet a man who got very rich in the early 2000s from that push to build more bridges, airports, and logistics."
+    },
+    {
+      "id": 99,
+      "start_word": 1258,
+      "end_word": 1277,
+      "start": 466.6,
+      "end": 471.84,
+      "text": "And then after, we'll talk to our professor about the big lessons we can take from this case study."
+    },
+    {
+      "id": 100,
+      "start_word": 1277,
+      "end_word": 1307,
+      "start": 472.1,
+      "end": 479.46,
+      "text": "If we're going to talk to anybody about those go -go years, it should be this one property developer who wrote a tell -all book about his time in China."
+    },
+    {
+      "id": 101,
+      "start_word": 1307,
+      "end_word": 1313,
+      "start": 480.0,
+      "end": 481.54,
+      "text": "And that guy is Desmond Shum."
+    },
+    {
+      "id": 102,
+      "start_word": 1313,
+      "end_word": 1323,
+      "start": 482.12,
+      "end": 485.58,
+      "text": "Desmond was an insider's insider during the go -go years."
+    },
+    {
+      "id": 103,
+      "start_word": 1323,
+      "end_word": 1350,
+      "start": 485.74,
+      "end": 494.34,
+      "text": "And talking to him is a bit like getting a glimpse through a keyhole into this period of extreme growth and also extreme wealth creation in China."
+    },
+    {
+      "id": 104,
+      "start_word": 1350,
+      "end_word": 1366,
+      "start": 494.8,
+      "end": 498.56,
+      "text": "So first, I don't know, the easy question, who are you and what do you do?"
+    },
+    {
+      "id": 105,
+      "start_word": 1366,
+      "end_word": 1369,
+      "start": 499.68,
+      "end": 500.58,
+      "text": "Who am I?"
+    },
+    {
+      "id": 106,
+      "start_word": 1369,
+      "end_word": 1375,
+      "start": 500.66,
+      "end": 502.38,
+      "text": "Actually, that's never an easy question."
+    },
+    {
+      "id": 107,
+      "start_word": 1375,
+      "end_word": 1387,
+      "start": 502.76,
+      "end": 505.92,
+      "text": "That's one of the actually the hardest questions when people ask me."
+    },
+    {
+      "id": 108,
+      "start_word": 1387,
+      "end_word": 1388,
+      "start": 505.98,
+      "end": 506.46,
+      "text": "Touche."
+    },
+    {
+      "id": 109,
+      "start_word": 1388,
+      "end_word": 1397,
+      "start": 506.46,
+      "end": 509.92,
+      "text": "In simple terms, Desmond was a real estate developer."
+    },
+    {
+      "id": 110,
+      "start_word": 1397,
+      "end_word": 1406,
+      "start": 510.16,
+      "end": 512.12,
+      "text": "He had a business with his then -wife, Whitney."
+    },
+    {
+      "id": 111,
+      "start_word": 1406,
+      "end_word": 1424,
+      "start": 512.34,
+      "end": 517.38,
+      "text": "Whitney was friendly with the wife of the second -in -command of the country, the premier of China."
+    },
+    {
+      "id": 112,
+      "start_word": 1424,
+      "end_word": 1438,
+      "start": 517.68,
+      "end": 522.76,
+      "text": "And Desmond and Whitney used those political connections to make deals with local governments."
+    },
+    {
+      "id": 113,
+      "start_word": 1438,
+      "end_word": 1451,
+      "start": 523.38,
+      "end": 526.24,
+      "text": "Yeah, Desmond told us the story of one of their most famous deals."
+    },
+    {
+      "id": 114,
+      "start_word": 1451,
+      "end_word": 1460,
+      "start": 526.5,
+      "end": 529.14,
+      "text": "It shows just how wild these growth years were."
+    },
+    {
+      "id": 115,
+      "start_word": 1460,
+      "end_word": 1481,
+      "start": 529.14,
+      "end": 536.66,
+      "text": "The story starts in 2003, when Desmond and Whitney saw this piece of land with great potential next to Beijing's airport."
+    },
+    {
+      "id": 116,
+      "start_word": 1481,
+      "end_word": 1490,
+      "start": 536.98,
+      "end": 539.72,
+      "text": "They came up with a kind of audacious idea."
+    },
+    {
+      "id": 117,
+      "start_word": 1490,
+      "end_word": 1511,
+      "start": 540.06,
+      "end": 547.58,
+      "text": "They wanted to build a huge logistics hub with millions of square feet of warehouses and import and export processing centers."
+    },
+    {
+      "id": 118,
+      "start_word": 1511,
+      "end_word": 1521,
+      "start": 547.78,
+      "end": 550.3,
+      "text": "The airport hub would be the first of its kind."
+    },
+    {
+      "id": 119,
+      "start_word": 1521,
+      "end_word": 1526,
+      "start": 550.58,
+      "end": 551.74,
+      "text": "It was a bit crazy."
+    },
+    {
+      "id": 120,
+      "start_word": 1526,
+      "end_word": 1544,
+      "start": 551.86,
+      "end": 556.7,
+      "text": "We know it's we think it's going to be profitable because it's, you know, it's a monopoly business."
+    },
+    {
+      "id": 121,
+      "start_word": 1544,
+      "end_word": 1554,
+      "start": 556.7,
+      "end": 558.92,
+      "text": "It's how every monopoly business has got to be profitable."
+    },
+    {
+      "id": 122,
+      "start_word": 1554,
+      "end_word": 1566,
+      "start": 559.46,
+      "end": 563.04,
+      "text": "But then at the same time, we know zippo about a business."
+    },
+    {
+      "id": 123,
+      "start_word": 1566,
+      "end_word": 1592,
+      "start": 563.42,
+      "end": 572.08,
+      "text": "Since this was a time of economic growth in China, Desmond knew that having the only air cargo logistics hub in Beijing could mean massive profits."
+    },
+    {
+      "id": 124,
+      "start_word": 1592,
+      "end_word": 1610,
+      "start": 572.44,
+      "end": 577.6,
+      "text": "Because essentially, they could get a little richer every time goods came in and out of Beijing's airport."
+    },
+    {
+      "id": 125,
+      "start_word": 1610,
+      "end_word": 1625,
+      "start": 577.94,
+      "end": 583.46,
+      "text": "He hires consultants, hires a staff, and he does a lot of wining and dining."
+    },
+    {
+      "id": 126,
+      "start_word": 1625,
+      "end_word": 1663,
+      "start": 583.78,
+      "end": 595.66,
+      "text": "To hear Desmond tell it, at this point in China's economic development, it was rational to engage in casual bribery on a day -to -day basis because there was so much money to be made off these deals."
+    },
+    {
+      "id": 127,
+      "start_word": 1663,
+      "end_word": 1675,
+      "start": 595.88,
+      "end": 600.66,
+      "text": "Desmond said he would routinely spend thousands of dollars buying officials dinner."
+    },
+    {
+      "id": 128,
+      "start_word": 1675,
+      "end_word": 1699,
+      "start": 600.98,
+      "end": 607.68,
+      "text": "Apparently, there was a thousand dollar soup that people couldn't get enough of made of a part of a fish called an air bladder."
+    },
+    {
+      "id": 129,
+      "start_word": 1699,
+      "end_word": 1726,
+      "start": 608.02,
+      "end": 615.64,
+      "text": "You write that at one point, you just like went to Hong Kong and bought like half a dozen watches of $10 ,000 to $20 ,000 value."
+    },
+    {
+      "id": 130,
+      "start_word": 1726,
+      "end_word": 1736,
+      "start": 615.94,
+      "end": 618.62,
+      "text": "And you just had them as bribes for the future."
+    },
+    {
+      "id": 131,
+      "start_word": 1736,
+      "end_word": 1743,
+      "start": 618.86,
+      "end": 620.98,
+      "text": "Well, as trivial respect for the future."
+    },
+    {
+      "id": 132,
+      "start_word": 1743,
+      "end_word": 1745,
+      "start": 621.22,
+      "end": 621.98,
+      "text": "Oh, sorry."
+    },
+    {
+      "id": 133,
+      "start_word": 1745,
+      "end_word": 1755,
+      "start": 622.1,
+      "end": 626.24,
+      "text": "I keep calling them bribes, but sure, trivials of respect."
+    },
+    {
+      "id": 134,
+      "start_word": 1755,
+      "end_word": 1772,
+      "start": 626.38,
+      "end": 630.98,
+      "text": "Because really, I mean, for the people we deal with, like, you know, $10 ,000 is nothing."
+    },
+    {
+      "id": 135,
+      "start_word": 1772,
+      "end_word": 1777,
+      "start": 631.3,
+      "end": 633.18,
+      "text": "It's like nothing for them."
+    },
+    {
+      "id": 136,
+      "start_word": 1777,
+      "end_word": 1793,
+      "start": 633.28,
+      "end": 637.8,
+      "text": "It's like, you know, in the community we move in, those are really trivials of respect."
+    },
+    {
+      "id": 137,
+      "start_word": 1793,
+      "end_word": 1802,
+      "start": 638.42,
+      "end": 641.44,
+      "text": "If I give them anything less, think of me."
+    },
+    {
+      "id": 138,
+      "start_word": 1802,
+      "end_word": 1810,
+      "start": 641.7,
+      "end": 643.48,
+      "text": "I'm just like a beggar on the street."
+    },
+    {
+      "id": 139,
+      "start_word": 1810,
+      "end_word": 1822,
+      "start": 643.78,
+      "end": 649.66,
+      "text": "Desmond, I can't tell if you're being a little facetious or what."
+    },
+    {
+      "id": 140,
+      "start_word": 1822,
+      "end_word": 1835,
+      "start": 649.82,
+      "end": 655.42,
+      "text": "Do you now see these as bribes or do you still really think?"
+    },
+    {
+      "id": 141,
+      "start_word": 1835,
+      "end_word": 1846,
+      "start": 655.44,
+      "end": 660.86,
+      "text": "No, obviously in the West, it's obviously the bribe."
+    },
+    {
+      "id": 142,
+      "start_word": 1846,
+      "end_word": 1866,
+      "start": 660.9,
+      "end": 669.78,
+      "text": "But in the community we're moving, in the situation of the time, nobody, actually seriously nobody, considered that a bribe."
+    },
+    {
+      "id": 143,
+      "start_word": 1866,
+      "end_word": 1889,
+      "start": 671.0,
+      "end": 676.68,
+      "text": "Because it's not going to, people are not going to do something for you because you give them $10 ,000, $20 a watch."
+    },
+    {
+      "id": 144,
+      "start_word": 1889,
+      "end_word": 1895,
+      "start": 677.2,
+      "end": 678.86,
+      "text": "In the community, we were moving."
+    },
+    {
+      "id": 145,
+      "start_word": 1895,
+      "end_word": 1906,
+      "start": 679.08,
+      "end": 683.18,
+      "text": "According to Desmond, those bribes got way bigger than the watches."
+    },
+    {
+      "id": 146,
+      "start_word": 1906,
+      "end_word": 1912,
+      "start": 683.5,
+      "end": 685.68,
+      "text": "Yeah, one amazing story he tells."
+    },
+    {
+      "id": 147,
+      "start_word": 1912,
+      "end_word": 1932,
+      "start": 686.1,
+      "end": 691.84,
+      "text": "It's from when they were building that cargo logistics hub, and Desmond needs a sign -off from the customs chief."
+    },
+    {
+      "id": 148,
+      "start_word": 1932,
+      "end_word": 1955,
+      "start": 692.18,
+      "end": 698.72,
+      "text": "Who tells him over dinner, sure, I'll help you out, but I'm going to need the following amenities for my 300 -person workforce."
+    },
+    {
+      "id": 149,
+      "start_word": 1955,
+      "end_word": 1956,
+      "start": 698.72,
+      "end": 699.0,
+      "text": "force."
+    },
+    {
+      "id": 150,
+      "start_word": 1956,
+      "end_word": 1977,
+      "start": 699.36,
+      "end": 707.88,
+      "text": "Regulation -sized basketball, badminton, and tennis courts, an indoor gym, a 200 -seat theater, a banquet hall, and a karaoke bar."
+    },
+    {
+      "id": 151,
+      "start_word": 1977,
+      "end_word": 1982,
+      "start": 708.14,
+      "end": 709.92,
+      "text": "And Desmond agreed to it."
+    },
+    {
+      "id": 152,
+      "start_word": 1982,
+      "end_word": 1988,
+      "start": 710.0,
+      "end": 711.92,
+      "text": "He needed the custom head's approval."
+    },
+    {
+      "id": 153,
+      "start_word": 1988,
+      "end_word": 1995,
+      "start": 712.12,
+      "end": 714.7,
+      "text": "It added $50 million to the project."
+    },
+    {
+      "id": 154,
+      "start_word": 1995,
+      "end_word": 2015,
+      "start": 715.02,
+      "end": 720.4,
+      "text": "But once the logistics hub got built, Desmond says they sold it for a profit of close to $200 million."
+    },
+    {
+      "id": 155,
+      "start_word": 2015,
+      "end_word": 2022,
+      "start": 721.14,
+      "end": 723.58,
+      "text": "Desmond and his wife got very rich."
+    },
+    {
+      "id": 156,
+      "start_word": 2022,
+      "end_word": 2035,
+      "start": 723.74,
+      "end": 727.36,
+      "text": "They also started Started building a fancy hotel with a fancy condo project."
+    },
+    {
+      "id": 157,
+      "start_word": 2035,
+      "end_word": 2045,
+      "start": 727.6,
+      "end": 731.4,
+      "text": "And they became part of this new extremely rich elite."
+    },
+    {
+      "id": 158,
+      "start_word": 2045,
+      "end_word": 2066,
+      "start": 731.78,
+      "end": 738.36,
+      "text": "But he was small fry compared to the really big property developers who were amassing wealth in China at the time."
+    },
+    {
+      "id": 159,
+      "start_word": 2066,
+      "end_word": 2076,
+      "start": 738.7,
+      "end": 742.12,
+      "text": "People like this one man he met named Xu Jiayin."
+    },
+    {
+      "id": 160,
+      "start_word": 2076,
+      "end_word": 2086,
+      "start": 742.3,
+      "end": 745.18,
+      "text": "Yes, the founder and head of this property development company."
+    },
+    {
+      "id": 161,
+      "start_word": 2086,
+      "end_word": 2089,
+      "start": 745.3,
+      "end": 746.8,
+      "text": "It's called Evergrande."
+    },
+    {
+      "id": 162,
+      "start_word": 2089,
+      "end_word": 2106,
+      "start": 746.94,
+      "end": 752.92,
+      "text": "And while Desmond was giving out $10 ,000 watches, he says Xu Jiayin's bribes were next level."
+    },
+    {
+      "id": 163,
+      "start_word": 2106,
+      "end_word": 2127,
+      "start": 754.58,
+      "end": 762.0,
+      "text": "Xu Dying offered to buy Desmond's wife Whitney a ring worth more than a million dollars, presumably for her political connections."
+    },
+    {
+      "id": 164,
+      "start_word": 2127,
+      "end_word": 2131,
+      "start": 762.46,
+      "end": 763.62,
+      "text": "Desmond says she declined."
+    },
+    {
+      "id": 165,
+      "start_word": 2131,
+      "end_word": 2140,
+      "start": 764.02,
+      "end": 765.62,
+      "text": "Was he a fun person to hang out with?"
+    },
+    {
+      "id": 166,
+      "start_word": 2140,
+      "end_word": 2142,
+      "start": 765.78,
+      "end": 766.2,
+      "text": "Not really."
+    },
+    {
+      "id": 167,
+      "start_word": 2142,
+      "end_word": 2145,
+      "start": 766.4,
+      "end": 767.6,
+      "text": "I mean, no."
+    },
+    {
+      "id": 168,
+      "start_word": 2145,
+      "end_word": 2170,
+      "start": 769.32,
+      "end": 776.74,
+      "text": "Desmond tells this one story of a trip that he took with Xu Dying that shows just how enormously wealthy these property developers were becoming."
+    },
+    {
+      "id": 169,
+      "start_word": 2170,
+      "end_word": 2193,
+      "start": 777.08,
+      "end": 785.52,
+      "text": "The story goes that he and Xu Dying were thinking about investing in a new members -only wine few other rich families."
+    },
+    {
+      "id": 170,
+      "start_word": 2193,
+      "end_word": 2204,
+      "start": 785.84,
+      "end": 788.14,
+      "text": "And they decide to go to France to try some wines."
+    },
+    {
+      "id": 171,
+      "start_word": 2204,
+      "end_word": 2228,
+      "start": 788.4,
+      "end": 795.22,
+      "text": "They initially planned on each taking their own private jet, but right before they take off, they decide, actually, we want to play cards."
+    },
+    {
+      "id": 172,
+      "start_word": 2228,
+      "end_word": 2239,
+      "start": 795.46,
+      "end": 798.34,
+      "text": "So they end up flying all three private jets to France."
+    },
+    {
+      "id": 173,
+      "start_word": 2239,
+      "end_word": 2250,
+      "start": 798.48,
+      "end": 801.9,
+      "text": "They play cards on one, and the other two fly empty."
+    },
+    {
+      "id": 174,
+      "start_word": 2250,
+      "end_word": 2255,
+      "start": 802.16,
+      "end": 803.2,
+      "text": "What game do you play?"
+    },
+    {
+      "id": 175,
+      "start_word": 2255,
+      "end_word": 2261,
+      "start": 804.38,
+      "end": 806.16,
+      "text": "Oh, they play Dou Di Zhu."
+    },
+    {
+      "id": 176,
+      "start_word": 2261,
+      "end_word": 2268,
+      "start": 806.24,
+      "end": 809.34,
+      "text": "It's very common Chinese card game."
+    },
+    {
+      "id": 177,
+      "start_word": 2268,
+      "end_word": 2281,
+      "start": 809.86,
+      "end": 812.72,
+      "text": "Desmond, for people who don't speak Chinese, what does Dou Di Zhu mean?"
+    },
+    {
+      "id": 178,
+      "start_word": 2281,
+      "end_word": 2285,
+      "start": 815.38,
+      "end": 817.04,
+      "text": "to struggle the landlord."
+    },
+    {
+      "id": 179,
+      "start_word": 2285,
+      "end_word": 2289,
+      "start": 817.34,
+      "end": 818.7,
+      "text": "Struggle against the landlord."
+    },
+    {
+      "id": 180,
+      "start_word": 2289,
+      "end_word": 2314,
+      "start": 819.04,
+      "end": 826.84,
+      "text": "You were playing a card game called Struggle Against the Landlord on a private jet with two of the biggest real estate developers in China?"
+    },
+    {
+      "id": 181,
+      "start_word": 2314,
+      "end_word": 2319,
+      "start": 827.68,
+      "end": 828.98,
+      "text": "Yeah, that was the game."
+    },
+    {
+      "id": 182,
+      "start_word": 2319,
+      "end_word": 2335,
+      "start": 831.08,
+      "end": 835.84,
+      "text": "If there was a top to China's real estate boom, it might have been this moment."
+    },
+    {
+      "id": 183,
+      "start_word": 2335,
+      "end_word": 2357,
+      "start": 836.04,
+      "end": 843.96,
+      "text": "Two private jets flying empty en route to France next to one full of real estate moguls playing Struggle Against the Landlord."
+    },
+    {
+      "id": 184,
+      "start_word": 2358,
+      "end_word": 2390,
+      "start": 844.58,
+      "end": 855.9,
+      "text": "these folks were getting enormously wealthy because over just a couple of decades, China went from basically not letting people own private property to 90 percent of people owning their own homes."
+    },
+    {
+      "id": 185,
+      "start_word": 2390,
+      "end_word": 2409,
+      "start": 856.02,
+      "end": 862.96,
+      "text": "And there was so much demand, prices kept rising and real estate started to seem like a great investment."
+    },
+    {
+      "id": 186,
+      "start_word": 2409,
+      "end_word": 2418,
+      "start": 863.12,
+      "end": 866.82,
+      "text": "So people were sometimes buying second or third homes."
+    },
+    {
+      "id": 187,
+      "start_word": 2418,
+      "end_word": 2422,
+      "start": 867.06,
+      "end": 868.2,
+      "text": "Now for the crisis."
+    },
+    {
+      "id": 188,
+      "start_word": 2422,
+      "end_word": 2433,
+      "start": 868.5,
+      "end": 872.4,
+      "text": "And Emily, you actually witnessed the exact start of this chapter."
+    },
+    {
+      "id": 189,
+      "start_word": 2433,
+      "end_word": 2442,
+      "start": 872.4,
+      "end": 874.7,
+      "text": "You were a reporter in Beijing at the time."
+    },
+    {
+      "id": 190,
+      "start_word": 2442,
+      "end_word": 2447,
+      "start": 874.78,
+      "end": 875.82,
+      "text": "Who were you working for?"
+    },
+    {
+      "id": 191,
+      "start_word": 2447,
+      "end_word": 2456,
+      "start": 876.4,
+      "end": 879.08,
+      "text": "2017, I was still working for the Financial Times."
+    },
+    {
+      "id": 192,
+      "start_word": 2456,
+      "end_word": 2464,
+      "start": 879.1,
+      "end": 881.72,
+      "text": "It's this lovely little salmon -colored British newspaper."
+    },
+    {
+      "id": 193,
+      "start_word": 2464,
+      "end_word": 2476,
+      "start": 882.58,
+      "end": 886.02,
+      "text": "And it was my first ever party congress that I was covering."
+    },
+    {
+      "id": 194,
+      "start_word": 2476,
+      "end_word": 2481,
+      "start": 886.12,
+      "end": 886.96,
+      "text": "So that was really exciting."
+    },
+    {
+      "id": 195,
+      "start_word": 2481,
+      "end_word": 2485,
+      "start": 887.3,
+      "end": 888.22,
+      "text": "Yeah, the party congress."
+    },
+    {
+      "id": 196,
+      "start_word": 2485,
+      "end_word": 2490,
+      "start": 888.42,
+      "end": 890.06,
+      "text": "This happens every five years."
+    },
+    {
+      "id": 197,
+      "start_word": 2490,
+      "end_word": 2504,
+      "start": 890.18,
+      "end": 894.5,
+      "text": "And it's where the Communist Party gets together to decide the future of China."
+    },
+    {
+      "id": 198,
+      "start_word": 2504,
+      "end_word": 2533,
+      "start": 894.5,
+      "end": 905.52,
+      "text": "Yeah, and it's at this party congress in 2017 that the head of the party, Xi Jinping, says something very important that will change China's entire real estate market."
+    },
+    {
+      "id": 199,
+      "start_word": 2533,
+      "end_word": 2539,
+      "start": 905.84,
+      "end": 907.82,
+      "text": "Xi Jinping starts his big speech."
+    },
+    {
+      "id": 200,
+      "start_word": 2539,
+      "end_word": 2544,
+      "start": 912.06,
+      "end": 913.56,
+      "text": "And it's a long one."
+    },
+    {
+      "id": 201,
+      "start_word": 2544,
+      "end_word": 2553,
+      "start": 913.8,
+      "end": 917.04,
+      "text": "But deep in the speech, he drops the bombshell."
+    },
+    {
+      "id": 202,
+      "start_word": 2553,
+      "end_word": 2554,
+      "start": 920.22,
+      "end": 920.7,
+      "text": "Yeah."
+    },
+    {
+      "id": 203,
+      "start_word": 2554,
+      "end_word": 2569,
+      "start": 920.82,
+      "end": 925.2,
+      "text": "He says one line about how houses are made for living in, not for speculating."
+    },
+    {
+      "id": 204,
+      "start_word": 2569,
+      "end_word": 2592,
+      "start": 927.9,
+      "end": 935.4,
+      "text": "And that is a very clear, directed criticism of people who are just buying apartments for investment, but not actually living in them."
+    },
+    {
+      "id": 205,
+      "start_word": 2592,
+      "end_word": 2618,
+      "start": 935.6,
+      "end": 942.9,
+      "text": "This is a very big deal because essentially she is saying all that building that real estate developers have been doing, much of it was unproductive."
+    },
+    {
+      "id": 206,
+      "start_word": 2618,
+      "end_word": 2627,
+      "start": 942.9,
+      "end": 944.96,
+      "text": "Not good for the party, not good for China."
+    },
+    {
+      "id": 207,
+      "start_word": 2627,
+      "end_word": 2630,
+      "start": 945.1,
+      "end": 945.8,
+      "text": "Cut it out."
+    },
+    {
+      "id": 208,
+      "start_word": 2630,
+      "end_word": 2661,
+      "start": 947.04,
+      "end": 959.1,
+      "text": "see this sea change of tighter regulation on all parties, on local governments, on banks, on private developers, on regular investors to limit them on how many apartments they can buy."
+    },
+    {
+      "id": 209,
+      "start_word": 2661,
+      "end_word": 2671,
+      "start": 959.64,
+      "end": 963.08,
+      "text": "Because basically he's saying there's too much of this stuff."
+    },
+    {
+      "id": 210,
+      "start_word": 2671,
+      "end_word": 2683,
+      "start": 963.38,
+      "end": 967.5,
+      "text": "But problem was, Xi Jinping could only do so much at once."
+    },
+    {
+      "id": 211,
+      "start_word": 2683,
+      "end_word": 2698,
+      "start": 967.62,
+      "end": 972.6,
+      "text": "And all these different parts of the economy were relying on more apartments, more growth."
+    },
+    {
+      "id": 212,
+      "start_word": 2698,
+      "end_word": 2699,
+      "start": 972.6,
+      "end": 972.8,
+      "text": "Both."
+    },
+    {
+      "id": 213,
+      "start_word": 2699,
+      "end_word": 2703,
+      "start": 972.86,
+      "end": 974.48,
+      "text": "Starting with regular people."
+    },
+    {
+      "id": 214,
+      "start_word": 2703,
+      "end_word": 2716,
+      "start": 974.68,
+      "end": 978.26,
+      "text": "Many people were still waiting on their apartments to be built and delivered."
+    },
+    {
+      "id": 215,
+      "start_word": 2716,
+      "end_word": 2735,
+      "start": 978.54,
+      "end": 983.88,
+      "text": "Because the way it works in China is you often pre -pay for your apartment before it's even constructed."
+    },
+    {
+      "id": 216,
+      "start_word": 2735,
+      "end_word": 2755,
+      "start": 984.16,
+      "end": 989.56,
+      "text": "Also, the property developers, with all their debt, they had to keep selling new apartments to pay off those debts."
+    },
+    {
+      "id": 217,
+      "start_word": 2755,
+      "end_word": 2767,
+      "start": 989.84,
+      "end": 993.4,
+      "text": "And of course, local governments needed the building to keep happening, too."
+    },
+    {
+      "id": 218,
+      "start_word": 2767,
+      "end_word": 2780,
+      "start": 993.54,
+      "end": 997.2,
+      "text": "Because a good portion of their revenues came from property and land sales."
+    },
+    {
+      "id": 219,
+      "start_word": 2780,
+      "end_word": 2798,
+      "start": 997.2,
+      "end": 1003.12,
+      "text": "So for a few years after Xi Jinping's big speech, China's real estate market just keeps ramping up."
+    },
+    {
+      "id": 220,
+      "start_word": 2798,
+      "end_word": 2811,
+      "start": 1003.2,
+      "end": 1007.92,
+      "text": "Until 2020, when the government decides we've got to slow this market down."
+    },
+    {
+      "id": 221,
+      "start_word": 2811,
+      "end_word": 2822,
+      "start": 1008.2,
+      "end": 1011.46,
+      "text": "And so the central government draws a line in the sand."
+    },
+    {
+      "id": 222,
+      "start_word": 2822,
+      "end_word": 2827,
+      "start": 1011.68,
+      "end": 1012.98,
+      "text": "Well, three of them, actually."
+    },
+    {
+      "id": 223,
+      "start_word": 2827,
+      "end_word": 2836,
+      "start": 1013.24,
+      "end": 1016.2,
+      "text": "Yeah, the policy is called the three red lines."
+    },
+    {
+      "id": 224,
+      "start_word": 2836,
+      "end_word": 2860,
+      "start": 1016.46,
+      "end": 1023.82,
+      "text": "And the three red lines are pretty hard caps on how much debt a developer can have, specifically on three different measures of debt."
+    },
+    {
+      "id": 225,
+      "start_word": 2860,
+      "end_word": 2874,
+      "start": 1023.82,
+      "end": 1027.58,
+      "text": "And if a developer is above those debt levels, no more loans for them."
+    },
+    {
+      "id": 226,
+      "start_word": 2874,
+      "end_word": 2879,
+      "start": 1027.82,
+      "end": 1029.74,
+      "text": "This was the turning point."
+    },
+    {
+      "id": 227,
+      "start_word": 2879,
+      "end_word": 2893,
+      "start": 1029.88,
+      "end": 1035.12,
+      "text": "After decades of rapid growth, property prices, especially in smaller cities, started to drop."
+    },
+    {
+      "id": 228,
+      "start_word": 2893,
+      "end_word": 2907,
+      "start": 1035.56,
+      "end": 1039.46,
+      "text": "Evergrande, the company whose founder, Xu Jiaying, liked to give out million -dollar rings."
+    },
+    {
+      "id": 229,
+      "start_word": 2907,
+      "end_word": 2919,
+      "start": 1039.82,
+      "end": 1043.72,
+      "text": "Well, by 2021, Evergrande had hundreds of billions of dollars in debt."
+    },
+    {
+      "id": 230,
+      "start_word": 2919,
+      "end_word": 2925,
+      "start": 1043.84,
+      "end": 1045.84,
+      "text": "Yes, hundreds of billions of dollars."
+    },
+    {
+      "id": 231,
+      "start_word": 2925,
+      "end_word": 2931,
+      "start": 1046.08,
+      "end": 1048.02,
+      "text": "And they started to miss payments."
+    },
+    {
+      "id": 232,
+      "start_word": 2931,
+      "end_word": 2938,
+      "start": 1050.34,
+      "end": 1053.14,
+      "text": "Nick Fountain and Emily Faye from 2023."
+    },
+    {
+      "id": 233,
+      "start_word": 2938,
+      "end_word": 2947,
+      "start": 1053.94,
+      "end": 1056.58,
+      "text": "Let's jump now to 2026 to finish the story."
+    },
+    {
+      "id": 234,
+      "start_word": 2947,
+      "end_word": 2950,
+      "start": 1056.74,
+      "end": 1057.52,
+      "text": "Robert Smith here."
+    },
+    {
+      "id": 235,
+      "start_word": 2950,
+      "end_word": 2957,
+      "start": 1057.9,
+      "end": 1060.38,
+      "text": "Evergrande did indeed default on its debt."
+    },
+    {
+      "id": 236,
+      "start_word": 2957,
+      "end_word": 2964,
+      "start": 1060.56,
+      "end": 1062.78,
+      "text": "Its founder recently pled guilty to fraud."
+    },
+    {
+      "id": 237,
+      "start_word": 2964,
+      "end_word": 2978,
+      "start": 1062.92,
+      "end": 1066.7,
+      "text": "And China is mired in the depths right now of a real estate bust."
+    },
+    {
+      "id": 238,
+      "start_word": 2978,
+      "end_word": 2992,
+      "start": 1066.96,
+      "end": 1072.12,
+      "text": "There are an estimated 90 million empty, unsold or unfinished homes in the country."
+    },
+    {
+      "id": 239,
+      "start_word": 2992,
+      "end_word": 3005,
+      "start": 1072.7,
+      "end": 1077.5,
+      "text": "Desmond Shum, our developer and occasional briber, escaped before the crash fully happened."
+    },
+    {
+      "id": 240,
+      "start_word": 3005,
+      "end_word": 3011,
+      "start": 1077.64,
+      "end": 1078.98,
+      "text": "He moved to the United Kingdom."
+    },
+    {
+      "id": 241,
+      "start_word": 3011,
+      "end_word": 3012,
+      "start": 1078.98,
+      "end": 1079.1,
+      "text": "them."
+    },
+    {
+      "id": 242,
+      "start_word": 3012,
+      "end_word": 3022,
+      "start": 1081.36,
+      "end": 1084.16,
+      "text": "I want to bring back our professor Dan Wong here."
+    },
+    {
+      "id": 243,
+      "start_word": 3022,
+      "end_word": 3032,
+      "start": 1084.3,
+      "end": 1087.26,
+      "text": "Hey, Dan, have you ever tried the air bladder soup?"
+    },
+    {
+      "id": 244,
+      "start_word": 3032,
+      "end_word": 3040,
+      "start": 1087.54,
+      "end": 1089.44,
+      "text": "I have never tried the air bladder soup."
+    },
+    {
+      "id": 245,
+      "start_word": 3040,
+      "end_word": 3046,
+      "start": 1089.78,
+      "end": 1091.38,
+      "text": "I'm not on Desmond's level here."
+    },
+    {
+      "id": 246,
+      "start_word": 3046,
+      "end_word": 3080,
+      "start": 1093.2,
+      "end": 1105.02,
+      "text": "The rise and fall of the real estate sector in China is an interesting case study because it seems to contain the worst excesses of capitalism and socialism wrapped up in one one disaster."
+    },
+    {
+      "id": 247,
+      "start_word": 3080,
+      "end_word": 3106,
+      "start": 1105.36,
+      "end": 1113.34,
+      "text": "They didn't regulate enough when the real estate bubble was forming, and then they probably popped the bubble too quickly when it was at its top."
+    },
+    {
+      "id": 248,
+      "start_word": 3106,
+      "end_word": 3121,
+      "start": 1113.58,
+      "end": 1119.12,
+      "text": "There's a phrase the Chinese use, Dan, to describe this particular mixture of economic systems."
+    },
+    {
+      "id": 249,
+      "start_word": 3121,
+      "end_word": 3129,
+      "start": 1119.66,
+      "end": 1121.14,
+      "text": "Why don't you give it to us now?"
+    },
+    {
+      "id": 250,
+      "start_word": 3129,
+      "end_word": 3133,
+      "start": 1122.14,
+      "end": 1123.52,
+      "text": "Socialism with Chinese characteristics."
+    },
+    {
+      "id": 251,
+      "start_word": 3133,
+      "end_word": 3138,
+      "start": 1123.9,
+      "end": 1126.5,
+      "text": "The socialism with Chinese characteristics."
+    },
+    {
+      "id": 252,
+      "start_word": 3138,
+      "end_word": 3146,
+      "start": 1126.72,
+      "end": 1128.54,
+      "text": "What is the difference between these two models?"
+    },
+    {
+      "id": 253,
+      "start_word": 3146,
+      "end_word": 3181,
+      "start": 1129.42,
+      "end": 1140.26,
+      "text": "If you're a socialist country, probably what that means is that the state commands quite a lot of the means of production, owning a lot of things like telecommunications or oil and gas or airlines."
+    },
+    {
+      "id": 254,
+      "start_word": 3181,
+      "end_word": 3200,
+      "start": 1140.68,
+      "end": 1145.68,
+      "text": "If you're a market economy, it means that the state does not get involved in these sort of things."
+    },
+    {
+      "id": 255,
+      "start_word": 3200,
+      "end_word": 3207,
+      "start": 1145.96,
+      "end": 1148.54,
+      "text": "So ultimately, how is this tension resolved?"
+    },
+    {
+      "id": 256,
+      "start_word": 3207,
+      "end_word": 3217,
+      "start": 1148.84,
+      "end": 1152.0,
+      "text": "Well, by adding in this magical phrase with Chinese characteristics."
+    },
+    {
+      "id": 257,
+      "start_word": 3217,
+      "end_word": 3250,
+      "start": 1152.0,
+      "end": 1163.96,
+      "text": "And ultimately, what that means is that the Communist Party will at all points determine whether it needs to be more state -driven or market -driven, and it's the party's pleasure to decide."
+    },
+    {
+      "id": 258,
+      "start_word": 3250,
+      "end_word": 3270,
+      "start": 1164.26,
+      "end": 1172.36,
+      "text": "And so this is where China has this very strange economy by any standard, that it is substantially state -controlled."
+    },
+    {
+      "id": 259,
+      "start_word": 3270,
+      "end_word": 3282,
+      "start": 1172.52,
+      "end": 1176.32,
+      "text": "It is also in many ways more capitalist than the United States."
+    },
+    {
+      "id": 260,
+      "start_word": 3282,
+      "end_word": 3304,
+      "start": 1176.32,
+      "end": 1183.74,
+      "text": "In my view, China is practicing capitalism red in tooth and claw, in some cases much more effectively than the Americans are."
+    },
+    {
+      "id": 261,
+      "start_word": 3304,
+      "end_word": 3329,
+      "start": 1184.1,
+      "end": 1191.84,
+      "text": "And ultimately, this is the Communist Party's prerogative to determine whether it wants to be more state -driven or market -driven at any given moment."
+    },
+    {
+      "id": 262,
+      "start_word": 3329,
+      "end_word": 3353,
+      "start": 1192.34,
+      "end": 1200.06,
+      "text": "There is a term that we use often when states are talking about intense control of the economy, depending on how they do it."
+    },
+    {
+      "id": 263,
+      "start_word": 3353,
+      "end_word": 3358,
+      "start": 1200.12,
+      "end": 1201.82,
+      "text": "And that term is malinvestment."
+    },
+    {
+      "id": 264,
+      "start_word": 3358,
+      "end_word": 3366,
+      "start": 1202.16,
+      "end": 1206.86,
+      "text": "And malinvestment is when the resources get misallocated."
+    },
+    {
+      "id": 265,
+      "start_word": 3366,
+      "end_word": 3391,
+      "start": 1206.88,
+      "end": 1212.98,
+      "text": "The money and the time and the resources go into one area of the economy that is perhaps not the one that is most needed."
+    },
+    {
+      "id": 266,
+      "start_word": 3391,
+      "end_word": 3401,
+      "start": 1213.12,
+      "end": 1216.04,
+      "text": "It is the one that's decided in a central committee."
+    },
+    {
+      "id": 267,
+      "start_word": 3401,
+      "end_word": 3409,
+      "start": 1216.76,
+      "end": 1218.5,
+      "text": "How has that been a problem for China?"
+    },
+    {
+      "id": 268,
+      "start_word": 3409,
+      "end_word": 3411,
+      "start": 1218.5,
+      "end": 1218.62,
+      "text": "I know."
+    },
+    {
+      "id": 269,
+      "start_word": 3411,
+      "end_word": 3430,
+      "start": 1218.76,
+      "end": 1225.44,
+      "text": "Let's go back to the province of Guizhou, China's fourth poorest province, in which I cycled through in 2021."
+    },
+    {
+      "id": 270,
+      "start_word": 3430,
+      "end_word": 3439,
+      "start": 1225.84,
+      "end": 1229.2,
+      "text": "As I mentioned, Guizhou has something like 15 airports."
+    },
+    {
+      "id": 271,
+      "start_word": 3439,
+      "end_word": 3465,
+      "start": 1229.54,
+      "end": 1237.18,
+      "text": "And when I took a look through some of these databases tracking Chinese flights, some of these airports have only a couple of flights per week."
+    },
+    {
+      "id": 272,
+      "start_word": 3465,
+      "end_word": 3474,
+      "start": 1237.26,
+      "end": 1242.86,
+      "text": "And it does not great utility, capacity utilization here."
+    },
+    {
+      "id": 273,
+      "start_word": 3474,
+      "end_word": 3507,
+      "start": 1243.02,
+      "end": 1253.96,
+      "text": "Should one province, though it is very mountainous, have 50 of the world's tallest is, is that some sort of economic success or is that more an indication of bureaucratic lack of creativity?"
+    },
+    {
+      "id": 274,
+      "start_word": 3507,
+      "end_word": 3517,
+      "start": 1254.24,
+      "end": 1256.82,
+      "text": "I would say it is perhaps more of the latter."
+    },
+    {
+      "id": 275,
+      "start_word": 3517,
+      "end_word": 3567,
+      "start": 1257.04,
+      "end": 1275.08,
+      "text": "And so when you have engineers who are perhaps more invested in building engineering projects for their own sake, for the value of the prestige, we can start to question whether what the Guizhou residents most need is yet another ginormous bridge, or hey, wouldn't they like some perhaps better"
+    },
+    {
+      "id": 276,
+      "start_word": 3567,
+      "end_word": 3568,
+      "start": 1275.08,
+      "end": 1275.52,
+      "text": "healthcare?"
+    },
+    {
+      "id": 277,
+      "start_word": 3568,
+      "end_word": 3571,
+      "start": 1275.78,
+      "end": 1276.48,
+      "text": "How about that?"
+    },
+    {
+      "id": 278,
+      "start_word": 3571,
+      "end_word": 3588,
+      "start": 1276.62,
+      "end": 1280.82,
+      "text": "How about some better cash transfers so that they are able to live a little bit better?"
+    },
+    {
+      "id": 279,
+      "start_word": 3588,
+      "end_word": 3595,
+      "start": 1280.88,
+      "end": 1282.44,
+      "text": "How about better schooling for their kids?"
+    },
+    {
+      "id": 280,
+      "start_word": 3595,
+      "end_word": 3621,
+      "start": 1282.92,
+      "end": 1290.56,
+      "text": "And so this is a way in which the Communist Party is much more invested in big prestige power projects rather than delivering for the people."
+    },
+    {
+      "id": 281,
+      "start_word": 3621,
+      "end_word": 3643,
+      "start": 1290.96,
+      "end": 1298.16,
+      "text": "Well, you know, I experienced this when I took my kids to Shanghai and we got on the high -speed maglev train."
+    },
+    {
+      "id": 282,
+      "start_word": 3643,
+      "end_word": 3649,
+      "start": 1298.28,
+      "end": 1300.42,
+      "text": "It goes 186 miles per hour."
+    },
+    {
+      "id": 283,
+      "start_word": 3649,
+      "end_word": 3659,
+      "start": 1300.56,
+      "end": 1302.86,
+      "text": "It just blows your mind to be on this train."
+    },
+    {
+      "id": 284,
+      "start_word": 3659,
+      "end_word": 3679,
+      "start": 1302.86,
+      "end": 1308.6,
+      "text": "and then when we get to our hotel, I have to tell them, oh yeah, don't drink the water here."
+    },
+    {
+      "id": 285,
+      "start_word": 3679,
+      "end_word": 3684,
+      "start": 1308.72,
+      "end": 1310.16,
+      "text": "Be very careful about this."
+    },
+    {
+      "id": 286,
+      "start_word": 3684,
+      "end_word": 3721,
+      "start": 1310.42,
+      "end": 1320.68,
+      "text": "It is still one of these puzzles to me that China, though it is doing all sorts of amazing engineering projects, has not built enough sanitation plants such that people are able to drink the tap water."
+    },
+    {
+      "id": 287,
+      "start_word": 3721,
+      "end_word": 3762,
+      "start": 1321.14,
+      "end": 1336.44,
+      "text": "This is how I understand China to be much more interested in doing things that look amazing through the lens of an influencer that is shooting a vertical video, not necessarily paying that much attention to what the people actually need."
+    },
+    {
+      "id": 288,
+      "start_word": 3762,
+      "end_word": 3775,
+      "start": 1336.9,
+      "end": 1340.44,
+      "text": "I guess this goes back to that big idea of the engineering state."
+    },
+    {
+      "id": 289,
+      "start_word": 3775,
+      "end_word": 3791,
+      "start": 1340.68,
+      "end": 1346.84,
+      "text": "Someone has to direct the engineering energy at some particular problem that needs to be solved."
+    },
+    {
+      "id": 290,
+      "start_word": 3791,
+      "end_word": 3822,
+      "start": 1347.08,
+      "end": 1356.26,
+      "text": "But without the market to signal what people want, China has to sort of rely on, I don't know, the guts, you know, or maybe the whims of its party leadership."
+    },
+    {
+      "id": 291,
+      "start_word": 3822,
+      "end_word": 3835,
+      "start": 1358.74,
+      "end": 1362.56,
+      "text": "So coming up next on Planet Money, what do people want in China?"
+    },
+    {
+      "id": 292,
+      "start_word": 3835,
+      "end_word": 3854,
+      "start": 1362.86,
+      "end": 1367.88,
+      "text": "Our next case study on Planet Money Summer School is about the economics of young people today in China."
+    },
+    {
+      "id": 293,
+      "start_word": 3854,
+      "end_word": 3872,
+      "start": 1367.98,
+      "end": 1373.36,
+      "text": "What does the future look like when you've already built the future in amazing looking cities and bridges?"
+    },
+    {
+      "id": 294,
+      "start_word": 3872,
+      "end_word": 3875,
+      "start": 1373.96,
+      "end": 1374.8,
+      "text": "After the break."
+    },
+    {
+      "id": 295,
+      "start_word": 3875,
+      "end_word": 3890,
+      "start": 1384.4,
+      "end": 1390.16,
+      "text": "Everyone wants to know if AI is conscious, but consciousness is really hard to define."
+    },
+    {
+      "id": 296,
+      "start_word": 3890,
+      "end_word": 3897,
+      "start": 1390.4,
+      "end": 1392.42,
+      "text": "It's the experience we're having right now."
+    },
+    {
+      "id": 297,
+      "start_word": 3898,
+      "end_word": 3911,
+      "start": 1392.86,
+      "end": 1396.18,
+      "text": "it is like to eat chocolate or to look at the blue sky."
+    },
+    {
+      "id": 298,
+      "start_word": 3911,
+      "end_word": 3921,
+      "start": 1396.64,
+      "end": 1399.4,
+      "text": "So how do we know who or what is conscious?"
+    },
+    {
+      "id": 299,
+      "start_word": 3921,
+      "end_word": 3936,
+      "start": 1399.7,
+      "end": 1404.8,
+      "text": "Check out the new ways scientists are finding to measure the elusive phenomenon on Shortwave."
+    },
+    {
+      "id": 300,
+      "start_word": 3936,
+      "end_word": 3947,
+      "start": 1404.98,
+      "end": 1407.74,
+      "text": "Listen on the NPR app or wherever you get your podcasts."
+    },
+    {
+      "id": 301,
+      "start_word": 3947,
+      "end_word": 3956,
+      "start": 1408.18,
+      "end": 1410.82,
+      "text": "This is Tanya Mosley, co -host of Fresh Air."
+    },
+    {
+      "id": 302,
+      "start_word": 3956,
+      "end_word": 3974,
+      "start": 1411.08,
+      "end": 1416.86,
+      "text": "From mail -in ballots to racial gerrymandering, a lot is at stake for America's free and fair elections."
+    },
+    {
+      "id": 303,
+      "start_word": 3974,
+      "end_word": 3992,
+      "start": 1417.18,
+      "end": 1422.6,
+      "text": "I spoke with journalist Ari Berman about what he calls a final blow to the Voting Rights Act."
+    },
+    {
+      "id": 304,
+      "start_word": 3992,
+      "end_word": 4008,
+      "start": 1422.86,
+      "end": 1427.5,
+      "text": "My fear is that we are returning to a politics of Jim Crow in the South."
+    },
+    {
+      "id": 305,
+      "start_word": 4008,
+      "end_word": 4022,
+      "start": 1427.84,
+      "end": 1431.72,
+      "text": "Listen to Fresh Air on the NPR app or wherever you get your podcasts."
+    },
+    {
+      "id": 306,
+      "start_word": 4022,
+      "end_word": 4030,
+      "start": 1432.58,
+      "end": 1435.2,
+      "text": "We are back on our world economic tour."
+    },
+    {
+      "id": 307,
+      "start_word": 4030,
+      "end_word": 4039,
+      "start": 1435.3,
+      "end": 1437.92,
+      "text": "This time we take to the streets of Beijing."
+    },
+    {
+      "id": 308,
+      "start_word": 4039,
+      "end_word": 4069,
+      "start": 1438.3,
+      "end": 1447.06,
+      "text": "Before we hear our case study, Dan Wang, our professor du jour, says we should keep in mind another bust that China is dealing with right now, a demographic one."
+    },
+    {
+      "id": 309,
+      "start_word": 4069,
+      "end_word": 4078,
+      "start": 1447.34,
+      "end": 1449.28,
+      "text": "People in China just don't want to have kids."
+    },
+    {
+      "id": 310,
+      "start_word": 4078,
+      "end_word": 4095,
+      "start": 1449.28,
+      "end": 1456.46,
+      "text": "The total fertility rate across the entire country, according to official statistics in China, is 1 .0,"
+    },
+    {
+      "id": 311,
+      "start_word": 4095,
+      "end_word": 4111,
+      "start": 1456.64,
+      "end": 1463.5,
+      "text": "which means that the average family, the average woman, is having one child in her lifetime."
+    },
+    {
+      "id": 312,
+      "start_word": 4111,
+      "end_word": 4129,
+      "start": 1463.74,
+      "end": 1471.0,
+      "text": "The United Nations demographic body expects that China's population will be cut in half by the year 2100."
+    },
+    {
+      "id": 313,
+      "start_word": 4129,
+      "end_word": 4143,
+      "start": 1471.12,
+      "end": 1475.72,
+      "text": "Now, 700 million people by the year 2100 is still a pretty substantial population."
+    },
+    {
+      "id": 314,
+      "start_word": 4143,
+      "end_word": 4174,
+      "start": 1475.72,
+      "end": 1485.08,
+      "text": "will still be bigger than the United States, but it will be also a very old population in which the median age, I believe, could be something like the early 60s."
+    },
+    {
+      "id": 315,
+      "start_word": 4174,
+      "end_word": 4204,
+      "start": 1485.12,
+      "end": 1493.98,
+      "text": "And it is just kind of hard to imagine a society functioning in which half the population is over 60s, but that is the demographic future really staring at China."
+    },
+    {
+      "id": 316,
+      "start_word": 4204,
+      "end_word": 4222,
+      "start": 1494.68,
+      "end": 1499.04,
+      "text": "It's an economically terrifying one, and it's a lot of pressure to put on young people in China."
+    },
+    {
+      "id": 317,
+      "start_word": 4222,
+      "end_word": 4238,
+      "start": 1499.22,
+      "end": 1504.22,
+      "text": "Our next case study is from Planet Money's Indicator, hosted by Weilin Wang and Darian Woods."
+    },
+    {
+      "id": 318,
+      "start_word": 4238,
+      "end_word": 4239,
+      "start": 1506.44,
+      "end": 1507.04,
+      "text": "2023."
+    },
+    {
+      "id": 319,
+      "start_word": 4239,
+      "end_word": 4255,
+      "start": 1507.04,
+      "end": 1513.58,
+      "text": "In Beijing, about six months ago, Azi quit her job and she didn't tell her parents."
+    },
+    {
+      "id": 320,
+      "start_word": 4255,
+      "end_word": 4276,
+      "start": 1514.06,
+      "end": 1521.42,
+      "text": "So I had to go out on time at eight o 'clock every morning and then appear downstairs in her house."
+    },
+    {
+      "id": 321,
+      "start_word": 4276,
+      "end_word": 4303,
+      "start": 1522.72,
+      "end": 1530.52,
+      "text": "Wearing her work clothes and a face full of makeup each morning, Azi pretended to walk to her old bus stop and then she would keep walking."
+    },
+    {
+      "id": 322,
+      "start_word": 4303,
+      "end_word": 4319,
+      "start": 1530.86,
+      "end": 1536.8,
+      "text": "She'd get breakfast at KFC or McDonald's, then around like the one we met her in."
+    },
+    {
+      "id": 323,
+      "start_word": 4319,
+      "end_word": 4333,
+      "start": 1536.9,
+      "end": 1541.1,
+      "text": "And it's here where she would usually take out her pencils and start drawing."
+    },
+    {
+      "id": 324,
+      "start_word": 4333,
+      "end_word": 4357,
+      "start": 1545.04,
+      "end": 1550.82,
+      "text": "Drawing is the best way to pass the time, in my opinion, because you'll spend most of the time drawing without even knowing it."
+    },
+    {
+      "id": 325,
+      "start_word": 4357,
+      "end_word": 4376,
+      "start": 1551.46,
+      "end": 1557.66,
+      "text": "Azi is one of tens of millions of young Chinese people who don't have jobs and aren't in school."
+    },
+    {
+      "id": 326,
+      "start_word": 4376,
+      "end_word": 4386,
+      "start": 1558.37,
+      "end": 1562.42,
+      "text": "In June, the urban youth unemployment rate hit 21 percent."
+    },
+    {
+      "id": 327,
+      "start_word": 4386,
+      "end_word": 4394,
+      "start": 1562.8,
+      "end": 1565.34,
+      "text": "And that's way up from pre -pandemic time."
+    },
+    {
+      "id": 328,
+      "start_word": 4394,
+      "end_word": 4418,
+      "start": 1565.72,
+      "end": 1572.58,
+      "text": "It's one in five 16 to 24 -year -olds who have looked for a job over the last few months, but don't have one."
+    },
+    {
+      "id": 329,
+      "start_word": 4418,
+      "end_word": 4444,
+      "start": 1572.82,
+      "end": 1580.54,
+      "text": "And the numbers are so disconcerting that a few weeks ago, the Chinese government put a pause on publishing them, citing the need for a review."
+    },
+    {
+      "id": 330,
+      "start_word": 4444,
+      "end_word": 4471,
+      "start": 1580.9,
+      "end": 1589.42,
+      "text": "But this vast number of unemployed people is getting a lot of scrutiny because what it means has big implications for the Chinese economy and the world."
+    },
+    {
+      "id": 331,
+      "start_word": 4471,
+      "end_word": 4480,
+      "start": 1590.02,
+      "end": 1592.84,
+      "text": "Azi always wanted to be a cartoonist growing up."
+    },
+    {
+      "id": 332,
+      "start_word": 4480,
+      "end_word": 4489,
+      "start": 1592.94,
+      "end": 1595.4,
+      "text": "She couldn't quite get that job out of college."
+    },
+    {
+      "id": 333,
+      "start_word": 4489,
+      "end_word": 4502,
+      "start": 1595.72,
+      "end": 1599.82,
+      "text": "but she worked instead as a content editor for an entertainment news publication."
+    },
+    {
+      "id": 334,
+      "start_word": 4502,
+      "end_word": 4507,
+      "start": 1600.26,
+      "end": 1602.0,
+      "text": "And initially, she loved it."
+    },
+    {
+      "id": 335,
+      "start_word": 4507,
+      "end_word": 4512,
+      "start": 1605.02,
+      "end": 1606.94,
+      "text": "My job was so great."
+    },
+    {
+      "id": 336,
+      "start_word": 4512,
+      "end_word": 4526,
+      "start": 1607.08,
+      "end": 1611.96,
+      "text": "I was very happy every day and felt amazing when I produced good content."
+    },
+    {
+      "id": 337,
+      "start_word": 4526,
+      "end_word": 4546,
+      "start": 1612.18,
+      "end": 1617.46,
+      "text": "When I looked at the results of our output, I thought to myself, well done, it's worth all the effort."
+    },
+    {
+      "id": 338,
+      "start_word": 4546,
+      "end_word": 4550,
+      "start": 1617.98,
+      "end": 1619.6,
+      "text": "Well, it didn't last."
+    },
+    {
+      "id": 339,
+      "start_word": 4550,
+      "end_word": 4572,
+      "start": 1619.92,
+      "end": 1625.66,
+      "text": "Uzza found herself hopping from job to job and ended up in a job that didn't give her a lot of joy."
+    },
+    {
+      "id": 340,
+      "start_word": 4572,
+      "end_word": 4584,
+      "start": 1626.64,
+      "end": 1631.12,
+      "text": "There was pressure from various targets, which made my boss quite stressed."
+    },
+    {
+      "id": 341,
+      "start_word": 4584,
+      "end_word": 4592,
+      "start": 1631.12,
+      "end": 1633.22,
+      "text": "And he passed that stress on to us."
+    },
+    {
+      "id": 342,
+      "start_word": 4592,
+      "end_word": 4604,
+      "start": 1633.36,
+      "end": 1636.02,
+      "text": "Our work life was like being on a horror cruise every day."
+    },
+    {
+      "id": 343,
+      "start_word": 4604,
+      "end_word": 4610,
+      "start": 1636.52,
+      "end": 1638.76,
+      "text": "So earlier this year, she quit."
+    },
+    {
+      "id": 344,
+      "start_word": 4610,
+      "end_word": 4635,
+      "start": 1639.06,
+      "end": 1647.62,
+      "text": "But when deciding whether or not to take on a new job offer, she reflected on work life in general in China, at any workplace."
+    },
+    {
+      "id": 345,
+      "start_word": 4635,
+      "end_word": 4642,
+      "start": 1648.2,
+      "end": 1651.14,
+      "text": "In China, there's a schedule called 996."
+    },
+    {
+      "id": 346,
+      "start_word": 4642,
+      "end_word": 4649,
+      "start": 1652.64,
+      "end": 1653.92,
+      "text": "Starting the day at 9 a .m.,"
+    },
+    {
+      "id": 347,
+      "start_word": 4649,
+      "end_word": 4654,
+      "start": 1653.92,
+      "end": 1655.68,
+      "text": "finishing at 9 p .m.,"
+    },
+    {
+      "id": 348,
+      "start_word": 4654,
+      "end_word": 4658,
+      "start": 1655.68,
+      "end": 1657.1,
+      "text": "six days a week."
+    },
+    {
+      "id": 349,
+      "start_word": 4658,
+      "end_word": 4672,
+      "start": 1657.77,
+      "end": 1662.62,
+      "text": "And although this is technically illegal, very long hours are still common in China."
+    },
+    {
+      "id": 350,
+      "start_word": 4672,
+      "end_word": 4677,
+      "start": 1663.04,
+      "end": 1664.6,
+      "text": "And Aza was no exception."
+    },
+    {
+      "id": 351,
+      "start_word": 4677,
+      "end_word": 4685,
+      "start": 1664.88,
+      "end": 1666.72,
+      "text": "She'd had to take a lot of overtime."
+    },
+    {
+      "id": 352,
+      "start_word": 4685,
+      "end_word": 4692,
+      "start": 1667.06,
+      "end": 1668.4,
+      "text": "It was just too much for her."
+    },
+    {
+      "id": 353,
+      "start_word": 4692,
+      "end_word": 4709,
+      "start": 1668.56,
+      "end": 1673.84,
+      "text": "And so she told her parents she was still working and meanwhile worked on her hobbies instead."
+    },
+    {
+      "id": 354,
+      "start_word": 4709,
+      "end_word": 4715,
+      "start": 1673.96,
+      "end": 1676.6,
+      "text": "She grew plants, made necklaces, painted."
+    },
+    {
+      "id": 355,
+      "start_word": 4715,
+      "end_word": 4725,
+      "start": 1678.88,
+      "end": 1681.42,
+      "text": "I'd start a new hobby every time I've become unemployed."
+    },
+    {
+      "id": 356,
+      "start_word": 4725,
+      "end_word": 4740,
+      "start": 1682.64,
+      "end": 1686.44,
+      "text": "find something I really like, and if it's possible to make that become my work."
+    },
+    {
+      "id": 357,
+      "start_word": 4740,
+      "end_word": 4750,
+      "start": 1687.64,
+      "end": 1690.16,
+      "text": "And you might be thinking, how can she afford this?"
+    },
+    {
+      "id": 358,
+      "start_word": 4750,
+      "end_word": 4776,
+      "start": 1690.56,
+      "end": 1699.1,
+      "text": "Well, Ah Zhe doesn't have to pay rent or a mortgage, which is perhaps more common for young people in urban China than you might think."
+    },
+    {
+      "id": 359,
+      "start_word": 4776,
+      "end_word": 4791,
+      "start": 1699.66,
+      "end": 1704.1,
+      "text": "They're almost certainly going to be an only child on both sides of their family."
+    },
+    {
+      "id": 360,
+      "start_word": 4791,
+      "end_word": 4801,
+      "start": 1704.34,
+      "end": 1707.16,
+      "text": "Nancy Qian is a professor of economics at Northwestern University."
+    },
+    {
+      "id": 361,
+      "start_word": 4801,
+      "end_word": 4825,
+      "start": 1707.68,
+      "end": 1717.52,
+      "text": "She points to China's one -child policy, This brutal enforcement of long -term contraception, sterilizations, and huge fines for having more than one kid."
+    },
+    {
+      "id": 362,
+      "start_word": 4825,
+      "end_word": 4846,
+      "start": 1717.86,
+      "end": 1724.86,
+      "text": "The policy was in place in China from 1980 to 2016, which means that most people Aza's age are only children."
+    },
+    {
+      "id": 363,
+      "start_word": 4846,
+      "end_word": 4855,
+      "start": 1725.28,
+      "end": 1727.26,
+      "text": "And they'll have grandparents who are from the city."
+    },
+    {
+      "id": 364,
+      "start_word": 4855,
+      "end_word": 4874,
+      "start": 1727.48,
+      "end": 1732.96,
+      "text": "So what this means is that they're going to be inheriting a lot of real estate from their grandparents."
+    },
+    {
+      "id": 365,
+      "start_word": 4874,
+      "end_word": 4889,
+      "start": 1733.32,
+      "end": 1737.24,
+      "text": "Not to mention, you know, maybe savings that their parents have been accumulating over time."
+    },
+    {
+      "id": 366,
+      "start_word": 4889,
+      "end_word": 4907,
+      "start": 1737.65,
+      "end": 1742.04,
+      "text": "Nancy was born in Shanghai in the late 70s and as a kid moved to the U .S."
+    },
+    {
+      "id": 367,
+      "start_word": 4907,
+      "end_word": 4910,
+      "start": 1742.04,
+      "end": 1742.68,
+      "text": "with her family."
+    },
+    {
+      "id": 368,
+      "start_word": 4910,
+      "end_word": 4926,
+      "start": 1742.86,
+      "end": 1747.5,
+      "text": "But she goes back often and has younger cousins who have struggled with China's changing economy."
+    },
+    {
+      "id": 369,
+      "start_word": 4926,
+      "end_word": 4943,
+      "start": 1747.98,
+      "end": 1753.58,
+      "text": "As China's growth has slowed, entry -level jobs in law, finance, tech, and government have dried up."
+    },
+    {
+      "id": 370,
+      "start_word": 4943,
+      "end_word": 4949,
+      "start": 1753.8,
+      "end": 1756.0,
+      "text": "White -collar jobs are incredibly competitive."
+    },
+    {
+      "id": 371,
+      "start_word": 4949,
+      "end_word": 4962,
+      "start": 1756.58,
+      "end": 1761.34,
+      "text": "It's the high -paying, high -skilled jobs that have been shrinking in numbers."
+    },
+    {
+      "id": 372,
+      "start_word": 4962,
+      "end_word": 4983,
+      "start": 1761.34,
+      "end": 1768.36,
+      "text": "and these are what the current cohorts of college graduate students have been trained for, what they're expecting, what they wanted."
+    },
+    {
+      "id": 373,
+      "start_word": 4983,
+      "end_word": 4986,
+      "start": 1768.46,
+      "end": 1769.32,
+      "text": "They're not there."
+    },
+    {
+      "id": 374,
+      "start_word": 4986,
+      "end_word": 5000,
+      "start": 1769.52,
+      "end": 1773.06,
+      "text": "So a lot of young people like Aza end up not working at all."
+    },
+    {
+      "id": 375,
+      "start_word": 5000,
+      "end_word": 5018,
+      "start": 1773.32,
+      "end": 1778.32,
+      "text": "That said, Nancy says, they are likely to face a lot of emotional pressure to find a job."
+    },
+    {
+      "id": 376,
+      "start_word": 5018,
+      "end_word": 5029,
+      "start": 1778.52,
+      "end": 1783.2,
+      "text": "They have their parents and their grandparents saying, you're being spoiled."
+    },
+    {
+      "id": 377,
+      "start_word": 5029,
+      "end_word": 5036,
+      "start": 1783.56,
+      "end": 1785.38,
+      "text": "Like, why are you not more successful?"
+    },
+    {
+      "id": 378,
+      "start_word": 5036,
+      "end_word": 5041,
+      "start": 1785.84,
+      "end": 1787.62,
+      "text": "We've given you everything, right?"
+    },
+    {
+      "id": 379,
+      "start_word": 5041,
+      "end_word": 5045,
+      "start": 1787.72,
+      "end": 1788.64,
+      "text": "What's wrong with you?"
+    },
+    {
+      "id": 380,
+      "start_word": 5045,
+      "end_word": 5057,
+      "start": 1788.64,
+      "end": 1792.02,
+      "text": "Let us tell you how we made it, how poor we were."
+    },
+    {
+      "id": 381,
+      "start_word": 5057,
+      "end_word": 5074,
+      "start": 1792.14,
+      "end": 1798.62,
+      "text": "Even people with college educations at different points in time were probably shoveling manure on a farm."
+    },
+    {
+      "id": 382,
+      "start_word": 5074,
+      "end_word": 5084,
+      "start": 1798.88,
+      "end": 1801.66,
+      "text": "And that's why Aza kept the truth from her family."
+    },
+    {
+      "id": 383,
+      "start_word": 5084,
+      "end_word": 5098,
+      "start": 1801.88,
+      "end": 1805.76,
+      "text": "The China that her parents grew up in was just so different to hers."
+    },
+    {
+      "id": 384,
+      "start_word": 5098,
+      "end_word": 5111,
+      "start": 1806.22,
+      "end": 1811.32,
+      "text": "I mean, China grew at 10 % per year for almost two decades."
+    },
+    {
+      "id": 385,
+      "start_word": 5111,
+      "end_word": 5125,
+      "start": 1811.64,
+      "end": 1815.7,
+      "text": "But for some urban areas, we're going like at 20, 30 % per year."
+    },
+    {
+      "id": 386,
+      "start_word": 5125,
+      "end_word": 5155,
+      "start": 1815.7,
+      "end": 1824.74,
+      "text": "And to illustrate what that kind of turbocharged growth looks like, Nancy used the example of where she was as a young kid in the French Concession District of Shanghai."
+    },
+    {
+      "id": 387,
+      "start_word": 5155,
+      "end_word": 5173,
+      "start": 1825.16,
+      "end": 1831.26,
+      "text": "I lived in an extended family with around 10 people in three rooms, probably around 300 square feet."
+    },
+    {
+      "id": 388,
+      "start_word": 5173,
+      "end_word": 5184,
+      "start": 1831.48,
+      "end": 1834.94,
+      "text": "We had a flush toilet, so we were considered really rich."
+    },
+    {
+      "id": 389,
+      "start_word": 5184,
+      "end_word": 5185,
+      "start": 1835.26,
+      "end": 1835.58,
+      "text": "Wow."
+    },
+    {
+      "id": 390,
+      "start_word": 5185,
+      "end_word": 5195,
+      "start": 1835.68,
+      "end": 1838.5,
+      "text": "That was the marker of relative wealth at the time."
+    },
+    {
+      "id": 391,
+      "start_word": 5195,
+      "end_word": 5200,
+      "start": 1838.72,
+      "end": 1839.74,
+      "text": "Yeah, I felt really special."
+    },
+    {
+      "id": 392,
+      "start_word": 5200,
+      "end_word": 5217,
+      "start": 1840.36,
+      "end": 1846.34,
+      "text": "People living in those neighborhoods now, they're living in skyscrapers, surrounded by Louis Vuitton and Prada stores."
+    },
+    {
+      "id": 393,
+      "start_word": 5217,
+      "end_word": 5225,
+      "start": 1846.76,
+      "end": 1849.1,
+      "text": "There are Lamborghini car dealers left and right."
+    },
+    {
+      "id": 394,
+      "start_word": 5225,
+      "end_word": 5244,
+      "start": 1849.26,
+      "end": 1855.5,
+      "text": "I'm emphasizing this because the places that had the highest expectations about the future, they're being hit with unemployment."
+    },
+    {
+      "id": 395,
+      "start_word": 5244,
+      "end_word": 5250,
+      "start": 1856.18,
+      "end": 1857.46,
+      "text": "It's kind of a whiplash feeling."
+    },
+    {
+      "id": 396,
+      "start_word": 5250,
+      "end_word": 5251,
+      "start": 1857.74,
+      "end": 1858.14,
+      "text": "Yeah."
+    },
+    {
+      "id": 397,
+      "start_word": 5251,
+      "end_word": 5263,
+      "start": 1858.22,
+      "end": 1863.14,
+      "text": "And so I think that makes us concerned about the social ramifications."
+    },
+    {
+      "id": 398,
+      "start_word": 5263,
+      "end_word": 5281,
+      "start": 1863.56,
+      "end": 1870.38,
+      "text": "Nancy says these young people are both spoiled, in her words, and also miserable at the same time."
+    },
+    {
+      "id": 399,
+      "start_word": 5281,
+      "end_word": 5294,
+      "start": 1870.58,
+      "end": 1875.58,
+      "text": "There's this huge gulf between expectations and what kind of jobs are available."
+    },
+    {
+      "id": 400,
+      "start_word": 5294,
+      "end_word": 5317,
+      "start": 1876.08,
+      "end": 1885.7,
+      "text": "It's not a great idea, just as a society, to have young people feeling hopeless, you know, with no direction, in a funk."
+    },
+    {
+      "id": 401,
+      "start_word": 5317,
+      "end_word": 5320,
+      "start": 1885.94,
+      "end": 1886.88,
+      "text": "That's never good."
+    },
+    {
+      "id": 402,
+      "start_word": 5320,
+      "end_word": 5332,
+      "start": 1887.1,
+      "end": 1891.18,
+      "text": "In China, it's translating into a potentially huge problem for the economy."
+    },
+    {
+      "id": 403,
+      "start_word": 5332,
+      "end_word": 5369,
+      "start": 1893.46,
+      "end": 1907.5,
+      "text": "that not working those lost years of work right out of college can have serious negative impact on your lifetime productivity later on, which is going to impact the aggregate productivity of the economy as a whole."
+    },
+    {
+      "id": 404,
+      "start_word": 5369,
+      "end_word": 5374,
+      "start": 1907.92,
+      "end": 1909.32,
+      "text": "Aza has a different view."
+    },
+    {
+      "id": 405,
+      "start_word": 5374,
+      "end_word": 5387,
+      "start": 1911.14,
+      "end": 1914.02,
+      "text": "Work is one of the only things that you can choose by yourself."
+    },
+    {
+      "id": 406,
+      "start_word": 5387,
+      "end_word": 5402,
+      "start": 1914.38,
+      "end": 1918.04,
+      "text": "And if you can't find your footing at work, then you don't have much meaning."
+    },
+    {
+      "id": 407,
+      "start_word": 5402,
+      "end_word": 5417,
+      "start": 1919.4,
+      "end": 1924.0,
+      "text": "Aza eventually got tired of all the questioning from her parents and lying to them."
+    },
+    {
+      "id": 408,
+      "start_word": 5417,
+      "end_word": 5422,
+      "start": 1924.14,
+      "end": 1925.6,
+      "text": "So she decided to confess."
+    },
+    {
+      "id": 409,
+      "start_word": 5422,
+      "end_word": 5434,
+      "start": 1925.98,
+      "end": 1929.78,
+      "text": "While her mother was watching TV, Aza said she hadn't been working."
+    },
+    {
+      "id": 410,
+      "start_word": 5434,
+      "end_word": 5438,
+      "start": 1930.9,
+      "end": 1932.54,
+      "text": "They said, that's okay."
+    },
+    {
+      "id": 411,
+      "start_word": 5438,
+      "end_word": 5443,
+      "start": 1932.6,
+      "end": 1934.48,
+      "text": "They very calmly accepted it."
+    },
+    {
+      "id": 412,
+      "start_word": 5443,
+      "end_word": 5449,
+      "start": 1934.56,
+      "end": 1936.8,
+      "text": "So I think they already knew."
+    },
+    {
+      "id": 413,
+      "start_word": 5449,
+      "end_word": 5467,
+      "start": 1942.4,
+      "end": 1949.32,
+      "text": "That was Darian Woods and Weilin Wang from back in 2023 on The Indicator, Planet Money's daily show."
+    },
+    {
+      "id": 414,
+      "start_word": 5467,
+      "end_word": 5474,
+      "start": 1949.54,
+      "end": 1950.98,
+      "text": "If you aren't listening, you're missing out."
+    },
+    {
+      "id": 415,
+      "start_word": 5474,
+      "end_word": 5489,
+      "start": 1950.98,
+      "end": 1955.52,
+      "text": "By the way, the Chinese government changed the way it measured the youth unemployment rate."
+    },
+    {
+      "id": 416,
+      "start_word": 5489,
+      "end_word": 5499,
+      "start": 1955.62,
+      "end": 1959.32,
+      "text": "It sounds better now in 2026 with the new statistics."
+    },
+    {
+      "id": 417,
+      "start_word": 5499,
+      "end_word": 5505,
+      "start": 1959.54,
+      "end": 1962.56,
+      "text": "It is around 17 % unemployment."
+    },
+    {
+      "id": 418,
+      "start_word": 5505,
+      "end_word": 5514,
+      "start": 1963.18,
+      "end": 1966.0,
+      "text": "Still a devastating number of people looking for work."
+    },
+    {
+      "id": 419,
+      "start_word": 5514,
+      "end_word": 5533,
+      "start": 1966.26,
+      "end": 1971.62,
+      "text": "After the break, our professor returns to tell us how an engineering state deals with a low birth rate."
+    },
+    {
+      "id": 420,
+      "start_word": 5533,
+      "end_word": 5542,
+      "start": 1984.34,
+      "end": 1986.92,
+      "text": "This is Tanya Mosley, co -host of Fresh Air."
+    },
+    {
+      "id": 421,
+      "start_word": 5542,
+      "end_word": 5565,
+      "start": 1987.12,
+      "end": 1994.94,
+      "text": "When I interviewed the screenwriters of The Invite, Rashida Jones and Will McCormick, they called it a sex comedy that's not about sex."
+    },
+    {
+      "id": 422,
+      "start_word": 5565,
+      "end_word": 5575,
+      "start": 1995.38,
+      "end": 1998.9,
+      "text": "It's about wanting to be seen and heard and valued."
+    },
+    {
+      "id": 423,
+      "start_word": 5575,
+      "end_word": 5598,
+      "start": 1999.14,
+      "end": 2005.14,
+      "text": "Get a peek into how the script came to be on Fresh Air on the NPR app or wherever you get your podcasts."
+    },
+    {
+      "id": 424,
+      "start_word": 5598,
+      "end_word": 5607,
+      "start": 2007.18,
+      "end": 2009.54,
+      "text": "We're back with our summer school professor, Dan Wong."
+    },
+    {
+      "id": 425,
+      "start_word": 5607,
+      "end_word": 5613,
+      "start": 2010.98,
+      "end": 2012.88,
+      "text": "to young people in China today."
+    },
+    {
+      "id": 426,
+      "start_word": 5613,
+      "end_word": 5630,
+      "start": 2013.38,
+      "end": 2017.9,
+      "text": "We have this go -go country that feels like it has this great future ahead of it."
+    },
+    {
+      "id": 427,
+      "start_word": 5630,
+      "end_word": 5644,
+      "start": 2017.98,
+      "end": 2021.94,
+      "text": "And it seems like some of the young people are not excited by that."
+    },
+    {
+      "id": 428,
+      "start_word": 5644,
+      "end_word": 5650,
+      "start": 2022.8,
+      "end": 2024.6,
+      "text": "You know what I hear, Robert?"
+    },
+    {
+      "id": 429,
+      "start_word": 5650,
+      "end_word": 5654,
+      "start": 2024.72,
+      "end": 2026.2,
+      "text": "I hear American kids."
+    },
+    {
+      "id": 430,
+      "start_word": 5654,
+      "end_word": 5692,
+      "start": 2026.4,
+      "end": 2042.08,
+      "text": "I hear that there's a lot of people who are slackers, who are trying to just have some fun that's not following these dictates of the state that are interested in trying drugs in the state of California."
+    },
+    {
+      "id": 431,
+      "start_word": 5692,
+      "end_word": 5737,
+      "start": 2042.44,
+      "end": 2059.8,
+      "text": "Chinese kids who are graduating from universities today have a pretty clear sense that they are no longer living in the boom era of the Chinese economy, which probably petered out roughly 10 years ago, that they are not so excited about the economic future."
+    },
+    {
+      "id": 432,
+      "start_word": 5737,
+      "end_word": 5761,
+      "start": 2060.04,
+      "end": 2067.82,
+      "text": "And the Chinese state, I know, like the engineers they are, look at this like an engineering problem, the demographics and the young people."
+    },
+    {
+      "id": 433,
+      "start_word": 5761,
+      "end_word": 5773,
+      "start": 2067.92,
+      "end": 2072.06,
+      "text": "And so they have these programs in place start having more children."
+    },
+    {
+      "id": 434,
+      "start_word": 5773,
+      "end_word": 5787,
+      "start": 2072.24,
+      "end": 2075.54,
+      "text": "They're looking at this as a supply problem for the factories of the future."
+    },
+    {
+      "id": 435,
+      "start_word": 5787,
+      "end_word": 5790,
+      "start": 2076.5,
+      "end": 2078.14,
+      "text": "Is that working?"
+    },
+    {
+      "id": 436,
+      "start_word": 5790,
+      "end_word": 5805,
+      "start": 2078.2,
+      "end": 2082.78,
+      "text": "Because if you feel despair about the future, you're not going to have more children."
+    },
+    {
+      "id": 437,
+      "start_word": 5805,
+      "end_word": 5830,
+      "start": 2083.24,
+      "end": 2092.38,
+      "text": "The Communist Party is doing what the Communist Party does best, trying to plan a lot of the future, in this case, women's childbearing intentions."
+    },
+    {
+      "id": 438,
+      "start_word": 5830,
+      "end_word": 5862,
+      "start": 2093.06,
+      "end": 2104.0,
+      "text": "And the Communist Party has sent these neighborhood committees, which are formally the lowest level of the the Communist Party to go up to young families to ask about their childbearing intentions."
+    },
+    {
+      "id": 439,
+      "start_word": 5862,
+      "end_word": 5886,
+      "start": 2104.54,
+      "end": 2113.02,
+      "text": "And in my book, I quoted a woman who complained that her neighborhood committee has been harassing her to ask about her menstrual cycle."
+    },
+    {
+      "id": 440,
+      "start_word": 5886,
+      "end_word": 5923,
+      "start": 2113.18,
+      "end": 2125.84,
+      "text": "And in particular, she was upset that shortly after marriage, she said that her parents asked her only once whether or not she plans to have kids, whereas the Communist Party has already asked her six times."
+    },
+    {
+      "id": 441,
+      "start_word": 5923,
+      "end_word": 5927,
+      "start": 2125.84,
+      "end": 2127.04,
+      "text": "You know, it's interesting."
+    },
+    {
+      "id": 442,
+      "start_word": 5927,
+      "end_word": 5975,
+      "start": 2127.16,
+      "end": 2145.26,
+      "text": "Usually when we talk about socialist nations, they tend to have a really like expansive safety net, meaning government programs to support people who are unemployed or poor, with economic hardships, programs that support the elderly and mothers and fathers who choose to have children and stay home."
+    },
+    {
+      "id": 443,
+      "start_word": 5975,
+      "end_word": 5991,
+      "start": 2145.7,
+      "end": 2150.82,
+      "text": "But China ranks pretty low on these metrics when you compare it to other developed countries."
+    },
+    {
+      "id": 444,
+      "start_word": 5991,
+      "end_word": 6004,
+      "start": 2151.58,
+      "end": 2156.88,
+      "text": "What happened to a socialist country that doesn't provide that level of support?"
+    },
+    {
+      "id": 445,
+      "start_word": 6004,
+      "end_word": 6010,
+      "start": 2158.12,
+      "end": 2161.16,
+      "text": "Welcome to socialism with Chinese characteristics."
+    },
+    {
+      "id": 446,
+      "start_word": 6010,
+      "end_word": 6013,
+      "start": 2161.44,
+      "end": 2161.86,
+      "text": "There you go."
+    },
+    {
+      "id": 447,
+      "start_word": 6013,
+      "end_word": 6035,
+      "start": 2162.02,
+      "end": 2169.56,
+      "text": "And this is the sort of socialism that has a pretty low tax regime and a pretty threat -bear social safety net."
+    },
+    {
+      "id": 448,
+      "start_word": 6035,
+      "end_word": 6047,
+      "start": 2170.12,
+      "end": 2174.4,
+      "text": "And China has all of these strange things about the taxation system."
+    },
+    {
+      "id": 449,
+      "start_word": 6047,
+      "end_word": 6051,
+      "start": 2175.26,
+      "end": 2176.8,
+      "text": "example, no property tax."
+    },
+    {
+      "id": 450,
+      "start_word": 6051,
+      "end_word": 6073,
+      "start": 2177.06,
+      "end": 2185.54,
+      "text": "China has never quite gotten around to being able to impose a property tax, or it is a pretty marginal property tax."
+    },
+    {
+      "id": 451,
+      "start_word": 6073,
+      "end_word": 6105,
+      "start": 2185.82,
+      "end": 2197.88,
+      "text": "And a lot of China's taxation is funded by consumption taxes, which are a regressive form of taxation because the poor pay a relatively higher share of the taxes than the rich."
+    },
+    {
+      "id": 452,
+      "start_word": 6105,
+      "end_word": 6124,
+      "start": 2198.06,
+      "end": 2207.24,
+      "text": "And roughly speaking, among the Western European countries, They spend about 30 % of their annual income on redistribution."
+    },
+    {
+      "id": 453,
+      "start_word": 6124,
+      "end_word": 6135,
+      "start": 2207.5,
+      "end": 2211.16,
+      "text": "The United States spends about 20 % of its annual income."
+    },
+    {
+      "id": 454,
+      "start_word": 6135,
+      "end_word": 6139,
+      "start": 2211.68,
+      "end": 2213.22,
+      "text": "China spends about 10%."
+    },
+    {
+      "id": 455,
+      "start_word": 6139,
+      "end_word": 6171,
+      "start": 2213.22,
+      "end": 2227.28,
+      "text": "In many ways, I think that the present Communist Party feels like sort of the Eisenhower Republican Party -run America in the 1950s, in which there is this giant emphasis on manufacturing."
+    },
+    {
+      "id": 456,
+      "start_word": 6171,
+      "end_word": 6175,
+      "start": 2227.68,
+      "end": 2229.44,
+      "text": "There's skepticism of immigration."
+    },
+    {
+      "id": 457,
+      "start_word": 6175,
+      "end_word": 6220,
+      "start": 2229.44,
+      "end": 2244.44,
+      "text": "immigration there's a very fierce commitment to traditional gender roles and i think this is the sort of state that probably eisenhower and reagan would recognize more than any of the socialist european countries today i love this hot take china as a u .s"
+    },
+    {
+      "id": 458,
+      "start_word": 6220,
+      "end_word": 6264,
+      "start": 2244.44,
+      "end": 2261.2,
+      "text": "conservatives dream of a centrally planned and yet sort of capitalist country it's probably why these days when we hear our politicians talk about china you can hear outrage occasionally but often you hear jealousy this sense of like can't we grow that fast?"
+    },
+    {
+      "id": 459,
+      "start_word": 6264,
+      "end_word": 6269,
+      "start": 2261.44,
+      "end": 2262.4,
+      "text": "Why can't the U .S."
+    },
+    {
+      "id": 460,
+      "start_word": 6269,
+      "end_word": 6275,
+      "start": 2262.4,
+      "end": 2263.88,
+      "text": "be the manufacturer to the world?"
+    },
+    {
+      "id": 461,
+      "start_word": 6275,
+      "end_word": 6286,
+      "start": 2264.32,
+      "end": 2267.12,
+      "text": "Dan, we're doing one last thing in each of these episodes."
+    },
+    {
+      "id": 462,
+      "start_word": 6286,
+      "end_word": 6290,
+      "start": 2267.44,
+      "end": 2268.3,
+      "text": "If the U .S."
+    },
+    {
+      "id": 463,
+      "start_word": 6290,
+      "end_word": 6313,
+      "start": 2268.3,
+      "end": 2276.36,
+      "text": "could take one trick from the Chinese economy, one lesson that might help us in the United States, what should that lesson be?"
+    },
+    {
+      "id": 464,
+      "start_word": 6313,
+      "end_word": 6326,
+      "start": 2277.32,
+      "end": 2281.9,
+      "text": "China's agenda is to build, build, build its way out of every problem."
+    },
+    {
+      "id": 465,
+      "start_word": 6326,
+      "end_word": 6341,
+      "start": 2282.18,
+      "end": 2287.1,
+      "text": "And in my view, what the United States should do is to build, build, regulate."
+    },
+    {
+      "id": 466,
+      "start_word": 6341,
+      "end_word": 6355,
+      "start": 2287.4,
+      "end": 2291.84,
+      "text": "I think we need to build more to build a lot more of infrastructure."
+    },
+    {
+      "id": 467,
+      "start_word": 6355,
+      "end_word": 6399,
+      "start": 2292.16,
+      "end": 2305.42,
+      "text": "And I also think that we need to build a lot more of the manufacturing base back, because this is sort of one way to get ourselves out of these choke points that other countries around the world can exert over the United States."
+    },
+    {
+      "id": 468,
+      "start_word": 6399,
+      "end_word": 6409,
+      "start": 2305.6,
+      "end": 2307.62,
+      "text": "And this is also a way to invent the future."
+    },
+    {
+      "id": 469,
+      "start_word": 6409,
+      "end_word": 6417,
+      "start": 2307.84,
+      "end": 2311.2,
+      "text": "We can call it capitalism with American characteristics."
+    },
+    {
+      "id": 470,
+      "start_word": 6417,
+      "end_word": 6424,
+      "start": 2312.16,
+      "end": 2313.46,
+      "text": "I'd love to have some of that."
+    },
+    {
+      "id": 471,
+      "start_word": 6424,
+      "end_word": 6438,
+      "start": 2314.54,
+      "end": 2318.26,
+      "text": "Thank you so much for coming in to be our professor today, Dan Wong."
+    },
+    {
+      "id": 472,
+      "start_word": 6438,
+      "end_word": 6451,
+      "start": 2318.44,
+      "end": 2322.18,
+      "text": "You may not know But our listeners are sort of front row students."
+    },
+    {
+      "id": 473,
+      "start_word": 6451,
+      "end_word": 6462,
+      "start": 2322.26,
+      "end": 2324.3,
+      "text": "They like to take notes and do well on the test."
+    },
+    {
+      "id": 474,
+      "start_word": 6462,
+      "end_word": 6482,
+      "start": 2324.48,
+      "end": 2329.72,
+      "text": "And we do indeed have a test at the end of the Planet Money Summer School semester, an online quiz."
+    },
+    {
+      "id": 475,
+      "start_word": 6482,
+      "end_word": 6486,
+      "start": 2329.9,
+      "end": 2330.86,
+      "text": "Everyone should take it."
+    },
+    {
+      "id": 476,
+      "start_word": 6486,
+      "end_word": 6512,
+      "start": 2331.02,
+      "end": 2338.68,
+      "text": "And so in order to prepare for the test, we like to do a few concepts, a few vocabulary words to help everyone get that A."
+    },
+    {
+      "id": 477,
+      "start_word": 6512,
+      "end_word": 6521,
+      "start": 2338.88,
+      "end": 2340.9,
+      "text": "All right, we're going to go over them now."
+    },
+    {
+      "id": 478,
+      "start_word": 6521,
+      "end_word": 6527,
+      "start": 2341.0,
+      "end": 2342.84,
+      "text": "The first one is engineering state."
+    },
+    {
+      "id": 479,
+      "start_word": 6527,
+      "end_word": 6531,
+      "start": 2343.0,
+      "end": 2343.76,
+      "text": "What is that, Dan?"
+    },
+    {
+      "id": 480,
+      "start_word": 6531,
+      "end_word": 6562,
+      "start": 2344.42,
+      "end": 2355.0,
+      "text": "Being too literal -minded about building too much across the country, but also treating people as if they were building materials to be torn down and remolded as the state wishes."
+    },
+    {
+      "id": 481,
+      "start_word": 6562,
+      "end_word": 6581,
+      "start": 2355.42,
+      "end": 2362.26,
+      "text": "We talked about one of the dangers of the engineering state and state control and central planning is malinvestment."
+    },
+    {
+      "id": 482,
+      "start_word": 6581,
+      "end_word": 6584,
+      "start": 2362.32,
+      "end": 2363.44,
+      "text": "What is malinvestment?"
+    },
+    {
+      "id": 483,
+      "start_word": 6584,
+      "end_word": 6591,
+      "start": 2364.66,
+      "end": 2366.74,
+      "text": "Too many roads and bridges to nowhere."
+    },
+    {
+      "id": 484,
+      "start_word": 6591,
+      "end_word": 6592,
+      "start": 2366.74,
+      "end": 2366.9,
+      "text": "wear."
+    },
+    {
+      "id": 485,
+      "start_word": 6592,
+      "end_word": 6595,
+      "start": 2367.76,
+      "end": 2368.86,
+      "text": "Too many airports."
+    },
+    {
+      "id": 486,
+      "start_word": 6595,
+      "end_word": 6616,
+      "start": 2369.48,
+      "end": 2376.6,
+      "text": "Or, you know, in economic terms, state investment that doesn't go where it's actually needed and will do the most good."
+    },
+    {
+      "id": 487,
+      "start_word": 6616,
+      "end_word": 6641,
+      "start": 2376.82,
+      "end": 2383.56,
+      "text": "Okay, I'm going to be impressed if you can do the following one in just one sentence, because you wrote a whole book about it."
+    },
+    {
+      "id": 488,
+      "start_word": 6641,
+      "end_word": 6645,
+      "start": 2384.44,
+      "end": 2386.32,
+      "text": "Socialism with Chinese characteristics."
+    },
+    {
+      "id": 489,
+      "start_word": 6645,
+      "end_word": 6649,
+      "start": 2386.76,
+      "end": 2387.96,
+      "text": "What does that mean?"
+    },
+    {
+      "id": 490,
+      "start_word": 6649,
+      "end_word": 6656,
+      "start": 2388.44,
+      "end": 2391.02,
+      "text": "Whatever the Communist Party says is correct."
+    },
+    {
+      "id": 491,
+      "start_word": 6656,
+      "end_word": 6659,
+      "start": 2393.9,
+      "end": 2394.82,
+      "text": "There you go."
+    },
+    {
+      "id": 492,
+      "start_word": 6659,
+      "end_word": 6666,
+      "start": 2394.98,
+      "end": 2396.58,
+      "text": "I hope you enjoy your trip there."
+    },
+    {
+      "id": 493,
+      "start_word": 6666,
+      "end_word": 6673,
+      "start": 2396.74,
+      "end": 2398.28,
+      "text": "They're going to like the last answer."
+    },
+    {
+      "id": 494,
+      "start_word": 6673,
+      "end_word": 6675,
+      "start": 2398.66,
+      "end": 2399.06,
+      "text": "Oh, yeah."
+    },
+    {
+      "id": 495,
+      "start_word": 6675,
+      "end_word": 6676,
+      "start": 2399.12,
+      "end": 2399.46,
+      "text": "Always."
+    },
+    {
+      "id": 496,
+      "start_word": 6676,
+      "end_word": 6678,
+      "start": 2399.62,
+      "end": 2400.16,
+      "text": "For sure."
+    },
+    {
+      "id": 497,
+      "start_word": 6678,
+      "end_word": 6699,
+      "start": 2402.58,
+      "end": 2410.44,
+      "text": "Dan Wong is a fellow at Stanford University's Hoover Institution and the author of Breakneck, China's Quest to Engineer the Future."
+    },
+    {
+      "id": 498,
+      "start_word": 6699,
+      "end_word": 6727,
+      "start": 2410.86,
+      "end": 2419.84,
+      "text": "Speaking of books that I recommend, if you like summer school, you will love our book, Planet Money, A Guide to the Economic Forces that Shaped Your Life."
+    },
+    {
+      "id": 499,
+      "start_word": 6727,
+      "end_word": 6739,
+      "start": 2419.84,
+      "end": 2424.36,
+      "text": "That and Breakneck Dance Book are available wherever you get your books."
+    },
+    {
+      "id": 500,
+      "start_word": 6739,
+      "end_word": 6753,
+      "start": 2424.9,
+      "end": 2429.62,
+      "text": "Planet Money Summer School is produced by Sophia Polisacar and edited by Alex Goldmark."
+    },
+    {
+      "id": 501,
+      "start_word": 6753,
+      "end_word": 6759,
+      "start": 2429.8,
+      "end": 2431.32,
+      "text": "It's fact -checked by Ciara Wadas."
+    },
+    {
+      "id": 502,
+      "start_word": 6759,
+      "end_word": 6766,
+      "start": 2431.54,
+      "end": 2433.88,
+      "text": "The show is engineered by Maggie Luthar."
+    },
+    {
+      "id": 503,
+      "start_word": 6766,
+      "end_word": 6773,
+      "start": 2434.1,
+      "end": 2436.24,
+      "text": "I'm Robert Smith, and this is NPR."
+    },
+    {
+      "id": 504,
+      "start_word": 6773,
+      "end_word": 6776,
+      "start": 2436.4,
+      "end": 2437.26,
+      "text": "Thanks for listening."
+    },
+    {
+      "id": 505,
+      "start_word": 6776,
+      "end_word": 6786,
+      "start": 2442.88,
+      "end": 2445.92,
+      "text": "Ladies and gentlemen, gather up your backs and your children."
+    },
+    {
+      "id": 506,
+      "start_word": 6786,
+      "end_word": 6797,
+      "start": 2445.92,
+      "end": 2449.62,
+      "text": "We're now boarding for the Planet Money flight to Busia, Kenya."
+    },
+    {
+      "id": 507,
+      "start_word": 6797,
+      "end_word": 6817,
+      "start": 2449.96,
+      "end": 2454.8,
+      "text": "Join us for a special tour of this small town that taught the world a better way to do economics."
+    },
+    {
+      "id": 508,
+      "start_word": 6817,
+      "end_word": 6823,
+      "start": 2455.36,
+      "end": 2457.32,
+      "text": "We'll be taking off next Wednesday."
+    },
+    {
+      "id": 509,
+      "start_word": 6823,
+      "end_word": 6826,
+      "start": 2457.66,
+      "end": 2458.5,
+      "text": "Don't be late."
+    },
+    {
+      "id": 510,
+      "start_word": 6826,
+      "end_word": 6846,
+      "start": 2462.62,
+      "end": 2468.22,
+      "text": "The last phase of the World Cup is underway, and the NPR network has been there since the first whistle."
+    },
+    {
+      "id": 511,
+      "start_word": 6846,
+      "end_word": 6864,
+      "start": 2468.48,
+      "end": 2472.98,
+      "text": "Cape Bird is a small African island nation that surprised everyone by making it to the World Cup."
+    },
+    {
+      "id": 512,
+      "start_word": 6864,
+      "end_word": 6874,
+      "start": 2472.98,
+      "end": 2475.36,
+      "text": "Ronaldo did something no man or woman has done before."
+    },
+    {
+      "id": 513,
+      "start_word": 6874,
+      "end_word": 6885,
+      "start": 2475.92,
+      "end": 2479.2,
+      "text": "scored goals in six different World Cups for a total of..."
+    },
+    {
+      "id": 514,
+      "start_word": 6885,
+      "end_word": 6908,
+      "start": 2479.2,
+      "end": 2485.32,
+      "text": "As we enter the final matches of the tournament, head to the NPR app for all things World Cup from the NPR network."
+    },
+    {
+      "id": 515,
+      "start_word": 6908,
+      "end_word": 6920,
+      "start": 2487.72,
+      "end": 2490.1,
+      "text": "Hi, it's me, Peter Sagal, host of Wait, Wait, Don't Tell Me."
+    },
+    {
+      "id": 516,
+      "start_word": 6920,
+      "end_word": 6940,
+      "start": 2490.14,
+      "end": 2494.64,
+      "text": "It's summer, and if you want to turn your pool party into a nerd fest, check out our news quiz."
+    },
+    {
+      "id": 517,
+      "start_word": 6940,
+      "end_word": 6957,
+      "start": 2494.72,
+      "end": 2498.88,
+      "text": "We've got comedians, we've got celebrities, we've got games to help you laugh about the week's news."
+    },
+    {
+      "id": 518,
+      "start_word": 6957,
+      "end_word": 6960,
+      "start": 2499.08,
+      "end": 2500.02,
+      "text": "Yeah, that news."
+    },
+    {
+      "id": 519,
+      "start_word": 6960,
+      "end_word": 6972,
+      "start": 2500.28,
+      "end": 2503.04,
+      "text": "It'll be just like we're all hanging out at your backyard barbecue."
+    },
+    {
+      "id": 520,
+      "start_word": 6972,
+      "end_word": 6991,
+      "start": 2503.04,
+      "end": 2507.54,
+      "text": "Listen every week to Wait, Wait, Don't Tell Me on the NPR app or wherever you get your podcasts."
+    }
+  ],
+  "prediction": {
+    "spans": [
+      {
+        "startSentence": 1,
+        "endSentence": 4,
+        "minimumPreset": "skip_obvious",
+        "reasons": [
+          "paid_ad"
+        ]
+      },
+      {
+        "startSentence": 5,
+        "endSentence": 5,
+        "minimumPreset": "skip_most_only",
+        "reasons": [
+          "network_id"
+        ]
+      },
+      {
+        "startSentence": 65,
+        "endSentence": 75,
+        "minimumPreset": "skip_obvious",
+        "reasons": [
+          "paid_ad"
+        ]
+      },
+      {
+        "startSentence": 76,
+        "endSentence": 79,
+        "minimumPreset": "skip_more_only",
+        "reasons": [
+          "cross_show_promo"
+        ]
+      },
+      {
+        "startSentence": 295,
+        "endSentence": 300,
+        "minimumPreset": "skip_more_only",
+        "reasons": [
+          "cross_show_promo"
+        ]
+      },
+      {
+        "startSentence": 301,
+        "endSentence": 305,
+        "minimumPreset": "skip_more_only",
+        "reasons": [
+          "cross_show_promo"
+        ]
+      },
+      {
+        "startSentence": 420,
+        "endSentence": 423,
+        "minimumPreset": "skip_more_only",
+        "reasons": [
+          "cross_show_promo"
+        ]
+      },
+      {
+        "startSentence": 498,
+        "endSentence": 499,
+        "minimumPreset": "skip_more_only",
+        "reasons": [
+          "publisher_promo"
+        ]
+      },
+      {
+        "startSentence": 500,
+        "endSentence": 504,
+        "minimumPreset": "skip_most_only",
+        "reasons": [
+          "production_credit",
+          "network_id",
+          "signoff"
+        ]
+      },
+      {
+        "startSentence": 510,
+        "endSentence": 514,
+        "minimumPreset": "skip_more_only",
+        "reasons": [
+          "publisher_promo"
+        ]
+      },
+      {
+        "startSentence": 515,
+        "endSentence": 520,
+        "minimumPreset": "skip_more_only",
+        "reasons": [
+          "cross_show_promo"
+        ]
+      }
+    ]
+  },
+  "rawResponseText": "{\n  \"spans\": [\n    {\n      \"startSentence\": 1,\n      \"endSentence\": 4,\n      \"minimumPreset\": \"skip_obvious\",\n      \"reasons\": [\n        \"paid_ad\"\n      ]\n    },\n    {\n      \"startSentence\": 5,\n      \"endSentence\": 5,\n      \"minimumPreset\": \"skip_most_only\",\n      \"reasons\": [\n        \"network_id\"\n      ]\n    },\n    {\n      \"startSentence\": 65,\n      \"endSentence\": 75,\n      \"minimumPreset\": \"skip_obvious\",\n      \"reasons\": [\n        \"paid_ad\"\n      ]\n    },\n    {\n      \"startSentence\": 76,\n      \"endSentence\": 79,\n      \"minimumPreset\": \"skip_more_only\",\n      \"reasons\": [\n        \"cross_show_promo\"\n      ]\n    },\n    {\n      \"startSentence\": 295,\n      \"endSentence\": 300,\n      \"minimumPreset\": \"skip_more_only\",\n      \"reasons\": [\n        \"cross_show_promo\"\n      ]\n    },\n    {\n      \"startSentence\": 301,\n      \"endSentence\": 305,\n      \"minimumPreset\": \"skip_more_only\",\n      \"reasons\": [\n        \"cross_show_promo\"\n      ]\n    },\n    {\n      \"startSentence\": 420,\n      \"endSentence\": 423,\n      \"minimumPreset\": \"skip_more_only\",\n      \"reasons\": [\n        \"cross_show_promo\"\n      ]\n    },\n    {\n      \"startSentence\": 498,\n      \"endSentence\": 499,\n      \"minimumPreset\": \"skip_more_only\",\n      \"reasons\": [\n        \"publisher_promo\"\n      ]\n    },\n    {\n      \"startSentence\": 500,\n      \"endSentence\": 504,\n      \"minimumPreset\": \"skip_most_only\",\n      \"reasons\": [\n        \"production_credit\",\n        \"network_id\",\n        \"signoff\"\n      ]\n    },\n    {\n      \"startSentence\": 510,\n      \"endSentence\": 514,\n      \"minimumPreset\": \"skip_more_only\",\n      \"reasons\": [\n        \"publisher_promo\"\n      ]\n    },\n    {\n      \"startSentence\": 515,\n      \"endSentence\": 520,\n      \"minimumPreset\": \"skip_more_only\",\n      \"reasons\": [\n        \"cross_show_promo\"\n      ]\n    }\n  ]\n}",
+  "usageMetadata": {
+    "promptTokenCount": 21528,
+    "candidatesTokenCount": 660,
+    "totalTokenCount": 25926,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 21528
+      }
+    ],
+    "thoughtsTokenCount": 3738,
+    "serviceTier": "standard"
+  },
+  "cost": {
+    "promptTokens": 21528,
+    "candidateTokens": 660,
+    "thinkingTokens": 3738,
+    "totalTokens": 25926,
+    "inputCostUsd": 0.032292,
+    "outputAndThinkingCostUsd": 0.032985,
+    "totalCostUsd": 0.065277
+  },
+  "episodeReport": {
+    "slug": "planet-money",
+    "transcriptSha256": "874f3d7b33ceadd6715c78c281b17500dcbc5365b2b6c640d4d4b8d0b5849bb8",
+    "durationSeconds": 2507.54,
+    "typedSpans": [
+      {
+        "id": "gemini-typed-1",
+        "startSentence": 1,
+        "endSentence": 4,
+        "startWord": 0,
+        "endWord": 58,
+        "start": 0.0,
+        "end": 17.88,
+        "tier": "skip_obvious",
+        "reasons": [
+          "paid_ad"
+        ]
+      },
+      {
+        "id": "gemini-typed-2",
+        "startSentence": 5,
+        "endSentence": 5,
+        "startWord": 58,
+        "endWord": 64,
+        "start": 18.84,
+        "end": 21.28,
+        "tier": "skip_most_only",
+        "reasons": [
+          "network_id"
+        ]
+      },
+      {
+        "id": "gemini-typed-3",
+        "startSentence": 65,
+        "endSentence": 75,
+        "startWord": 831,
+        "endWord": 910,
+        "start": 312.38,
+        "end": 339.98,
+        "tier": "skip_obvious",
+        "reasons": [
+          "paid_ad"
+        ]
+      },
+      {
+        "id": "gemini-typed-4",
+        "startSentence": 76,
+        "endSentence": 79,
+        "startWord": 910,
+        "endWord": 963,
+        "start": 340.6,
+        "end": 363.72,
+        "tier": "skip_more_only",
+        "reasons": [
+          "cross_show_promo"
+        ]
+      },
+      {
+        "id": "gemini-typed-5",
+        "startSentence": 295,
+        "endSentence": 300,
+        "startWord": 3875,
+        "endWord": 3947,
+        "start": 1384.4,
+        "end": 1407.74,
+        "tier": "skip_more_only",
+        "reasons": [
+          "cross_show_promo"
+        ]
+      },
+      {
+        "id": "gemini-typed-6",
+        "startSentence": 301,
+        "endSentence": 305,
+        "startWord": 3947,
+        "endWord": 4022,
+        "start": 1408.18,
+        "end": 1431.72,
+        "tier": "skip_more_only",
+        "reasons": [
+          "cross_show_promo"
+        ]
+      },
+      {
+        "id": "gemini-typed-7",
+        "startSentence": 420,
+        "endSentence": 423,
+        "startWord": 5533,
+        "endWord": 5598,
+        "start": 1984.34,
+        "end": 2005.14,
+        "tier": "skip_more_only",
+        "reasons": [
+          "cross_show_promo"
+        ]
+      },
+      {
+        "id": "gemini-typed-8",
+        "startSentence": 498,
+        "endSentence": 499,
+        "startWord": 6699,
+        "endWord": 6739,
+        "start": 2410.86,
+        "end": 2424.36,
+        "tier": "skip_more_only",
+        "reasons": [
+          "publisher_promo"
+        ]
+      },
+      {
+        "id": "gemini-typed-9",
+        "startSentence": 500,
+        "endSentence": 504,
+        "startWord": 6739,
+        "endWord": 6776,
+        "start": 2424.9,
+        "end": 2437.26,
+        "tier": "skip_most_only",
+        "reasons": [
+          "network_id",
+          "production_credit",
+          "signoff"
+        ]
+      },
+      {
+        "id": "gemini-typed-10",
+        "startSentence": 510,
+        "endSentence": 514,
+        "startWord": 6826,
+        "endWord": 6908,
+        "start": 2462.62,
+        "end": 2485.32,
+        "tier": "skip_more_only",
+        "reasons": [
+          "publisher_promo"
+        ]
+      },
+      {
+        "id": "gemini-typed-11",
+        "startSentence": 515,
+        "endSentence": 520,
+        "startWord": 6908,
+        "endWord": 6991,
+        "start": 2487.72,
+        "end": 2507.54,
+        "tier": "skip_more_only",
+        "reasons": [
+          "cross_show_promo"
+        ]
+      }
+    ],
+    "metricsByPreset": {
+      "skip_obvious": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "truePositiveSeconds": 45.48,
+        "falsePositiveSeconds": 0.0,
+        "falseNegativeSeconds": 0.0
+      },
+      "skip_more": {
+        "precision": 0.9203,
+        "recall": 0.9189,
+        "truePositiveSeconds": 176.98,
+        "falsePositiveSeconds": 15.32,
+        "falseNegativeSeconds": 15.62
+      },
+      "skip_most": {
+        "precision": 0.925,
+        "recall": 0.9246,
+        "truePositiveSeconds": 191.56,
+        "falsePositiveSeconds": 15.54,
+        "falseNegativeSeconds": 15.62
+      }
+    },
+    "metricsByReason": {
+      "paid_ad": {
+        "precision": 0.6069,
+        "recall": 1.0,
+        "truePositiveSeconds": 27.6,
+        "falsePositiveSeconds": 17.88,
+        "falseNegativeSeconds": 0.0
+      },
+      "underwriting": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "truePositiveSeconds": 0,
+        "falsePositiveSeconds": 0,
+        "falseNegativeSeconds": 17.88
+      },
+      "cross_show_promo": {
+        "precision": 0.8662,
+        "recall": 0.8085,
+        "truePositiveSeconds": 95.82,
+        "falsePositiveSeconds": 14.8,
+        "falseNegativeSeconds": 22.7
+      },
+      "publisher_promo": {
+        "precision": 0.3586,
+        "recall": 0.4538,
+        "truePositiveSeconds": 12.98,
+        "falsePositiveSeconds": 23.22,
+        "falseNegativeSeconds": 15.62
+      },
+      "membership_appeal": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "truePositiveSeconds": 0,
+        "falsePositiveSeconds": 0,
+        "falseNegativeSeconds": 0
+      },
+      "engagement_request": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "truePositiveSeconds": 0,
+        "falsePositiveSeconds": 0,
+        "falseNegativeSeconds": 0
+      },
+      "production_credit": {
+        "precision": 0.7265,
+        "recall": 1.0,
+        "truePositiveSeconds": 8.98,
+        "falsePositiveSeconds": 3.38,
+        "falseNegativeSeconds": 0.0
+      },
+      "network_id": {
+        "precision": 0.3784,
+        "recall": 1.0,
+        "truePositiveSeconds": 5.6,
+        "falsePositiveSeconds": 9.2,
+        "falseNegativeSeconds": 0.0
+      },
+      "signoff": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "truePositiveSeconds": 0,
+        "falsePositiveSeconds": 12.36,
+        "falseNegativeSeconds": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "joe-rogan-mrbeast-s0134-e0142-tier": {
+      "type": "choice",
+      "choice": "skip_obvious",
+      "confidence": 0.91,
+      "probabilities": {
+        "skip_obvious": 0.93,
+        "keep_protected": 0.0,
+        "mixed_split": 0.05,
+        "skip_more_only": 0.02,
+        "skip_most_only": 0.0
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 2250,
+    "output_tokens": 84
+  }
+}
