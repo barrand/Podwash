@@ -1,0 +1,2256 @@
+{
+  "schemaVersion": 1,
+  "experiment": "two-minute-paid-ad-scout-v8",
+  "status": "rejected",
+  "model": "jev-1.13.0",
+  "completedAt": "2026-10-04T18:41:52.704019+00:00",
+  "parameters": {
+    "windowSeconds": 120.0,
+    "strideSeconds": 60.0,
+    "contextSentences": 2,
+    "positiveThreshold": 0.2
+  },
+  "totalCostUsd": 0.03132305,
+  "latencyMs": {
+    "median": 193.3,
+    "max": 35211.5
+  },
+  "promising": false,
+  "gates": {
+    "everyPaidSpanHit": true,
+    "paidSecondsCoverageAtLeast99Percent": true,
+    "controlHasZeroPositiveWindows": false,
+    "positiveCoverageAtMost40Percent": true
+  },
+  "aggregate": {
+    "paidSpanCount": 16,
+    "paidSpanHitCount": 16,
+    "paidSeconds": 781.21,
+    "paidSecondsCovered": 781.21,
+    "paidSecondsCoverageRecall": 1.0,
+    "positiveCoverageSeconds": 2350.4,
+    "listeningSeconds": 13528.25,
+    "positiveCoverageFraction": 0.17374,
+    "controlPositiveWindowCount": 5
+  },
+  "episodes": [
+    {
+      "slug": "armchair-expert-grant-achatz",
+      "durationSeconds": 6977.85,
+      "windowCount": 117,
+      "positiveWindowCount": 15,
+      "positiveCoverageSeconds": 1080.0,
+      "positiveCoverageFraction": 0.154775,
+      "paidSpans": [
+        {
+          "slug": "armchair-expert-grant-achatz",
+          "id": "human-3",
+          "start": 42.76,
+          "end": 120.28,
+          "hit": true,
+          "coveredSeconds": 77.52,
+          "coverageRecall": 1.0
+        },
+        {
+          "slug": "armchair-expert-grant-achatz",
+          "id": "span-1",
+          "start": 120.86,
+          "end": 224.84,
+          "hit": true,
+          "coveredSeconds": 103.98,
+          "coverageRecall": 1.0
+        },
+        {
+          "slug": "armchair-expert-grant-achatz",
+          "id": "human-6",
+          "start": 1747.4,
+          "end": 1791.6,
+          "hit": true,
+          "coveredSeconds": 44.2,
+          "coverageRecall": 1.0
+        },
+        {
+          "slug": "armchair-expert-grant-achatz",
+          "id": "human-7",
+          "start": 1792.32,
+          "end": 1844.0,
+          "hit": true,
+          "coveredSeconds": 51.68,
+          "coverageRecall": 1.0
+        },
+        {
+          "slug": "armchair-expert-grant-achatz",
+          "id": "human-8",
+          "start": 1844.76,
+          "end": 1931.54,
+          "hit": true,
+          "coveredSeconds": 86.78,
+          "coverageRecall": 1.0
+        },
+        {
+          "slug": "armchair-expert-grant-achatz",
+          "id": "human-9",
+          "start": 1952.96,
+          "end": 1994.79,
+          "hit": true,
+          "coveredSeconds": 41.83,
+          "coverageRecall": 1.0
+        },
+        {
+          "slug": "armchair-expert-grant-achatz",
+          "id": "span-2",
+          "start": 3565.38,
+          "end": 3629.78,
+          "hit": true,
+          "coveredSeconds": 64.4,
+          "coverageRecall": 1.0
+        },
+        {
+          "slug": "armchair-expert-grant-achatz",
+          "id": "human-4",
+          "start": 3630.96,
+          "end": 3686.04,
+          "hit": true,
+          "coveredSeconds": 55.08,
+          "coverageRecall": 1.0
+        },
+        {
+          "slug": "armchair-expert-grant-achatz",
+          "id": "human-5",
+          "start": 3687.42,
+          "end": 3756.14,
+          "hit": true,
+          "coveredSeconds": 68.72,
+          "coverageRecall": 1.0
+        }
+      ]
+    },
+    {
+      "slug": "this-american-life",
+      "durationSeconds": 4436.54,
+      "windowCount": 74,
+      "positiveWindowCount": 12,
+      "positiveCoverageSeconds": 896.54,
+      "positiveCoverageFraction": 0.202081,
+      "paidSpans": [
+        {
+          "slug": "this-american-life",
+          "id": "span-1",
+          "start": 0.27,
+          "end": 28.23,
+          "hit": true,
+          "coveredSeconds": 27.96,
+          "coverageRecall": 1.0
+        },
+        {
+          "slug": "this-american-life",
+          "id": "span-2",
+          "start": 459.98,
+          "end": 490.34,
+          "hit": true,
+          "coveredSeconds": 30.36,
+          "coverageRecall": 1.0
+        },
+        {
+          "slug": "this-american-life",
+          "id": "span-3",
+          "start": 491.36,
+          "end": 521.32,
+          "hit": true,
+          "coveredSeconds": 29.96,
+          "coverageRecall": 1.0
+        },
+        {
+          "slug": "this-american-life",
+          "id": "span-4",
+          "start": 521.94,
+          "end": 536.38,
+          "hit": true,
+          "coveredSeconds": 14.44,
+          "coverageRecall": 1.0
+        },
+        {
+          "slug": "this-american-life",
+          "id": "span-5",
+          "start": 1855.92,
+          "end": 1880.66,
+          "hit": true,
+          "coveredSeconds": 24.74,
+          "coverageRecall": 1.0
+        },
+        {
+          "slug": "this-american-life",
+          "id": "span-6",
+          "start": 1881.42,
+          "end": 1911.16,
+          "hit": true,
+          "coveredSeconds": 29.74,
+          "coverageRecall": 1.0
+        },
+        {
+          "slug": "this-american-life",
+          "id": "span-7",
+          "start": 1912.4,
+          "end": 1942.22,
+          "hit": true,
+          "coveredSeconds": 29.82,
+          "coverageRecall": 1.0
+        }
+      ]
+    },
+    {
+      "slug": "dr-death",
+      "durationSeconds": 2113.86,
+      "windowCount": 36,
+      "positiveWindowCount": 5,
+      "positiveCoverageSeconds": 373.86,
+      "positiveCoverageFraction": 0.176861,
+      "paidSpans": []
+    }
+  ],
+  "windows": [
+    {
+      "id": "armchair-expert-grant-achatz-w0001",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 0.0,
+      "end": 120.0,
+      "probability": 0.94,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 77.24
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0002",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 60.0,
+      "end": 180.0,
+      "probability": 0.98,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 119.42
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0003",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 120.0,
+      "end": 240.0,
+      "probability": 0.97,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 104.26
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0004",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 180.0,
+      "end": 300.0,
+      "probability": 0.95,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 44.84
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0005",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 240.0,
+      "end": 360.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0006",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 300.0,
+      "end": 420.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0007",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 360.0,
+      "end": 480.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0008",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 420.0,
+      "end": 540.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0009",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 480.0,
+      "end": 600.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0010",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 540.0,
+      "end": 660.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0011",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 600.0,
+      "end": 720.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0012",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 660.0,
+      "end": 780.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0013",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 720.0,
+      "end": 840.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0014",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 780.0,
+      "end": 900.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0015",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 840.0,
+      "end": 960.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0016",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 900.0,
+      "end": 1020.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0017",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 960.0,
+      "end": 1080.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0018",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1020.0,
+      "end": 1140.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0019",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1080.0,
+      "end": 1200.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0020",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1140.0,
+      "end": 1260.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0021",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1200.0,
+      "end": 1320.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0022",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1260.0,
+      "end": 1380.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0023",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1320.0,
+      "end": 1440.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0024",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1380.0,
+      "end": 1500.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0025",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1440.0,
+      "end": 1560.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0026",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1500.0,
+      "end": 1620.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0027",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1560.0,
+      "end": 1680.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0028",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1620.0,
+      "end": 1740.0,
+      "probability": 0.05,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0029",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1680.0,
+      "end": 1800.0,
+      "probability": 0.97,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 51.88
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0030",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1740.0,
+      "end": 1860.0,
+      "probability": 0.97,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 111.12
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0031",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1800.0,
+      "end": 1920.0,
+      "probability": 0.96,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 119.24
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0032",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1860.0,
+      "end": 1980.0,
+      "probability": 0.93,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 98.58
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0033",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1920.0,
+      "end": 2040.0,
+      "probability": 0.91,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 53.37
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0034",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1980.0,
+      "end": 2100.0,
+      "probability": 0.89,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 14.79
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0035",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2040.0,
+      "end": 2160.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0036",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2100.0,
+      "end": 2220.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0037",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2160.0,
+      "end": 2280.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0038",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2220.0,
+      "end": 2340.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0039",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2280.0,
+      "end": 2400.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0040",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2340.0,
+      "end": 2460.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0041",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2400.0,
+      "end": 2520.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0042",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2460.0,
+      "end": 2580.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0043",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2520.0,
+      "end": 2640.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0044",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2580.0,
+      "end": 2700.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0045",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2640.0,
+      "end": 2760.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0046",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2700.0,
+      "end": 2820.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0047",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2760.0,
+      "end": 2880.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0048",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2820.0,
+      "end": 2940.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0049",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2880.0,
+      "end": 3000.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0050",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 2940.0,
+      "end": 3060.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0051",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3000.0,
+      "end": 3120.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0052",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3060.0,
+      "end": 3180.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0053",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3120.0,
+      "end": 3240.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0054",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3180.0,
+      "end": 3300.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0055",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3240.0,
+      "end": 3360.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0056",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3300.0,
+      "end": 3420.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0057",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3360.0,
+      "end": 3480.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0058",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3420.0,
+      "end": 3540.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0059",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3480.0,
+      "end": 3600.0,
+      "probability": 0.93,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 34.62
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0060",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3540.0,
+      "end": 3660.0,
+      "probability": 0.97,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 93.44
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0061",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3600.0,
+      "end": 3720.0,
+      "probability": 0.98,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 117.44
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0062",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3660.0,
+      "end": 3780.0,
+      "probability": 0.98,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 94.76
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0063",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3720.0,
+      "end": 3840.0,
+      "probability": 0.94,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 36.14
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0064",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3780.0,
+      "end": 3900.0,
+      "probability": 0.07,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0065",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3840.0,
+      "end": 3960.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0066",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3900.0,
+      "end": 4020.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0067",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 3960.0,
+      "end": 4080.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0068",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4020.0,
+      "end": 4140.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0069",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4080.0,
+      "end": 4200.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0070",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4140.0,
+      "end": 4260.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0071",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4200.0,
+      "end": 4320.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0072",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4260.0,
+      "end": 4380.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0073",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4320.0,
+      "end": 4440.0,
+      "probability": 0.1,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0074",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4380.0,
+      "end": 4500.0,
+      "probability": 0.14,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0075",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4440.0,
+      "end": 4560.0,
+      "probability": 0.17,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0076",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4500.0,
+      "end": 4620.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0077",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4560.0,
+      "end": 4680.0,
+      "probability": 0.05,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0078",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4620.0,
+      "end": 4740.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0079",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4680.0,
+      "end": 4800.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0080",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4740.0,
+      "end": 4860.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0081",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4800.0,
+      "end": 4920.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0082",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4860.0,
+      "end": 4980.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0083",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4920.0,
+      "end": 5040.0,
+      "probability": 0.07,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0084",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 4980.0,
+      "end": 5100.0,
+      "probability": 0.12,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0085",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5040.0,
+      "end": 5160.0,
+      "probability": 0.13,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0086",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5100.0,
+      "end": 5220.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0087",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5160.0,
+      "end": 5280.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0088",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5220.0,
+      "end": 5340.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0089",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5280.0,
+      "end": 5400.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0090",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5340.0,
+      "end": 5460.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0091",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5400.0,
+      "end": 5520.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0092",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5460.0,
+      "end": 5580.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0093",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5520.0,
+      "end": 5640.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0094",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5580.0,
+      "end": 5700.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0095",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5640.0,
+      "end": 5760.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0096",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5700.0,
+      "end": 5820.0,
+      "probability": 0.07,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0097",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5760.0,
+      "end": 5880.0,
+      "probability": 0.09,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0098",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5820.0,
+      "end": 5940.0,
+      "probability": 0.06,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0099",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5880.0,
+      "end": 6000.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0100",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 5940.0,
+      "end": 6060.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0101",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6000.0,
+      "end": 6120.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0102",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6060.0,
+      "end": 6180.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0103",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6120.0,
+      "end": 6240.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0104",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6180.0,
+      "end": 6300.0,
+      "probability": 0.08,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0105",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6240.0,
+      "end": 6360.0,
+      "probability": 0.08,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0106",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6300.0,
+      "end": 6420.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0107",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6360.0,
+      "end": 6480.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0108",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6420.0,
+      "end": 6540.0,
+      "probability": 0.06,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0109",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6480.0,
+      "end": 6600.0,
+      "probability": 0.06,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0110",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6540.0,
+      "end": 6660.0,
+      "probability": 0.05,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0111",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6600.0,
+      "end": 6720.0,
+      "probability": 0.05,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0112",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6660.0,
+      "end": 6780.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0113",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6720.0,
+      "end": 6840.0,
+      "probability": 0.05,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0114",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6780.0,
+      "end": 6900.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0115",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6840.0,
+      "end": 6960.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0116",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6900.0,
+      "end": 6977.85,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0117",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 6960.0,
+      "end": 6977.85,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0001",
+      "slug": "this-american-life",
+      "start": 0.0,
+      "end": 120.0,
+      "probability": 0.96,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 27.96
+    },
+    {
+      "id": "this-american-life-w0002",
+      "slug": "this-american-life",
+      "start": 60.0,
+      "end": 180.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0003",
+      "slug": "this-american-life",
+      "start": 120.0,
+      "end": 240.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0004",
+      "slug": "this-american-life",
+      "start": 180.0,
+      "end": 300.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0005",
+      "slug": "this-american-life",
+      "start": 240.0,
+      "end": 360.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0006",
+      "slug": "this-american-life",
+      "start": 300.0,
+      "end": 420.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0007",
+      "slug": "this-american-life",
+      "start": 360.0,
+      "end": 480.0,
+      "probability": 0.95,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 20.02
+    },
+    {
+      "id": "this-american-life-w0008",
+      "slug": "this-american-life",
+      "start": 420.0,
+      "end": 540.0,
+      "probability": 0.97,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 74.76
+    },
+    {
+      "id": "this-american-life-w0009",
+      "slug": "this-american-life",
+      "start": 480.0,
+      "end": 600.0,
+      "probability": 0.96,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 54.74
+    },
+    {
+      "id": "this-american-life-w0010",
+      "slug": "this-american-life",
+      "start": 540.0,
+      "end": 660.0,
+      "probability": 0.1,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0011",
+      "slug": "this-american-life",
+      "start": 600.0,
+      "end": 720.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0012",
+      "slug": "this-american-life",
+      "start": 660.0,
+      "end": 780.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0013",
+      "slug": "this-american-life",
+      "start": 720.0,
+      "end": 840.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0014",
+      "slug": "this-american-life",
+      "start": 780.0,
+      "end": 900.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0015",
+      "slug": "this-american-life",
+      "start": 840.0,
+      "end": 960.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0016",
+      "slug": "this-american-life",
+      "start": 900.0,
+      "end": 1020.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0017",
+      "slug": "this-american-life",
+      "start": 960.0,
+      "end": 1080.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0018",
+      "slug": "this-american-life",
+      "start": 1020.0,
+      "end": 1140.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0019",
+      "slug": "this-american-life",
+      "start": 1080.0,
+      "end": 1200.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0020",
+      "slug": "this-american-life",
+      "start": 1140.0,
+      "end": 1260.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0021",
+      "slug": "this-american-life",
+      "start": 1200.0,
+      "end": 1320.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0022",
+      "slug": "this-american-life",
+      "start": 1260.0,
+      "end": 1380.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0023",
+      "slug": "this-american-life",
+      "start": 1320.0,
+      "end": 1440.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0024",
+      "slug": "this-american-life",
+      "start": 1380.0,
+      "end": 1500.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0025",
+      "slug": "this-american-life",
+      "start": 1440.0,
+      "end": 1560.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0026",
+      "slug": "this-american-life",
+      "start": 1500.0,
+      "end": 1620.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0027",
+      "slug": "this-american-life",
+      "start": 1560.0,
+      "end": 1680.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0028",
+      "slug": "this-american-life",
+      "start": 1620.0,
+      "end": 1740.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0029",
+      "slug": "this-american-life",
+      "start": 1680.0,
+      "end": 1800.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0030",
+      "slug": "this-american-life",
+      "start": 1740.0,
+      "end": 1860.0,
+      "probability": 0.86,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 4.08
+    },
+    {
+      "id": "this-american-life-w0031",
+      "slug": "this-american-life",
+      "start": 1800.0,
+      "end": 1920.0,
+      "probability": 0.97,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 62.08
+    },
+    {
+      "id": "this-american-life-w0032",
+      "slug": "this-american-life",
+      "start": 1860.0,
+      "end": 1980.0,
+      "probability": 0.95,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 80.22
+    },
+    {
+      "id": "this-american-life-w0033",
+      "slug": "this-american-life",
+      "start": 1920.0,
+      "end": 2040.0,
+      "probability": 0.9,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 22.22
+    },
+    {
+      "id": "this-american-life-w0034",
+      "slug": "this-american-life",
+      "start": 1980.0,
+      "end": 2100.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0035",
+      "slug": "this-american-life",
+      "start": 2040.0,
+      "end": 2160.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0036",
+      "slug": "this-american-life",
+      "start": 2100.0,
+      "end": 2220.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0037",
+      "slug": "this-american-life",
+      "start": 2160.0,
+      "end": 2280.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0038",
+      "slug": "this-american-life",
+      "start": 2220.0,
+      "end": 2340.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0039",
+      "slug": "this-american-life",
+      "start": 2280.0,
+      "end": 2400.0,
+      "probability": 0.05,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0040",
+      "slug": "this-american-life",
+      "start": 2340.0,
+      "end": 2460.0,
+      "probability": 0.06,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0041",
+      "slug": "this-american-life",
+      "start": 2400.0,
+      "end": 2520.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0042",
+      "slug": "this-american-life",
+      "start": 2460.0,
+      "end": 2580.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0043",
+      "slug": "this-american-life",
+      "start": 2520.0,
+      "end": 2640.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0044",
+      "slug": "this-american-life",
+      "start": 2580.0,
+      "end": 2700.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0045",
+      "slug": "this-american-life",
+      "start": 2640.0,
+      "end": 2760.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0046",
+      "slug": "this-american-life",
+      "start": 2700.0,
+      "end": 2820.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0047",
+      "slug": "this-american-life",
+      "start": 2760.0,
+      "end": 2880.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0048",
+      "slug": "this-american-life",
+      "start": 2820.0,
+      "end": 2940.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0049",
+      "slug": "this-american-life",
+      "start": 2880.0,
+      "end": 3000.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0050",
+      "slug": "this-american-life",
+      "start": 2940.0,
+      "end": 3060.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0051",
+      "slug": "this-american-life",
+      "start": 3000.0,
+      "end": 3120.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0052",
+      "slug": "this-american-life",
+      "start": 3060.0,
+      "end": 3180.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0053",
+      "slug": "this-american-life",
+      "start": 3120.0,
+      "end": 3240.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0054",
+      "slug": "this-american-life",
+      "start": 3180.0,
+      "end": 3300.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0055",
+      "slug": "this-american-life",
+      "start": 3240.0,
+      "end": 3360.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0056",
+      "slug": "this-american-life",
+      "start": 3300.0,
+      "end": 3420.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0057",
+      "slug": "this-american-life",
+      "start": 3360.0,
+      "end": 3480.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0058",
+      "slug": "this-american-life",
+      "start": 3420.0,
+      "end": 3540.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0059",
+      "slug": "this-american-life",
+      "start": 3480.0,
+      "end": 3600.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0060",
+      "slug": "this-american-life",
+      "start": 3540.0,
+      "end": 3660.0,
+      "probability": 0.05,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0061",
+      "slug": "this-american-life",
+      "start": 3600.0,
+      "end": 3720.0,
+      "probability": 0.05,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0062",
+      "slug": "this-american-life",
+      "start": 3660.0,
+      "end": 3780.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0063",
+      "slug": "this-american-life",
+      "start": 3720.0,
+      "end": 3840.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0064",
+      "slug": "this-american-life",
+      "start": 3780.0,
+      "end": 3900.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0065",
+      "slug": "this-american-life",
+      "start": 3840.0,
+      "end": 3960.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0066",
+      "slug": "this-american-life",
+      "start": 3900.0,
+      "end": 4020.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0067",
+      "slug": "this-american-life",
+      "start": 3960.0,
+      "end": 4080.0,
+      "probability": 0.03,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0068",
+      "slug": "this-american-life",
+      "start": 4020.0,
+      "end": 4140.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0069",
+      "slug": "this-american-life",
+      "start": 4080.0,
+      "end": 4200.0,
+      "probability": 0.04,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0070",
+      "slug": "this-american-life",
+      "start": 4140.0,
+      "end": 4260.0,
+      "probability": 0.05,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0071",
+      "slug": "this-american-life",
+      "start": 4200.0,
+      "end": 4320.0,
+      "probability": 0.6,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0072",
+      "slug": "this-american-life",
+      "start": 4260.0,
+      "end": 4380.0,
+      "probability": 0.63,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0073",
+      "slug": "this-american-life",
+      "start": 4320.0,
+      "end": 4436.54,
+      "probability": 0.82,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "this-american-life-w0074",
+      "slug": "this-american-life",
+      "start": 4380.0,
+      "end": 4436.54,
+      "probability": 0.78,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 0.0
+    },
+    {
+      "id": "dr-death-w0001",
+      "slug": "dr-death",
+      "start": 0.0,
+      "end": 120.0,
+      "probability": 0.8,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0002",
+      "slug": "dr-death",
+      "start": 60.0,
+      "end": 180.0,
+      "probability": 0.77,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0003",
+      "slug": "dr-death",
+      "start": 120.0,
+      "end": 240.0,
+      "probability": 0.07,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0004",
+      "slug": "dr-death",
+      "start": 180.0,
+      "end": 300.0,
+      "probability": 0.2,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0005",
+      "slug": "dr-death",
+      "start": 240.0,
+      "end": 360.0,
+      "probability": 0.28,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0006",
+      "slug": "dr-death",
+      "start": 300.0,
+      "end": 420.0,
+      "probability": 0.08,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0007",
+      "slug": "dr-death",
+      "start": 360.0,
+      "end": 480.0,
+      "probability": 0.08,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0008",
+      "slug": "dr-death",
+      "start": 420.0,
+      "end": 540.0,
+      "probability": 0.07,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0009",
+      "slug": "dr-death",
+      "start": 480.0,
+      "end": 600.0,
+      "probability": 0.07,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0010",
+      "slug": "dr-death",
+      "start": 540.0,
+      "end": 660.0,
+      "probability": 0.07,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0011",
+      "slug": "dr-death",
+      "start": 600.0,
+      "end": 720.0,
+      "probability": 0.08,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0012",
+      "slug": "dr-death",
+      "start": 660.0,
+      "end": 780.0,
+      "probability": 0.07,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0013",
+      "slug": "dr-death",
+      "start": 720.0,
+      "end": 840.0,
+      "probability": 0.07,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0014",
+      "slug": "dr-death",
+      "start": 780.0,
+      "end": 900.0,
+      "probability": 0.07,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0015",
+      "slug": "dr-death",
+      "start": 840.0,
+      "end": 960.0,
+      "probability": 0.06,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0016",
+      "slug": "dr-death",
+      "start": 900.0,
+      "end": 1020.0,
+      "probability": 0.06,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0017",
+      "slug": "dr-death",
+      "start": 960.0,
+      "end": 1080.0,
+      "probability": 0.07,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0018",
+      "slug": "dr-death",
+      "start": 1020.0,
+      "end": 1140.0,
+      "probability": 0.08,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0019",
+      "slug": "dr-death",
+      "start": 1080.0,
+      "end": 1200.0,
+      "probability": 0.08,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0020",
+      "slug": "dr-death",
+      "start": 1140.0,
+      "end": 1260.0,
+      "probability": 0.08,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0021",
+      "slug": "dr-death",
+      "start": 1200.0,
+      "end": 1320.0,
+      "probability": 0.07,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0022",
+      "slug": "dr-death",
+      "start": 1260.0,
+      "end": 1380.0,
+      "probability": 0.06,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0023",
+      "slug": "dr-death",
+      "start": 1320.0,
+      "end": 1440.0,
+      "probability": 0.1,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0024",
+      "slug": "dr-death",
+      "start": 1380.0,
+      "end": 1500.0,
+      "probability": 0.07,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0025",
+      "slug": "dr-death",
+      "start": 1440.0,
+      "end": 1560.0,
+      "probability": 0.07,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0026",
+      "slug": "dr-death",
+      "start": 1500.0,
+      "end": 1620.0,
+      "probability": 0.1,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0027",
+      "slug": "dr-death",
+      "start": 1560.0,
+      "end": 1680.0,
+      "probability": 0.09,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0028",
+      "slug": "dr-death",
+      "start": 1620.0,
+      "end": 1740.0,
+      "probability": 0.08,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0029",
+      "slug": "dr-death",
+      "start": 1680.0,
+      "end": 1800.0,
+      "probability": 0.1,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0030",
+      "slug": "dr-death",
+      "start": 1740.0,
+      "end": 1860.0,
+      "probability": 0.07,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0031",
+      "slug": "dr-death",
+      "start": 1800.0,
+      "end": 1920.0,
+      "probability": 0.08,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0032",
+      "slug": "dr-death",
+      "start": 1860.0,
+      "end": 1980.0,
+      "probability": 0.08,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0033",
+      "slug": "dr-death",
+      "start": 1920.0,
+      "end": 2040.0,
+      "probability": 0.08,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0034",
+      "slug": "dr-death",
+      "start": 1980.0,
+      "end": 2100.0,
+      "probability": 0.1,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0035",
+      "slug": "dr-death",
+      "start": 2040.0,
+      "end": 2113.86,
+      "probability": 0.1,
+      "positive": false,
+      "goldenPaidOverlapSeconds": 0
+    },
+    {
+      "id": "dr-death-w0036",
+      "slug": "dr-death",
+      "start": 2100.0,
+      "end": 2113.86,
+      "probability": 0.24,
+      "positive": true,
+      "goldenPaidOverlapSeconds": 0
+    }
+  ]
+}

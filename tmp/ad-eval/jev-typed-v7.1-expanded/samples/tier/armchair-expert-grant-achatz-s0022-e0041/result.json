@@ -1,0 +1,30 @@
+{
+  "requestSha256": "e342bfd8590fc2c43ffa36bc5d10fac08007b66474826c5410aea2a8f0324e93",
+  "latencyMs": 176.5,
+  "usage": {
+    "inputTokens": 2933,
+    "outputTokens": 85,
+    "totalCostUsd": 0.00012319
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "armchair-expert-grant-achatz-s0022-e0041-tier": {
+        "type": "choice",
+        "choice": "skip_obvious",
+        "confidence": 0.33,
+        "probabilities": {
+          "skip_most_only": 0.01,
+          "mixed_split": 0.4,
+          "keep_protected": 0.03,
+          "skip_obvious": 0.46,
+          "skip_more_only": 0.1
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 2933,
+      "output_tokens": 85
+    }
+  }
+}

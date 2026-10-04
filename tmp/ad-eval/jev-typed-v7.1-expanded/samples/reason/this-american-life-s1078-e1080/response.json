@@ -1,0 +1,31 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "this-american-life-s1078-e1080-primary-reason": {
+      "type": "choice",
+      "choice": "membership_appeal",
+      "confidence": 0.96,
+      "probabilities": {
+        "cross_show_promo": 0.0,
+        "membership_appeal": 0.97,
+        "publisher_promo": 0.03
+      }
+    },
+    "this-american-life-s1078-e1080-also-cross_show_promo": {
+      "type": "noul",
+      "noul": 0.31
+    },
+    "this-american-life-s1078-e1080-also-publisher_promo": {
+      "type": "noul",
+      "noul": 0.91
+    },
+    "this-american-life-s1078-e1080-also-membership_appeal": {
+      "type": "noul",
+      "noul": 0.92
+    }
+  },
+  "usage": {
+    "input_tokens": 2367,
+    "output_tokens": 180
+  }
+}

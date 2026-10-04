@@ -1,0 +1,90 @@
+{
+  "requestSha256": "ccacd5f64d17751b01b1bc4d2d6793b9cd7f70c67fdcd213b04e8da1116a9cd3",
+  "latencyMs": 227.1,
+  "usage": {
+    "inputTokens": 3667,
+    "outputTokens": 434,
+    "totalCostUsd": 0.00015401
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "sentence-150-paid_ad": {
+        "type": "noul",
+        "noul": 0.12
+      },
+      "sentence-150-underwriting": {
+        "type": "noul",
+        "noul": 0.22
+      },
+      "sentence-150-cross_show_promo": {
+        "type": "noul",
+        "noul": 0.23
+      },
+      "sentence-150-publisher_promo": {
+        "type": "noul",
+        "noul": 0.18
+      },
+      "sentence-150-membership_appeal": {
+        "type": "noul",
+        "noul": 0.22
+      },
+      "sentence-150-engagement_request": {
+        "type": "noul",
+        "noul": 0.36
+      },
+      "sentence-150-production_credit": {
+        "type": "noul",
+        "noul": 0.17
+      },
+      "sentence-150-network_id": {
+        "type": "noul",
+        "noul": 0.37
+      },
+      "sentence-150-signoff": {
+        "type": "noul",
+        "noul": 0.55
+      },
+      "sentence-151-paid_ad": {
+        "type": "noul",
+        "noul": 0.1
+      },
+      "sentence-151-underwriting": {
+        "type": "noul",
+        "noul": 0.37
+      },
+      "sentence-151-cross_show_promo": {
+        "type": "noul",
+        "noul": 0.1
+      },
+      "sentence-151-publisher_promo": {
+        "type": "noul",
+        "noul": 0.12
+      },
+      "sentence-151-membership_appeal": {
+        "type": "noul",
+        "noul": 0.12
+      },
+      "sentence-151-engagement_request": {
+        "type": "noul",
+        "noul": 0.14
+      },
+      "sentence-151-production_credit": {
+        "type": "noul",
+        "noul": 0.54
+      },
+      "sentence-151-network_id": {
+        "type": "noul",
+        "noul": 0.49
+      },
+      "sentence-151-signoff": {
+        "type": "noul",
+        "noul": 0.3
+      }
+    },
+    "usage": {
+      "input_tokens": 3667,
+      "output_tokens": 434
+    }
+  }
+}

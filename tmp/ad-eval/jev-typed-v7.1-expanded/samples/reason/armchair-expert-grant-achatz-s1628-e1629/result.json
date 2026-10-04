@@ -1,0 +1,45 @@
+{
+  "requestSha256": "376d6e270e4f980c919a33e4feafca02eca8a30a73e0e15908478dd2d27e197f",
+  "latencyMs": 357.4,
+  "usage": {
+    "inputTokens": 2083,
+    "outputTokens": 224,
+    "totalCostUsd": 8.749e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "armchair-expert-grant-achatz-s1628-e1629-primary-reason": {
+        "type": "choice",
+        "choice": "signoff",
+        "confidence": 1.0,
+        "probabilities": {
+          "network_id": 0.0,
+          "production_credit": 0.0,
+          "engagement_request": 0.0,
+          "signoff": 1.0
+        }
+      },
+      "armchair-expert-grant-achatz-s1628-e1629-also-engagement_request": {
+        "type": "noul",
+        "noul": 0.05
+      },
+      "armchair-expert-grant-achatz-s1628-e1629-also-production_credit": {
+        "type": "noul",
+        "noul": 0.05
+      },
+      "armchair-expert-grant-achatz-s1628-e1629-also-network_id": {
+        "type": "noul",
+        "noul": 0.37
+      },
+      "armchair-expert-grant-achatz-s1628-e1629-also-signoff": {
+        "type": "noul",
+        "noul": 0.85
+      }
+    },
+    "usage": {
+      "input_tokens": 2083,
+      "output_tokens": 224
+    }
+  }
+}

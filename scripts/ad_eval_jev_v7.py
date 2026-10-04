@@ -70,6 +70,12 @@ PRESETS = {
     "skip_most": set(REASONS),
 }
 
+PROVISIONAL_TYPED_CATEGORY_MAP = {
+    "paid_ad": "paid_ad",
+    "network_promo": "cross_show_promo",
+    "membership_cta": "membership_appeal",
+}
+
 
 @dataclass(frozen=True)
 class Window:
@@ -90,14 +96,36 @@ def json_hash(path: Path) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def load_episode(workdir: Path, slug: str) -> dict[str, Any]:
+def load_episode(workdir: Path, slug: str, allow_provisional_typed_goldens: bool = False) -> dict[str, Any]:
     directory = workdir / slug
     words = json.loads((directory / "transcript.json").read_text(encoding="utf-8"))
     meta = json.loads((directory / "meta.json").read_text(encoding="utf-8"))
-    audit = json.loads((directory / "typed-audit.json").read_text(encoding="utf-8"))
     transcript_hash = json_hash(directory / "transcript.json")
-    if audit.get("transcriptSha256") != transcript_hash:
-        raise ValueError(f"{slug}: typed audit is stale for transcript")
+    audit_path = directory / "typed-audit.json"
+    if audit_path.exists():
+        audit = json.loads(audit_path.read_text(encoding="utf-8"))
+        if audit.get("transcriptSha256") != transcript_hash:
+            raise ValueError(f"{slug}: typed audit is stale for transcript")
+        reference = {"kind": "human-reviewed-typed-audit", "path": str(audit_path)}
+    else:
+        if not allow_provisional_typed_goldens:
+            raise ValueError(f"{slug}: typed audit is required; rerun with --allow-provisional-typed-goldens for an unscored typed-label pilot")
+        golden_path = ROOT / "eval" / "ad-detection" / "goldens" / f"{slug}.json"
+        golden = json.loads(golden_path.read_text(encoding="utf-8"))
+        if golden.get("transcriptSha256") != transcript_hash:
+            raise ValueError(f"{slug}: approved golden is stale for transcript")
+        spans = []
+        for span in golden.get("spans") or []:
+            category = PROVISIONAL_TYPED_CATEGORY_MAP.get(str(span.get("category") or ""))
+            if not category:
+                raise ValueError(f"{slug}: golden category {span.get('category')!r} has no provisional typed mapping")
+            spans.append({"startWord": span["startWord"], "endWord": span["endWord"], "category": category})
+        audit = {"spans": spans}
+        reference = {
+            "kind": "provisional-derived-typed-reference",
+            "path": str(golden_path),
+            "warning": "Only paid-ad scoring is ready for a promotion decision; promo mappings require human typed-audit review.",
+        }
     return {
         "slug": slug,
         "words": words,
@@ -110,6 +138,7 @@ def load_episode(workdir: Path, slug: str) -> dict[str, Any]:
             "episodeDescription": clean_text(str(meta.get("episodeDescription") or ""), 1600),
         },
         "transcriptSha256": transcript_hash,
+        "reference": reference,
     }
 
 
@@ -338,6 +367,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workdir", type=Path, default=DEFAULT_WORKDIR)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--show", action="append", dest="shows", metavar="SLUG", help="Evaluate this show; repeat for more than one. Defaults to the pilot set.")
+    parser.add_argument("--allow-provisional-typed-goldens", action="store_true", help="Use category-mapped approved goldens when a human typed audit does not exist; never use this result for preset promotion.")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--spend-cap-usd", type=float, default=0.50)
     return parser.parse_args()
@@ -349,17 +380,20 @@ def main() -> None:
         raise SystemExit("--spend-cap-usd must be greater than zero and no more than 1.0")
     workdir = args.workdir.resolve()
     output = (args.output or workdir / OUTPUT_NAME).resolve()
+    slugs = tuple(args.shows or PILOT_SLUGS)
+    if len(set(slugs)) != len(slugs):
+        raise SystemExit("--show may not be repeated for the same slug")
     try:
-        episodes = {slug: load_episode(workdir, slug) for slug in PILOT_SLUGS}
+        episodes = {slug: load_episode(workdir, slug, args.allow_provisional_typed_goldens) for slug in slugs}
     except (OSError, ValueError, json.JSONDecodeError) as error:
         raise SystemExit(str(error)) from error
-    broad_requests = [(window, broad_payload(episodes[window.slug], window)) for slug in PILOT_SLUGS for window in full_windows(slug, episodes[slug]["rows"])]
+    broad_requests = [(window, broad_payload(episodes[window.slug], window)) for slug in slugs for window in full_windows(slug, episodes[slug]["rows"])]
     broad_cost = sum(estimated_cost(payload) for _, payload in broad_requests)
     if args.dry_run:
         largest = max(broad_requests, key=lambda item: estimated_tokens(item[1]))
         upper_subtype_requests = [
             (window, subtype_payload(episodes[slug], window))
-            for slug in PILOT_SLUGS
+            for slug in slugs
             for window in subtype_windows(slug, episodes[slug]["rows"], list(range(len(episodes[slug]["rows"]))))
         ]
         upper_subtype_questions = sum(len(payload["questions"]) for _, payload in upper_subtype_requests)
@@ -381,7 +415,7 @@ def main() -> None:
     save_json(output / "price-card.json", PRICE_CARD)
     spent = 0.0
     latencies: list[float] = []
-    observations_by_slug: dict[str, list[dict[str, Any]]] = {slug: [] for slug in PILOT_SLUGS}
+    observations_by_slug: dict[str, list[dict[str, Any]]] = {slug: [] for slug in slugs}
     for number, (window, payload) in enumerate(broad_requests, 1):
         print(f"[broad {number}/{len(broad_requests)} {window.id}]", flush=True)
         response, cost, latency = run_request(api_key, output, "broad", window.id, payload, spent, args.spend_cap_usd)
@@ -390,7 +424,7 @@ def main() -> None:
         observations_by_slug[window.slug].extend(parse_broad(response, episodes[window.slug], window))
 
     subtype_requests: list[tuple[Window, dict[str, Any]]] = []
-    for slug in PILOT_SLUGS:
+    for slug in slugs:
         candidate_indices = [
             index for index, row in enumerate(observations_by_slug[slug])
             if row["selectedRole"] == "removable_candidate" or row["probabilities"]["removable_candidate"] >= CANDIDATE_THRESHOLD
@@ -410,13 +444,14 @@ def main() -> None:
             by_sentence[sentence]["reasonProbabilities"] = probabilities
 
     episode_reports: list[dict[str, Any]] = []
-    for slug in PILOT_SLUGS:
+    for slug in slugs:
         observations = sorted(observations_by_slug[slug], key=lambda row: row["sentence"])
         for row in observations:
             row.setdefault("reasonProbabilities", {})
         episode_reports.append({
             "slug": slug,
             "transcriptSha256": episodes[slug]["transcriptSha256"],
+            "reference": episodes[slug]["reference"],
             "sentenceCount": len(observations),
             "candidateSentenceCount": sum(bool(row["reasonProbabilities"]) for row in observations),
             "typedSpans": typed_spans(observations),
@@ -430,18 +465,18 @@ def main() -> None:
         "model": MODEL,
         "completedAt": datetime.now(timezone.utc).isoformat(),
         "episodes": episode_reports,
-        "observations": [row for slug in PILOT_SLUGS for row in observations_by_slug[slug]],
+        "observations": [row for slug in slugs for row in observations_by_slug[slug]],
         "thresholds": {"broadCandidate": CANDIDATE_THRESHOLD, "typedReason": REASON_THRESHOLD},
         "totalCostUsd": round(spent, 8),
         "latencyMs": {"median": round(statistics.median(latencies), 1), "max": round(max(latencies), 1)},
-        "policy": {"previewsAndRecapsAlwaysKept": True, "multiReasonSpans": True},
+        "policy": {"previewsAndRecapsAlwaysKept": True, "multiReasonSpans": True, "provisionalTypedGoldensAllowed": args.allow_provisional_typed_goldens},
     }
     save_json(output / "report.json", report)
     save_json(output / "manifest.json", {
         "schemaVersion": 1,
         "experiment": EXPERIMENT,
         "model": MODEL,
-        "pilotSlugs": list(PILOT_SLUGS),
+        "pilotSlugs": list(slugs),
         "broadWindowCount": len(broad_requests),
         "typedWindowCount": len(subtype_requests),
         "requestHashes": [request_sha256(payload) for _, payload in [*broad_requests, *subtype_requests]],

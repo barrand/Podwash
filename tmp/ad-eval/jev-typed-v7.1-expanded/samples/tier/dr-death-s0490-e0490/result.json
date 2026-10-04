@@ -1,0 +1,30 @@
+{
+  "requestSha256": "5c6bd1ed39278af4c6f5d03c36ec8e479dc54ed59aef510198de9403535ecc9c",
+  "latencyMs": 256.4,
+  "usage": {
+    "inputTokens": 1663,
+    "outputTokens": 80,
+    "totalCostUsd": 6.985e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "dr-death-s0490-e0490-tier": {
+        "type": "choice",
+        "choice": "keep_protected",
+        "confidence": 0.59,
+        "probabilities": {
+          "skip_most_only": 0.23,
+          "mixed_split": 0.02,
+          "keep_protected": 0.67,
+          "skip_obvious": 0.04,
+          "skip_more_only": 0.04
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 1663,
+      "output_tokens": 80
+    }
+  }
+}

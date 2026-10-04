@@ -1,0 +1,150 @@
+{
+  "requestSha256": "463b47cfaa87bb6c6517fff8eed5e8e4c53e38372e1dfaff8f734e247792420f",
+  "latencyMs": 259.7,
+  "usage": {
+    "inputTokens": 5520,
+    "outputTokens": 771,
+    "totalCostUsd": 0.00023184
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "sentence-2353-broad-role": {
+        "type": "choice",
+        "choice": "editorial_content",
+        "confidence": 0.75,
+        "probabilities": {
+          "editorial_content": 0.81,
+          "removable_candidate": 0.12,
+          "mixed_boundary": 0.04,
+          "protected_editorial": 0.03
+        }
+      },
+      "sentence-2354-broad-role": {
+        "type": "choice",
+        "choice": "editorial_content",
+        "confidence": 0.79,
+        "probabilities": {
+          "editorial_content": 0.84,
+          "protected_editorial": 0.05,
+          "removable_candidate": 0.09,
+          "mixed_boundary": 0.02
+        }
+      },
+      "sentence-2355-broad-role": {
+        "type": "choice",
+        "choice": "editorial_content",
+        "confidence": 0.72,
+        "probabilities": {
+          "mixed_boundary": 0.04,
+          "protected_editorial": 0.05,
+          "removable_candidate": 0.12,
+          "editorial_content": 0.79
+        }
+      },
+      "sentence-2356-broad-role": {
+        "type": "choice",
+        "choice": "editorial_content",
+        "confidence": 0.69,
+        "probabilities": {
+          "mixed_boundary": 0.02,
+          "protected_editorial": 0.03,
+          "removable_candidate": 0.19,
+          "editorial_content": 0.76
+        }
+      },
+      "sentence-2357-broad-role": {
+        "type": "choice",
+        "choice": "editorial_content",
+        "confidence": 0.63,
+        "probabilities": {
+          "mixed_boundary": 0.01,
+          "protected_editorial": 0.02,
+          "removable_candidate": 0.24,
+          "editorial_content": 0.73
+        }
+      },
+      "sentence-2358-broad-role": {
+        "type": "choice",
+        "choice": "editorial_content",
+        "confidence": 0.83,
+        "probabilities": {
+          "mixed_boundary": 0.01,
+          "protected_editorial": 0.03,
+          "removable_candidate": 0.08,
+          "editorial_content": 0.88
+        }
+      },
+      "sentence-2359-broad-role": {
+        "type": "choice",
+        "choice": "editorial_content",
+        "confidence": 0.89,
+        "probabilities": {
+          "mixed_boundary": 0.01,
+          "protected_editorial": 0.03,
+          "removable_candidate": 0.04,
+          "editorial_content": 0.92
+        }
+      },
+      "sentence-2360-broad-role": {
+        "type": "choice",
+        "choice": "editorial_content",
+        "confidence": 0.91,
+        "probabilities": {
+          "mixed_boundary": 0.01,
+          "protected_editorial": 0.03,
+          "removable_candidate": 0.02,
+          "editorial_content": 0.93
+        }
+      },
+      "sentence-2361-broad-role": {
+        "type": "choice",
+        "choice": "editorial_content",
+        "confidence": 0.96,
+        "probabilities": {
+          "mixed_boundary": 0.0,
+          "protected_editorial": 0.02,
+          "removable_candidate": 0.01,
+          "editorial_content": 0.97
+        }
+      },
+      "sentence-2362-broad-role": {
+        "type": "choice",
+        "choice": "editorial_content",
+        "confidence": 0.95,
+        "probabilities": {
+          "mixed_boundary": 0.01,
+          "protected_editorial": 0.02,
+          "removable_candidate": 0.01,
+          "editorial_content": 0.96
+        }
+      },
+      "sentence-2363-broad-role": {
+        "type": "choice",
+        "choice": "editorial_content",
+        "confidence": 0.96,
+        "probabilities": {
+          "editorial_content": 0.97,
+          "removable_candidate": 0.01,
+          "mixed_boundary": 0.0,
+          "protected_editorial": 0.02
+        }
+      },
+      "sentence-2364-broad-role": {
+        "type": "choice",
+        "choice": "editorial_content",
+        "confidence": 0.96,
+        "probabilities": {
+          "mixed_boundary": 0.01,
+          "protected_editorial": 0.02,
+          "removable_candidate": 0.01,
+          "editorial_content": 0.96
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 5520,
+      "output_tokens": 771
+    }
+  }
+}

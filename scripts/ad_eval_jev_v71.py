@@ -74,8 +74,8 @@ class Block:
         return f"{self.slug}-s{rows[self.start_index].id:04d}-e{rows[self.end_index - 1].id:04d}"
 
 
-def load_broad_report(workdir: Path) -> dict[str, Any]:
-    path = workdir / SOURCE_NAME / "report.json"
+def load_broad_report(source: Path) -> dict[str, Any]:
+    path = source / "report.json"
     if not path.exists():
         raise ValueError(f"missing completed V7 report: {path}")
     report = json.loads(path.read_text(encoding="utf-8"))
@@ -276,6 +276,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workdir", type=Path, default=DEFAULT_WORKDIR)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--source", type=Path, help="Directory containing the matching V7 broad-pass report. Defaults to jev-typed-v7.")
+    parser.add_argument("--show", action="append", dest="shows", metavar="SLUG", help="Reclassify this show; repeat for more than one. Defaults to the pilot set.")
+    parser.add_argument("--allow-provisional-typed-goldens", action="store_true", help="Use category-mapped approved goldens when a human typed audit does not exist; never use this result for preset promotion.")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--spend-cap-usd", type=float, default=0.25)
     return parser.parse_args()
@@ -285,16 +288,23 @@ def main() -> None:
     args = parse_args()
     workdir = args.workdir.resolve()
     output = (args.output or workdir / OUTPUT_NAME).resolve()
+    source_dir = (args.source or workdir / SOURCE_NAME).resolve()
+    slugs = tuple(args.shows or PILOT_SLUGS)
+    if len(set(slugs)) != len(slugs):
+        raise SystemExit("--show may not be repeated for the same slug")
     try:
-        source = load_broad_report(workdir)
-        episodes = {slug: load_episode(workdir, slug) for slug in PILOT_SLUGS}
+        source = load_broad_report(source_dir)
+        episodes = {slug: load_episode(workdir, slug, args.allow_provisional_typed_goldens) for slug in slugs}
     except (OSError, ValueError, json.JSONDecodeError) as error:
         raise SystemExit(str(error)) from error
     observations = {
         slug: sorted((row for row in source["observations"] if row["slug"] == slug), key=lambda row: row["sentence"])
-        for slug in PILOT_SLUGS
+        for slug in slugs
     }
-    initial_blocks = [block for slug in PILOT_SLUGS for block in candidate_blocks(slug, observations[slug])]
+    if any(not observations[slug] for slug in slugs):
+        missing = ", ".join(slug for slug in slugs if not observations[slug])
+        raise SystemExit(f"matching V7 observations are missing for: {missing}")
+    initial_blocks = [block for slug in slugs for block in candidate_blocks(slug, observations[slug])]
     initial_payloads = [(block, tier_payload(episodes[block.slug], block)) for block in initial_blocks]
     if args.dry_run:
         projected = sum(estimated_cost(payload) for _, payload in initial_payloads)
@@ -310,7 +320,7 @@ def main() -> None:
     save_json(output / "price-card.json", PRICE_CARD)
     spent = 0.0
     latencies: list[float] = []
-    resolved: dict[str, list[tuple[Block, dict[str, Any]]]] = {slug: [] for slug in PILOT_SLUGS}
+    resolved: dict[str, list[tuple[Block, dict[str, Any]]]] = {slug: [] for slug in slugs}
     queue = list(initial_blocks)
     while queue:
         block = queue.pop(0)
@@ -332,7 +342,7 @@ def main() -> None:
 
     episode_reports: list[dict[str, Any]] = []
     all_decisions: list[dict[str, Any]] = []
-    for slug in PILOT_SLUGS:
+    for slug in slugs:
         spans: list[dict[str, Any]] = []
         rows = episodes[slug]["rows"]
         for block, tier_decision in sorted(resolved[slug], key=lambda item: item[0].start_index):
@@ -372,6 +382,7 @@ def main() -> None:
         episode_reports.append({
             "slug": slug,
             "transcriptSha256": episodes[slug]["transcriptSha256"],
+            "reference": episodes[slug]["reference"],
             "initialCandidateBlockCount": len(candidate_blocks(slug, observations[slug])),
             "typedSpans": spans,
             "metricsByPreset": metrics_by_preset,
@@ -383,13 +394,13 @@ def main() -> None:
         "status": "evaluation-only",
         "model": MODEL,
         "completedAt": datetime.now(timezone.utc).isoformat(),
-        "sourceBroadReport": str((workdir / SOURCE_NAME / "report.json").resolve()),
+        "sourceBroadReport": str((source_dir / "report.json").resolve()),
         "sourceBroadCostUsd": source.get("totalCostUsd"),
         "incrementalCostUsd": round(spent, 8),
         "episodes": episode_reports,
         "blockDecisions": all_decisions,
         "latencyMs": {"median": round(statistics.median(latencies), 1), "max": round(max(latencies), 1)} if latencies else {},
-        "policy": {"previewsAndRecapsAlwaysKept": True, "classificationUnit": "recursive candidate block"},
+        "policy": {"previewsAndRecapsAlwaysKept": True, "classificationUnit": "recursive candidate block", "provisionalTypedGoldensAllowed": args.allow_provisional_typed_goldens},
     }
     save_json(output / "report.json", report)
     save_json(output / "manifest.json", {

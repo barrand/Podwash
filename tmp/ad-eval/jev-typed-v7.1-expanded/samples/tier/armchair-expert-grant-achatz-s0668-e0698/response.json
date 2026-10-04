@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "armchair-expert-grant-achatz-s0668-e0698-tier": {
+      "type": "choice",
+      "choice": "mixed_split",
+      "confidence": 0.78,
+      "probabilities": {
+        "skip_obvious": 0.12,
+        "skip_most_only": 0.01,
+        "skip_more_only": 0.01,
+        "keep_protected": 0.04,
+        "mixed_split": 0.82
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 3942,
+    "output_tokens": 83
+  }
+}

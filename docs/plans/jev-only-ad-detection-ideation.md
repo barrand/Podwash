@@ -292,11 +292,13 @@ the quoted/archival-commercial exception, and split the current broad promo role
 into typed promotional outputs. This is a new experiment; frozen v6 and its raw
 artifacts remain unchanged.
 
-**Preset decision (2026-10-02):** listener-facing settings are Skip obvious
-interruptions, Skip more interruptions, and Skip most interruptions. Previews
-and recaps are editorial invariants and are never removable, including under
-Skip most interruptions. The detailed taxonomy, API, cache, and iOS plan lives in
-[`typed-removal-presets.md`](typed-removal-presets.md).
+**Preset decision (2026-10-04):** listener-facing settings are Skip obvious
+interruptions, Skip more interruptions, and Skip most interruptions. **Skip
+obvious interruptions is the default.** Skip more and Skip most are labelled
+**Experimental** with the plain-language warning “May remove material you would
+prefer to hear.” Previews and recaps are editorial invariants and are never
+removable, including under Skip most interruptions. The detailed taxonomy, API,
+cache, and iOS plan lives in [`typed-removal-presets.md`](typed-removal-presets.md).
 
 ## Decision log
 
@@ -316,3 +318,4 @@ Skip most interruptions. The detailed taxonomy, API, cache, and iOS plan lives i
 | 2026-10-02 | Implement frozen v6 full scans over all 12 Jev-untested development episodes; each sentence and gap is targeted exactly once. |
 | 2026-10-02 | Golden audit found missing Duracell and Starbucks midrolls in Version History and an overlong membership-CTA boundary; corrected both while keeping frozen v6 outputs unchanged. |
 | 2026-10-02 | Draft typed removal policy: classify paid ads, cross-promos, and membership appeals separately; keep ordinary sign-offs, bare credits, and editorially framed archival commercials. |
+| 2026-10-04 | V8 two-minute scout covered all 16 paid spans and 100% of paid seconds, but the frozen 0.20 threshold failed on a protected Dr. Death feed-drop promo. Keep V8 rejected; validate a separately frozen V8.1 at 0.85 with explicit feed-drop protection, first on locked regressions and then on a fresh human-labeled holdout. |

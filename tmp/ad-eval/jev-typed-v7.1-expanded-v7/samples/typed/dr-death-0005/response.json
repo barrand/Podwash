@@ -1,0 +1,45 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "sentence-79-publisher_promo": {
+      "type": "noul",
+      "noul": 0.34
+    },
+    "sentence-79-network_id": {
+      "type": "noul",
+      "noul": 0.54
+    },
+    "sentence-79-paid_ad": {
+      "type": "noul",
+      "noul": 0.41
+    },
+    "sentence-79-underwriting": {
+      "type": "noul",
+      "noul": 0.16
+    },
+    "sentence-79-membership_appeal": {
+      "type": "noul",
+      "noul": 0.23
+    },
+    "sentence-79-engagement_request": {
+      "type": "noul",
+      "noul": 0.22
+    },
+    "sentence-79-production_credit": {
+      "type": "noul",
+      "noul": 0.16
+    },
+    "sentence-79-signoff": {
+      "type": "noul",
+      "noul": 0.16
+    },
+    "sentence-79-cross_show_promo": {
+      "type": "noul",
+      "noul": 0.26
+    }
+  },
+  "usage": {
+    "input_tokens": 2646,
+    "output_tokens": 210
+  }
+}

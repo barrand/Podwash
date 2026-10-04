@@ -1,0 +1,26 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "this-american-life-s0128-e0130-primary-reason": {
+      "type": "choice",
+      "choice": "paid_ad",
+      "confidence": 0.91,
+      "probabilities": {
+        "underwriting": 0.05,
+        "paid_ad": 0.95
+      }
+    },
+    "this-american-life-s0128-e0130-also-paid_ad": {
+      "type": "noul",
+      "noul": 0.91
+    },
+    "this-american-life-s0128-e0130-also-underwriting": {
+      "type": "noul",
+      "noul": 0.44
+    }
+  },
+  "usage": {
+    "input_tokens": 1986,
+    "output_tokens": 125
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "requestSha256": "bd97b00b7834669490f3461a6424d55e3c14e7f0a9984b15c0fa6d3a3e71e91b",
+  "latencyMs": 389.8,
+  "usage": {
+    "inputTokens": 2195,
+    "outputTokens": 82,
+    "totalCostUsd": 9.219e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "this-american-life-s0474-e0476-tier": {
+        "type": "choice",
+        "choice": "skip_obvious",
+        "confidence": 0.43,
+        "probabilities": {
+          "mixed_split": 0.21,
+          "skip_most_only": 0.03,
+          "keep_protected": 0.04,
+          "skip_more_only": 0.18,
+          "skip_obvious": 0.54
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 2195,
+      "output_tokens": 82
+    }
+  }
+}

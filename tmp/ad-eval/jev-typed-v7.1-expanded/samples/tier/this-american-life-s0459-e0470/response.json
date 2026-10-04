@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "this-american-life-s0459-e0470-tier": {
+      "type": "choice",
+      "choice": "mixed_split",
+      "confidence": 0.9,
+      "probabilities": {
+        "skip_more_only": 0.0,
+        "mixed_split": 0.93,
+        "keep_protected": 0.03,
+        "skip_obvious": 0.04,
+        "skip_most_only": 0.0
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 2819,
+    "output_tokens": 80
+  }
+}

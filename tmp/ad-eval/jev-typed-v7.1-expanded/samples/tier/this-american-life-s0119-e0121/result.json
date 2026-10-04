@@ -1,0 +1,30 @@
+{
+  "requestSha256": "9780e3a11c076601f703541266135661611d9cc440980c3a6ab8a23a13c76c35",
+  "latencyMs": 202.8,
+  "usage": {
+    "inputTokens": 2199,
+    "outputTokens": 82,
+    "totalCostUsd": 9.236e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "this-american-life-s0119-e0121-tier": {
+        "type": "choice",
+        "choice": "skip_obvious",
+        "confidence": 0.81,
+        "probabilities": {
+          "keep_protected": 0.07,
+          "skip_obvious": 0.85,
+          "skip_most_only": 0.01,
+          "mixed_split": 0.04,
+          "skip_more_only": 0.03
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 2199,
+      "output_tokens": 82
+    }
+  }
+}

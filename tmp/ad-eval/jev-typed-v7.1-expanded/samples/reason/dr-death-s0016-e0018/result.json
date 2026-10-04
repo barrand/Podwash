@@ -1,0 +1,40 @@
+{
+  "requestSha256": "760038c5238cfd8469bf93b4323ce50bb320cf5d642b1eeb418a5f9cd989850f",
+  "latencyMs": 269.0,
+  "usage": {
+    "inputTokens": 2151,
+    "outputTokens": 172,
+    "totalCostUsd": 9.034e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "dr-death-s0016-e0018-primary-reason": {
+        "type": "choice",
+        "choice": "membership_appeal",
+        "confidence": 0.82,
+        "probabilities": {
+          "publisher_promo": 0.08,
+          "membership_appeal": 0.88,
+          "cross_show_promo": 0.04
+        }
+      },
+      "dr-death-s0016-e0018-also-cross_show_promo": {
+        "type": "noul",
+        "noul": 0.44
+      },
+      "dr-death-s0016-e0018-also-publisher_promo": {
+        "type": "noul",
+        "noul": 0.93
+      },
+      "dr-death-s0016-e0018-also-membership_appeal": {
+        "type": "noul",
+        "noul": 0.87
+      }
+    },
+    "usage": {
+      "input_tokens": 2151,
+      "output_tokens": 172
+    }
+  }
+}

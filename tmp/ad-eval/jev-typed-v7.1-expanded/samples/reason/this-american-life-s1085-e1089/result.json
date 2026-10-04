@@ -1,0 +1,45 @@
+{
+  "requestSha256": "5f183252a41750e0bc4f01a2d3042a44c47fb27092f840d400cbc66df2c658ed",
+  "latencyMs": 361.8,
+  "usage": {
+    "inputTokens": 2469,
+    "outputTokens": 209,
+    "totalCostUsd": 0.0001037
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "this-american-life-s1085-e1089-primary-reason": {
+        "type": "choice",
+        "choice": "signoff",
+        "confidence": 0.91,
+        "probabilities": {
+          "network_id": 0.0,
+          "production_credit": 0.07,
+          "engagement_request": 0.0,
+          "signoff": 0.93
+        }
+      },
+      "this-american-life-s1085-e1089-also-engagement_request": {
+        "type": "noul",
+        "noul": 0.16
+      },
+      "this-american-life-s1085-e1089-also-production_credit": {
+        "type": "noul",
+        "noul": 0.77
+      },
+      "this-american-life-s1085-e1089-also-network_id": {
+        "type": "noul",
+        "noul": 0.56
+      },
+      "this-american-life-s1085-e1089-also-signoff": {
+        "type": "noul",
+        "noul": 0.9
+      }
+    },
+    "usage": {
+      "input_tokens": 2469,
+      "output_tokens": 209
+    }
+  }
+}

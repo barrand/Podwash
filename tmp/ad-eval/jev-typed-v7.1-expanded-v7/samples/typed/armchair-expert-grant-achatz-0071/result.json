@@ -1,0 +1,54 @@
+{
+  "requestSha256": "2d90f80a55292193c9de00cf954c449a8f699bb78df95af15111844d9d921e62",
+  "latencyMs": 174.7,
+  "usage": {
+    "inputTokens": 2591,
+    "outputTokens": 228,
+    "totalCostUsd": 0.00010882
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "sentence-2389-paid_ad": {
+        "type": "noul",
+        "noul": 0.08
+      },
+      "sentence-2389-underwriting": {
+        "type": "noul",
+        "noul": 0.1
+      },
+      "sentence-2389-cross_show_promo": {
+        "type": "noul",
+        "noul": 0.05
+      },
+      "sentence-2389-publisher_promo": {
+        "type": "noul",
+        "noul": 0.08
+      },
+      "sentence-2389-membership_appeal": {
+        "type": "noul",
+        "noul": 0.08
+      },
+      "sentence-2389-engagement_request": {
+        "type": "noul",
+        "noul": 0.07
+      },
+      "sentence-2389-production_credit": {
+        "type": "noul",
+        "noul": 0.1
+      },
+      "sentence-2389-network_id": {
+        "type": "noul",
+        "noul": 0.18
+      },
+      "sentence-2389-signoff": {
+        "type": "noul",
+        "noul": 0.36
+      }
+    },
+    "usage": {
+      "input_tokens": 2591,
+      "output_tokens": 228
+    }
+  }
+}

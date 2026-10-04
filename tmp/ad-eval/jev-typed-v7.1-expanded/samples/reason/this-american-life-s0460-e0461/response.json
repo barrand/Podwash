@@ -1,0 +1,26 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "this-american-life-s0460-e0461-primary-reason": {
+      "type": "choice",
+      "choice": "underwriting",
+      "confidence": 0.53,
+      "probabilities": {
+        "paid_ad": 0.23,
+        "underwriting": 0.77
+      }
+    },
+    "this-american-life-s0460-e0461-also-paid_ad": {
+      "type": "noul",
+      "noul": 0.94
+    },
+    "this-american-life-s0460-e0461-also-underwriting": {
+      "type": "noul",
+      "noul": 0.89
+    }
+  },
+  "usage": {
+    "input_tokens": 2031,
+    "output_tokens": 127
+  }
+}

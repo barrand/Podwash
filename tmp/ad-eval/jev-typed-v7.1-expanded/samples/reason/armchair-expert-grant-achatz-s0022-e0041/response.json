@@ -1,0 +1,26 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "armchair-expert-grant-achatz-s0022-e0041-primary-reason": {
+      "type": "choice",
+      "choice": "paid_ad",
+      "confidence": 0.6,
+      "probabilities": {
+        "paid_ad": 0.8,
+        "underwriting": 0.2
+      }
+    },
+    "armchair-expert-grant-achatz-s0022-e0041-also-paid_ad": {
+      "type": "noul",
+      "noul": 0.95
+    },
+    "armchair-expert-grant-achatz-s0022-e0041-also-underwriting": {
+      "type": "noul",
+      "noul": 0.82
+    }
+  },
+  "usage": {
+    "input_tokens": 2816,
+    "output_tokens": 134
+  }
+}

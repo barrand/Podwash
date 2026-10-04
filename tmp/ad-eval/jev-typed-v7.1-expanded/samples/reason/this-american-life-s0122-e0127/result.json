@@ -1,0 +1,35 @@
+{
+  "requestSha256": "87a4a5eae5c3188c22fd93d794944368557a70f2996d599a819684cb25c6aa5f",
+  "latencyMs": 231.0,
+  "usage": {
+    "inputTokens": 2243,
+    "outputTokens": 125,
+    "totalCostUsd": 9.421e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "this-american-life-s0122-e0127-also-paid_ad": {
+        "type": "noul",
+        "noul": 0.95
+      },
+      "this-american-life-s0122-e0127-also-underwriting": {
+        "type": "noul",
+        "noul": 0.81
+      },
+      "this-american-life-s0122-e0127-primary-reason": {
+        "type": "choice",
+        "choice": "paid_ad",
+        "confidence": 0.43,
+        "probabilities": {
+          "paid_ad": 0.71,
+          "underwriting": 0.29
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 2243,
+      "output_tokens": 125
+    }
+  }
+}

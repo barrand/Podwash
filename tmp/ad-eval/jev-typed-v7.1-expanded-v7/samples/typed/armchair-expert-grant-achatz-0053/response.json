@@ -1,0 +1,117 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "sentence-1882-production_credit": {
+      "type": "noul",
+      "noul": 0.07
+    },
+    "sentence-1882-network_id": {
+      "type": "noul",
+      "noul": 0.11
+    },
+    "sentence-1883-underwriting": {
+      "type": "noul",
+      "noul": 0.13
+    },
+    "sentence-1881-paid_ad": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "sentence-1881-engagement_request": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "sentence-1882-paid_ad": {
+      "type": "noul",
+      "noul": 0.07
+    },
+    "sentence-1882-underwriting": {
+      "type": "noul",
+      "noul": 0.07
+    },
+    "sentence-1882-engagement_request": {
+      "type": "noul",
+      "noul": 0.06
+    },
+    "sentence-1882-signoff": {
+      "type": "noul",
+      "noul": 0.13
+    },
+    "sentence-1883-engagement_request": {
+      "type": "noul",
+      "noul": 0.67
+    },
+    "sentence-1883-network_id": {
+      "type": "noul",
+      "noul": 0.31
+    },
+    "sentence-1881-publisher_promo": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "sentence-1881-production_credit": {
+      "type": "noul",
+      "noul": 0.1
+    },
+    "sentence-1882-membership_appeal": {
+      "type": "noul",
+      "noul": 0.07
+    },
+    "sentence-1883-cross_show_promo": {
+      "type": "noul",
+      "noul": 0.66
+    },
+    "sentence-1883-publisher_promo": {
+      "type": "noul",
+      "noul": 0.64
+    },
+    "sentence-1883-membership_appeal": {
+      "type": "noul",
+      "noul": 0.17
+    },
+    "sentence-1881-underwriting": {
+      "type": "noul",
+      "noul": 0.07
+    },
+    "sentence-1882-cross_show_promo": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "sentence-1883-paid_ad": {
+      "type": "noul",
+      "noul": 0.3
+    },
+    "sentence-1883-production_credit": {
+      "type": "noul",
+      "noul": 0.14
+    },
+    "sentence-1883-signoff": {
+      "type": "noul",
+      "noul": 0.14
+    },
+    "sentence-1881-cross_show_promo": {
+      "type": "noul",
+      "noul": 0.07
+    },
+    "sentence-1881-membership_appeal": {
+      "type": "noul",
+      "noul": 0.07
+    },
+    "sentence-1881-network_id": {
+      "type": "noul",
+      "noul": 0.11
+    },
+    "sentence-1881-signoff": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "sentence-1882-publisher_promo": {
+      "type": "noul",
+      "noul": 0.08
+    }
+  },
+  "usage": {
+    "input_tokens": 4524,
+    "output_tokens": 676
+  }
+}

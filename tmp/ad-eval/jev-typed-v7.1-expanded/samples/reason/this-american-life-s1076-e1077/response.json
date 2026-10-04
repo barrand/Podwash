@@ -1,0 +1,36 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "this-american-life-s1076-e1077-primary-reason": {
+      "type": "choice",
+      "choice": "production_credit",
+      "confidence": 0.82,
+      "probabilities": {
+        "network_id": 0.0,
+        "engagement_request": 0.0,
+        "signoff": 0.13,
+        "production_credit": 0.87
+      }
+    },
+    "this-american-life-s1076-e1077-also-engagement_request": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "this-american-life-s1076-e1077-also-production_credit": {
+      "type": "noul",
+      "noul": 0.76
+    },
+    "this-american-life-s1076-e1077-also-network_id": {
+      "type": "noul",
+      "noul": 0.26
+    },
+    "this-american-life-s1076-e1077-also-signoff": {
+      "type": "noul",
+      "noul": 0.59
+    }
+  },
+  "usage": {
+    "input_tokens": 2378,
+    "output_tokens": 209
+  }
+}

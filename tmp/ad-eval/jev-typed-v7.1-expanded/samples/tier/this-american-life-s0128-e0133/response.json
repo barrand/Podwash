@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "this-american-life-s0128-e0133-tier": {
+      "type": "choice",
+      "choice": "mixed_split",
+      "confidence": 0.57,
+      "probabilities": {
+        "mixed_split": 0.66,
+        "skip_most_only": 0.01,
+        "skip_more_only": 0.02,
+        "skip_obvious": 0.3,
+        "keep_protected": 0.01
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 2266,
+    "output_tokens": 80
+  }
+}

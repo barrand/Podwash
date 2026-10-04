@@ -1,0 +1,90 @@
+{
+  "requestSha256": "4daee0d3e982f209c148fcc7f20059e470d0288ee9ee3c93cc24fbc058b55a26",
+  "latencyMs": 207.1,
+  "usage": {
+    "inputTokens": 3830,
+    "outputTokens": 452,
+    "totalCostUsd": 0.00016086
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "sentence-1772-paid_ad": {
+        "type": "noul",
+        "noul": 0.11
+      },
+      "sentence-1772-underwriting": {
+        "type": "noul",
+        "noul": 0.09
+      },
+      "sentence-1772-cross_show_promo": {
+        "type": "noul",
+        "noul": 0.06
+      },
+      "sentence-1772-publisher_promo": {
+        "type": "noul",
+        "noul": 0.1
+      },
+      "sentence-1772-membership_appeal": {
+        "type": "noul",
+        "noul": 0.09
+      },
+      "sentence-1772-engagement_request": {
+        "type": "noul",
+        "noul": 0.09
+      },
+      "sentence-1772-production_credit": {
+        "type": "noul",
+        "noul": 0.14
+      },
+      "sentence-1772-network_id": {
+        "type": "noul",
+        "noul": 0.16
+      },
+      "sentence-1772-signoff": {
+        "type": "noul",
+        "noul": 0.12
+      },
+      "sentence-1777-paid_ad": {
+        "type": "noul",
+        "noul": 0.17
+      },
+      "sentence-1777-underwriting": {
+        "type": "noul",
+        "noul": 0.14
+      },
+      "sentence-1777-cross_show_promo": {
+        "type": "noul",
+        "noul": 0.07
+      },
+      "sentence-1777-publisher_promo": {
+        "type": "noul",
+        "noul": 0.19
+      },
+      "sentence-1777-membership_appeal": {
+        "type": "noul",
+        "noul": 0.13
+      },
+      "sentence-1777-engagement_request": {
+        "type": "noul",
+        "noul": 0.2
+      },
+      "sentence-1777-production_credit": {
+        "type": "noul",
+        "noul": 0.3
+      },
+      "sentence-1777-network_id": {
+        "type": "noul",
+        "noul": 0.24
+      },
+      "sentence-1777-signoff": {
+        "type": "noul",
+        "noul": 0.12
+      }
+    },
+    "usage": {
+      "input_tokens": 3830,
+      "output_tokens": 452
+    }
+  }
+}

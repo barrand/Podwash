@@ -1,0 +1,22 @@
+{
+  "requestSha256": "92fb81c59494badd524846445db496b126840e0456d582c0e0ae8c64ae734e9b",
+  "latencyMs": 187.1,
+  "usage": {
+    "inputTokens": 2674,
+    "outputTokens": 24,
+    "totalCostUsd": 0.00011231
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "window-paid-ad-presence": {
+        "type": "noul",
+        "noul": 0.77
+      }
+    },
+    "usage": {
+      "input_tokens": 2674,
+      "output_tokens": 24
+    }
+  }
+}

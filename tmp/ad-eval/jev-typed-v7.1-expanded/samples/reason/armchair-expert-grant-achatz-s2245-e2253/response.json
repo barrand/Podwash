@@ -1,0 +1,31 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "armchair-expert-grant-achatz-s2245-e2253-primary-reason": {
+      "type": "choice",
+      "choice": "publisher_promo",
+      "confidence": 0.26,
+      "probabilities": {
+        "cross_show_promo": 0.47,
+        "membership_appeal": 0.02,
+        "publisher_promo": 0.51
+      }
+    },
+    "armchair-expert-grant-achatz-s2245-e2253-also-cross_show_promo": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "armchair-expert-grant-achatz-s2245-e2253-also-publisher_promo": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "armchair-expert-grant-achatz-s2245-e2253-also-membership_appeal": {
+      "type": "noul",
+      "noul": 0.03
+    }
+  },
+  "usage": {
+    "input_tokens": 2382,
+    "output_tokens": 191
+  }
+}

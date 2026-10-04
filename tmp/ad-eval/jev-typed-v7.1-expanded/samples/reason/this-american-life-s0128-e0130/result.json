@@ -1,0 +1,35 @@
+{
+  "requestSha256": "95eb518f2a6473adf3f5475c57671152019b75f5cd776293294f85981526ac4c",
+  "latencyMs": 215.9,
+  "usage": {
+    "inputTokens": 1986,
+    "outputTokens": 125,
+    "totalCostUsd": 8.341e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "this-american-life-s0128-e0130-primary-reason": {
+        "type": "choice",
+        "choice": "paid_ad",
+        "confidence": 0.91,
+        "probabilities": {
+          "underwriting": 0.05,
+          "paid_ad": 0.95
+        }
+      },
+      "this-american-life-s0128-e0130-also-paid_ad": {
+        "type": "noul",
+        "noul": 0.91
+      },
+      "this-american-life-s0128-e0130-also-underwriting": {
+        "type": "noul",
+        "noul": 0.44
+      }
+    },
+    "usage": {
+      "input_tokens": 1986,
+      "output_tokens": 125
+    }
+  }
+}

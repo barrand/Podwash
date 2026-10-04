@@ -1,0 +1,141 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "sentence-1933-broad-role": {
+      "type": "choice",
+      "choice": "editorial_content",
+      "confidence": 0.86,
+      "probabilities": {
+        "mixed_boundary": 0.01,
+        "removable_candidate": 0.07,
+        "protected_editorial": 0.02,
+        "editorial_content": 0.9
+      }
+    },
+    "sentence-1934-broad-role": {
+      "type": "choice",
+      "choice": "editorial_content",
+      "confidence": 0.96,
+      "probabilities": {
+        "mixed_boundary": 0.01,
+        "removable_candidate": 0.01,
+        "protected_editorial": 0.02,
+        "editorial_content": 0.96
+      }
+    },
+    "sentence-1935-broad-role": {
+      "type": "choice",
+      "choice": "editorial_content",
+      "confidence": 0.97,
+      "probabilities": {
+        "mixed_boundary": 0.0,
+        "removable_candidate": 0.01,
+        "protected_editorial": 0.02,
+        "editorial_content": 0.97
+      }
+    },
+    "sentence-1936-broad-role": {
+      "type": "choice",
+      "choice": "editorial_content",
+      "confidence": 0.97,
+      "probabilities": {
+        "mixed_boundary": 0.0,
+        "removable_candidate": 0.0,
+        "protected_editorial": 0.02,
+        "editorial_content": 0.98
+      }
+    },
+    "sentence-1937-broad-role": {
+      "type": "choice",
+      "choice": "editorial_content",
+      "confidence": 0.96,
+      "probabilities": {
+        "mixed_boundary": 0.0,
+        "editorial_content": 0.97,
+        "protected_editorial": 0.02,
+        "removable_candidate": 0.01
+      }
+    },
+    "sentence-1938-broad-role": {
+      "type": "choice",
+      "choice": "editorial_content",
+      "confidence": 0.97,
+      "probabilities": {
+        "mixed_boundary": 0.0,
+        "removable_candidate": 0.01,
+        "protected_editorial": 0.01,
+        "editorial_content": 0.98
+      }
+    },
+    "sentence-1939-broad-role": {
+      "type": "choice",
+      "choice": "editorial_content",
+      "confidence": 0.97,
+      "probabilities": {
+        "mixed_boundary": 0.0,
+        "removable_candidate": 0.0,
+        "protected_editorial": 0.02,
+        "editorial_content": 0.98
+      }
+    },
+    "sentence-1940-broad-role": {
+      "type": "choice",
+      "choice": "editorial_content",
+      "confidence": 0.97,
+      "probabilities": {
+        "mixed_boundary": 0.0,
+        "removable_candidate": 0.0,
+        "protected_editorial": 0.02,
+        "editorial_content": 0.98
+      }
+    },
+    "sentence-1941-broad-role": {
+      "type": "choice",
+      "choice": "editorial_content",
+      "confidence": 0.96,
+      "probabilities": {
+        "mixed_boundary": 0.0,
+        "editorial_content": 0.97,
+        "protected_editorial": 0.02,
+        "removable_candidate": 0.01
+      }
+    },
+    "sentence-1942-broad-role": {
+      "type": "choice",
+      "choice": "editorial_content",
+      "confidence": 0.95,
+      "probabilities": {
+        "mixed_boundary": 0.01,
+        "editorial_content": 0.95,
+        "protected_editorial": 0.03,
+        "removable_candidate": 0.01
+      }
+    },
+    "sentence-1943-broad-role": {
+      "type": "choice",
+      "choice": "editorial_content",
+      "confidence": 0.96,
+      "probabilities": {
+        "mixed_boundary": 0.0,
+        "removable_candidate": 0.01,
+        "protected_editorial": 0.02,
+        "editorial_content": 0.97
+      }
+    },
+    "sentence-1944-broad-role": {
+      "type": "choice",
+      "choice": "editorial_content",
+      "confidence": 0.96,
+      "probabilities": {
+        "mixed_boundary": 0.0,
+        "removable_candidate": 0.01,
+        "protected_editorial": 0.02,
+        "editorial_content": 0.97
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 5486,
+    "output_tokens": 771
+  }
+}

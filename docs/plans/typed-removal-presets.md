@@ -19,9 +19,10 @@ Three presets are the complete first-release UI:
 | **Skip more interruptions** | Skip obvious interruptions plus other-show promos, publisher/show promotions, and membership or support appeals. |
 | **Skip most interruptions** | Skip more interruptions plus engagement requests, production credits, network IDs, and routine sign-offs. |
 
-The listener-facing recommendation is **Skip more interruptions**. Skip obvious
-interruptions is the conservative choice; Skip most interruptions is an
-explicit opt-in.
+The default is **Skip obvious interruptions**. It removes clear paid ads while
+minimizing the chance of removing wanted show material. **Skip more
+interruptions** and **Skip most interruptions** are explicitly marked
+**Experimental** until fresh-holdout evaluation validates their safety.
 
 The following are editorial invariants and must never be returned as removable
 spans in any preset:
@@ -72,23 +73,24 @@ Settings
 ┌──────────────────────────────────────────────────────────┐
 │ Automatic skipping                                        │
 │                                                          │
-│ Skip interruptions                 Skip more interruptions › │
-│ Ads, other-show promos, and support messages              │
+│ Skip interruptions              Skip obvious interruptions › │
+│ Clear paid ads and sponsor messages                        │
 │                                                          │
 │ Preview and recap segments are always kept.               │
 └──────────────────────────────────────────────────────────┘
 
 Choose what PodWash skips
 ┌──────────────────────────────────────────────────────────┐
-│ ○ Skip obvious interruptions                              │
+│ ● Skip obvious interruptions                 Default       │
 │   Paid ads and sponsor messages                           │
 │                                                          │
-│ ● Skip more interruptions                 Recommended     │
-│   Also other-show promos, publisher plugs,                │
-│   and membership/support appeals                           │
+│ ○ Skip more interruptions                 Experimental     │
+│   Also promos and support messages. May remove material   │
+│   you would prefer to hear.                               │
 │                                                          │
-│ ○ Skip most interruptions                                 │
-│   Also follow requests, credits, network IDs, and sign-offs │
+│ ○ Skip most interruptions                  Experimental    │
+│   Also follow requests, credits, network IDs, and sign-offs.│
+│   May remove material you would prefer to hear.            │
 │                                                          │
 │ Previews, recaps, and episode content are always kept.    │
 └──────────────────────────────────────────────────────────┘

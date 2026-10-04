@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "this-american-life-s1066-e1066-tier": {
+      "type": "choice",
+      "choice": "skip_most_only",
+      "confidence": 0.45,
+      "probabilities": {
+        "skip_obvious": 0.15,
+        "skip_most_only": 0.5700000000000001,
+        "skip_more_only": 0.01,
+        "mixed_split": 0.03,
+        "keep_protected": 0.24
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 2129,
+    "output_tokens": 82
+  }
+}
