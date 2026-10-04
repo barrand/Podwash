@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "annotationPolicy": "ads-only-v1",
+  "status": "human-approved",
+  "showSlug": "stage2-dr-death",
+  "audioSha256": "",
+  "transcriptSha256": "d7716d9033889c0e7d776ad3d85758561900742f65e5ca06b9f774392f7eab0f",
+  "asr": {
+    "engine": "",
+    "engineVersion": "",
+    "model": "",
+    "modelRevision": "",
+    "wordCount": 825
+  },
+  "review": {
+    "reviewer": "Brian",
+    "reviewedAt": "2026-10-04T21:41:53.153787+00:00",
+    "reviewedThroughWord": 825,
+    "proposalSha256": "d7481c797aa83972a5a4849bf18f441cec8832ac0a0e03760555c50cc062b299",
+    "optionalModelNotesCount": 2
+  },
+  "spans": [
+    {
+      "id": "span-1",
+      "startWord": 0,
+      "endWord": 825,
+      "start": 0.18,
+      "end": 317.47,
+      "label": "network_promo",
+      "category": "network_promo",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "unknown",
+      "origin": "assistant-first-pass",
+      "advertiser": "My Mom’s Murder / Audible",
+      "note": "The entire short episode is a cross-show feed-drop: promo setup, sample clip, and subscription CTA. It contains no third-party paid ad."
+    }
+  ]
+}
