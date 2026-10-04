@@ -1,7 +1,7 @@
 # Jev V8 two-minute paid-ad scout
 
-**Status:** V8 completed and rejected at its frozen threshold; V8.1 validation
-protocol approved but not implemented
+**Status:** V8 completed and rejected at its frozen threshold; V8.1 Stage 0
+passed, and Stage 1 locked regression validation is next
 
 V8 tests one question: can Jev detect that a paid ad exists somewhere inside
 an overlapping two-minute transcript window? It does not localize ads, produce
@@ -53,6 +53,48 @@ before any V8.1 response is observed:
 
 V8.1 remains a presence scout only. It must not localize boundaries, produce
 playback spans, classify the broader presets, or change production behavior.
+
+## Stage 0: smallest boundary test
+
+Before scanning more full episodes, test the proposed V8.1 separation mechanism
+on the four saved V8 windows closest to the new 0.85 decision boundary:
+
+| Expected class | Window | Range | V8 probability |
+| --- | --- | ---: | ---: |
+| protected promo | `dr-death-w0001` | 0-120s | 0.80 |
+| protected promo | `dr-death-w0002` | 60-180s | 0.77 |
+| paid ad | `this-american-life-w0030` | 1740-1860s | 0.86 |
+| paid ad | `armchair-expert-grant-achatz-w0034` | 1980-2100s | 0.89 |
+
+Run exactly four new requests using the frozen V8.1 wording and threshold. Write
+them to `tmp/ad-eval/jev-chunk-scout-v8.1-boundary/`; do not reuse V8 responses
+because the classification policy changed. Cap the run at $0.005.
+
+The implementation dry run selected all four frozen windows, estimated the
+largest request at 2,501 conservative tokens, and projected a maximum cost of
+$0.000396. The focused runner and its secure PowerShell launcher are
+`scripts/ad_eval_jev_v81_boundary.py` and
+`scripts/run_ad_eval_jev_v81_boundary.ps1`.
+
+Stage 0 passes only if both protected-promo windows score below 0.85 and both
+paid-ad windows score at or above 0.85. This result proves only that the revised
+policy separates the known failure boundary without immediately losing the two
+weakest paid-ad signals. It does not establish episode-level recall or
+generalization. If it passes, proceed unchanged to Stage 1. If it fails, stop
+V8.1 and design a new experiment rather than tuning on these four windows.
+
+### Stage 0 result
+
+Stage 0 passed 4/4 cases on October 4, 2026. The protected Dr. Death promo
+windows moved from 0.80 to 0.35 and from 0.77 to 0.29. The two marginal paid-ad
+windows moved from 0.86 to 0.91 for This American Life and from 0.89 to 0.92 for
+Armchair Expert. The run cost $0.00046533; median latency was 196.1 ms and
+maximum latency was 253.5 ms.
+
+This supports the narrow separation hypothesis on the known boundary cases. It
+does not change the frozen V8 rejection or establish production readiness.
+Proceed to Stage 1 without changing the prompt, threshold, window geometry, or
+protected-promo policy.
 
 ## Stage 1: locked regression validation
 

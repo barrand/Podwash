@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "experiment": "two-minute-paid-ad-scout-v8.1-boundary",
+  "status": "passed",
+  "model": "jev-1.13.0",
+  "completedAt": "2026-10-04T18:57:06.622820+00:00",
+  "positiveThreshold": 0.85,
+  "totalCostUsd": 0.00046533,
+  "latencyMs": {
+    "median": 196.1,
+    "max": 253.5
+  },
+  "passed": true,
+  "correctCount": 4,
+  "caseCount": 4,
+  "protectedPromoWindowsNegative": true,
+  "paidAdWindowsPositive": true,
+  "windows": [
+    {
+      "id": "dr-death-w0001",
+      "slug": "dr-death",
+      "start": 0.0,
+      "end": 120.0,
+      "v8Probability": 0.8,
+      "v81Probability": 0.35,
+      "expectedPositive": false,
+      "positive": false,
+      "passed": true
+    },
+    {
+      "id": "dr-death-w0002",
+      "slug": "dr-death",
+      "start": 60.0,
+      "end": 180.0,
+      "v8Probability": 0.77,
+      "v81Probability": 0.29,
+      "expectedPositive": false,
+      "positive": false,
+      "passed": true
+    },
+    {
+      "id": "this-american-life-w0030",
+      "slug": "this-american-life",
+      "start": 1740.0,
+      "end": 1860.0,
+      "v8Probability": 0.86,
+      "v81Probability": 0.91,
+      "expectedPositive": true,
+      "positive": true,
+      "passed": true
+    },
+    {
+      "id": "armchair-expert-grant-achatz-w0034",
+      "slug": "armchair-expert-grant-achatz",
+      "start": 1980.0,
+      "end": 2100.0,
+      "v8Probability": 0.89,
+      "v81Probability": 0.92,
+      "expectedPositive": true,
+      "positive": true,
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "experiment": "two-minute-paid-ad-scout-v8.1-boundary",
+  "model": "jev-1.13.0",
+  "positiveThreshold": 0.85,
+  "transcriptSha256": {
+    "dr-death": "d9150942ae003c43847092e61adadcb6beeea420e454b891c77d6431a2104456",
+    "this-american-life": "17a3caff267db3a46fb89eb38066299fee1daeb0455b66d272e517aa705288ad",
+    "armchair-expert-grant-achatz": "946d30a4a4e825686e418f625fafdcd50326abb99c620ad6653f970060cda74b"
+  },
+  "requestHashes": [
+    "23ade2cc64efd3b4911afe7fb8d360773fbce92f8a2e19cd71d454fa470ee02b",
+    "fc29f1d0f720d8968f3d0d8c1f246581f659b32d694a35966401ccd311a83094",
+    "16c24084430eae44b1669565f5886471a64d3c3ffe36bcf516e6aa121e3812bc",
+    "ae65f0533c9ae23ab433da67031601e1f5d4f14fb9b9f71f453d4df04d46e5f5"
+  ],
+  "cases": [
+    "dr-death-w0001",
+    "dr-death-w0002",
+    "this-american-life-w0030",
+    "armchair-expert-grant-achatz-w0034"
+  ]
+}
