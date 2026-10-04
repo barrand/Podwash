@@ -1,8 +1,7 @@
 # Jev V8 two-minute paid-ad scout
 
-**Status:** V8 completed and rejected at its frozen threshold; V8.1 Stage 0
-passed, but Stage 1 is formally rejected pending a human golden-label
-adjudication
+**Status:** V8 completed and rejected at its frozen threshold; V8.1 Stage 0 and
+Stage 1 passed, and the fresh Stage 2 holdout is next
 
 V8 tests one question: can Jev detect that a paid ad exists somewhere inside
 an overlapping two-minute transcript window? It does not localize ads, produce
@@ -130,11 +129,11 @@ projected cost before any live request is allowed.
 
 ### Stage 1 result
 
-Stage 1 ran on October 4, 2026 and is formally rejected under its frozen gates.
-It hit all 30 approved paid-ad spans, covered 100% of the 1,136.74 approved
-paid-ad seconds, had zero positives in the AI News Strategy Daily no-ad control,
-and marked only 16.4% of all listening time positive. It failed exactly one
-gate: two of 11 promo-only windows were positive.
+Stage 1 ran on October 4, 2026. The initial report was formally rejected under
+its frozen gates: it hit all 30 approved paid-ad spans, covered 100% of the
+1,136.74 approved paid-ad seconds, had zero positives in the AI News Strategy
+Daily no-ad control, and marked only 16.4% of all listening time positive. It
+failed exactly one gate: two of 11 promo-only windows were positive.
 
 Those windows were `unexplainable-w0012` (0.89) and `unexplainable-w0013`
 (0.91). Both overlap the currently approved `network_promo` span from 740.34s
@@ -144,14 +143,17 @@ line should be separate paid advertising. V8.1 explicitly defines a distinct
 third-party sponsor or underwriting message as positive, so this is a label-policy
 mismatch in the golden—not evidence to tune the model, prompt, or threshold.
 
-The next action is a human adjudication of the exact Comcast sentence. Keep the
-V8.1 requests and responses frozen. If the reviewer confirms it is a paid
-sponsor/underwriting line, split it from the surrounding network promo into a
-separate `paid_ad` golden span at exact transcript boundaries, then rescore this
-same Stage 1 output without new requests. If the reviewer determines it is not
-paid under the product policy, V8.1 remains rejected and the next experiment
-must target sponsor-tagged network promos. Do not proceed to the fresh holdout
-or alter the V8.1 model policy before that decision is recorded.
+The sponsor sentence was human-adjudicated as paid advertising and split into a
+2.34-second `paid_ad` golden span (742.12-744.46s), retaining the surrounding
+material as `network_promo`. The original request and response records and
+initial rejected report remain unchanged. A separate no-network rescore against
+the corrected golden passed every gate: all 31 paid spans and 1,139.08 paid
+seconds were covered; all nine promo-only windows and the no-ad control were
+negative; and positive coverage remained 16.4%. The rescore is recorded in
+`tmp/ad-eval/jev-chunk-scout-v8.1/report-rescored-after-golden-adjudication.json`.
+
+Stage 1 is therefore passed. Proceed to the fresh Stage 2 holdout without
+altering the V8.1 model policy, prompt, threshold, or window geometry.
 
 Report paid-span coverage, paid seconds covered, positive coverage fraction,
 zero-ad positives, promo-only positives, maximum probability by negative class,

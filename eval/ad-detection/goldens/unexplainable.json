@@ -38,8 +38,38 @@
     {
       "id": "span-2",
       "startWord": 1815,
-      "endWord": 2015,
+      "endWord": 1821,
       "start": 740.34,
+      "end": 741.76,
+      "label": "network_promo",
+      "category": "network_promo",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "unknown",
+      "origin": "ai-proposal",
+      "advertiser": "Today, Explained",
+      "note": "Network promo call to subscribe after the break; ends before the Comcast sponsor acknowledgement."
+    },
+    {
+      "id": "span-3",
+      "startWord": 1821,
+      "endWord": 1828,
+      "start": 742.12,
+      "end": 744.46,
+      "label": "paid_dai",
+      "category": "paid_ad",
+      "delivery": "unknown",
+      "deliveryConfidence": "unknown",
+      "readStyle": "unknown",
+      "origin": "human-edited",
+      "advertiser": "Comcast Business",
+      "note": "Standalone sponsor/underwriting acknowledgement: ‘This series is presented by Comcast Business.’"
+    },
+    {
+      "id": "span-4",
+      "startWord": 1828,
+      "endWord": 2015,
+      "start": 745.28,
       "end": 803.28,
       "label": "network_promo",
       "category": "network_promo",
@@ -47,11 +77,11 @@
       "deliveryConfidence": "unknown",
       "readStyle": "unknown",
       "origin": "ai-proposal",
-      "advertiser": "Today, Explained / Comcast Business",
-      "note": "Network promo/presenter segment after break; verify if Comcast line should be separate paid ad."
+      "advertiser": "Today, Explained",
+      "note": "Network promo/presenter segment after the Comcast sponsor acknowledgement."
     },
     {
-      "id": "span-3",
+      "id": "span-5",
       "startWord": 2015,
       "endWord": 2218,
       "start": 803.8,
@@ -66,7 +96,7 @@
       "note": "Network promo for Switched on Pop/Netflix; content resumes with the undiagnosed diseases story."
     },
     {
-      "id": "span-4",
+      "id": "span-6",
       "startWord": 5038,
       "endWord": 5124,
       "start": 1964.62,

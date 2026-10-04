@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from ad_eval_corpus_score import DEFAULT_CORPUS, DEFAULT_WORKDIR
+from ad_eval_corpus_score import DEFAULT_CORPUS, DEFAULT_WORKDIR, sha256
 from ad_eval_jev import MODEL, PRICE_CARD, estimated_cost, estimated_tokens, request_sha256
 from ad_eval_jev_v7 import run_request, save_json
 from ad_eval_jev_v8 import (
@@ -41,6 +41,8 @@ SLUGS = (
 CONTROL_SLUG = "ai-news-strategy-daily"
 PROTECTED_CATEGORIES = {"network_promo", "membership_cta"}
 MAX_SPEND_USD = 0.060
+SOURCE_REPORT_NAME = "report.json"
+RESCORE_REPORT_NAME = "report-rescored-after-golden-adjudication.json"
 
 
 def protected_spans(episode: dict[str, Any]) -> list[dict[str, Any]]:
@@ -131,12 +133,55 @@ def score_results(episodes: dict[str, dict[str, Any]], observations: list[dict[s
     }
 
 
+def rescore_observations(episodes: dict[str, dict[str, Any]], source_report: dict[str, Any]) -> list[dict[str, Any]]:
+    """Rebuild score inputs from a frozen Stage 1 report and current approved goldens."""
+    if source_report.get("experiment") != EXPERIMENT or source_report.get("model") != MODEL:
+        raise ValueError("source report is not a Jev V8.1 Stage 1 report for the pinned model")
+    if float((source_report.get("parameters") or {}).get("positiveThreshold", -1)) != POSITIVE_THRESHOLD:
+        raise ValueError("source report does not use the frozen V8.1 threshold")
+    source_windows = source_report.get("windows")
+    if not isinstance(source_windows, list):
+        raise ValueError("source report has no window observations")
+    expected = {
+        window.id: window
+        for slug in SLUGS
+        for window in build_windows(slug, episodes[slug]["rows"], episodes[slug]["duration"])
+    }
+    source_by_id = {str(row.get("id")): row for row in source_windows if isinstance(row, dict)}
+    if len(source_by_id) != len(source_windows) or set(source_by_id) != set(expected):
+        raise ValueError("source report windows do not match the frozen Stage 1 geometry")
+    observations: list[dict[str, Any]] = []
+    for window_id, window in expected.items():
+        source = source_by_id[window_id]
+        probability = float(source.get("probability"))
+        if not 0 <= probability <= 1:
+            raise ValueError(f"{window_id}: source probability is invalid")
+        episode = episodes[window.slug]
+        paid_overlap = window_overlap(window, paid_spans(episode))
+        protected_overlap = window_overlap(window, protected_spans(episode))
+        observations.append(
+            {
+                "id": window.id,
+                "slug": window.slug,
+                "start": round(window.start, 3),
+                "end": round(window.end, 3),
+                "probability": probability,
+                "positive": probability >= POSITIVE_THRESHOLD,
+                "goldenPaidOverlapSeconds": round(paid_overlap, 3),
+                "goldenProtectedOverlapSeconds": round(protected_overlap, 3),
+                "promoOnly": protected_overlap > 0 and paid_overlap == 0,
+            }
+        )
+    return observations
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--corpus", type=Path, default=DEFAULT_CORPUS)
     parser.add_argument("--workdir", type=Path, default=DEFAULT_WORKDIR)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--rescore", action="store_true", help="Rescore frozen responses against an adjudicated golden without API calls.")
     parser.add_argument("--spend-cap-usd", type=float, default=MAX_SPEND_USD)
     return parser.parse_args()
 
@@ -151,6 +196,37 @@ def main() -> None:
         episodes = {slug: load_episode(corpus, workdir, slug) for slug in SLUGS}
     except (OSError, ValueError, json.JSONDecodeError) as error:
         raise SystemExit(str(error)) from error
+    if args.rescore:
+        source_path = output / SOURCE_REPORT_NAME
+        try:
+            source_report = json.loads(source_path.read_text(encoding="utf-8"))
+            observations = rescore_observations(episodes, source_report)
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            raise SystemExit(str(error)) from error
+        score = score_results(episodes, observations)
+        report = {
+            "schemaVersion": 1,
+            "experiment": EXPERIMENT,
+            "status": "passed" if score["passed"] else "rejected",
+            "model": MODEL,
+            "completedAt": datetime.now(timezone.utc).isoformat(),
+            "rescore": {
+                "sourceReport": SOURCE_REPORT_NAME,
+                "sourceReportSha256": sha256(source_path),
+                "sourceCompletedAt": source_report.get("completedAt"),
+                "sourceTotalCostUsd": source_report.get("totalCostUsd"),
+                "networkRequestsMade": 0,
+                "reason": "Human-adjudicated Comcast Business sponsor acknowledgement as paid advertising.",
+            },
+            "parameters": source_report.get("parameters"),
+            **score,
+            "windows": observations,
+        }
+        destination = output / RESCORE_REPORT_NAME
+        save_json(destination, report)
+        print(f"Wrote {destination}")
+        print(f"Status: {report['status']}; no API requests made")
+        return
     windows = [window for slug in SLUGS for window in build_windows(slug, episodes[slug]["rows"], episodes[slug]["duration"])]
     requests = [(window, v81_scout_payload(episodes[window.slug], window)) for window in windows]
     for window, payload in requests:
