@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "annotationPolicy": "ads-only-v1",
+  "status": "human-approved",
+  "showSlug": "stage2-ai-news",
+  "audioSha256": "",
+  "transcriptSha256": "3d5dbc5271a92443b72b83c705283eaf46fd387eaa4a68a9c4c02f060ed815ee",
+  "asr": {
+    "engine": "",
+    "engineVersion": "",
+    "model": "",
+    "modelRevision": "",
+    "wordCount": 6970
+  },
+  "review": {
+    "reviewer": "Brian",
+    "reviewedAt": "2026-10-04T21:12:57.740196+00:00",
+    "reviewedThroughWord": 6970,
+    "proposalSha256": "0e715c60bd2cf802e87b6665466a0510dcc90cb1247795ec43713dd980d2e003",
+    "optionalModelNotesCount": 2
+  },
+  "spans": []
+}
