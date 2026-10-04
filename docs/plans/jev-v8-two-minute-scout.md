@@ -1,7 +1,8 @@
 # Jev V8 two-minute paid-ad scout
 
 **Status:** V8 completed and rejected at its frozen threshold; V8.1 Stage 0
-passed, and Stage 1 locked regression validation is next
+passed, but Stage 1 is formally rejected pending a human golden-label
+adjudication
 
 V8 tests one question: can Jev detect that a paid ad exists somewhere inside
 an overlapping two-minute transcript window? It does not localize ads, produce
@@ -103,7 +104,7 @@ Run the unchanged V8.1 protocol across these six existing approved episodes:
 - Bill Simmons / Kawhi — paid-only, long conversational and inserted ads;
 - Economics of Everyday Things — paid-only;
 - Darknet Diaries — paid ads plus membership material;
-- 99% Invisible — paid ads plus network promos;
+- 99% Invisible (`99-percent-invisible`) — paid ads plus network promos;
 - Unexplainable — paid ads, membership material, and network promos;
 - AI News Strategy Daily — zero-paid-ad control.
 
@@ -121,6 +122,36 @@ The regression passes only when:
   no `paid_ad`—is negative;
 - positive coverage is no more than 40% of total listening time; and
 - all requests stay below 20k estimated tokens and the preflight spend cap.
+
+The Stage 1 runner uses the frozen V8.1 prompt and 0.85 threshold, writes only
+to `tmp/ad-eval/jev-chunk-scout-v8.1/`, and has a $0.060 hard spend cap. Its
+dry run must print the exact request count, largest estimated request, and
+projected cost before any live request is allowed.
+
+### Stage 1 result
+
+Stage 1 ran on October 4, 2026 and is formally rejected under its frozen gates.
+It hit all 30 approved paid-ad spans, covered 100% of the 1,136.74 approved
+paid-ad seconds, had zero positives in the AI News Strategy Daily no-ad control,
+and marked only 16.4% of all listening time positive. It failed exactly one
+gate: two of 11 promo-only windows were positive.
+
+Those windows were `unexplainable-w0012` (0.89) and `unexplainable-w0013`
+(0.91). Both overlap the currently approved `network_promo` span from 740.34s
+to 803.28s, which includes the separate sentence, “This series is presented by
+Comcast Business.” That golden span's own note says to verify whether the Comcast
+line should be separate paid advertising. V8.1 explicitly defines a distinct
+third-party sponsor or underwriting message as positive, so this is a label-policy
+mismatch in the golden—not evidence to tune the model, prompt, or threshold.
+
+The next action is a human adjudication of the exact Comcast sentence. Keep the
+V8.1 requests and responses frozen. If the reviewer confirms it is a paid
+sponsor/underwriting line, split it from the surrounding network promo into a
+separate `paid_ad` golden span at exact transcript boundaries, then rescore this
+same Stage 1 output without new requests. If the reviewer determines it is not
+paid under the product policy, V8.1 remains rejected and the next experiment
+must target sponsor-tagged network promos. Do not proceed to the fresh holdout
+or alter the V8.1 model policy before that decision is recorded.
 
 Report paid-span coverage, paid seconds covered, positive coverage fraction,
 zero-ad positives, promo-only positives, maximum probability by negative class,
