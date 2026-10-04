@@ -39,6 +39,17 @@ SLUGS = (
     "ai-news-strategy-daily",
 )
 CONTROL_SLUG = "ai-news-strategy-daily"
+STAGE2_EXPERIMENT = "two-minute-paid-ad-scout-v8.1-stage2-holdout"
+STAGE2_OUTPUT_NAME = "jev-chunk-scout-v8.1-stage2"
+STAGE2_SLUGS = (
+    "dan-le-batard-local-hour",
+    "smartless-olivia-wilde",
+    "stage2-this-american-life",
+    "cougar-sports-2026-07-17-hour4",
+    "stage2-ai-news",
+    "stage2-dr-death",
+)
+STAGE2_CONTROL_SLUGS = ("stage2-ai-news", "stage2-dr-death")
 PROTECTED_CATEGORIES = {"network_promo", "membership_cta"}
 MAX_SPEND_USD = 0.060
 SOURCE_REPORT_NAME = "report.json"
@@ -56,12 +67,19 @@ def window_overlap(window: ScoutWindow, spans: list[dict[str, Any]]) -> float:
     )
 
 
-def score_results(episodes: dict[str, dict[str, Any]], observations: list[dict[str, Any]]) -> dict[str, Any]:
+def score_results(
+    episodes: dict[str, dict[str, Any]],
+    observations: list[dict[str, Any]],
+    *,
+    slugs: tuple[str, ...] = SLUGS,
+    control_slugs: tuple[str, ...] = (CONTROL_SLUG,),
+) -> dict[str, Any]:
     episode_summaries: list[dict[str, Any]] = []
     all_paid_results: list[dict[str, Any]] = []
     total_duration = total_positive_coverage = total_paid = total_paid_covered = 0.0
-    control_positives = promo_only_positives = promo_only_windows = 0
-    for slug in SLUGS:
+    control_positives_by_slug: dict[str, int] = {}
+    promo_only_positives = promo_only_windows = 0
+    for slug in slugs:
         episode = episodes[slug]
         episode_observations = [row for row in observations if row["slug"] == slug]
         selected = [row for row in episode_observations if row["positive"]]
@@ -87,8 +105,8 @@ def score_results(episodes: dict[str, dict[str, Any]], observations: list[dict[s
         episode_promo_only = [row for row in episode_observations if row["promoOnly"]]
         promo_only_windows += len(episode_promo_only)
         promo_only_positives += sum(row["positive"] for row in episode_promo_only)
-        if slug == CONTROL_SLUG:
-            control_positives = len(selected)
+        if slug in control_slugs:
+            control_positives_by_slug[slug] = len(selected)
         total_duration += episode["duration"]
         total_positive_coverage += coverage_seconds
         episode_summaries.append(
@@ -109,7 +127,9 @@ def score_results(episodes: dict[str, dict[str, Any]], observations: list[dict[s
     gates = {
         "everyPaidSpanHit": all(result["hit"] for result in all_paid_results),
         "paidSecondsCoverageAtLeast99Percent": paid_recall >= 0.99,
-        "controlHasZeroPositiveWindows": control_positives == 0,
+        "controlHasZeroPositiveWindows": all(
+            control_positives_by_slug.get(slug, 0) == 0 for slug in control_slugs
+        ),
         "promoOnlyWindowsAllNegative": promo_only_positives == 0,
         "positiveCoverageAtMost40Percent": positive_fraction <= 0.40,
     }
@@ -125,7 +145,8 @@ def score_results(episodes: dict[str, dict[str, Any]], observations: list[dict[s
             "positiveCoverageSeconds": round(total_positive_coverage, 3),
             "listeningSeconds": round(total_duration, 3),
             "positiveCoverageFraction": round(positive_fraction, 6),
-            "controlPositiveWindowCount": control_positives,
+            "controlPositiveWindowCount": sum(control_positives_by_slug.values()),
+            "controlPositiveWindowCounts": control_positives_by_slug,
             "promoOnlyWindowCount": promo_only_windows,
             "promoOnlyPositiveWindowCount": promo_only_positives,
         },
@@ -181,6 +202,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workdir", type=Path, default=DEFAULT_WORKDIR)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--stage2",
+        action="store_true",
+        help="Run the frozen six-episode Stage 2 holdout; Stage 1 remains unchanged.",
+    )
     parser.add_argument("--rescore", action="store_true", help="Rescore frozen responses against an adjudicated golden without API calls.")
     parser.add_argument("--spend-cap-usd", type=float, default=MAX_SPEND_USD)
     return parser.parse_args()
@@ -190,10 +216,16 @@ def main() -> None:
     args = parse_args()
     if not 0 < args.spend_cap_usd <= MAX_SPEND_USD:
         raise SystemExit(f"--spend-cap-usd must be greater than zero and no more than {MAX_SPEND_USD:.3f}")
+    if args.stage2 and args.rescore:
+        raise SystemExit("--rescore is only available for the frozen Stage 1 report")
+    slugs = STAGE2_SLUGS if args.stage2 else SLUGS
+    control_slugs = STAGE2_CONTROL_SLUGS if args.stage2 else (CONTROL_SLUG,)
+    experiment = STAGE2_EXPERIMENT if args.stage2 else EXPERIMENT
+    output_name = STAGE2_OUTPUT_NAME if args.stage2 else OUTPUT_NAME
     corpus, workdir = args.corpus.resolve(), args.workdir.resolve()
-    output = (args.output or workdir / OUTPUT_NAME).resolve()
+    output = (args.output or workdir / output_name).resolve()
     try:
-        episodes = {slug: load_episode(corpus, workdir, slug) for slug in SLUGS}
+        episodes = {slug: load_episode(corpus, workdir, slug) for slug in slugs}
     except (OSError, ValueError, json.JSONDecodeError) as error:
         raise SystemExit(str(error)) from error
     if args.rescore:
@@ -227,7 +259,7 @@ def main() -> None:
         print(f"Wrote {destination}")
         print(f"Status: {report['status']}; no API requests made")
         return
-    windows = [window for slug in SLUGS for window in build_windows(slug, episodes[slug]["rows"], episodes[slug]["duration"])]
+    windows = [window for slug in slugs for window in build_windows(slug, episodes[slug]["rows"], episodes[slug]["duration"])]
     requests = [(window, v81_scout_payload(episodes[window.slug], window)) for window in windows]
     for window, payload in requests:
         if estimated_tokens(payload) > MAX_REQUEST_TOKENS:
@@ -237,14 +269,30 @@ def main() -> None:
         raise SystemExit(f"projected cost ${projected:.6f} exceeds cap ${args.spend_cap_usd:.3f}")
     if args.dry_run:
         largest_window, largest_payload = max(requests, key=lambda item: estimated_tokens(item[1]))
-        print(f"V8.1 Stage 1 dry run: {len(requests)} two-minute windows across {len(SLUGS)} locked episodes")
+        stage = "Stage 2" if args.stage2 else "Stage 1"
+        print(f"V8.1 {stage} dry run: {len(requests)} two-minute windows across {len(slugs)} locked episodes")
         print(f"Largest request: {largest_window.id} ({estimated_tokens(largest_payload):,} conservative tokens)")
         print(f"Projected cost <= ${projected:.6f}; hard cap ${args.spend_cap_usd:.3f}")
         return
+    manifest = {
+        "schemaVersion": 1,
+        "experiment": experiment,
+        "model": MODEL,
+        "slugs": list(slugs),
+        "controlSlugs": list(control_slugs),
+        "transcriptSha256": {slug: episodes[slug]["transcriptSha256"] for slug in slugs},
+        "goldenSha256": {slug: sha256(corpus / "goldens" / f"{slug}.json") for slug in slugs},
+        "windowCount": len(windows),
+        "requestHashes": [request_sha256(payload) for _, payload in requests],
+    }
     api_key = os.environ.get("TYPESAFE_API_KEY", "")
     if not api_key:
         raise SystemExit("TYPESAFE_API_KEY is required unless --dry-run is used")
     output.mkdir(parents=True, exist_ok=True)
+    if args.stage2:
+        # This must exist before the first paid request: it fixes the exact
+        # human-approved labels and inputs that Stage 2 is allowed to score.
+        save_json(output / "manifest.json", manifest)
     save_json(output / "price-card.json", PRICE_CARD)
     observations: list[dict[str, Any]] = []
     spent = 0.0
@@ -271,10 +319,10 @@ def main() -> None:
                 "promoOnly": protected_overlap > 0 and paid_overlap == 0,
             }
         )
-    score = score_results(episodes, observations)
+    score = score_results(episodes, observations, slugs=slugs, control_slugs=control_slugs)
     report = {
         "schemaVersion": 1,
-        "experiment": EXPERIMENT,
+        "experiment": experiment,
         "status": "passed" if score["passed"] else "rejected",
         "model": MODEL,
         "completedAt": datetime.now(timezone.utc).isoformat(),
@@ -284,6 +332,7 @@ def main() -> None:
             "contextSentences": 2,
             "positiveThreshold": POSITIVE_THRESHOLD,
             "protectedCategories": sorted(PROTECTED_CATEGORIES),
+            "controlSlugs": list(control_slugs),
         },
         "totalCostUsd": round(spent, 8),
         "latencyMs": {"median": round(statistics.median(latencies), 1), "max": round(max(latencies), 1)},
@@ -291,18 +340,7 @@ def main() -> None:
         "windows": observations,
     }
     save_json(output / "report.json", report)
-    save_json(
-        output / "manifest.json",
-        {
-            "schemaVersion": 1,
-            "experiment": EXPERIMENT,
-            "model": MODEL,
-            "slugs": list(SLUGS),
-            "transcriptSha256": {slug: episodes[slug]["transcriptSha256"] for slug in SLUGS},
-            "windowCount": len(windows),
-            "requestHashes": [request_sha256(payload) for _, payload in requests],
-        },
-    )
+    save_json(output / "manifest.json", manifest)
     print(f"Wrote {output / 'report.json'}")
     print(f"Status: {report['status']}; actual cost ${spent:.6f}")
 

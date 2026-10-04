@@ -1,7 +1,8 @@
 # Jev V8 two-minute paid-ad scout
 
-**Status:** V8 completed and rejected at its frozen threshold; V8.1 Stage 0 and
-Stage 1 passed, and the fresh Stage 2 holdout is next
+**Status:** V8 completed and rejected at its frozen threshold; V8.1 Stages 0,
+1, and 2 passed. The paid-ad scout is viable; exact-span localization remains
+the next unvalidated stage.
 
 V8 tests one question: can Jev detect that a paid ad exists somewhere inside
 an overlapping two-minute transcript window? It does not localize ads, produce
@@ -178,6 +179,30 @@ membership CTAs, feed-drop material, archival ads, previews/recaps, and
 editorial product discussion before any Jev request is made. Pin transcript and
 golden hashes in the manifest.
 
+### Stage 2 intake
+
+On October 4, 2026, the following recordings were pinned for the holdout. The
+three new episodes now have human-approved goldens; the three reused goldens
+were selected because they have no prior Jev response artifact. The expected
+format is a collection target, not a label claim; human review may replace any
+candidate that does not fit its slot.
+
+| Intended slot | Slug | Pinned episode |
+| --- | --- | --- |
+| conversational host reads | `dan-le-batard-local-hour` | *Local Hour* approved golden: five host reads and four DAI spots; no prior Jev response artifact |
+| DAI/commercial delivery | `smartless-olivia-wilde` | *SmartLess: Olivia Wilde* approved golden: nine DAI spots and one host read; no prior Jev response artifact |
+| public-radio underwriting | `stage2-this-american-life` | *898: An Argument* (`46226 at https://www.thisamericanlife.org`) |
+| sports/baked delivery | `cougar-sports-2026-07-17-hour4` | *7-17-26 - Hour 4 - How will the new 5 and 5 rule affect college football recruiting and BYU football?* (`https://api.spreaker.com/episode/73039979`) |
+| no paid ad/no promo control | `stage2-ai-news` | *How AI agents are changing the way you buy software* (`6ac1d9f78da1db2e6f50fe12`) |
+| no-paid-ad promo control | `stage2-dr-death` | *Listen Now: My Mom’s Murder* (`gid://art19-episode-locator/V0/rvZqv_NlG9y1nJum7Ki293LkkvS2rpgDLu1sDrQBqDg`) |
+
+The three new candidate audio files are downloaded under `tmp/ad-eval/`; the
+three reused approved goldens have no prior Jev response artifact. Together they
+already supply 30 paid-ad spans before review of the new public-radio episode.
+The set has 38 approved paid spans and both requested controls. Its transcripts,
+goldens, request payloads, and 0.20 threshold are frozen before the first paid
+request. The next step is to run V8.1 unchanged.
+
 Run the exact Stage 1 V8.1 requests and threshold without alteration. Apply the
 same gates, plus zero positive windows in both no-paid-ad controls. Any failure
 rejects V8.1 for production scouting; do not tune on the holdout.
@@ -185,3 +210,19 @@ rejects V8.1 for production scouting; do not tune on the holdout.
 Passing both stages establishes only that the two-minute scout is viable. The
 next experiment must separately validate localization of exact typed spans
 before V8 can affect listener playback or replace Gemini.
+
+### Stage 2 result
+
+The frozen Stage 2 holdout passed on October 4, 2026. The complete immutable
+inputs and responses are in `tmp/ad-eval/jev-chunk-scout-v8.1-stage2/`.
+
+- 281 overlapping two-minute windows across six held-out episodes;
+- all 38 of 38 approved paid spans were hit, with 100% paid-second coverage;
+- the genuinely ad-free episode had zero positive windows;
+- the all-promo feed-drop had zero positive windows across all six protected
+  promo-only windows; and
+- positive coverage was 22.47% of listening time, below the 40% ceiling.
+
+Actual cost was $0.03690 (below the $0.06 cap), with 187.5 ms median request
+latency. No policy, prompt, window geometry, or threshold was changed after
+the inputs were frozen.

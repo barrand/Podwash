@@ -3,7 +3,14 @@
 
 import unittest
 
-from ad_eval_jev_v81 import CONTROL_SLUG, PROTECTED_CATEGORIES, SLUGS, score_results
+from ad_eval_jev_v81 import (
+    CONTROL_SLUG,
+    PROTECTED_CATEGORIES,
+    SLUGS,
+    STAGE2_CONTROL_SLUGS,
+    STAGE2_SLUGS,
+    score_results,
+)
 
 
 class JevV81RegressionTests(unittest.TestCase):
@@ -36,6 +43,30 @@ class JevV81RegressionTests(unittest.TestCase):
         episodes, observations = self.fixture()
         next(row for row in observations if row["slug"] == CONTROL_SLUG)["positive"] = True
         score = score_results(episodes, observations)
+        self.assertFalse(score["passed"])
+        self.assertFalse(score["gates"]["controlHasZeroPositiveWindows"])
+
+    def test_stage2_rejects_a_positive_in_either_control(self) -> None:
+        self.assertEqual(
+            STAGE2_CONTROL_SLUGS,
+            ("stage2-ai-news", "stage2-dr-death"),
+        )
+        episodes = {
+            "paid": {"duration": 120.0, "golden": {"spans": [{"id": "ad", "start": 20, "end": 40, "category": "paid_ad"}]}},
+            "stage2-ai-news": {"duration": 120.0, "golden": {"spans": []}},
+            "stage2-dr-death": {"duration": 120.0, "golden": {"spans": [{"id": "promo", "start": 0, "end": 120, "category": "network_promo"}]}},
+        }
+        observations = [
+            {"slug": "paid", "start": 0, "end": 120, "positive": True, "promoOnly": False},
+            {"slug": "stage2-ai-news", "start": 0, "end": 120, "positive": False, "promoOnly": False},
+            {"slug": "stage2-dr-death", "start": 0, "end": 120, "positive": True, "promoOnly": True},
+        ]
+        score = score_results(
+            episodes,
+            observations,
+            slugs=("paid", *STAGE2_CONTROL_SLUGS),
+            control_slugs=STAGE2_CONTROL_SLUGS,
+        )
         self.assertFalse(score["passed"])
         self.assertFalse(score["gates"]["controlHasZeroPositiveWindows"])
 
