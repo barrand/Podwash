@@ -394,3 +394,23 @@ within scout-positive regions, find high-confidence paid-ad anchor sentences,
 then use adjacent sentence continuity to bridge only across ordinary transcript
 gaps. It must separately report untranscribed audio gaps as `unknown`, rather
 than claiming a transcript-derived playback boundary through them.
+
+## V8.4: coherent-block rescue smoke test
+
+Before building an automatic sentence-anchor localizer, test its core premise
+with exactly three frozen blocks from the V8.3 failure episode. Use the unchanged
+V7.1 complete-block tier question and model:
+
+- sentences 10-17, 27.60-88.78s: the missed Shopify testimonial, including the
+  29.10-second interval with no transcript sentence; expected `skip_obvious`;
+- sentences 18-22, 89.22-113.40s: the station/show promo immediately after it;
+  expected `skip_more_only`; and
+- sentences 30-39, 141.80-189.32s: the clear Atrium sponsor read; expected
+  `skip_obvious`.
+
+This is a development mechanism test. It does not discover its own anchors and
+cannot validate production localization. It passes only if all three blocks
+receive their expected tier, using one request per block and a $0.005 spend cap.
+If it passes, the next experiment may build automatic high-confidence anchors
+and continuity expansion. If Shopify is not `skip_obvious`, stop pursuing the
+V7.1 block classifier for Strategy 8 localization.
