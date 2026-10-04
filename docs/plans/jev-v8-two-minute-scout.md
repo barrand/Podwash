@@ -1,8 +1,9 @@
 # Jev V8 two-minute paid-ad scout
 
 **Status:** V8 completed and rejected at its frozen threshold; V8.1 Stages 0,
-1, and 2 passed. The paid-ad scout is viable; exact-span localization remains
-the next unvalidated stage.
+1, and 2 passed. Strategy 8's paid-ad scout is validated. The isolated-parent
+V8.2A refiner was rejected, and V8.2B showed that frozen boundary stitching
+repairs that failure. A two-episode held-out localization test is next.
 
 V8 tests one question: can Jev detect that a paid ad exists somewhere inside
 an overlapping two-minute transcript window? It does not localize ads, produce
@@ -200,7 +201,7 @@ The three new candidate audio files are downloaded under `tmp/ad-eval/`; the
 three reused approved goldens have no prior Jev response artifact. Together they
 already supply 30 paid-ad spans before review of the new public-radio episode.
 The set has 38 approved paid spans and both requested controls. Its transcripts,
-goldens, request payloads, and 0.20 threshold are frozen before the first paid
+goldens, request payloads, and 0.85 threshold are frozen before the first paid
 request. The next step is to run V8.1 unchanged.
 
 Run the exact Stage 1 V8.1 requests and threshold without alteration. Apply the
@@ -226,3 +227,143 @@ inputs and responses are in `tmp/ad-eval/jev-chunk-scout-v8.1-stage2/`.
 Actual cost was $0.03690 (below the $0.06 cap), with 187.5 ms median request
 latency. No policy, prompt, window geometry, or threshold was changed after
 the inputs were frozen.
+
+## V8.2A: 15-second refinement smoke test
+
+This is intentionally a small mechanism test, not a second large evaluation.
+The input is a two-minute window that V8.1 already marked positive. Within that
+window, ask the unchanged paid-ad question on overlapping 15-second slices with
+a 10-second stride. A positive slice is a candidate ad region; adjacent positive
+slices are merged only for scoring.
+
+Use four development paid-ad windows and one protected promo-only sentinel:
+
+| Class | Frozen parent window | Why it is included |
+| --- | --- | --- |
+| paid | `economics-of-everyday-things-w0010` (540-660s) | a short DAI near the window end |
+| paid | `99-percent-invisible-w0028` (1620-1740s) | two adjacent inserted ads |
+| paid | `bill-simmons-kawhi-w0050` (2940-3060s) | a short trailing ad fragment |
+| paid | `darknet-diaries-w0035` (2040-2160s) | a conversational host read |
+| protected promo | `darknet-diaries-w0069` (4080-4186.65s) | a membership promo with no paid span |
+
+This makes 60 short requests at most. Freeze the existing V8.1 paid-ad
+wording, model, and 0.85 threshold. Do not use Stage 2 holdout episodes to
+select or tune this smoke test.
+
+The smoke test passes only if every clipped approved paid span overlaps a
+positive slice, at least 99% of its clipped paid seconds are covered, every
+promo-only slice is negative, and the union of positive slices covers no more
+than half of the four paid parent windows (240 seconds). Cap spend at $0.01.
+
+Passing shows that the scout can be narrowed to a roughly 15-second candidate
+region. It does **not** establish exact playback boundaries; a separate
+held-out localization evaluation must still measure start/end error before any
+production decision.
+
+### V8.2A result
+
+V8.2A was rejected on October 4, 2026. It made 59 requests for $0.00296.
+All five clipped paid spans overlapped a positive refinement slice, the
+promo-only sentinel had zero positive slices, and refinement reduced candidate
+coverage from 480 seconds to 160 seconds (33.3%). However, only 88.90% of
+clipped paid seconds were covered, below the precommitted 99% gate.
+
+The only miss was the trailing portion of the second adjacent ad in
+`99-percent-invisible-w0028`: the refiner marked 1710-1725 seconds positive,
+but the approved ad continued through the parent window's end at 1740 seconds.
+Do not lower the threshold or change the grid from this result. The next design
+must handle an ad that crosses a scout-parent boundary—for example, evaluate
+the union of refinement slices across every overlapping positive scout window—
+before testing any new threshold or playback behavior.
+
+## V8.2B: boundary-stitching decision test
+
+Strategy 8 remains a coarse-to-fine pipeline:
+
+1. V8.1 finds broad regions that may contain paid ads. This stage is validated.
+2. A refiner narrows those regions without losing paid seconds. This stage is
+   promising but not yet validated.
+3. Only after refinement passes may a final sentence-boundary step produce
+   playback spans.
+
+V8.2A evaluated each overlapping two-minute parent independently, which is not
+how the complete pipeline should behave. V8.2B tests the smallest correction:
+treat adjacent positive scout windows as one continuous candidate region,
+deduplicate identical 15-second slices, and join two positive refinement runs
+when they are separated by no more than one 15-second slice. Keep the model,
+prompt, 0.85 threshold, 15-second slice, and 10-second stride unchanged.
+
+Reuse all 59 frozen V8.2A responses, including the original slices through the
+end of `99-percent-invisible-w0028`. Add only the six previously unevaluated
+slices between 1740 and 1800 seconds. Do not rebuild or repurchase the earlier
+overlap from `w0029`: its target times repeat existing slices but its surrounding
+context changes at the parent boundary, so its requests are not byte-identical.
+Stitch the saved and new results by their time boundaries, then score the union
+of `w0028` and `w0029` rather than requiring each parent to cover its own clipped
+ad independently.
+
+V8.2B passes only if:
+
+- every approved paid span in the five development cases is hit;
+- at least 99% of approved paid seconds are covered after the frozen bridge
+  rule;
+- the membership-promo sentinel still has zero positive slices; and
+- refined positive coverage remains at or below 50% of the merged eligible
+  scout regions.
+
+This is a development decision test, not new production evidence. If it passes,
+freeze the complete scout, refinement, deduplication, and bridge rules and run
+a small held-out localization evaluation on two episodes. If it fails, abandon
+the 15-second grid refiner while retaining the validated V8.1 scout, and test a
+sentence-level anchor-and-bridge localizer using the existing V7.1 evidence.
+
+### V8.2B result
+
+V8.2B passed on October 4, 2026. It reused all 59 frozen V8.2A responses and
+made exactly six new requests for $0.00030758. All six new slices scored between
+0.93 and 0.95. After applying the frozen 15-second bridge rule, all six approved
+paid spans were hit and 100% of their 194.95 seconds were covered. The promo-only
+sentinel retained zero positive slices. Refined positive coverage was 235 of 540
+eligible seconds (43.52%), below the precommitted 50% ceiling.
+
+This result validates the boundary-stitching mechanism on the development
+cases. It does not yet validate localization on unseen episodes or playback
+boundaries.
+
+## V8.3: two-episode held-out localization test
+
+Freeze the complete V8.2B behavior before observing any V8.3 response:
+
+- use the saved V8.1 Stage 2 scout decisions at the 0.85 threshold;
+- merge adjacent or overlapping positive 120-second scout windows into candidate
+  regions;
+- evaluate each merged region on a deduplicated 15-second grid with a 10-second
+  stride and the unchanged paid-ad-presence prompt and 0.85 threshold; and
+- merge positive slices and bridge gaps of no more than 15 seconds.
+
+Use exactly two Stage 2 episodes that were not used to design V8.2:
+
+- `stage2-this-american-life`: eight paid DAI spans plus a protected membership
+  appeal; and
+- `cougar-sports-2026-07-17-hour4`: eleven paid DAI/host-read spans plus a
+  protected network promo.
+
+These two episodes provide 19 approved paid spans across DAI, host-read, and
+public-radio delivery, plus both protected promo types. Pin the existing scout
+report, transcript hashes, golden hashes, request hashes, model, price card, and
+all geometry before the live run. Do not change a threshold or label after
+responses are observed.
+
+V8.3 passes only if:
+
+- all 19 approved paid spans overlap stitched positive refinement coverage;
+- at least 99% of approved paid seconds are covered;
+- every refinement slice that overlaps protected material but no paid span is
+  negative; and
+- stitched positive coverage is at most 50% of the merged scout-candidate time.
+
+This remains a localization validation, not production playback validation.
+If V8.3 passes, next test snapping stitched regions to transcript sentence
+boundaries on a small manually inspected set. If it fails, retain the validated
+V8.1 scout but reject the 15-second grid refiner and move to sentence-level
+anchor-and-bridge using V7.1 evidence.

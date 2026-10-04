@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "experiment": "jev-v8.2b-boundary-stitch",
+  "model": "jev-1.13.0",
+  "positiveThreshold": 0.85,
+  "sliceSeconds": 15.0,
+  "sliceStrideSeconds": 10.0,
+  "maxBridgeSeconds": 15.0,
+  "sourceReport": "/Users/bbarrand/Documents/Projects/PodWash/tmp/ad-eval/jev-v8.2a-localize-smoke/report.json",
+  "sourceReportSha256": "4467befd552900180b55d5722ca34345b32e289afcc4eb0fdd70aaa6d5be0ab7",
+  "reusedSliceCount": 59,
+  "newRequestHashes": [
+    "df6777623e7250d87d28947642ffceda0eca5ee693a854e1cf42c7241440cf4b",
+    "c19a6c0599b9305b6e6c040fce4adc44086bf7af1e5c6dcb02d4ca8e036aa816",
+    "f07d00693ecc3a15fa69dcb852791f9c43f2d2f05e90598414f6149d442eaf94",
+    "0cbb4d88ea5517743e348670eab81c3339cb7aa29dd32c84554fbc9331074fd1",
+    "bb4754ef5e9a9500039ea71a712ebdc75665ab6fb0815bcb2b2c2663c742eb91",
+    "4165c8e5e1d15668ff9f110e5f318c7822ff92b94feb56e557e556310febe803"
+  ]
+}
