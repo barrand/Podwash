@@ -3,7 +3,8 @@
 **Status:** V8 completed and rejected at its frozen threshold; V8.1 Stages 0,
 1, and 2 passed. Strategy 8's paid-ad scout is validated. The isolated-parent
 V8.2A refiner was rejected, and V8.2B showed that frozen boundary stitching
-repairs that failure. A two-episode held-out localization test is next.
+repairs that failure. V8.3 rejected the 15-second refiner on held-out evidence;
+the validated scout remains available for a different localization approach.
 
 V8 tests one question: can Jev detect that a paid ad exists somewhere inside
 an overlapping two-minute transcript window? It does not localize ads, produce
@@ -367,3 +368,29 @@ If V8.3 passes, next test snapping stitched regions to transcript sentence
 boundaries on a small manually inspected set. If it fails, retain the validated
 V8.1 scout but reject the 15-second grid refiner and move to sentence-level
 anchor-and-bridge using V7.1 evidence.
+
+### V8.3 result
+
+V8.3 was rejected on October 4, 2026. It made 195 requests across eight merged
+scout regions in two held-out Stage 2 episodes for $0.01023650. It hit all 19
+approved paid spans, kept all 10 protected-only refinement slices negative, and
+kept candidate coverage at 32.89% (642.04 of 1,952.04 seconds). It failed the
+precommitted paid-second gate: 405.94 of 460.72 paid seconds were covered
+(88.11%), below 99%.
+
+Nearly all of the loss came from one 61.18-second Shopify testimonial in
+`cougar-sports-2026-07-17-hour4`. The refiner covered only its first 7.40
+seconds. The approved span contains a 29.10-second stretch with no transcript
+sentence coverage, which no transcript-only method can localize. In the
+remaining spoken testimonial material, the refiner returned 0.68-0.80, below
+the frozen 0.85 threshold. A separate 1-second trailing boundary miss accounts
+for the rest of the loss.
+
+Do not lower the threshold, enlarge the bridge rule, or reinterpret this result:
+all would tune on the held-out evidence. V8.3 rejects the 15-second grid
+refiner as the next production localizer. Retain V8.1's validated two-minute
+scout. The next minimal investigation is sentence-level anchor-and-bridge:
+within scout-positive regions, find high-confidence paid-ad anchor sentences,
+then use adjacent sentence continuity to bridge only across ordinary transcript
+gaps. It must separately report untranscribed audio gaps as `unknown`, rather
+than claiming a transcript-derived playback boundary through them.

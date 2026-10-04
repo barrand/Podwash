@@ -1,0 +1,2097 @@
+{
+  "schemaVersion": 1,
+  "experiment": "jev-v8.3-heldout-localization",
+  "status": "rejected",
+  "model": "jev-1.13.0",
+  "completedAt": "2026-10-04T23:51:16.942196+00:00",
+  "parameters": {
+    "positiveThreshold": 0.85,
+    "sliceSeconds": 15.0,
+    "sliceStrideSeconds": 10.0,
+    "maxBridgeSeconds": 15.0
+  },
+  "totalCostUsd": 0.0102365,
+  "latencyMs": {
+    "median": 186.2,
+    "max": 406.8
+  },
+  "passed": false,
+  "gates": {
+    "everyPaidSpanHit": true,
+    "paidSecondsCoverageAtLeast99Percent": false,
+    "protectedOnlySlicesAllNegative": true,
+    "positiveCoverageAtMost50Percent": true
+  },
+  "aggregate": {
+    "paidSpanCount": 19,
+    "paidSpanHitCount": 19,
+    "paidSeconds": 460.72,
+    "paidSecondsCovered": 405.94,
+    "paidSecondsCoverageRecall": 0.881099,
+    "candidateSeconds": 1952.04,
+    "positiveCoverageSeconds": 642.04,
+    "positiveCoverageFraction": 0.328907,
+    "protectedOnlySliceCount": 10,
+    "protectedOnlyPositiveSliceCount": 0
+  },
+  "paidSpans": [
+    {
+      "slug": "stage2-this-american-life",
+      "id": "span-2",
+      "start": 86.32,
+      "end": 101.1,
+      "hit": true,
+      "coveredSeconds": 14.78,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "stage2-this-american-life",
+      "id": "span-3",
+      "start": 101.96,
+      "end": 115.84,
+      "hit": true,
+      "coveredSeconds": 13.88,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "stage2-this-american-life",
+      "id": "span-4",
+      "start": 703.67,
+      "end": 732.33,
+      "hit": true,
+      "coveredSeconds": 28.66,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "stage2-this-american-life",
+      "id": "span-5",
+      "start": 733.37,
+      "end": 746.23,
+      "hit": true,
+      "coveredSeconds": 12.86,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "stage2-this-american-life",
+      "id": "span-6",
+      "start": 1669.2,
+      "end": 1696.62,
+      "hit": true,
+      "coveredSeconds": 27.42,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "stage2-this-american-life",
+      "id": "span-7",
+      "start": 1697.82,
+      "end": 1723.86,
+      "hit": true,
+      "coveredSeconds": 26.04,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "stage2-this-american-life",
+      "id": "span-8",
+      "start": 1725.54,
+      "end": 1745.34,
+      "hit": true,
+      "coveredSeconds": 19.8,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "stage2-this-american-life",
+      "id": "span-9",
+      "start": 3946.12,
+      "end": 3961.2,
+      "hit": true,
+      "coveredSeconds": 15.08,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "id": "span-1",
+      "start": 0.52,
+      "end": 27.6,
+      "hit": true,
+      "coveredSeconds": 27.08,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "id": "span-2",
+      "start": 27.6,
+      "end": 88.78,
+      "hit": true,
+      "coveredSeconds": 7.4,
+      "coverageRecall": 0.120955
+    },
+    {
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "id": "span-4",
+      "start": 121.18,
+      "end": 129.32,
+      "hit": true,
+      "coveredSeconds": 8.14,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "id": "span-5",
+      "start": 142.38,
+      "end": 189.32,
+      "hit": true,
+      "coveredSeconds": 46.94,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "id": "span-6",
+      "start": 618.88,
+      "end": 637.54,
+      "hit": true,
+      "coveredSeconds": 18.66,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "id": "span-7",
+      "start": 1314.7,
+      "end": 1352.76,
+      "hit": true,
+      "coveredSeconds": 38.06,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "id": "span-8",
+      "start": 2960.46,
+      "end": 2963.62,
+      "hit": true,
+      "coveredSeconds": 3.16,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "id": "span-9",
+      "start": 3059.5,
+      "end": 3075.5,
+      "hit": true,
+      "coveredSeconds": 15.0,
+      "coverageRecall": 0.9375
+    },
+    {
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "id": "span-10",
+      "start": 3120.72,
+      "end": 3150.74,
+      "hit": true,
+      "coveredSeconds": 30.02,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "id": "span-11",
+      "start": 3152.82,
+      "end": 3175.56,
+      "hit": true,
+      "coveredSeconds": 22.74,
+      "coverageRecall": 1.0
+    },
+    {
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "id": "span-12",
+      "start": 3180.62,
+      "end": 3210.84,
+      "hit": true,
+      "coveredSeconds": 30.22,
+      "coverageRecall": 1.0
+    }
+  ],
+  "regions": [
+    {
+      "id": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 0.0,
+      "end": 180.0,
+      "sliceCount": 18,
+      "positiveSliceCount": 4,
+      "stitchedCoverage": [
+        [
+          80.0,
+          125.0
+        ]
+      ]
+    },
+    {
+      "id": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 600.0,
+      "end": 840.0,
+      "sliceCount": 24,
+      "positiveSliceCount": 6,
+      "stitchedCoverage": [
+        [
+          690.0,
+          755.0
+        ]
+      ]
+    },
+    {
+      "id": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1560.0,
+      "end": 1860.0,
+      "sliceCount": 30,
+      "positiveSliceCount": 9,
+      "stitchedCoverage": [
+        [
+          1660.0,
+          1755.0
+        ]
+      ]
+    },
+    {
+      "id": "stage2-this-american-life-r04",
+      "slug": "stage2-this-american-life",
+      "start": 3840.0,
+      "end": 3961.2,
+      "sliceCount": 13,
+      "positiveSliceCount": 3,
+      "stitchedCoverage": [
+        [
+          3940.0,
+          3961.2
+        ]
+      ]
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 0.0,
+      "end": 240.0,
+      "sliceCount": 22,
+      "positiveSliceCount": 10,
+      "stitchedCoverage": [
+        [
+          0.0,
+          35.0
+        ],
+        [
+          110.0,
+          195.0
+        ]
+      ]
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 540.0,
+      "end": 720.0,
+      "sliceCount": 18,
+      "positiveSliceCount": 3,
+      "stitchedCoverage": [
+        [
+          610.0,
+          645.0
+        ]
+      ]
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1200.0,
+      "end": 1560.0,
+      "sliceCount": 36,
+      "positiveSliceCount": 12,
+      "stitchedCoverage": [
+        [
+          1310.0,
+          1355.0
+        ],
+        [
+          1380.0,
+          1465.0
+        ]
+      ]
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 2880.0,
+      "end": 3210.84,
+      "sliceCount": 34,
+      "positiveSliceCount": 13,
+      "stitchedCoverage": [
+        [
+          2950.0,
+          2975.0
+        ],
+        [
+          3060.0,
+          3075.0
+        ],
+        [
+          3120.0,
+          3210.84
+        ]
+      ]
+    }
+  ],
+  "slices": [
+    {
+      "id": "stage2-this-american-life-r01-s001",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 0.0,
+      "end": 15.0,
+      "probability": 0.06,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r01-s002",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 10.0,
+      "end": 25.0,
+      "probability": 0.05,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r01-s003",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 20.0,
+      "end": 35.0,
+      "probability": 0.09,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r01-s004",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 30.0,
+      "end": 45.0,
+      "probability": 0.12,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r01-s005",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 40.0,
+      "end": 55.0,
+      "probability": 0.13,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r01-s006",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 50.0,
+      "end": 65.0,
+      "probability": 0.19,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r01-s007",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 60.0,
+      "end": 75.0,
+      "probability": 0.15,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r01-s008",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 70.0,
+      "end": 85.0,
+      "probability": 0.12,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r01-s009",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 80.0,
+      "end": 95.0,
+      "probability": 0.96,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r01-s010",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 90.0,
+      "end": 105.0,
+      "probability": 0.97,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r01-s011",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 100.0,
+      "end": 115.0,
+      "probability": 0.98,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r01-s012",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 110.0,
+      "end": 125.0,
+      "probability": 0.96,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r01-s013",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 120.0,
+      "end": 135.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r01-s014",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 130.0,
+      "end": 145.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r01-s015",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 140.0,
+      "end": 155.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r01-s016",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 150.0,
+      "end": 165.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r01-s017",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 160.0,
+      "end": 175.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r01-s018",
+      "regionId": "stage2-this-american-life-r01",
+      "slug": "stage2-this-american-life",
+      "start": 170.0,
+      "end": 180.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s001",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 600.0,
+      "end": 615.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s002",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 610.0,
+      "end": 625.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s003",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 620.0,
+      "end": 635.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s004",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 630.0,
+      "end": 645.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s005",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 640.0,
+      "end": 655.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s006",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 650.0,
+      "end": 665.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s007",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 660.0,
+      "end": 675.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s008",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 670.0,
+      "end": 685.0,
+      "probability": 0.05,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s009",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 680.0,
+      "end": 695.0,
+      "probability": 0.08,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s010",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 690.0,
+      "end": 705.0,
+      "probability": 0.94,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r02-s011",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 700.0,
+      "end": 715.0,
+      "probability": 0.96,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r02-s012",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 710.0,
+      "end": 725.0,
+      "probability": 0.97,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r02-s013",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 720.0,
+      "end": 735.0,
+      "probability": 0.97,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r02-s014",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 730.0,
+      "end": 745.0,
+      "probability": 0.97,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r02-s015",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 740.0,
+      "end": 755.0,
+      "probability": 0.94,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r02-s016",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 750.0,
+      "end": 765.0,
+      "probability": 0.1,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s017",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 760.0,
+      "end": 775.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s018",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 770.0,
+      "end": 785.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s019",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 780.0,
+      "end": 795.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s020",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 790.0,
+      "end": 805.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s021",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 800.0,
+      "end": 815.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s022",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 810.0,
+      "end": 825.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s023",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 820.0,
+      "end": 835.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r02-s024",
+      "regionId": "stage2-this-american-life-r02",
+      "slug": "stage2-this-american-life",
+      "start": 830.0,
+      "end": 840.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s001",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1560.0,
+      "end": 1575.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s002",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1570.0,
+      "end": 1585.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s003",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1580.0,
+      "end": 1595.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s004",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1590.0,
+      "end": 1605.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s005",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1600.0,
+      "end": 1615.0,
+      "probability": 0.02,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s006",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1610.0,
+      "end": 1625.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s007",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1620.0,
+      "end": 1635.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s008",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1630.0,
+      "end": 1645.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s009",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1640.0,
+      "end": 1655.0,
+      "probability": 0.05,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s010",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1650.0,
+      "end": 1665.0,
+      "probability": 0.66,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s011",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1660.0,
+      "end": 1675.0,
+      "probability": 0.91,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r03-s012",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1670.0,
+      "end": 1685.0,
+      "probability": 0.92,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r03-s013",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1680.0,
+      "end": 1695.0,
+      "probability": 0.88,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r03-s014",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1690.0,
+      "end": 1705.0,
+      "probability": 0.94,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r03-s015",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1700.0,
+      "end": 1715.0,
+      "probability": 0.97,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r03-s016",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1710.0,
+      "end": 1725.0,
+      "probability": 0.97,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r03-s017",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1720.0,
+      "end": 1735.0,
+      "probability": 0.95,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r03-s018",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1730.0,
+      "end": 1745.0,
+      "probability": 0.97,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r03-s019",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1740.0,
+      "end": 1755.0,
+      "probability": 0.89,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r03-s020",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1750.0,
+      "end": 1765.0,
+      "probability": 0.05,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s021",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1760.0,
+      "end": 1775.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s022",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1770.0,
+      "end": 1785.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s023",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1780.0,
+      "end": 1795.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s024",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1790.0,
+      "end": 1805.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s025",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1800.0,
+      "end": 1815.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s026",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1810.0,
+      "end": 1825.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s027",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1820.0,
+      "end": 1835.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s028",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1830.0,
+      "end": 1845.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s029",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1840.0,
+      "end": 1855.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r03-s030",
+      "regionId": "stage2-this-american-life-r03",
+      "slug": "stage2-this-american-life",
+      "start": 1850.0,
+      "end": 1860.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r04-s001",
+      "regionId": "stage2-this-american-life-r04",
+      "slug": "stage2-this-american-life",
+      "start": 3840.0,
+      "end": 3855.0,
+      "probability": 0.05,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r04-s002",
+      "regionId": "stage2-this-american-life-r04",
+      "slug": "stage2-this-american-life",
+      "start": 3850.0,
+      "end": 3865.0,
+      "probability": 0.07,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r04-s003",
+      "regionId": "stage2-this-american-life-r04",
+      "slug": "stage2-this-american-life",
+      "start": 3860.0,
+      "end": 3875.0,
+      "probability": 0.09,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r04-s004",
+      "regionId": "stage2-this-american-life-r04",
+      "slug": "stage2-this-american-life",
+      "start": 3870.0,
+      "end": 3885.0,
+      "probability": 0.17,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r04-s005",
+      "regionId": "stage2-this-american-life-r04",
+      "slug": "stage2-this-american-life",
+      "start": 3880.0,
+      "end": 3895.0,
+      "probability": 0.08,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r04-s006",
+      "regionId": "stage2-this-american-life-r04",
+      "slug": "stage2-this-american-life",
+      "start": 3890.0,
+      "end": 3905.0,
+      "probability": 0.06,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r04-s007",
+      "regionId": "stage2-this-american-life-r04",
+      "slug": "stage2-this-american-life",
+      "start": 3900.0,
+      "end": 3915.0,
+      "probability": 0.06,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r04-s008",
+      "regionId": "stage2-this-american-life-r04",
+      "slug": "stage2-this-american-life",
+      "start": 3910.0,
+      "end": 3925.0,
+      "probability": 0.05,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r04-s009",
+      "regionId": "stage2-this-american-life-r04",
+      "slug": "stage2-this-american-life",
+      "start": 3920.0,
+      "end": 3935.0,
+      "probability": 0.11,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r04-s010",
+      "regionId": "stage2-this-american-life-r04",
+      "slug": "stage2-this-american-life",
+      "start": 3930.0,
+      "end": 3945.0,
+      "probability": 0.64,
+      "positive": false
+    },
+    {
+      "id": "stage2-this-american-life-r04-s011",
+      "regionId": "stage2-this-american-life-r04",
+      "slug": "stage2-this-american-life",
+      "start": 3940.0,
+      "end": 3955.0,
+      "probability": 0.97,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r04-s012",
+      "regionId": "stage2-this-american-life-r04",
+      "slug": "stage2-this-american-life",
+      "start": 3950.0,
+      "end": 3961.2,
+      "probability": 0.98,
+      "positive": true
+    },
+    {
+      "id": "stage2-this-american-life-r04-s013",
+      "regionId": "stage2-this-american-life-r04",
+      "slug": "stage2-this-american-life",
+      "start": 3960.0,
+      "end": 3961.2,
+      "probability": 0.94,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s001",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 0.0,
+      "end": 15.0,
+      "probability": 0.92,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s002",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 10.0,
+      "end": 25.0,
+      "probability": 0.97,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s003",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 20.0,
+      "end": 35.0,
+      "probability": 0.94,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s004",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 30.0,
+      "end": 45.0,
+      "probability": 0.8,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s005",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 40.0,
+      "end": 55.0,
+      "probability": 0.78,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s006",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 50.0,
+      "end": 65.0,
+      "probability": 0.68,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s007",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 80.0,
+      "end": 95.0,
+      "probability": 0.28,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s008",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 90.0,
+      "end": 105.0,
+      "probability": 0.22,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s009",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 100.0,
+      "end": 115.0,
+      "probability": 0.12,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s010",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 110.0,
+      "end": 125.0,
+      "probability": 0.89,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s011",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 120.0,
+      "end": 135.0,
+      "probability": 0.89,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s012",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 130.0,
+      "end": 145.0,
+      "probability": 0.79,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s013",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 140.0,
+      "end": 155.0,
+      "probability": 0.95,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s014",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 150.0,
+      "end": 165.0,
+      "probability": 0.96,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s015",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 160.0,
+      "end": 175.0,
+      "probability": 0.96,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s016",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 170.0,
+      "end": 185.0,
+      "probability": 0.95,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s017",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 180.0,
+      "end": 195.0,
+      "probability": 0.87,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s018",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 190.0,
+      "end": 205.0,
+      "probability": 0.11,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s019",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 200.0,
+      "end": 215.0,
+      "probability": 0.15,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s020",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 210.0,
+      "end": 225.0,
+      "probability": 0.09,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s021",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 220.0,
+      "end": 235.0,
+      "probability": 0.05,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r01-s022",
+      "regionId": "cougar-sports-2026-07-17-hour4-r01",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 230.0,
+      "end": 240.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s001",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 540.0,
+      "end": 555.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s002",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 550.0,
+      "end": 565.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s003",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 560.0,
+      "end": 575.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s004",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 570.0,
+      "end": 585.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s005",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 580.0,
+      "end": 595.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s006",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 590.0,
+      "end": 605.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s007",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 600.0,
+      "end": 615.0,
+      "probability": 0.07,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s008",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 610.0,
+      "end": 625.0,
+      "probability": 0.94,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s009",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 620.0,
+      "end": 635.0,
+      "probability": 0.96,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s010",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 630.0,
+      "end": 645.0,
+      "probability": 0.9,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s011",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 640.0,
+      "end": 655.0,
+      "probability": 0.11,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s012",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 650.0,
+      "end": 665.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s013",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 660.0,
+      "end": 675.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s014",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 670.0,
+      "end": 685.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s015",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 680.0,
+      "end": 695.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s016",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 690.0,
+      "end": 705.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s017",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 700.0,
+      "end": 715.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r02-s018",
+      "regionId": "cougar-sports-2026-07-17-hour4-r02",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 710.0,
+      "end": 720.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s001",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1200.0,
+      "end": 1215.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s002",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1210.0,
+      "end": 1225.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s003",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1220.0,
+      "end": 1235.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s004",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1230.0,
+      "end": 1245.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s005",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1240.0,
+      "end": 1255.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s006",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1250.0,
+      "end": 1265.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s007",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1260.0,
+      "end": 1275.0,
+      "probability": 0.08,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s008",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1270.0,
+      "end": 1285.0,
+      "probability": 0.06,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s009",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1280.0,
+      "end": 1295.0,
+      "probability": 0.06,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s010",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1290.0,
+      "end": 1305.0,
+      "probability": 0.06,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s011",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1300.0,
+      "end": 1315.0,
+      "probability": 0.4,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s012",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1310.0,
+      "end": 1325.0,
+      "probability": 0.95,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s013",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1320.0,
+      "end": 1335.0,
+      "probability": 0.96,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s014",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1330.0,
+      "end": 1345.0,
+      "probability": 0.94,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s015",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1340.0,
+      "end": 1355.0,
+      "probability": 0.93,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s016",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1350.0,
+      "end": 1365.0,
+      "probability": 0.44,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s017",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1360.0,
+      "end": 1375.0,
+      "probability": 0.16,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s018",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1370.0,
+      "end": 1385.0,
+      "probability": 0.82,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s019",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1380.0,
+      "end": 1395.0,
+      "probability": 0.93,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s020",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1390.0,
+      "end": 1405.0,
+      "probability": 0.95,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s021",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1400.0,
+      "end": 1415.0,
+      "probability": 0.93,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s022",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1410.0,
+      "end": 1425.0,
+      "probability": 0.93,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s023",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1420.0,
+      "end": 1435.0,
+      "probability": 0.92,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s024",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1430.0,
+      "end": 1445.0,
+      "probability": 0.87,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s025",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1440.0,
+      "end": 1455.0,
+      "probability": 0.93,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s026",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1450.0,
+      "end": 1465.0,
+      "probability": 0.93,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s027",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1460.0,
+      "end": 1475.0,
+      "probability": 0.13,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s028",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1470.0,
+      "end": 1485.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s029",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1480.0,
+      "end": 1495.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s030",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1490.0,
+      "end": 1505.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s031",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1500.0,
+      "end": 1515.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s032",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1510.0,
+      "end": 1525.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s033",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1520.0,
+      "end": 1535.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s034",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1530.0,
+      "end": 1545.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s035",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1540.0,
+      "end": 1555.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r03-s036",
+      "regionId": "cougar-sports-2026-07-17-hour4-r03",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 1550.0,
+      "end": 1560.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s001",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 2880.0,
+      "end": 2895.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s002",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 2890.0,
+      "end": 2905.0,
+      "probability": 0.04,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s003",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 2900.0,
+      "end": 2915.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s004",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 2910.0,
+      "end": 2925.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s005",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 2920.0,
+      "end": 2935.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s006",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 2930.0,
+      "end": 2945.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s007",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 2940.0,
+      "end": 2955.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s008",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 2950.0,
+      "end": 2965.0,
+      "probability": 0.92,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s009",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 2960.0,
+      "end": 2975.0,
+      "probability": 0.9,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s010",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 2970.0,
+      "end": 2985.0,
+      "probability": 0.05,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s011",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 2980.0,
+      "end": 2995.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s012",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 2990.0,
+      "end": 3005.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s013",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3000.0,
+      "end": 3015.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s014",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3010.0,
+      "end": 3025.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s015",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3020.0,
+      "end": 3035.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s016",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3030.0,
+      "end": 3045.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s017",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3040.0,
+      "end": 3055.0,
+      "probability": 0.13,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s018",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3050.0,
+      "end": 3065.0,
+      "probability": 0.76,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s019",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3060.0,
+      "end": 3075.0,
+      "probability": 0.86,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s020",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3070.0,
+      "end": 3085.0,
+      "probability": 0.8,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s021",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3080.0,
+      "end": 3095.0,
+      "probability": 0.09,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s022",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3090.0,
+      "end": 3105.0,
+      "probability": 0.06,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s023",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3100.0,
+      "end": 3115.0,
+      "probability": 0.03,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s024",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3110.0,
+      "end": 3125.0,
+      "probability": 0.79,
+      "positive": false
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s025",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3120.0,
+      "end": 3135.0,
+      "probability": 0.96,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s026",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3130.0,
+      "end": 3145.0,
+      "probability": 0.91,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s027",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3140.0,
+      "end": 3155.0,
+      "probability": 0.96,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s028",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3150.0,
+      "end": 3165.0,
+      "probability": 0.96,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s029",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3160.0,
+      "end": 3175.0,
+      "probability": 0.95,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s030",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3170.0,
+      "end": 3185.0,
+      "probability": 0.94,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s031",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3180.0,
+      "end": 3195.0,
+      "probability": 0.94,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s032",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3190.0,
+      "end": 3205.0,
+      "probability": 0.94,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s033",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3200.0,
+      "end": 3210.84,
+      "probability": 0.93,
+      "positive": true
+    },
+    {
+      "id": "cougar-sports-2026-07-17-hour4-r04-s034",
+      "regionId": "cougar-sports-2026-07-17-hour4-r04",
+      "slug": "cougar-sports-2026-07-17-hour4",
+      "start": 3210.0,
+      "end": 3210.84,
+      "probability": 0.86,
+      "positive": true
+    }
+  ]
+}
