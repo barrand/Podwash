@@ -1,6 +1,9 @@
 # Typed removal presets — Jev migration plan
 
-**Status:** approved direction; V7 evaluation in progress
+**Status:** superseded by `docs/plans/jev-mvp.md`; retained as design and
+evaluation history
+**Implementation note:** do not execute this document's delivery sequence or
+Gemini-dependent promotion gates; the MVP plan replaces them.
 **Scope:** replace the single cloud "ad span" meaning with typed removable spans,
 three listener-facing skip presets, a corrected golden policy, and a Jev-backed
 server candidate. Previews and recaps are always preserved.

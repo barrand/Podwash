@@ -1,10 +1,8 @@
 # Jev V8 two-minute paid-ad scout
 
-**Status:** V8 completed and rejected at its frozen threshold; V8.1 Stages 0,
-1, and 2 passed. Strategy 8's paid-ad scout is validated. The isolated-parent
-V8.2A refiner was rejected, and V8.2B showed that frozen boundary stitching
-repairs that failure. V8.3 rejected the 15-second refiner on held-out evidence;
-the validated scout remains available for a different localization approach.
+**Status:** concluded research; not part of the Jev MVP runtime. V8.1's scout
+passed, but V8.2-V8.4 did not establish a production playback localizer. See
+`docs/plans/jev-mvp.md` for the active implementation plan.
 
 V8 tests one question: can Jev detect that a paid ad exists somewhere inside
 an overlapping two-minute transcript window? It does not localize ads, produce
