@@ -110,6 +110,19 @@ final class AppShellModel {
         foregroundPreparationJob.map { EpisodeRowPresentationMapper.map($0).statusText }
             ?? EpisodeRowPresentationMapper.map(.preparing).statusText
     }
+    var preparationFailureStatusText: String? {
+        guard let job = foregroundPreparationJob,
+              let reason = job.resolvedFailureReason else { return nil }
+        return PreparationIssuePresentationMapper.map(PreparationIssue(
+            episodeID: job.episodeID,
+            episodeTitle: job.title,
+            reason: reason,
+            hasVerifiedLocalAudio: downloadManager.verifiedLocalFileURL(for: job.episodeID) != nil
+        )).shortStatus
+    }
+    var canPresentNowPlayingPreparationIssue: Bool {
+        foregroundPreparationJob?.resolvedFailureReason != nil
+    }
     private(set) var analysisRecoveryState: AnalysisRecoveryState = .notNeeded
     private var restoredAnalysisContext: RestoredAnalysisContext?
     private var stagedRefreshIntervals: ([CensorInterval], [CensorInterval], UnrelatedContentOptions, URL)?
@@ -186,6 +199,8 @@ final class AppShellModel {
 
     /// Transcript sheet presentation (Slice 26). Non-nil when the sheet should show.
     var transcriptSheetEpisodeID: String? = nil
+    /// Non-nil while the shared terminal-preparation recovery sheet is visible.
+    var preparationIssueEpisodeID: String? = nil
     /// View model for the open transcript sheet (built on present).
     private(set) var transcriptSheetViewModel: TranscriptViewModel?
     /// Resume / open-time playhead frozen for the presentation (ADR-028 §4).
@@ -273,6 +288,22 @@ final class AppShellModel {
     }
     /// The now-playing analysis uses the same listener-facing state as warm jobs.
     private(set) var foregroundPreparationJob: AnalysisJob?
+
+    var presentedPreparationIssue: PreparationIssue? {
+        guard let episodeID = preparationIssueEpisodeID,
+              let lookup = podcastStore.episodeLookup(id: episodeID)
+        else { return nil }
+        let job = foregroundPreparationJob?.episodeID == episodeID
+            ? foregroundPreparationJob
+            : warmPlanner?.job(for: episodeID)
+        guard let reason = job?.resolvedFailureReason else { return nil }
+        return PreparationIssue(
+            episodeID: episodeID,
+            episodeTitle: lookup.episode.title,
+            reason: reason,
+            hasVerifiedLocalAudio: downloadManager.verifiedLocalFileURL(for: episodeID) != nil
+        )
+    }
 
     /// True while waiting on analysis before auto-advancing (rare miss path).
     private(set) var isPreparingNextEpisode = false
@@ -751,7 +782,8 @@ final class AppShellModel {
                             episodeID: episode.id,
                             stage: Self.isRetryableCloudFailure(category) ? .adCheckDelayed : .needsAttention,
                             detail: Self.foregroundDetail(for: category),
-                            cloudFailure: category
+                            cloudFailure: category,
+                            failureReason: Self.isRetryableCloudFailure(category) ? nil : .cloud(category)
                         )
                     }
                 })
@@ -809,7 +841,8 @@ final class AppShellModel {
                         episodeID: episode.id,
                         stage: Self.isRetryableCloudFailure(category) ? .adCheckDelayed : .needsAttention,
                         detail: Self.foregroundDetail(for: category),
-                        cloudFailure: category
+                        cloudFailure: category,
+                        failureReason: Self.isRetryableCloudFailure(category) ? nil : .cloud(category)
                     )
                     return
                 }
@@ -837,7 +870,8 @@ final class AppShellModel {
                         episodeID: episode.id,
                         stage: Self.isRetryableCloudFailure(category) ? .adCheckDelayed : .needsAttention,
                         detail: Self.foregroundDetail(for: category),
-                        cloudFailure: category
+                        cloudFailure: category,
+                        failureReason: Self.isRetryableCloudFailure(category) ? nil : .cloud(category)
                     )
                 } else {
                     self.updateForegroundPreparation(episodeID: episode.id, stage: .ready)
@@ -857,13 +891,23 @@ final class AppShellModel {
                     "Analysis did not finish — playback remains blocked until preparation succeeds."
                 )
                 self.playbackReadiness = .failed
-                let category = CloudAdDetectionFailureCategory.classify(error)
-                self.updateForegroundPreparation(
-                    episodeID: episode.id,
-                    stage: Self.isRetryableCloudFailure(category) ? .adCheckDelayed : .needsAttention,
-                    detail: Self.foregroundDetail(for: category),
-                    cloudFailure: category
-                )
+                if let pipeline = self.episodeAnalyzer as? AnalysisPipeline,
+                   case let .failed(category)? = pipeline.lastCloudAdDetectionOutcome {
+                    self.updateForegroundPreparation(
+                        episodeID: episode.id,
+                        stage: Self.isRetryableCloudFailure(category) ? .adCheckDelayed : .needsAttention,
+                        detail: Self.foregroundDetail(for: category),
+                        cloudFailure: category,
+                        failureReason: Self.isRetryableCloudFailure(category) ? nil : .cloud(category)
+                    )
+                } else {
+                    self.updateForegroundPreparation(
+                        episodeID: episode.id,
+                        stage: .needsAttention,
+                        detail: "Local preparation failed",
+                        failureReason: .localPreparationFailed
+                    )
+                }
             }
         }
     }
@@ -1049,6 +1093,7 @@ final class AppShellModel {
     }
 
     func stopAndDismissPlayer() {
+        if preparationIssueEpisodeID == nowPlayingEpisodeID { dismissPreparationIssue() }
         readyPlayGeneration &+= 1
         invalidatePlaybackPreparation()
         flushPlaybackPosition()
@@ -1107,6 +1152,9 @@ final class AppShellModel {
         if transcriptSheetEpisodeID.map(episodeIDSet.contains) == true {
             dismissTranscript()
         }
+        if preparationIssueEpisodeID.map(episodeIDSet.contains) == true {
+            dismissPreparationIssue()
+        }
 
         for episodeID in episodeIDs {
             try? queueStore.remove(episodeID)
@@ -1140,6 +1188,9 @@ final class AppShellModel {
     private func purgeAnalysisArtifacts(episodeID: String) {
         if transcriptSheetEpisodeID == episodeID {
             dismissTranscript()
+        }
+        if preparationIssueEpisodeID == episodeID {
+            dismissPreparationIssue()
         }
         try? transcriptCache.remove(episodeID: episodeID)
         try? intervalCache.remove(episodeID: episodeID)
@@ -1398,6 +1449,7 @@ final class AppShellModel {
                                           commit: { self.commitQueueMutation(snapshot) })
                 case .cancelDownload, .cancelPreparation: self.cancelEpisodePreparation(episodeID)
                 case .retry: self.retryEpisodePreparation(episodeID)
+                case .viewPreparationIssue: self.presentPreparationIssue(episodeID: episodeID)
                 case .playWithoutAdSkipping: self.stageLocalPlayback(episodeID, context: context, mode: .withoutAdSkipping)
                 case .playOriginalAudio: self.stageLocalPlayback(episodeID, context: context, mode: .original)
                 case .transcript: self.presentTranscript(for: episodeID)
@@ -1459,12 +1511,50 @@ final class AppShellModel {
     }
 
     func retryEpisodePreparation(_ episodeID: String) {
+        PodWashAnalytics.action("Preparation.retry")
         if replayPreparationEpisodeID == episodeID {
             retryReplayPreparation(episodeID: episodeID)
             return
         }
+        if nowPlayingEpisodeID == episodeID, let context = activePlaybackContext {
+            dismissPreparationIssue()
+            invalidatePlaybackPreparation()
+            beginPlaybackSession(
+                episode: context.episode,
+                podcastTitle: context.podcastTitle,
+                feedURL: context.feedURL,
+                audioURL: context.sourceURL,
+                localCandidate: downloadManager.verifiedLocalFileURL(for: episodeID),
+                remoteCandidate: context.remoteCandidate
+            )
+            return
+        }
+        dismissPreparationIssue()
         warmPlanner?.resetJobForRetry(episodeID: episodeID)
         requestEpisodeDownload(episodeID)
+    }
+
+    func presentPreparationIssue(episodeID: String) {
+        guard let job = foregroundPreparationJob?.episodeID == episodeID
+                ? foregroundPreparationJob
+                : warmPlanner?.job(for: episodeID),
+              job.resolvedFailureReason != nil
+        else { return }
+        preparationIssueEpisodeID = episodeID
+        PodWashAnalytics.action("Preparation.issueViewed")
+    }
+
+    func dismissPreparationIssue() {
+        preparationIssueEpisodeID = nil
+    }
+
+    func playOriginalAudioFromPreparationIssue() {
+        guard let issue = presentedPreparationIssue,
+              PreparationIssuePresentationMapper.map(issue).allowsOriginalPlayback
+        else { return }
+        stageLocalPlayback(issue.episodeID, context: .library, mode: .original)
+        dismissPreparationIssue()
+        PodWashAnalytics.action("Preparation.playOriginal")
     }
 
     /// Ready-only playback: a stale tap is a harmless no-op and can never turn
@@ -1574,6 +1664,7 @@ final class AppShellModel {
 
     func removeEpisodeDownload(_ episodeID: String) {
         guard episodeID != nowPlayingEpisodeID, episodeID != replayPreparationEpisodeID else { return }
+        if preparationIssueEpisodeID == episodeID { dismissPreparationIssue() }
         readyPlayGeneration &+= 1
         cancelEpisodePreparation(episodeID)
         warmPlanner?.suppressAutomaticPreparation(episodeID: episodeID)
@@ -1620,6 +1711,7 @@ final class AppShellModel {
     }
 
     func removeDownloadedAudioAndPreparation(episodeID: String) {
+        if preparationIssueEpisodeID == episodeID { dismissPreparationIssue() }
         try? queueStore.remove(episodeID)
         warmPlanner?.removeJob(episodeID: episodeID)
         removeDownloadedAudio(episodeID: episodeID)
@@ -1758,6 +1850,11 @@ final class AppShellModel {
     private func handlePreparationJobsChanged() {
         refreshQueuePresentation()
         episodeListRevision &+= 1
+        if let episodeID = preparationIssueEpisodeID,
+           foregroundPreparationJob?.episodeID != episodeID,
+           warmPlanner?.job(for: episodeID)?.resolvedFailureReason == nil {
+            preparationIssueEpisodeID = nil
+        }
         guard let episodeID = replayPreparationEpisodeID,
               let job = warmPlanner?.job(for: episodeID)
         else { return }
@@ -1790,6 +1887,7 @@ final class AppShellModel {
             job.retryAfter = nil
             job.detail = nil
             job.cloudFailure = nil
+            job.failureReason = nil
             job.retryCount = 0
             foregroundPreparationJob = job
         }
@@ -1800,14 +1898,19 @@ final class AppShellModel {
         episodeID: String,
         stage: AnalysisJobStage,
         detail: String? = nil,
-        cloudFailure: CloudAdDetectionFailureCategory? = nil
+        cloudFailure: CloudAdDetectionFailureCategory? = nil,
+        failureReason: PreparationFailureReason? = nil
     ) {
         guard var job = foregroundPreparationJob, job.episodeID == episodeID else { return }
         job.stage = stage
         job.detail = detail
         job.cloudFailure = cloudFailure
+        job.failureReason = failureReason
         job.updatedAt = Date()
         foregroundPreparationJob = job
+        if preparationIssueEpisodeID == episodeID, failureReason == nil {
+            preparationIssueEpisodeID = nil
+        }
         episodeListRevision &+= 1
         refreshQueuePresentation()
     }
@@ -2011,12 +2114,23 @@ final class AppShellModel {
             } catch {
                 if !hadPriorResult { self.playbackReadiness = .failed }
                 self.analysisRecoveryState = hadPriorResult ? .refreshAvailable : .missingArtifacts
-                self.updateForegroundPreparation(
-                    episodeID: context.episode.id,
-                    stage: .needsAttention,
-                    detail: "Analysis needs attention",
-                    cloudFailure: CloudAdDetectionFailureCategory.classify(error)
-                )
+                if let pipeline = self.episodeAnalyzer as? AnalysisPipeline,
+                   case let .failed(category)? = pipeline.lastCloudAdDetectionOutcome {
+                    self.updateForegroundPreparation(
+                        episodeID: context.episode.id,
+                        stage: Self.isRetryableCloudFailure(category) ? .adCheckDelayed : .needsAttention,
+                        detail: Self.foregroundDetail(for: category),
+                        cloudFailure: category,
+                        failureReason: Self.isRetryableCloudFailure(category) ? nil : .cloud(category)
+                    )
+                } else {
+                    self.updateForegroundPreparation(
+                        episodeID: context.episode.id,
+                        stage: .needsAttention,
+                        detail: "Local preparation failed",
+                        failureReason: .localPreparationFailed
+                    )
+                }
             }
         }
     }

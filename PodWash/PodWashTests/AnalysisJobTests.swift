@@ -42,6 +42,42 @@ final class AnalysisJobTests: XCTestCase {
                        "Ad check delayed · Retrying now")
     }
 
+    func testLegacyTerminalJobResolvesToTypedFailureReason() {
+        var value = job(id: "episode", stage: .needsAttention)
+        value.detail = "Download failed"
+        XCTAssertEqual(value.resolvedFailureReason, .downloadFailed)
+
+        value.detail = "unrecognized old failure"
+        value.cloudFailure = .invalidResponse
+        XCTAssertEqual(value.resolvedFailureReason, .cloud(.invalidResponse))
+    }
+
+    func testPreparationIssuePresentationMapsSafeCopyAndActions() {
+        let local = PreparationIssuePresentationMapper.map(PreparationIssue(
+            episodeID: "episode", episodeTitle: "Episode", reason: .localPreparationFailed,
+            hasVerifiedLocalAudio: true
+        ))
+        XCTAssertEqual(local.shortStatus, "Local preparation failed")
+        XCTAssertEqual(local.diagnosticCode, "PW-PREP-LOCAL")
+        XCTAssertTrue(local.allowsRetry)
+        XCTAssertTrue(local.allowsOriginalPlayback)
+
+        let noAudio = PreparationIssuePresentationMapper.map(PreparationIssue(
+            episodeID: "episode", episodeTitle: "Episode", reason: .noDownloadableAudio,
+            hasVerifiedLocalAudio: false
+        ))
+        XCTAssertEqual(noAudio.diagnosticCode, "PW-PREP-NO-AUDIO")
+        XCTAssertFalse(noAudio.allowsRetry)
+        XCTAssertFalse(noAudio.allowsOriginalPlayback)
+
+        let cloud = PreparationIssuePresentationMapper.map(PreparationIssue(
+            episodeID: "episode", episodeTitle: "Episode", reason: .cloud(.invalidResponse),
+            hasVerifiedLocalAudio: true
+        ))
+        XCTAssertEqual(cloud.diagnosticCode, "PW-PREP-CLOUD-INVALID-RESPONSE")
+        XCTAssertTrue(cloud.allowsOriginalPlayback)
+    }
+
     private func job(id: String, stage: AnalysisJobStage) -> AnalysisJob {
         AnalysisJob(
             episodeID: id,

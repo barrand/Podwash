@@ -143,6 +143,7 @@ import Observation
             job.retryAfter = nil
             job.cloudFailure = nil
             job.detail = nil
+            job.failureReason = nil
             jobs[id] = job
         }
         for id in Array(retryTasks.keys) where !effectiveIDs.contains(id) {
@@ -363,6 +364,7 @@ import Observation
                 job.estimate = AnalysisJobEstimate(secondsRemaining: nil, progress: nil)
                 job.retryAfter = nil
                 job.detail = nil
+                job.failureReason = nil
                 jobs[episodeID] = job
                 changed = true
             } else if job.stage != .ready, job.stage != .needsAttention, job.stage != .adCheckDelayed {
@@ -392,6 +394,7 @@ import Observation
         job.retryAfter = nil
         job.detail = nil
         job.cloudFailure = nil
+        job.failureReason = nil
         job.retryCount = 0
         jobs[episodeID] = job
         jobStore.save(jobs)
@@ -470,7 +473,8 @@ import Observation
                 localURL = existing
             } else {
                 guard let remote = lookup.episode.audioURL else {
-                    updateJob(item, stage: .needsAttention, detail: "No downloadable audio", generation: generation)
+                    updateJob(item, stage: .needsAttention, detail: "No downloadable audio",
+                              failureReason: .noDownloadableAudio, generation: generation)
                     return
                 }
                 // A newly fetched enclosure must never inherit timestamps from
@@ -538,7 +542,8 @@ import Observation
             }
             guard generation == warmGeneration, !Task.isCancelled else { return }
             guard isLocallyDownloaded(episodeID: item.episodeID) else {
-                updateJob(item, stage: .needsAttention, detail: "Download failed", generation: generation)
+                updateJob(item, stage: .needsAttention, detail: "Download failed",
+                          failureReason: .downloadFailed, generation: generation)
                 return
             }
             guard isAnalysisReady(episodeID: item.episodeID, feedURL: item.feedURL) else {
@@ -550,7 +555,8 @@ import Observation
                     category = nil
                 }
                 guard let category else {
-                    updateJob(item, stage: .needsAttention, detail: "Local preparation failed", generation: generation)
+                    updateJob(item, stage: .needsAttention, detail: "Local preparation failed",
+                              failureReason: .localPreparationFailed, generation: generation)
                     return
                 }
                 if !Self.isRetryable(category) {
@@ -559,6 +565,7 @@ import Observation
                         stage: .needsAttention,
                         detail: Self.listenerDetail(for: category),
                         cloudFailure: category,
+                        failureReason: .cloud(category),
                         retryCount: jobs[item.episodeID]?.retryCount ?? 0,
                         generation: generation
                     )
@@ -585,21 +592,24 @@ import Observation
             guard generation == warmGeneration, !Task.isCancelled,
                   !(error is CancellationError) else { return }
             if !isLocallyDownloaded(episodeID: item.episodeID) {
-                updateJob(item, stage: .needsAttention, detail: "Download failed", generation: generation)
+                updateJob(item, stage: .needsAttention, detail: "Download failed",
+                          failureReason: .downloadFailed, generation: generation)
                 return
             }
             guard let pipeline = SerialEpisodeAnalyzer.pipeline(for: analyzer),
                   case let .failed(category)? = pipeline.lastCloudAdDetectionOutcome else {
-                updateJob(item, stage: .needsAttention, detail: "Local preparation failed", generation: generation)
+                updateJob(item, stage: .needsAttention, detail: "Local preparation failed",
+                          failureReason: .localPreparationFailed, generation: generation)
                 return
             }
             if !Self.isRetryable(category) {
                 updateJob(
                     item,
                     stage: .needsAttention,
-                    detail: Self.listenerDetail(for: category),
-                    cloudFailure: category,
-                    retryCount: jobs[item.episodeID]?.retryCount ?? 0,
+                        detail: Self.listenerDetail(for: category),
+                        cloudFailure: category,
+                        failureReason: .cloud(category),
+                        retryCount: jobs[item.episodeID]?.retryCount ?? 0,
                     generation: generation
                 )
                 return
@@ -676,6 +686,7 @@ import Observation
         detail: String? = nil,
         retryAfter: Date? = nil,
         cloudFailure: CloudAdDetectionFailureCategory? = nil,
+        failureReason: PreparationFailureReason? = nil,
         retryCount: Int? = nil,
         generation: Int? = nil
     ) {
@@ -689,6 +700,7 @@ import Observation
             retryAfter: retryAfter,
             detail: detail,
             cloudFailure: cloudFailure,
+            failureReason: failureReason,
             retryCount: retryCount ?? jobs[item.episodeID]?.retryCount ?? 0
         )
         jobs[item.episodeID] = job

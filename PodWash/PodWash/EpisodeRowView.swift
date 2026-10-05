@@ -23,6 +23,7 @@ struct EpisodeRowPresentation: Equatable {
     let tint: EpisodeRowSemanticTint
     let primaryControl: EpisodePrimaryControl
     let accessibilityValue: String
+    let failureReason: PreparationFailureReason?
 
     var progress: Double? {
         guard case let .progress(value) = primaryControl, let value, value.isFinite else { return nil }
@@ -50,7 +51,7 @@ enum EpisodeRowPresentationMapper {
         case .checkingAds: status = .checkingAds
         case .ready: status = .readyOffline
         case .adCheckDelayed: status = .adCheckDelayed(retryAt: job.retryAfter)
-        case .needsAttention: status = .needsAttention(detail: job.detail)
+        case .needsAttention: status = .needsAttention(reason: job.resolvedFailureReason)
         }
         return map(status, now: now)
     }
@@ -74,12 +75,19 @@ enum EpisodeRowPresentationMapper {
             control = .play; symbol = "checkmark.circle.fill"; tint = .ready
         case .adCheckDelayed:
             control = .waiting; symbol = "clock"; tint = .warning
-        case .needsAttention:
-            control = .retry; symbol = "exclamationmark.triangle.fill"; tint = .danger
+        case let .needsAttention(reason):
+            control = reason == .noDownloadableAudio ? .waiting : .retry
+            symbol = "exclamationmark.triangle.fill"; tint = .danger
         }
         let text: String
-        if case .needsAttention = status {
-            text = failureIsDownload ? "Download failed" : "Preparation needs attention"
+        if case let .needsAttention(reason) = status {
+            if let reason {
+                text = PreparationIssuePresentationMapper.map(PreparationIssue(
+                    episodeID: "", episodeTitle: "", reason: reason, hasVerifiedLocalAudio: !failureIsDownload
+                )).shortStatus
+            } else {
+                text = failureIsDownload ? "Download failed" : "Local preparation failed"
+            }
         } else {
             switch status {
             case .notDownloaded: text = "Not downloaded"
@@ -110,7 +118,8 @@ enum EpisodeRowPresentationMapper {
             symbolName: symbol,
             tint: tint,
             primaryControl: control,
-            accessibilityValue: text
+            accessibilityValue: text,
+            failureReason: status.preparationFailureReason
         )
     }
 }
@@ -137,7 +146,7 @@ struct EpisodeRowActions {
 }
 
 enum EpisodeMenuAction: String, Identifiable {
-    case addToUpNext, moveToTop, removeFromUpNext, cancelDownload, cancelPreparation, retry
+    case addToUpNext, moveToTop, removeFromUpNext, cancelDownload, cancelPreparation, retry, viewPreparationIssue
     case playWithoutAdSkipping, playOriginalAudio, markPlayed, replay, transcript, removeDownload
     var id: String { rawValue }
     var title: String {
@@ -148,6 +157,7 @@ enum EpisodeMenuAction: String, Identifiable {
         case .cancelDownload: "Cancel Download"
         case .cancelPreparation: "Cancel Preparation"
         case .retry: "Retry now"
+        case .viewPreparationIssue: "View Issue"
         case .playWithoutAdSkipping: "Play without ad skipping"
         case .playOriginalAudio: "Play original audio"
         case .markPlayed: "Mark as Played"
@@ -190,8 +200,11 @@ enum EpisodeMenuPolicy {
             result.append(.retry)
             if facts.hasLocalAudio && facts.hasLocalCleaning && facts.cloudFailure != nil { result.append(.playWithoutAdSkipping) }
         }
-        if case .needsAttention = facts.readiness, facts.hasLocalAudio {
-            result.append(facts.hasLocalCleaning && facts.cloudFailure != nil ? .playWithoutAdSkipping : .playOriginalAudio)
+        if case let .needsAttention(reason) = facts.readiness {
+            result.append(.viewPreparationIssue)
+            if facts.hasLocalAudio {
+                result.append(facts.hasLocalCleaning && facts.cloudFailure != nil ? .playWithoutAdSkipping : .playOriginalAudio)
+            }
         }
         if facts.hasTranscript { result.append(.transcript) }
         result.append(facts.isPlayed ? .replay : .markPlayed)

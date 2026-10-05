@@ -47,7 +47,20 @@ import XCTest
     func testCurrentAudioIsProtectedAndGenericFailureOnlyOffersOriginalAudio() {
         let facts = EpisodeMenuFacts(isQueued: false, isPlayed: true, hasLocalAudio: true,
             hasExplicitOwner: true, hasTranscript: true, hasLocalCleaning: false,
-            readiness: .needsAttention(detail: "Local preparation failed"), protectsLocalAudio: true)
-        XCTAssertEqual(EpisodeMenuPolicy.actions(facts), [.addToUpNext, .playOriginalAudio, .transcript, .replay])
+            readiness: .needsAttention(reason: .localPreparationFailed), protectsLocalAudio: true)
+        XCTAssertEqual(EpisodeMenuPolicy.actions(facts), [.addToUpNext, .viewPreparationIssue,
+            .playOriginalAudio, .transcript, .replay])
+    }
+
+    func testNoDownloadableAudioShowsIssueInsteadOfPointlessRetry() {
+        let row = EpisodeRowPresentationMapper.map(.needsAttention(reason: .noDownloadableAudio))
+        XCTAssertEqual(row.statusText, "Audio unavailable")
+        XCTAssertEqual(row.primaryControl, .waiting)
+
+        let facts = EpisodeMenuFacts(isQueued: false, isPlayed: false, hasLocalAudio: false,
+            hasExplicitOwner: true, hasTranscript: false, hasLocalCleaning: false,
+            readiness: .needsAttention(reason: .noDownloadableAudio))
+        XCTAssertTrue(EpisodeMenuPolicy.actions(facts).contains(.viewPreparationIssue))
+        XCTAssertFalse(EpisodeMenuPolicy.actions(facts).contains(.retry))
     }
 }
