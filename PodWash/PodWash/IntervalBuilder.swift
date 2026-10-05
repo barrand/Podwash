@@ -148,9 +148,11 @@ enum IntervalBuilder {
 struct UnrelatedContentOptions: Equatable, Sendable {
     var enabled: Bool
     var action: CensorAction
+    var preset: SkipPreset
 
-    init(enabled: Bool = false, action: CensorAction = .skip) {
+    init(enabled: Bool = false, action: CensorAction = .skip, preset: SkipPreset = .obvious) {
         self.enabled = enabled
         self.action = action
+        self.preset = preset
     }
 }

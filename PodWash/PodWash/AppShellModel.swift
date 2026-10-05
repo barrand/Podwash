@@ -129,6 +129,7 @@ final class AppShellModel {
     /// Observes deferred NoCache transcript backfill so episode/full-player affordances refresh.
     /// `nonisolated(unsafe)`: removed from `nonisolated deinit` without a MainActor hop.
     private nonisolated(unsafe) var transcriptBackfillObserver: NSObjectProtocol?
+    private nonisolated(unsafe) var skipPresetObserver: NSObjectProtocol?
 
     /// Test-only: forwarded to `preparePlayback` so AC4/AC5 avoid live ASR.
     var injectedTranscriptForTesting: [TimedWord]? = nil
@@ -353,14 +354,6 @@ final class AppShellModel {
             self?.episodeListRevision &+= 1
         }
 
-        let knownEpisodeIDs = podcastStore.allSubscriptions().flatMap {
-            podcastStore.subscription(forFeedURL: $0.feedURL)?.episodes.map(\.id) ?? []
-        }
-        artifactStore.migrateLegacyArtifactsIfNeeded(
-            intervalCache: intervalCache,
-            episodeIDs: knownEpisodeIDs
-        )
-
         transcriptBackfillObserver = NotificationCenter.default.addObserver(
             forName: .podwashTranscriptBackfillDidStore,
             object: nil,
@@ -369,6 +362,23 @@ final class AppShellModel {
             Task { @MainActor [weak self] in
                 self?.transcriptAffordanceGeneration += 1
                 self?.episodeListRevision &+= 1
+            }
+        }
+        skipPresetObserver = NotificationCenter.default.addObserver(
+            forName: .podwashSkipPresetDidChange,
+            object: self.settingsStore,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.warmPlanner?.refreshForSettingsChange()
+                if let context = self.activePlaybackContext {
+                    self.restoreCachedPlaybackAnalysis(
+                        episode: context.episode,
+                        feedURL: context.feedURL,
+                        audioURL: context.sourceURL
+                    )
+                }
             }
         }
         // Catalog and paused playback have already been restored by RootView
@@ -432,6 +442,9 @@ final class AppShellModel {
         }
         if let transcriptBackfillObserver {
             NotificationCenter.default.removeObserver(transcriptBackfillObserver)
+        }
+        if let skipPresetObserver {
+            NotificationCenter.default.removeObserver(skipPresetObserver)
         }
     }
 
@@ -696,7 +709,8 @@ final class AppShellModel {
         let unrelated = UnrelatedContentOptions(
             enabled: channelUnrelated
                 && (settingsStore.unrelatedContentEnabled || cleaningApplies),
-            action: settingsStore.unrelatedCensorAction()
+            action: settingsStore.unrelatedCensorAction(),
+            preset: settingsStore.skipPreset
         )
         let injected = injectedTranscriptForTesting
             ?? (FixtureTranscript.isNoCacheEnabled ? FixtureTranscript.makeTranscript() : nil)
@@ -965,10 +979,11 @@ final class AppShellModel {
     /// Channel-row cleaning summary from IntervalCache hit (ADR-025). Nil on miss.
     func cleaningSummary(for episodeID: String) -> EpisodeCleaningSummary? {
         let targetWords = settingsStore.activeNormalizedTargetSet()
-        guard intervalCache.isAnalysisCompleted(episodeID: episodeID, targetWords: targetWords),
+        guard intervalCache.isAnalysisCompleted(episodeID: episodeID, targetWords: targetWords, preset: settingsStore.skipPreset),
               let intervals = intervalCache.load(
                   episodeID: episodeID,
-                  targetWords: targetWords
+                  targetWords: targetWords,
+                  preset: settingsStore.skipPreset
               )
         else {
             return nil
@@ -996,7 +1011,8 @@ final class AppShellModel {
             intervals = presentationIntervals(for: episodeID)
         } else if let fromDisk = intervalCache.load(
             episodeID: episodeID,
-            targetWords: settingsStore.activeNormalizedTargetSet()
+            targetWords: settingsStore.activeNormalizedTargetSet(),
+            preset: settingsStore.skipPreset
         ) {
             intervals = fromDisk
         } else {
@@ -1349,7 +1365,8 @@ final class AppShellModel {
             hasExplicitOwner: warmPlanner?.hasExplicitPreparation(episodeID: episode.id) == true,
             hasTranscript: transcriptExists(for: episode.id),
             hasLocalCleaning: intervalCache.loadRecord(episodeID: episode.id,
-                targetWords: settingsStore.activeNormalizedTargetSet()) != nil,
+                targetWords: settingsStore.activeNormalizedTargetSet(),
+                preset: settingsStore.skipPreset) != nil,
             readiness: availability.readiness,
             cloudFailure: warmPlanner?.job(for: episode.id)?.cloudFailure,
             protectsLocalAudio: nowPlayingEpisodeID == episode.id || replayPreparationEpisodeID == episode.id))
@@ -1487,9 +1504,11 @@ final class AppShellModel {
         let unrelated = UnrelatedContentOptions(enabled: cleaningOn && mode == .prepared
             && settingsStore.unrelatedContentEnabled
             && cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: lookup.feedURL),
-            action: settingsStore.unrelatedCensorAction())
+            action: settingsStore.unrelatedCensorAction(),
+            preset: settingsStore.skipPreset)
         let stored = cleaningOn ? intervalCache.loadRecord(episodeID: episodeID,
-            targetWords: targets)?.intervals ?? [] : []
+            targetWords: targets,
+            preset: settingsStore.skipPreset)?.intervals ?? [] : []
         let intervals = mode == .withoutAdSkipping ? stored.filter { $0.source == .profanity } : stored
         Task { @MainActor [weak self] in
             guard let self else { return }
@@ -1505,7 +1524,8 @@ final class AppShellModel {
                   (mode != .prepared || unrelated == UnrelatedContentOptions(
                     enabled: cleaningOn && self.settingsStore.unrelatedContentEnabled
                         && self.cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: lookup.feedURL),
-                    action: self.settingsStore.unrelatedCensorAction())),
+                    action: self.settingsStore.unrelatedCensorAction(),
+                    preset: self.settingsStore.skipPreset)),
                   (mode == .original || self.cleaningStore.isChannelCleaningEnabled(forFeedURL: lookup.feedURL) == cleaningOn),
                   self.downloadManager.verifiedLocalFileURL(for: episodeID) == localURL else { return }
             if context == .queue {
@@ -1724,9 +1744,11 @@ final class AppShellModel {
                 if FixtureTranscript.isNoCacheEnabled {
                     try? intervalCache.remove(episodeID: episode.id)
                 } else if intervalCache.loadRecord(episodeID: episode.id,
-                    targetWords: settingsStore.activeNormalizedTargetSet()) == nil {
+                    targetWords: settingsStore.activeNormalizedTargetSet(),
+                    preset: settingsStore.skipPreset) == nil {
                     try? intervalCache.store([], episodeID: episode.id,
-                        targetWords: settingsStore.activeNormalizedTargetSet())
+                        targetWords: settingsStore.activeNormalizedTargetSet(),
+                        preset: settingsStore.skipPreset)
                 }
             }
         }
@@ -1888,7 +1910,8 @@ final class AppShellModel {
         )
         let hasExact = intervalCache.isAnalysisCompleted(
             episodeID: lookup.episode.id,
-            targetWords: settingsStore.activeNormalizedTargetSet()
+            targetWords: settingsStore.activeNormalizedTargetSet(),
+            preset: settingsStore.skipPreset
         )
         analysisRecoveryState = !cleaningApplies(for: lookup.episode, feedURL: lookup.feedURL)
             ? .notNeeded
@@ -1932,7 +1955,8 @@ final class AppShellModel {
         let action = settingsStore.censorAction()
         let unrelated = UnrelatedContentOptions(
             enabled: channelUnrelatedContentEnabled(forFeedURL: context.feedURL),
-            action: settingsStore.unrelatedCensorAction()
+            action: settingsStore.unrelatedCensorAction(),
+            preset: settingsStore.skipPreset
         )
         Task { @MainActor [weak self, weak coordinator] in
             guard let self, let coordinator else { return }
@@ -2030,26 +2054,37 @@ final class AppShellModel {
         let targetWords = settingsStore.activeNormalizedTargetSet()
         let exactRecord = intervalCache.loadRecord(
             episodeID: episode.id,
-            targetWords: targetWords
+            targetWords: targetWords,
+            preset: settingsStore.skipPreset
         ).flatMap { $0.analysisCompleted ? $0 : nil }
 
         let action = settingsStore.censorAction()
         let unrelated = UnrelatedContentOptions(
             enabled: channelUnrelatedContentEnabled(forFeedURL: feedURL)
                 && (settingsStore.unrelatedContentEnabled || cleaningApplies(for: episode, feedURL: feedURL)),
-            action: settingsStore.unrelatedCensorAction()
+            action: settingsStore.unrelatedCensorAction(),
+            preset: settingsStore.skipPreset
         )
         let union: [CensorInterval]
         if let exactRecord {
             union = exactRecord.intervals
         } else if let artifact = artifactStore.load(episodeID: episode.id) {
-            let adIntervals = artifact.adSpans.map {
+            let adIntervals = artifact.adSpans.filter { settingsStore.skipPreset.removes($0) }.map {
                 CensorInterval(start: $0.start, end: $0.end, action: unrelated.action, source: .unrelatedContent)
             }
             let profanity = transcriptCache.load(episodeID: episode.id).map {
                 IntervalBuilder.buildIntervals(from: $0, targetSet: targetWords, action: action)
             } ?? []
             union = (profanity + adIntervals).sorted { $0.start < $1.start }
+            // Preset changes are a local projection of the canonical typed
+            // artifact. Persist the new derived union without ASR or network work.
+            try? intervalCache.store(
+                union,
+                episodeID: episode.id,
+                targetWords: targetWords,
+                preset: settingsStore.skipPreset,
+                analysisCompleted: true
+            )
         } else {
             return
         }
@@ -2173,7 +2208,8 @@ final class AppShellModel {
         }
         if let fromDisk = intervalCache.load(
             episodeID: episodeID,
-            targetWords: settingsStore.activeNormalizedTargetSet()
+            targetWords: settingsStore.activeNormalizedTargetSet(),
+            preset: settingsStore.skipPreset
         ) {
             return fromDisk
         }
@@ -2185,7 +2221,7 @@ final class AppShellModel {
                     action: settingsStore.censorAction()
                 )
             } ?? []
-            let adIntervals = artifact.adSpans.map {
+            let adIntervals = artifact.adSpans.filter { settingsStore.skipPreset.removes($0) }.map {
                 CensorInterval(
                     start: $0.start,
                     end: $0.end,

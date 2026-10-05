@@ -1,15 +1,7 @@
 # To-do
 
-- Implement the frozen Jev V7.1 backend and schema-v2 typed segment contract in
-  `docs/plans/jev-mvp.md`, including budgets, processing leases, and fixture
-  parity tests.
-- Implement canonical typed-segment storage and local Obvious/More/Most preset
-  projection; invalidate all old untyped Gemini analysis artifacts.
-- Add the Settings preset picker: Skip obvious by default, with functional Skip
-  more and Skip most choices clearly marked Experimental.
 - Deploy and verify the new Jev-only Cloud Run service in TestFlight, then remove
-  Gemini production code, dependency, key, endpoint, service, and current
-  privacy/deployment wording before App Store submission.
+  the old deployed Gemini key and service after the smoke test passes.
 - Complete the Jev MVP release gates: backend/iOS/UI suites, physical-device ad
   playback, consent and failure paths, kill switch, privacy answers, monitoring,
   archive validation, and App Store review notes.
@@ -20,4 +12,13 @@
 
 ## Done
 
+- Implement the frozen Jev V7.1 backend and schema-v2 typed segment contract,
+  including request budgets, processing leases, retries, and frozen policy
+  tests.
+- Implement canonical typed-segment storage and local Obvious/More/Most preset
+  projection; invalidate old untyped analysis artifacts.
+- Add the Settings preset picker: Skip obvious by default, with functional Skip
+  more and Skip most choices clearly marked Experimental.
+- Remove Gemini from the production app/backend code, dependencies, endpoint,
+  cache identity, and current privacy/deployment wording.
 - Add analytics.

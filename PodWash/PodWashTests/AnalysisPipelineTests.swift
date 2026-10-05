@@ -589,4 +589,64 @@ final class AnalysisPipelineTests: XCTestCase {
         XCTAssertEqual(asrSpy2.transcribeCallCount, 0, "cache hit must not re-transcribe")
         XCTAssertEqual(cloudSpy2.detectCallCount, 0, "cache hit must not re-run cloud ad detection")
     }
+
+    func testPresetChangeProjectsTypedArtifactWithoutASROrCloud() async throws {
+        let intervalCache = IntervalCache(baseDirectory: cacheDir)
+        let transcriptDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("TranscriptCache-Preset-\(UUID().uuidString)", isDirectory: true)
+        let artifactDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ArtifactCache-Preset-\(UUID().uuidString)", isDirectory: true)
+        defer {
+            try? TranscriptCache(baseDirectory: transcriptDir).clear()
+            try? FileManager.default.removeItem(at: artifactDir)
+        }
+        let transcriptCache = TranscriptCache(baseDirectory: transcriptDir)
+        let artifactStore = EpisodeAnalysisArtifactStore(baseDirectory: artifactDir)
+        let episodeID = "fixture-preset-projection"
+        let profanity = CensorInterval(start: 1, end: 2, action: .mute, source: .profanity)
+        try intervalCache.store(
+            [profanity],
+            episodeID: episodeID,
+            targetWords: fullTargetSet,
+            preset: .obvious,
+            analysisCompleted: true
+        )
+        try transcriptCache.store(cleanTranscriptFixture(), episodeID: episodeID)
+        try artifactStore.store(EpisodeAnalysisArtifact(
+            episodeID: episodeID,
+            adSpans: [
+                ContentSegment(start: 10, end: 20, reasons: [.paidAd]),
+                ContentSegment(start: 30, end: 40, reasons: [.publisherPromo]),
+            ],
+            analysisFingerprint: "fixture",
+            completedAt: Date()
+        ))
+
+        let asrSpy = ASRSpyTranscriber()
+        let cloudSpy = CloudAdSpyDetector()
+        let localPipeline = AnalysisPipeline(
+            transcriber: asrSpy,
+            cache: intervalCache,
+            transcriptCache: transcriptCache,
+            artifactStore: artifactStore,
+            cloudAdDetector: cloudSpy
+        )
+        let result = try await localPipeline.analyze(
+            episode: EpisodeIdentity(id: episodeID),
+            audioURL: dummyAudioURL(),
+            targetWords: fullTargetSet,
+            injectedTranscript: nil,
+            profanityAction: .mute,
+            unrelatedContent: UnrelatedContentOptions(enabled: true, action: .skip, preset: .more)
+        )
+
+        XCTAssertEqual(asrSpy.transcribeCallCount, 0)
+        XCTAssertEqual(cloudSpy.detectCallCount, 0)
+        XCTAssertEqual(result.map(\.source), [.profanity, .unrelatedContent, .unrelatedContent])
+        XCTAssertTrue(intervalCache.isAnalysisCompleted(
+            episodeID: episodeID,
+            targetWords: fullTargetSet,
+            preset: .more
+        ))
+    }
 }

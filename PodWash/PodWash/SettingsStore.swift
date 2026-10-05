@@ -8,6 +8,10 @@
 import Foundation
 import Observation
 
+extension Notification.Name {
+    static let podwashSkipPresetDidChange = Notification.Name("com.barrandfarm.PodWash.skipPresetDidChange")
+}
+
 enum SettingsCleaningAction: String, Codable, Equatable, Sendable {
     case mute
     case skip
@@ -31,6 +35,7 @@ nonisolated final class SettingsStore: @unchecked Sendable {
         static let cloudTranscriptProcessingConsentPrompted = "podwash.settings.cloudTranscriptProcessingConsentPrompted"
         static let cloudTranscriptProcessingConsentGranted = "podwash.settings.cloudTranscriptProcessingConsentGranted"
         static let unrelatedContentAction = "podwash.settings.unrelatedContentAction"
+        static let skipPreset = "podwash.settings.skipPreset"
         static let muteOverlayMode = "podwash.settings.muteOverlayMode"
         static let smartAutoplayEnabled = "podwash.settings.smartAutoplayEnabled"
         static let automaticPreparationMigrationVersion = "podwash.settings.automaticPreparationMigrationVersion"
@@ -48,6 +53,7 @@ nonisolated final class SettingsStore: @unchecked Sendable {
             cloudTranscriptProcessingConsentPrompted,
             cloudTranscriptProcessingConsentGranted,
             unrelatedContentAction,
+            skipPreset,
             muteOverlayMode,
             smartAutoplayEnabled,
             automaticPreparationMigrationVersion,
@@ -106,6 +112,14 @@ nonisolated final class SettingsStore: @unchecked Sendable {
     /// Action for unrelated-content intervals when enabled. Fresh default: skip.
     var unrelatedContentAction: SettingsCleaningAction {
         didSet { persistUnrelatedContentAction() }
+    }
+    /// Conservative by default. More and Most remain opt-in experimental presets.
+    var skipPreset: SkipPreset {
+        didSet {
+            userDefaults.set(skipPreset.rawValue, forKey: Keys.skipPreset)
+            guard skipPreset != oldValue else { return }
+            NotificationCenter.default.post(name: .podwashSkipPresetDidChange, object: self)
+        }
     }
     /// Sound during mute intervals. Fresh default: off (silent-first, ADR-017).
     var muteOverlayMode: MuteOverlayMode {
@@ -197,6 +211,13 @@ nonisolated final class SettingsStore: @unchecked Sendable {
             unrelatedContentAction = action
         } else {
             unrelatedContentAction = .skip
+        }
+
+        if let raw = userDefaults.string(forKey: Keys.skipPreset),
+           let preset = SkipPreset(rawValue: raw) {
+            skipPreset = preset
+        } else {
+            skipPreset = .obvious
         }
 
         if let raw = userDefaults.string(forKey: Keys.muteOverlayMode),

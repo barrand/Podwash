@@ -75,6 +75,10 @@ nonisolated protocol CloudAdSpanDetecting: Sendable {
     func detectAdSpans(in transcript: [TimedWord], episodeID: String) async throws -> [ContentSegment]
 }
 
+nonisolated protocol ContextualCloudAdSpanDetecting: CloudAdSpanDetecting {
+    func detectAdSpans(in transcript: [TimedWord], episodeID: String, context: SegmentationContext) async throws -> [ContentSegment]
+}
+
 nonisolated protocol CloudCredentialProviding: Sendable {
     func authorizationHeaders() async throws -> [String: String]
 }
@@ -87,7 +91,7 @@ nonisolated struct CloudAdDetectionConfiguration: Sendable {
     /// Build settings should inject this into Info.plist. Keep the deployed
     /// gateway as a code fallback because Xcode can omit custom Info keys when a
     /// hand-authored plist and generated keys are combined.
-    private static let productionEndpoint = "https://podwash-gemini-155728924073.us-central1.run.app"
+    private static let productionEndpoint = "https://podwash-jev-155728924073.us-central1.run.app"
 
     let endpoint: URL?
     let consentGranted: @Sendable () -> Bool
@@ -99,7 +103,7 @@ nonisolated struct CloudAdDetectionConfiguration: Sendable {
     }
 }
 
-nonisolated struct CloudAdSpanClient: CloudAdSpanDetecting {
+nonisolated struct CloudAdSpanClient: ContextualCloudAdSpanDetecting {
     private struct Sentence: Codable, Sendable {
         let id: Int
         let start: Double
@@ -108,24 +112,51 @@ nonisolated struct CloudAdSpanClient: CloudAdSpanDetecting {
     }
 
     private struct RequestBody: Codable, Sendable {
+        struct Episode: Codable, Sendable {
+            let show: String
+            let showDescription: String
+            let title: String
+            let description: String
+
+            enum CodingKeys: String, CodingKey {
+                case show, title, description
+                case showDescription = "show_description"
+            }
+        }
+
         let requestID: String
         let episodeID: String
+        let episode: Episode
         let sentences: [Sentence]
 
-        enum CodingKeys: String, CodingKey { case requestID = "request_id", episodeID = "episode_id", sentences }
+        enum CodingKeys: String, CodingKey { case requestID = "request_id", episodeID = "episode_id", episode, sentences }
     }
 
     private struct ResponseBody: Decodable, Sendable {
-        struct Span: Decodable, Sendable {
+        struct Segment: Decodable, Sendable {
+            let startSentenceID: Int
+            let endSentenceID: Int
             let start: Double
             let end: Double
+
+            let reasons: [ContentReason]
+
+            enum CodingKeys: String, CodingKey {
+                case startSentenceID = "start_sentence_id"
+                case endSentenceID = "end_sentence_id"
+                case start, end, reasons
+            }
         }
         let status: String
-        let spans: [Span]
+        let schemaVersion: Int
+        let pipelineVersion: String
+        let segments: [Segment]
         let jobID: String?
 
         enum CodingKeys: String, CodingKey {
-            case status, spans
+            case status, segments
+            case schemaVersion = "schema_version"
+            case pipelineVersion = "pipeline_version"
             case jobID = "job_id"
         }
     }
@@ -145,6 +176,14 @@ nonisolated struct CloudAdSpanClient: CloudAdSpanDetecting {
     }
 
     func detectAdSpans(in transcript: [TimedWord], episodeID: String) async throws -> [ContentSegment] {
+        try await detectAdSpans(in: transcript, episodeID: episodeID, context: .empty)
+    }
+
+    func detectAdSpans(
+        in transcript: [TimedWord],
+        episodeID: String,
+        context: SegmentationContext
+    ) async throws -> [ContentSegment] {
         guard configuration.consentGranted() else { throw CloudAdDetectionError.consentRequired }
         guard let endpoint = configuration.endpoint else { throw CloudAdDetectionError.unavailable }
         let sentences = Self.sentences(from: transcript)
@@ -155,9 +194,16 @@ nonisolated struct CloudAdSpanClient: CloudAdSpanDetecting {
         for (name, value) in try await credentials.authorizationHeaders() {
             request.setValue(value, forHTTPHeaderField: name)
         }
+        let bounded = context.trimmed()
         request.httpBody = try JSONEncoder().encode(RequestBody(
             requestID: UUID().uuidString,
             episodeID: episodeID,
+            episode: .init(
+                show: bounded.showTitle,
+                showDescription: bounded.showDescription,
+                title: bounded.episodeTitle,
+                description: bounded.episodeDescription
+            ),
             sentences: sentences
         ))
         let (data, response) = try await session.data(for: request)
@@ -171,9 +217,29 @@ nonisolated struct CloudAdSpanClient: CloudAdSpanDetecting {
             body = try await poll(jobID: jobID, endpoint: endpoint)
         }
         guard body.status == "complete" else { throw CloudAdDetectionError.processing }
-        return body.spans.compactMap { span in
-            guard span.start.isFinite, span.end.isFinite, span.end > span.start else { return nil }
-            return ContentSegment(start: span.start, end: span.end)
+        guard body.schemaVersion == ContentSegment.schemaVersion,
+              body.pipelineVersion == ContentSegment.pipelineVersion
+        else { throw CloudAdDetectionError.invalidResponse }
+        let sentenceByID = Dictionary(uniqueKeysWithValues: sentences.map { ($0.id, $0) })
+        return try body.segments.map { segment in
+            guard let first = sentenceByID[segment.startSentenceID],
+                  let last = sentenceByID[segment.endSentenceID],
+                  segment.startSentenceID <= segment.endSentenceID,
+                  segment.start.isFinite,
+                  segment.end.isFinite,
+                  segment.end > segment.start,
+                  abs(segment.start - first.start) <= 0.001,
+                  abs(segment.end - last.end) <= 0.001,
+                  !segment.reasons.isEmpty,
+                  Set(segment.reasons).count == segment.reasons.count
+            else { throw CloudAdDetectionError.invalidResponse }
+            return ContentSegment(
+                start: segment.start,
+                end: segment.end,
+                startSentenceID: segment.startSentenceID,
+                endSentenceID: segment.endSentenceID,
+                reasons: Set(segment.reasons)
+            )
         }
     }
 
@@ -228,7 +294,12 @@ nonisolated struct CloudAdSpanClient: CloudAdSpanDetecting {
         for word in transcript where word.start.isFinite && word.end.isFinite && word.end > word.start {
             if let prior = words.last, word.start - prior.end >= 18 { finish() }
             words.append(word)
-            if word.word.rangeOfCharacter(from: CharacterSet(charactersIn: ".?!")) != nil || words.count >= 80 { finish() }
+            let duration = word.end - (words.first?.start ?? word.start)
+            if word.word.rangeOfCharacter(from: CharacterSet(charactersIn: ".?!")) != nil
+                || words.count >= 80
+                || duration >= 18 {
+                finish()
+            }
         }
         finish()
         return result

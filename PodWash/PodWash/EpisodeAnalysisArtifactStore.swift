@@ -9,21 +9,39 @@ import Foundation
 
 struct EpisodeAnalysisArtifact: Codable, Equatable, Sendable {
     let episodeID: String
-    let adSpans: [ContentSegment]
+    let schemaVersion: Int
+    let pipelineVersion: String
+    let segments: [ContentSegment]
     let analysisFingerprint: String
     let completedAt: Date
+
+    var adSpans: [ContentSegment] { segments }
+
+    init(
+        episodeID: String,
+        adSpans: [ContentSegment],
+        analysisFingerprint: String,
+        completedAt: Date,
+        schemaVersion: Int = ContentSegment.schemaVersion,
+        pipelineVersion: String = ContentSegment.pipelineVersion
+    ) {
+        self.episodeID = episodeID
+        self.schemaVersion = schemaVersion
+        self.pipelineVersion = pipelineVersion
+        self.segments = adSpans
+        self.analysisFingerprint = analysisFingerprint
+        self.completedAt = completedAt
+    }
 }
 
 /// Stores the last completed ad result by episode id. Unlike `IntervalCache`, this
 /// is intentionally not invalidated when the implementation changes.
 struct EpisodeAnalysisArtifactStore: Sendable {
     let baseDirectory: URL
-    private let defaults: UserDefaults
-    private let migrationKey = "podwash.analysisArtifactMigration.v1"
 
     init(baseDirectory: URL, defaults: UserDefaults = .standard) {
         self.baseDirectory = baseDirectory
-        self.defaults = defaults
+        _ = defaults // Retained for source compatibility with existing injected tests.
     }
 
     static var applicationSupport: EpisodeAnalysisArtifactStore {
@@ -35,7 +53,11 @@ struct EpisodeAnalysisArtifactStore: Sendable {
 
     func load(episodeID: String) -> EpisodeAnalysisArtifact? {
         guard let data = try? Data(contentsOf: fileURL(episodeID: episodeID)) else { return nil }
-        return try? JSONDecoder().decode(EpisodeAnalysisArtifact.self, from: data)
+        guard let artifact = try? JSONDecoder().decode(EpisodeAnalysisArtifact.self, from: data),
+              artifact.schemaVersion == ContentSegment.schemaVersion,
+              artifact.pipelineVersion == ContentSegment.pipelineVersion
+        else { return nil }
+        return artifact
     }
 
     func store(_ artifact: EpisodeAnalysisArtifact) throws {
@@ -47,26 +69,6 @@ struct EpisodeAnalysisArtifactStore: Sendable {
         let url = fileURL(episodeID: episodeID)
         guard FileManager.default.fileExists(atPath: url.path) else { return }
         try FileManager.default.removeItem(at: url)
-    }
-
-    /// One-time best-effort bridge for pre-artifact completed cache records. Profanity
-    /// intervals are intentionally ignored because they depend on listener settings.
-    func migrateLegacyArtifactsIfNeeded(intervalCache: IntervalCache, episodeIDs: [String] = []) {
-        guard !defaults.bool(forKey: migrationKey) else { return }
-        for legacy in intervalCache.completedRecords(episodeIDs: episodeIDs) {
-            guard load(episodeID: legacy.episodeID) == nil else { continue }
-            let spans = legacy.record.intervals.compactMap { interval -> ContentSegment? in
-                guard interval.source == .unrelatedContent else { return nil }
-                return ContentSegment(start: interval.start, end: interval.end)
-            }
-            try? store(EpisodeAnalysisArtifact(
-                episodeID: legacy.episodeID,
-                adSpans: spans,
-                analysisFingerprint: legacy.fingerprint,
-                completedAt: legacy.modifiedAt
-            ))
-        }
-        defaults.set(true, forKey: migrationKey)
     }
 
     private func fileURL(episodeID: String) -> URL {

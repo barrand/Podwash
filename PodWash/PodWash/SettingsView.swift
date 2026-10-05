@@ -193,6 +193,35 @@ struct SettingsView: View {
             .accessibilityLabel("Use cloud ad detection")
             .accessibilityValue(store.canUseCloudTranscriptProcessing ? "1" : "0")
 
+            NavigationLink {
+                SkipPresetSelectionView(store: store)
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Choose what PodWash skips")
+                        Text(store.skipPreset.shortName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if store.skipPreset != .obvious {
+                        Text("Experimental")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(.orange.opacity(0.16), in: Capsule())
+                    }
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("skipPresetPicker")
+            .accessibilityLabel("Choose what PodWash skips")
+            .accessibilityValue(store.skipPreset.accessibilityValue)
+            .accessibilityHint("Opens the interruption skipping choices.")
+
             if store.unrelatedContentEnabled {
                 Button(action: cycleUnrelatedContentAction) {
                     HStack {
@@ -640,6 +669,85 @@ struct SettingsView: View {
     }
 }
 
+private extension SkipPreset {
+    var shortName: String {
+        switch self {
+        case .obvious: return "Skip obvious interruptions"
+        case .more: return "Skip more interruptions"
+        case .most: return "Skip most interruptions"
+        }
+    }
+
+    var accessibilityValue: String {
+        self == .obvious ? "\(shortName), Default" : "\(shortName), Experimental"
+    }
+
+    var detail: String {
+        switch self {
+        case .obvious:
+            return "Paid ads and sponsor messages."
+        case .more:
+            return "Also promos and support messages. May remove material you would prefer to hear."
+        case .most:
+            return "Also requests, credits, network IDs, and sign-offs. May remove material you would prefer to hear."
+        }
+    }
+}
+
+struct SkipPresetSelectionView: View {
+    @Bindable var store: SettingsStore
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 10) {
+                ForEach(SkipPreset.allCases, id: \.self) { preset in
+                    Button {
+                        store.skipPreset = preset
+                        PodWashAnalytics.action("Settings.skipPresetChanged", parameters: ["preset": preset.rawValue])
+                    } label: {
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: store.skipPreset == preset ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(store.skipPreset == preset ? BrandTheme.primary : .secondary)
+                            VStack(alignment: .leading, spacing: 5) {
+                                HStack(spacing: 8) {
+                                    Text(preset.shortName)
+                                        .font(.body.weight(.semibold))
+                                    if preset == .obvious {
+                                        Text("Default")
+                                            .font(.caption2.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+                                    } else {
+                                        Text("Experimental")
+                                            .font(.caption2.weight(.semibold))
+                                            .foregroundStyle(.orange)
+                                    }
+                                }
+                                Text(preset.detail)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.leading)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("skipPreset_\(preset.rawValue)")
+                    .accessibilityLabel(preset.shortName)
+                    .accessibilityValue(preset.accessibilityValue + (store.skipPreset == preset ? ", Selected" : ""))
+                    .accessibilityHint(preset.detail)
+                }
+            }
+            .padding()
+        }
+        .navigationTitle("Choose what PodWash skips")
+        .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("skipPresetSelection")
+    }
+}
+
 /// First-use explanation for the optional cloud feature. The wording is kept
 /// deliberately direct: listeners decide before any transcript text is shared.
 struct CloudAdDetectionConsentSheet: View {
@@ -657,7 +765,7 @@ struct CloudAdDetectionConsentSheet: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("cloudConsentExplanation")
 
-                    Text("PodWash can look for likely ad breaks. To do that, it sends the text from an on-device transcript and its timestamps to a cloud-based model. It never sends the podcast audio.")
+                    Text("PodWash can look for likely ad breaks. To do that, it sends the text from an on-device transcript and its timestamps to TypeSafe's Jev cloud model. It never sends the podcast audio.")
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
 

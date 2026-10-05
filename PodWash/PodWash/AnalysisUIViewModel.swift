@@ -309,7 +309,8 @@ final class AnalysisUIViewModel {
         let audioURL = URL(string: "https://fixture.podwash.tests/episode-audio")!
         let effectiveUnrelated = UnrelatedContentOptions(
             enabled: settingsStore.unrelatedContentEnabled && store.isChannelUnrelatedContentEnabled,
-            action: settingsStore.unrelatedCensorAction()
+            action: settingsStore.unrelatedCensorAction(),
+            preset: settingsStore.skipPreset
         )
         _ = try? await analyzer.analyze(
             episode: identity,

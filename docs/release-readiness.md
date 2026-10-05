@@ -51,7 +51,7 @@ record the owner, date, and evidence beside each check when it is done.
   and Settings withdrawal; core playback remained available after decline and
   withdrawal prevented future cloud submissions.
   - [x] Implement a first-use, explicit opt-in before any timed transcript text is
-    shared with Gemini or another cloud provider. The disclosure must identify the
+    shared with TypeSafe's Jev service or another cloud provider. The disclosure must identify the
     third-party AI service, state that audio is not uploaded, and offer a clear
     decline path.
   - [x] Test that declining consent sends no transcript text, that core playback
@@ -74,11 +74,11 @@ record the owner, date, and evidence beside each check when it is done.
 - [x] **3.2** Add an easy-to-find in-app Privacy Policy link. Completed 2026-08-10:
   Settings exposes Privacy Policy and Contact Support links to the live pages.
 - [ ] **3.3** Complete App Store Connect App Privacy responses for PodWash and third-party
-  services (Firebase, Cloud Run, Gemini), including transcript handling,
+  services (Firebase, Cloud Run, Firestore, and TypeSafe/Jev), including transcript handling,
   anonymous installation identity, retention, consent withdrawal, and deletion.
   - [ ] Validate every response against the final app build and actual provider
     configuration, including Firebase Authentication/App Check, Cloud Run/Firestore
-    logs, Gemini data-use settings, and support email.
+    logs, TypeSafe data-use settings and agreement, and support email.
 - [ ] **3.4** Document the user data-deletion/contact process in the privacy policy and
   verify that the support contact can fulfill it.
   - [ ] Define and test how a request can identify, delete, or explain the limits

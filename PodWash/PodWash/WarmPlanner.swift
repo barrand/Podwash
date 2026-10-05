@@ -44,6 +44,7 @@ import Observation
         let cleaning: Bool
         let cloud: Bool
         let unrelated: Bool
+        let preset: SkipPreset
     }
     private var activeRequirements: [String: Requirements] = [:]
     private var retryTasks: [String: Task<Void, Never>] = [:]
@@ -128,7 +129,8 @@ import Observation
                 cleaning: cleaningStore.isChannelCleaningEnabled(forFeedURL: request.item.feedURL),
                 cloud: settingsStore.canUseCloudTranscriptProcessing,
                 unrelated: settingsStore.unrelatedContentEnabled
-                    && cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: request.item.feedURL)))
+                    && cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: request.item.feedURL),
+                preset: settingsStore.skipPreset))
         })
         let changedRequirements = Set(requirements.compactMap { id, value in
             activeRequirements[id].map { $0 != value } == true ? id : nil
@@ -267,6 +269,13 @@ import Observation
         retryTasks.removeAll()
     }
 
+    /// Re-check prepared episodes when a local projection setting changes.
+    /// AnalysisPipeline reuses the typed artifact, so this performs no network
+    /// or transcription work when the prior Jev result is available.
+    func refreshForSettingsChange() {
+        rebuildWorker(force: true)
+    }
+
     func job(for episodeID: String) -> AnalysisJob? { jobs[episodeID] }
 
     func hasExplicitPreparation(episodeID: String) -> Bool { explicitEpisodeIDs.contains(episodeID) }
@@ -402,9 +411,17 @@ import Observation
         if !settingsStore.canUseCloudTranscriptProcessing
             || !settingsStore.unrelatedContentEnabled
             || !cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: feedURL) {
-            return intervalCache.loadRecord(episodeID: episodeID, targetWords: targets) != nil
+            return intervalCache.loadRecord(
+                episodeID: episodeID,
+                targetWords: targets,
+                preset: settingsStore.skipPreset
+            ) != nil
         }
-        return intervalCache.isAnalysisCompleted(episodeID: episodeID, targetWords: targets)
+        return intervalCache.isAnalysisCompleted(
+            episodeID: episodeID,
+            targetWords: targets,
+            preset: settingsStore.skipPreset
+        )
     }
 
     func isLocallyDownloaded(episodeID: String) -> Bool {
@@ -484,7 +501,8 @@ import Observation
                 let unrelated = UnrelatedContentOptions(
                     enabled: settingsStore.unrelatedContentEnabled
                         && cleaningStore.isChannelUnrelatedContentEnabled(forFeedURL: item.feedURL),
-                    action: settingsStore.unrelatedCensorAction()
+                    action: settingsStore.unrelatedCensorAction(),
+                    preset: settingsStore.skipPreset
                 )
                 let removeCloudObserver: () -> Void
                 if let pipeline = SerialEpisodeAnalyzer.pipeline(for: analyzer) {
@@ -508,9 +526,14 @@ import Observation
                     unrelatedContent: unrelated
                 )
                 // Production AnalysisPipeline owns completion semantics: an unavailable
-                // Gemini result must remain incomplete rather than being overwritten as ready.
+                // Jev result must remain incomplete rather than being overwritten as ready.
                 if SerialEpisodeAnalyzer.pipeline(for: analyzer) == nil {
-                    try intervalCache.store(intervals, episodeID: item.episodeID, targetWords: targets)
+                    try intervalCache.store(
+                        intervals,
+                        episodeID: item.episodeID,
+                        targetWords: targets,
+                        preset: settingsStore.skipPreset
+                    )
                 }
             }
             guard generation == warmGeneration, !Task.isCancelled else { return }

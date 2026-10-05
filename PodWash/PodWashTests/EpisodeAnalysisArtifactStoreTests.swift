@@ -36,19 +36,33 @@ final class EpisodeAnalysisArtifactStoreTests: XCTestCase {
         XCTAssertNil(store.load(episodeID: "episode-1"))
     }
 
-    func testMigrationRetainsOnlyCompletedAdSpans() throws {
-        let cache = IntervalCache(baseDirectory: root.appendingPathComponent("intervals"))
-        try cache.store([
-            CensorInterval(start: 1, end: 2, action: .mute, source: .profanity),
-            CensorInterval(start: 10, end: 20, action: .skip, source: .unrelatedContent),
-        ], episodeID: "episode-1", targetWords: ["damn"])
-        try cache.store([
-            CensorInterval(start: 30, end: 40, action: .skip, source: .unrelatedContent),
-        ], episodeID: "episode-2", targetWords: ["damn"], analysisCompleted: false)
+    func testRejectsArtifactFromOldPipeline() throws {
+        let artifact = EpisodeAnalysisArtifact(
+            episodeID: "episode-1",
+            adSpans: [ContentSegment(start: 10, end: 20)],
+            analysisFingerprint: "legacy",
+            completedAt: Date(),
+            schemaVersion: 1,
+            pipelineVersion: "cloud-gemini-v1"
+        )
+        try store.store(artifact)
+        XCTAssertNil(store.load(episodeID: "episode-1"))
+    }
 
-        store.migrateLegacyArtifactsIfNeeded(intervalCache: cache)
-
-        XCTAssertEqual(store.load(episodeID: "episode-1")?.adSpans, [ContentSegment(start: 10, end: 20)])
-        XCTAssertNil(store.load(episodeID: "episode-2"))
+    func testRoundTripPreservesTypedReasons() throws {
+        let segment = ContentSegment(
+            start: 10,
+            end: 20,
+            startSentenceID: 4,
+            endSentenceID: 7,
+            reasons: [.paidAd, .underwriting]
+        )
+        try store.store(EpisodeAnalysisArtifact(
+            episodeID: "episode-typed",
+            adSpans: [segment],
+            analysisFingerprint: "typed",
+            completedAt: Date()
+        ))
+        XCTAssertEqual(store.load(episodeID: "episode-typed")?.segments, [segment])
     }
 }

@@ -2,12 +2,45 @@
 //  CloudConsentShellUITests.swift
 //  PodWashUITests
 //
-//  Regression coverage for the Settings-owned Gemini ad-skip consent flow.
+//  Regression coverage for the Settings-owned Jev ad-skip consent flow.
 //
 
 import XCTest
 
 final class CloudConsentShellUITests: XCTestCase {
+    func testPresetPickerDefaultsToObviousAndLabelsExperimentalChoices() throws {
+        continueAfterFailure = false
+
+        let app = XCUIApplication()
+        app.launchArguments += ["-UITestFixtureLibrary", "-UITestResetSettings"]
+        app.launch()
+
+        XCTAssertTrue(app.descendants(matching: .any)["libraryRoot"].waitForExistence(timeout: 10))
+        app.tabBars.buttons["Settings"].tap()
+        let settings = app.descendants(matching: .any)["settingsRoot"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 10))
+
+        let picker = app.descendants(matching: .any)["skipPresetPicker"]
+        for _ in 0..<4 where !picker.exists { settings.swipeUp() }
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        XCTAssertTrue((picker.value as? String)?.contains("Default") == true)
+        picker.tap()
+
+        XCTAssertTrue(app.descendants(matching: .any)["skipPresetSelection"].waitForExistence(timeout: 5))
+        let obvious = app.buttons["skipPreset_obvious"]
+        let more = app.buttons["skipPreset_more"]
+        let most = app.buttons["skipPreset_most"]
+        XCTAssertTrue(obvious.exists)
+        XCTAssertTrue(more.exists)
+        XCTAssertTrue(most.exists)
+        XCTAssertTrue((obvious.value as? String)?.contains("Selected") == true)
+        XCTAssertTrue((more.value as? String)?.contains("Experimental") == true)
+        XCTAssertTrue((most.value as? String)?.contains("Experimental") == true)
+
+        more.tap()
+        XCTAssertTrue((more.value as? String)?.contains("Selected") == true)
+    }
+
     func testFirstManualDownloadContinuesWhenConsentIsDeclined() throws {
         continueAfterFailure = false
 

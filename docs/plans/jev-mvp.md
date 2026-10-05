@@ -1,6 +1,6 @@
 # Jev-only interruption skipping MVP
 
-**Status:** active implementation plan
+**Status:** implemented locally; deployment and release verification remain
 **Decision:** ship Jev V7.1 as evaluated; do not run another model-selection
 experiment before implementation.
 
@@ -189,6 +189,20 @@ badges, and warnings.
    wording, and old Cloud Run service before App Store submission.
 8. Increment the build, run the full release gate, archive/validate, complete
    TestFlight, privacy answers, review notes, and submit.
+
+### Implementation checkpoint — 2026-10-04
+
+Steps 1–4 are implemented in the repository. The app and backend now use the
+schema-v2 Jev-only contract; Obvious is the default; More and Most remain
+functional and visibly Experimental; typed artifacts are projected locally on
+preset changes; and the current production app/configuration/privacy surfaces
+no longer reference Gemini. Offline backend, iOS contract, cache, artifact,
+settings, and projection tests pass.
+
+Steps 5–8 are release operations, not local implementation. The next gate is to
+deploy `podwash-jev` with its TypeSafe secret and existing Firebase/App Check
+controls, then point a TestFlight build at the verified service. Do not remove
+the old deployed service or secret until that TestFlight smoke test passes.
 
 ## Acceptance gates
 

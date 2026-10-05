@@ -83,6 +83,7 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertFalse(store.cloudTranscriptProcessingConsentPrompted)
         XCTAssertFalse(store.cloudTranscriptProcessingConsentGranted)
         XCTAssertFalse(store.canUseCloudTranscriptProcessing)
+        XCTAssertEqual(store.skipPreset, .obvious)
         XCTAssertTrue(store.customWords.isEmpty)
     }
 
@@ -100,6 +101,26 @@ final class SettingsStoreTests: XCTestCase {
         store.cloudTranscriptProcessingConsentGranted = false
         let reloaded = SettingsStore(userDefaults: userDefaults)
         XCTAssertFalse(reloaded.canUseCloudTranscriptProcessing)
+    }
+
+    func testSkipPresetPersistsAndMapsReasons() {
+        let store = makeStore()
+        store.skipPreset = .more
+        XCTAssertEqual(SettingsStore(userDefaults: userDefaults).skipPreset, .more)
+
+        let paid = ContentSegment(start: 1, end: 2, reasons: [.paidAd])
+        let promo = ContentSegment(start: 2, end: 3, reasons: [.crossShowPromo])
+        let signoff = ContentSegment(start: 3, end: 4, reasons: [.signoff])
+        XCTAssertTrue(SkipPreset.obvious.removes(paid))
+        XCTAssertFalse(SkipPreset.obvious.removes(promo))
+        XCTAssertTrue(SkipPreset.more.removes(promo))
+        XCTAssertFalse(SkipPreset.more.removes(signoff))
+        XCTAssertTrue(SkipPreset.most.removes(signoff))
+    }
+
+    func testAnyEnabledReasonMakesMixedSegmentRemovable() {
+        let mixed = ContentSegment(start: 1, end: 2, reasons: [.crossShowPromo, .signoff])
+        XCTAssertTrue(SkipPreset.more.removes(mixed))
     }
 
     // MARK: - AC2: category toggle updates composed target set

@@ -66,8 +66,8 @@ struct IntervalCache: Sendable {
             .joined(separator: "\n")
     }
 
-    func loadRecord(episodeID: String, targetWords: Set<String>) -> IntervalCacheRecord? {
-        let url = cacheFileURL(episodeID: episodeID, targetWords: targetWords)
+    func loadRecord(episodeID: String, targetWords: Set<String>, preset: SkipPreset = .obvious) -> IntervalCacheRecord? {
+        let url = cacheFileURL(episodeID: episodeID, targetWords: targetWords, preset: preset)
         guard let data = try? Data(contentsOf: url) else { return nil }
         let decoder = JSONDecoder()
         if let record = try? decoder.decode(IntervalCacheRecord.self, from: data) {
@@ -77,17 +77,31 @@ struct IntervalCache: Sendable {
         return IntervalCacheRecord(intervals: legacy, analysisCompleted: true)
     }
 
-    func load(episodeID: String, targetWords: Set<String>) -> [CensorInterval]? {
-        loadRecord(episodeID: episodeID, targetWords: targetWords)?.intervals
+    func load(episodeID: String, targetWords: Set<String>, preset: SkipPreset = .obvious) -> [CensorInterval]? {
+        loadRecord(episodeID: episodeID, targetWords: targetWords, preset: preset)?.intervals
     }
 
-    func isAnalysisCompleted(episodeID: String, targetWords: Set<String>) -> Bool {
-        loadRecord(episodeID: episodeID, targetWords: targetWords)?.analysisCompleted ?? false
+    func isAnalysisCompleted(episodeID: String, targetWords: Set<String>, preset: SkipPreset = .obvious) -> Bool {
+        loadRecord(episodeID: episodeID, targetWords: targetWords, preset: preset)?.analysisCompleted ?? false
+    }
+
+    /// Returns a completed derived record for any preset. This is used only to
+    /// re-project a canonical typed artifact after a listener changes presets;
+    /// it never treats a partial cloud result as reusable.
+    func completedRecord(
+        episodeID: String,
+        targetWords: Set<String>,
+        excluding preset: SkipPreset
+    ) -> IntervalCacheRecord? {
+        SkipPreset.allCases.lazy
+            .filter { $0 != preset }
+            .compactMap { loadRecord(episodeID: episodeID, targetWords: targetWords, preset: $0) }
+            .first { $0.analysisCompleted }
     }
 
     /// Full derived-cache fingerprint for diagnostics and durable artifacts.
-    func currentFingerprint(for targetWords: Set<String>) -> String {
-        Self.cacheFingerprint(targetWords: targetWords, asrModelPin: asrModelPin)
+    func currentFingerprint(for targetWords: Set<String>, preset: SkipPreset = .obvious) -> String {
+        Self.cacheFingerprint(targetWords: targetWords, asrModelPin: asrModelPin, preset: preset)
     }
 
     /// Migration-only enumeration of completed cache files. Safe identifier stems are
@@ -135,10 +149,11 @@ struct IntervalCache: Sendable {
         _ intervals: [CensorInterval],
         episodeID: String,
         targetWords: Set<String>,
+        preset: SkipPreset = .obvious,
         analysisCompleted: Bool = true
     ) throws {
         try FileManager.default.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
-        let url = cacheFileURL(episodeID: episodeID, targetWords: targetWords)
+        let url = cacheFileURL(episodeID: episodeID, targetWords: targetWords, preset: preset)
         let record = IntervalCacheRecord(intervals: intervals, analysisCompleted: analysisCompleted)
         let data = try JSONEncoder().encode(record)
         try data.write(to: url, options: .atomic)
@@ -167,11 +182,11 @@ struct IntervalCache: Sendable {
 
     // MARK: - Private
 
-    private func cacheFileURL(episodeID: String, targetWords: Set<String>) -> URL {
+    private func cacheFileURL(episodeID: String, targetWords: Set<String>, preset: SkipPreset) -> URL {
         // ADR-013 §3.4 — format token so sourced unions do not collide with v1 payloads.
         // Segmenter revision bumps invalidate stale unions missing unrelated spans.
         // ADR-024 — asr-model pin so pre-upgrade tiny intervals miss after pin change.
-        let fp = Self.cacheFingerprint(targetWords: targetWords, asrModelPin: asrModelPin)
+        let fp = Self.cacheFingerprint(targetWords: targetWords, asrModelPin: asrModelPin, preset: preset)
         let digest = SHA256.hash(data: Data(fp.utf8))
         let hash = digest.map { String(format: "%02x", $0) }.joined()
         let safeStem = DownloadPaths.fileNameStem(for: episodeID)
@@ -179,10 +194,11 @@ struct IntervalCache: Sendable {
         return baseDirectory.appendingPathComponent(filename, isDirectory: false)
     }
 
-    private static func cacheFingerprint(targetWords: Set<String>, asrModelPin: String) -> String {
+    private static func cacheFingerprint(targetWords: Set<String>, asrModelPin: String, preset: SkipPreset) -> String {
         fingerprint(for: targetWords)
             + "\ninterval-format:v2"
-            + "\nsegmenter:cloud-gemini-v1"
+            + "\nsegmenter:\(ContentSegment.pipelineVersion)"
+            + "\nskip-preset:\(preset.rawValue)"
             + "\nasr-model:\(asrModelPin)"
     }
 }

@@ -2,7 +2,7 @@
 
 > **Status:** Draft for the 1.0 release. Treat this file as the source of truth
 > for App Store Connect metadata and screenshot production. Do not upload or
-> publish the copy until the cloud-transcript consent flow and Gemini service
+> publish the copy until the cloud-transcript consent flow and TypeSafe service
 > plan are confirmed.
 
 ## App information
@@ -133,7 +133,7 @@ implemented and tested:
 > cloud ad detection.
 >
 > Cloud ad detection is optional. Before any timed transcript text is sent to
-> Google Gemini, PodWash presents an explicit disclosure and the listener can
+> TypeSafe's Jev service, PodWash presents an explicit disclosure and the listener can
 > decline. Podcast audio is not uploaded. The listener can withdraw this choice
 > in Settings at any time.
 >
@@ -155,8 +155,8 @@ include:
   Cloud Run or Firebase operational logs.
 - Support correspondence: information a user supplies by email.
 - Third parties: Firebase Authentication, Firebase App Check, Cloud Run,
-  Firestore, Gemini, and Firebase Hosting.
-- Retention, deletion, and use of Gemini API data under the selected plan.
+  Firestore, TypeSafe/Jev, and Firebase Hosting.
+- Retention, deletion, and use of TypeSafe API data under the selected agreement.
 
 ## Owner decisions before submission
 
@@ -164,7 +164,7 @@ include:
   copyright and privacy policy.
 - [ ] Choose primary/secondary categories, price, and availability.
 - [ ] Complete and test explicit consent before cloud transcript sharing.
-- [ ] Confirm Gemini plan, data-use settings, and under-18 eligibility.
+- [ ] Confirm TypeSafe agreement, data-use settings, and under-18 eligibility.
 - [ ] Implement and test a user-data deletion process that the support address
   can fulfill.
 - [ ] Publish and verify the Support and Privacy Policy URLs.

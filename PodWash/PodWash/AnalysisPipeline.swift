@@ -160,7 +160,23 @@ final class AnalysisPipeline: @unchecked Sendable {
         let audioDuration = await Self.resolveDuration(audioURL: audioURL)
         let duration = audioDuration
 
-        let cachedRecord = cache.loadRecord(episodeID: episode.id, targetWords: targetWords)
+        // A preset is only a local projection of the canonical typed Jev result.
+        // If another preset has a completed cache entry, materialize this preset
+        // before cache lookup so a Settings change never retranscribes or calls
+        // the backend. Download replacement clears every derived cache entry, so
+        // the artifact cannot be reused against newly downloaded audio here.
+        try materializePresetCacheIfPossible(
+            episodeID: episode.id,
+            targetWords: targetWords,
+            profanityAction: profanityAction,
+            unrelatedContent: unrelatedContent
+        )
+
+        let cachedRecord = cache.loadRecord(
+            episodeID: episode.id,
+            targetWords: targetWords,
+            preset: unrelatedContent.preset
+        )
         let showInFlightProgress: Bool
         if let cachedRecord, cachedRecord.analysisCompleted {
             showInFlightProgress = transcriptCache.load(episodeID: episode.id) == nil
@@ -232,6 +248,53 @@ final class AnalysisPipeline: @unchecked Sendable {
         return projected
     }
 
+    private func materializePresetCacheIfPossible(
+        episodeID: String,
+        targetWords: Set<String>,
+        profanityAction: CensorAction,
+        unrelatedContent: UnrelatedContentOptions
+    ) throws {
+        guard cache.loadRecord(
+            episodeID: episodeID,
+            targetWords: targetWords,
+            preset: unrelatedContent.preset
+        ) == nil,
+        let prior = cache.completedRecord(
+            episodeID: episodeID,
+            targetWords: targetWords,
+            excluding: unrelatedContent.preset
+        ),
+        let artifact = artifactStore.load(episodeID: episodeID)
+        else { return }
+
+        let profanity = prior.intervals.compactMap { interval -> CensorInterval? in
+            guard interval.source == .profanity else { return nil }
+            return CensorInterval(
+                start: interval.start,
+                end: interval.end,
+                action: profanityAction,
+                source: .profanity
+            )
+        }
+        let interruptions = artifact.segments
+            .filter { unrelatedContent.preset.removes($0) }
+            .map {
+                CensorInterval(
+                    start: $0.start,
+                    end: $0.end,
+                    action: unrelatedContent.action,
+                    source: .unrelatedContent
+                )
+            }
+        try cache.store(
+            (profanity + interruptions).sorted { $0.start < $1.start },
+            episodeID: episodeID,
+            targetWords: targetWords,
+            preset: unrelatedContent.preset,
+            analysisCompleted: true
+        )
+    }
+
     private func runColdMissAnalysis(
         episode: EpisodeIdentity,
         audioURL: URL,
@@ -264,7 +327,9 @@ final class AnalysisPipeline: @unchecked Sendable {
 
         // Always segment on cache miss; enablement is a return/playback filter.
         let detectedSegments = await detectAdSpans(in: transcript, episodeID: episode.id)
-        let segmentIntervals = (detectedSegments ?? []).map { segment in
+        let segmentIntervals = (detectedSegments ?? [])
+            .filter { unrelatedContent.preset.removes($0) }
+            .map { segment in
             CensorInterval(
                 start: segment.start,
                 end: segment.end,
@@ -278,7 +343,8 @@ final class AnalysisPipeline: @unchecked Sendable {
             union: union,
             episodeID: episode.id,
             targetWords: targetWords,
-            cloudCompleted: detectedSegments != nil
+            preset: unrelatedContent.preset,
+            detectedSegments: detectedSegments
         )
         try transcriptCache.store(transcript, episodeID: episode.id)
         return union
@@ -305,7 +371,9 @@ final class AnalysisPipeline: @unchecked Sendable {
 
         let profanity = partialIntervals.filter { $0.source == .profanity }
         let detectedSegments = await detectAdSpans(in: transcript, episodeID: episode.id)
-        let segmentIntervals = (detectedSegments ?? []).map { segment in
+        let segmentIntervals = (detectedSegments ?? [])
+            .filter { unrelatedContent.preset.removes($0) }
+            .map { segment in
             CensorInterval(
                 start: segment.start,
                 end: segment.end,
@@ -324,7 +392,8 @@ final class AnalysisPipeline: @unchecked Sendable {
             union: union,
             episodeID: episode.id,
             targetWords: targetWords,
-            cloudCompleted: detectedSegments != nil
+            preset: unrelatedContent.preset,
+            detectedSegments: detectedSegments
         )
         if transcriptCache.load(episodeID: episode.id) == nil {
             try transcriptCache.store(transcript, episodeID: episode.id)
@@ -358,7 +427,8 @@ final class AnalysisPipeline: @unchecked Sendable {
         union: [CensorInterval],
         episodeID: String,
         targetWords: Set<String>,
-        cloudCompleted: Bool
+        preset: SkipPreset,
+        detectedSegments: [ContentSegment]?
     ) throws {
         // An explicit incomplete record is critical when a cloud attempt fails with
         // no profanity hits: it prevents a later visit from mistaking "nothing
@@ -367,19 +437,16 @@ final class AnalysisPipeline: @unchecked Sendable {
             union,
             episodeID: episodeID,
             targetWords: targetWords,
-            analysisCompleted: cloudCompleted
+            preset: preset,
+            analysisCompleted: detectedSegments != nil
         )
-        guard cloudCompleted else { return }
-        let spans = union.compactMap { interval -> ContentSegment? in
-            guard interval.source == .unrelatedContent else { return nil }
-            return ContentSegment(start: interval.start, end: interval.end)
-        }
+        guard let detectedSegments else { return }
         // The normal cache/transcript write remains usable even if the durable
         // convenience artifact cannot be written (for example, disk pressure).
         try? artifactStore.store(EpisodeAnalysisArtifact(
             episodeID: episodeID,
-            adSpans: spans,
-            analysisFingerprint: cache.currentFingerprint(for: targetWords),
+            adSpans: detectedSegments,
+            analysisFingerprint: cache.currentFingerprint(for: targetWords, preset: preset),
             completedAt: Date()
         ))
     }
@@ -395,10 +462,19 @@ final class AnalysisPipeline: @unchecked Sendable {
         onCloudAdDetectionStarted?()
         cloudAdDetectionObservers.values.forEach { $0.started() }
         do {
-            let segments = try await cloudAdDetector.detectAdSpans(
-                in: transcript,
-                episodeID: episodeID
-            )
+            let segments: [ContentSegment]
+            if let contextual = cloudAdDetector as? any ContextualCloudAdSpanDetecting {
+                segments = try await contextual.detectAdSpans(
+                    in: transcript,
+                    episodeID: episodeID,
+                    context: segmentationContext
+                )
+            } else {
+                segments = try await cloudAdDetector.detectAdSpans(
+                    in: transcript,
+                    episodeID: episodeID
+                )
+            }
             PlaybackDiagnostics.logCloudAdDetectionCompleted(
                 episodeID: episodeID,
                 spanCount: segments.count

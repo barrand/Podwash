@@ -120,6 +120,13 @@ final class IntervalCacheTests: XCTestCase {
         XCTAssertEqual(loaded[0].start, 1.0, accuracy: 0.0001)
     }
 
+    func testPresetIsPartOfDerivedCacheFingerprint() throws {
+        let cache = IntervalCache(baseDirectory: cacheDir, asrModelPin: tinyPin)
+        try cache.store(sampleIntervals(), episodeID: episodeID, targetWords: targetWords, preset: .obvious)
+        XCTAssertNotNil(cache.load(episodeID: episodeID, targetWords: targetWords, preset: .obvious))
+        XCTAssertNil(cache.load(episodeID: episodeID, targetWords: targetWords, preset: .more))
+    }
+
     // MARK: - Slice 34 AC8: segmenter fingerprint invalidation
 
     func testSegmenterFingerprintIncludesHeuristicCueV6() throws {
