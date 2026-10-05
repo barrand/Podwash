@@ -414,3 +414,25 @@ receive their expected tier, using one request per block and a $0.005 spend cap.
 If it passes, the next experiment may build automatic high-confidence anchors
 and continuity expansion. If Shopify is not `skip_obvious`, stop pursuing the
 V7.1 block classifier for Strategy 8 localization.
+
+### V8.4 result
+
+V8.4 was formally rejected on October 4, 2026. The three requests cost
+$0.00027435. The Shopify testimonial and Atrium sponsor were both classified
+as `skip_obvious`, so coherent-block context did recover the specific paid ad
+that the 15-second refiner missed. The station/show promo was conservatively
+classified `keep_protected` rather than the expected `skip_more_only`.
+
+The Shopify rescue was not a robust anchor: `skip_obvious` received probability
+0.47 versus 0.42 for `mixed_split`, and the selected answer's confidence was
+only 0.35. Atrium was substantially clearer at 0.77 and 0.70 confidence. This
+means the known failure can be rescued when its correct block is supplied, but
+the evidence is too ambiguous to justify building an automatic production
+localizer around this classifier.
+
+Stop Strategy 8 localization experiments here. Retain V8.1 as a validated
+two-minute paid-ad presence scout, but do not use V8.2-V8.4 to create playback
+skip spans. Any future localization proposal must introduce a materially new
+signal—such as audio boundaries or a model designed to emit boundaries—and a
+new independently frozen holdout. Repeating these prompts, relaxing gates, or
+tuning confidence thresholds on the observed episodes would be overfitting.

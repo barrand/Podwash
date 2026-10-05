@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "experiment": "jev-v8.4-coherent-block-rescue",
+  "status": "rejected",
+  "model": "jev-1.13.0",
+  "completedAt": "2026-10-05T00:15:50.125053+00:00",
+  "passed": false,
+  "totalCostUsd": 0.00027435,
+  "latencyMs": {
+    "median": 213.9,
+    "max": 289.4
+  },
+  "cases": [
+    {
+      "id": "shopify-testimonial",
+      "start": 27.6,
+      "end": 88.78,
+      "expectedTier": "skip_obvious",
+      "actualTier": "skip_obvious",
+      "passed": true,
+      "tier": "skip_obvious",
+      "confidence": 0.35,
+      "probabilities": {
+        "skip_obvious": 0.47,
+        "skip_more_only": 0.06,
+        "skip_most_only": 0.02,
+        "keep_protected": 0.03,
+        "mixed_split": 0.42
+      }
+    },
+    {
+      "id": "station-show-promo",
+      "start": 89.22,
+      "end": 113.4,
+      "expectedTier": "skip_more_only",
+      "actualTier": "keep_protected",
+      "passed": false,
+      "tier": "keep_protected",
+      "confidence": 0.27,
+      "probabilities": {
+        "skip_obvious": 0.04,
+        "skip_more_only": 0.1,
+        "skip_most_only": 0.02,
+        "keep_protected": 0.42,
+        "mixed_split": 0.42
+      }
+    },
+    {
+      "id": "atrium-sponsor",
+      "start": 141.8,
+      "end": 189.32,
+      "expectedTier": "skip_obvious",
+      "actualTier": "skip_obvious",
+      "passed": true,
+      "tier": "skip_obvious",
+      "confidence": 0.7,
+      "probabilities": {
+        "skip_obvious": 0.77,
+        "skip_more_only": 0.05,
+        "skip_most_only": 0.01,
+        "keep_protected": 0.13,
+        "mixed_split": 0.04
+      }
+    }
+  ]
+}

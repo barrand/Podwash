@@ -1,0 +1,30 @@
+{
+  "requestSha256": "5b0365ecea5bc9a811e756e9fade943b6ce99b2e031785a87c9f04e667330cae",
+  "latencyMs": 185.0,
+  "usage": {
+    "inputTokens": 1973,
+    "outputTokens": 94,
+    "totalCostUsd": 8.287e-05
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "cougar-sports-2026-07-17-hour4-s0018-e0022-tier": {
+        "type": "choice",
+        "choice": "keep_protected",
+        "confidence": 0.27,
+        "probabilities": {
+          "keep_protected": 0.42,
+          "skip_most_only": 0.02,
+          "skip_obvious": 0.04,
+          "skip_more_only": 0.1,
+          "mixed_split": 0.42
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 1973,
+      "output_tokens": 94
+    }
+  }
+}

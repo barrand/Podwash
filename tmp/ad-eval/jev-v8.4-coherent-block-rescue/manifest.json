@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "experiment": "jev-v8.4-coherent-block-rescue",
+  "model": "jev-1.13.0",
+  "transcriptSha256": "7a6c5986dfea686ac11524e45d12599170c1561f0646bc4b499378f5727dd883",
+  "goldenSha256": "bf3f9c0d8b156736691b76e2f0e8642d95dee1e0525993db5075c3603f2d6ac7",
+  "cases": [
+    {
+      "id": "shopify-testimonial",
+      "first_sentence": 10,
+      "last_sentence": 17,
+      "start": 27.6,
+      "end": 88.78,
+      "expected_tier": "skip_obvious"
+    },
+    {
+      "id": "station-show-promo",
+      "first_sentence": 18,
+      "last_sentence": 22,
+      "start": 89.22,
+      "end": 113.4,
+      "expected_tier": "skip_more_only"
+    },
+    {
+      "id": "atrium-sponsor",
+      "first_sentence": 30,
+      "last_sentence": 39,
+      "start": 141.8,
+      "end": 189.32,
+      "expected_tier": "skip_obvious"
+    }
+  ],
+  "requestHashes": [
+    "bfc77b2fd32be36890cf6419dbd533013cb3c9144d0596386edb48732174e784",
+    "5b0365ecea5bc9a811e756e9fade943b6ce99b2e031785a87c9f04e667330cae",
+    "347d1a5af7aefd05ba4461038e96c016b2a408f30fb8047839d0577fe629d5c7"
+  ]
+}

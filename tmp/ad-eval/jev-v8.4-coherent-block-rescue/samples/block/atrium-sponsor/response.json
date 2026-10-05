@@ -1,0 +1,21 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "cougar-sports-2026-07-17-hour4-s0030-e0039-tier": {
+      "type": "choice",
+      "choice": "skip_obvious",
+      "confidence": 0.7,
+      "probabilities": {
+        "keep_protected": 0.13,
+        "skip_more_only": 0.05,
+        "mixed_split": 0.04,
+        "skip_obvious": 0.77,
+        "skip_most_only": 0.01
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 2419,
+    "output_tokens": 94
+  }
+}
