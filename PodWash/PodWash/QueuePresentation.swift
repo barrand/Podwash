@@ -21,7 +21,7 @@ enum CleanPlaybackPreparation: Equatable {
     case checkingAds
     case ready
     case adCheckDelayed(retryAt: Date?)
-    case needsAttention(detail: String?)
+    case needsAttention(reason: PreparationFailureReason?)
 }
 
 /// The one listener-facing answer used by Queue, Library, and mini-player copy.
@@ -35,9 +35,14 @@ enum EpisodeReadinessStatus: Equatable {
     case checkingAds
     case readyOffline
     case adCheckDelayed(retryAt: Date?)
-    case needsAttention(detail: String?)
+    case needsAttention(reason: PreparationFailureReason?)
 
     var isReadyOffline: Bool { self == .readyOffline }
+
+    var preparationFailureReason: PreparationFailureReason? {
+        guard case let .needsAttention(reason) = self else { return nil }
+        return reason
+    }
 }
 
 struct EpisodeAvailability: Equatable {
@@ -97,11 +102,11 @@ enum EpisodeAvailabilityResolver {
             if case let .downloading(progress) = localAudio {
                 return EpisodeAvailability(localAudio: localAudio, preparation: preparation, readiness: .downloading(progress: progress))
             }
-            if case let .failed(detail) = localAudio {
-                return EpisodeAvailability(localAudio: localAudio, preparation: preparation, readiness: .needsAttention(detail: detail))
+            if case .failed = localAudio {
+                return EpisodeAvailability(localAudio: localAudio, preparation: preparation, readiness: .needsAttention(reason: .downloadFailed))
             }
-            if case let .needsAttention(detail) = preparation {
-                return EpisodeAvailability(localAudio: localAudio, preparation: preparation, readiness: .needsAttention(detail: detail))
+            if case let .needsAttention(reason) = preparation {
+                return EpisodeAvailability(localAudio: localAudio, preparation: preparation, readiness: .needsAttention(reason: reason))
             }
             return EpisodeAvailability(
                 localAudio: localAudio,
@@ -114,7 +119,7 @@ enum EpisodeAvailabilityResolver {
         case .preparing: return EpisodeAvailability(localAudio: .downloaded, preparation: preparation, readiness: .preparing)
         case .checkingAds: return EpisodeAvailability(localAudio: .downloaded, preparation: preparation, readiness: .checkingAds)
         case .adCheckDelayed(let retryAt): return EpisodeAvailability(localAudio: .downloaded, preparation: preparation, readiness: .adCheckDelayed(retryAt: retryAt))
-        case .needsAttention(let detail): return EpisodeAvailability(localAudio: .downloaded, preparation: preparation, readiness: .needsAttention(detail: detail))
+        case .needsAttention(let reason): return EpisodeAvailability(localAudio: .downloaded, preparation: preparation, readiness: .needsAttention(reason: reason))
         case .queued, .notRequested, .ready:
             return EpisodeAvailability(localAudio: .downloaded, preparation: preparation,
                 readiness: input.hasActiveWorkOwner ? .waitingToPrepare : .downloadedNotPrepared)
@@ -137,7 +142,7 @@ enum EpisodeAvailabilityResolver {
         case .checkingAds: return .checkingAds
         case .ready: return .ready
         case .adCheckDelayed: return .adCheckDelayed(retryAt: job.retryAfter)
-        case .needsAttention: return .needsAttention(detail: job.detail)
+        case .needsAttention: return .needsAttention(reason: job.resolvedFailureReason)
         }
     }
 }

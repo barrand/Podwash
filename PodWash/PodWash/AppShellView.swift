@@ -183,6 +183,7 @@ struct AppShellView: View {
                         engine: engine,
                         readiness: model.playbackReadiness,
                         preparationStatusText: model.preparationStatusText,
+                        preparationFailureStatusText: model.preparationFailureStatusText,
                         showsCompleteSeekBarPaint: model.isPlayerSeekBarAnalysisComplete,
                         episodeDuration: model.superSeekDuration,
                         muteIntervals: model.nowPlayingMuteIntervals,
@@ -190,7 +191,10 @@ struct AppShellView: View {
                         onViewTranscript: { model.presentTranscriptForNowPlaying() },
                         onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
                         onSeekTo: { model.seekReadyPlayback(to: $0) },
-                        onSeekBy: { model.seek(by: $0) }
+                        onSeekBy: { model.seek(by: $0) },
+                        onViewPreparationIssue: model.canPresentNowPlayingPreparationIssue ? {
+                            if let id = model.nowPlayingEpisodeID { model.presentPreparationIssue(episodeID: id) }
+                        } : nil
                     )
                         .toolbar {
                             ToolbarItem(placement: .topBarTrailing) {
@@ -203,10 +207,16 @@ struct AppShellView: View {
                 .sheet(item: nestedTranscriptSheetItem) { _ in
                     transcriptSheetContent
                 }
+                .sheet(item: nestedPreparationIssueSheetItem) { _ in
+                    preparationIssueSheetContent
+                }
             }
         }
         .sheet(item: rootTranscriptSheetItem) { _ in
             transcriptSheetContent
+        }
+        .sheet(item: rootPreparationIssueSheetItem) { _ in
+            preparationIssueSheetContent
         }
         .sheet(isPresented: $model.isCloudTranscriptConsentPresented) {
             CloudAdDetectionConsentSheet(
@@ -276,6 +286,7 @@ struct AppShellView: View {
                 engine: engine,
                 readiness: model.playbackReadiness,
                 preparationStatusText: model.preparationStatusText,
+                preparationFailureStatusText: model.preparationFailureStatusText,
                 episodeTitle: model.nowPlayingEpisodeTitle,
                 podcastTitle: model.nowPlayingPodcastTitle,
                 showsCompleteSeekBarPaint: model.isPlayerSeekBarAnalysisComplete,
@@ -289,7 +300,10 @@ struct AppShellView: View {
                 onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
                 onSeekTo: { model.seekReadyPlayback(to: $0) },
                 onSkipToNext: { model.skipToNextUp() },
-                onOpenPreparation: { selectedTab = .queue }
+                onOpenPreparation: { selectedTab = .queue },
+                onViewPreparationIssue: model.canPresentNowPlayingPreparationIssue ? {
+                    if let id = model.nowPlayingEpisodeID { model.presentPreparationIssue(episodeID: id) }
+                } : nil
             )
             if reservesTabBarClearance {
                 // iOS 26 TabView bottom inset overlaps the tab bar unless we reserve its height.
@@ -429,6 +443,43 @@ struct AppShellView: View {
                 if newValue == nil {
                     model.dismissTranscript()
                 }
+            }
+        )
+    }
+
+    private var preparationIssueSheetContent: some View {
+        Group {
+            if let issue = model.presentedPreparationIssue {
+                PreparationIssueSheet(
+                    issue: issue,
+                    onRetry: { model.retryEpisodePreparation(issue.episodeID) },
+                    onPlayOriginal: { model.playOriginalAudioFromPreparationIssue() },
+                    onDone: { model.dismissPreparationIssue() }
+                )
+            }
+        }
+    }
+
+    private var rootPreparationIssueSheetItem: Binding<PreparationIssueSheetToken?> {
+        Binding(
+            get: {
+                guard !model.isFullPlayerPresented else { return nil }
+                return model.preparationIssueEpisodeID.map { PreparationIssueSheetToken(id: $0) }
+            },
+            set: { newValue in
+                if newValue == nil { model.dismissPreparationIssue() }
+            }
+        )
+    }
+
+    private var nestedPreparationIssueSheetItem: Binding<PreparationIssueSheetToken?> {
+        Binding(
+            get: {
+                guard model.isFullPlayerPresented else { return nil }
+                return model.preparationIssueEpisodeID.map { PreparationIssueSheetToken(id: $0) }
+            },
+            set: { newValue in
+                if newValue == nil { model.dismissPreparationIssue() }
             }
         )
     }
@@ -617,6 +668,10 @@ private struct LibraryPodcastDetailView: View {
 
 /// Identifiable token for transcript sheet presentation.
 private struct TranscriptSheetToken: Identifiable {
+    let id: String
+}
+
+private struct PreparationIssueSheetToken: Identifiable {
     let id: String
 }
 

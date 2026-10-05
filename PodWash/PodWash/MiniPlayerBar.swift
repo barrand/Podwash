@@ -17,6 +17,7 @@ struct MiniPlayerBar: View {
     @Bindable var engine: PlaybackEngine
     let readiness: AppShellModel.PlaybackReadiness
     let preparationStatusText: String
+    let preparationFailureStatusText: String?
     let episodeTitle: String
     let podcastTitle: String
     let showsCompleteSeekBarPaint: Bool
@@ -32,6 +33,7 @@ struct MiniPlayerBar: View {
     let onSeekTo: (Double) -> Void
     let onSkipToNext: () -> Void
     let onOpenPreparation: () -> Void
+    let onViewPreparationIssue: (() -> Void)?
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.25)) { _ in
@@ -55,7 +57,7 @@ struct MiniPlayerBar: View {
                 QueueStatusButton(presentation: queuePresentation, onOpen: onOpenPreparation)
 
                 HStack(spacing: 12) {
-                    Button(action: onExpand) {
+                    Button(action: readiness == .failed ? (onViewPreparationIssue ?? onExpand) : onExpand) {
                         HStack(spacing: 12) {
                             Image(systemName: "music.note")
                                 .frame(width: 40, height: 40)
@@ -74,7 +76,7 @@ struct MiniPlayerBar: View {
                                         .foregroundStyle(.secondary)
                                         .accessibilityIdentifier("miniPlayer.preparing")
                                 } else if readiness == .failed {
-                                    Text("Preparation needs attention")
+                                    Text(preparationFailureStatusText ?? preparationStatusText)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                         .accessibilityIdentifier("miniPlayer.preparationFailed")
@@ -98,7 +100,9 @@ struct MiniPlayerBar: View {
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("miniPlayer")
                     .accessibilityLabel(episodeTitle.isEmpty ? "Now playing" : episodeTitle)
-                    .accessibilityHint("Opens full playback controls.")
+                    .accessibilityHint(readiness == .failed && onViewPreparationIssue != nil
+                        ? "Shows preparation recovery options."
+                        : "Opens full playback controls.")
                     .accessibilityValue(
                         isPreparingNextEpisode
                             ? (preparingNextAnnouncement ?? "preparing")

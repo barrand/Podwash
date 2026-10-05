@@ -18,6 +18,16 @@ enum AnalysisJobStage: String, Codable, CaseIterable, Sendable {
 
 }
 
+/// The durable, listener-safe cause of a terminal preparation failure. This is
+/// deliberately separate from display copy so UI recovery never has to infer
+/// behavior from a string persisted by an older app version.
+enum PreparationFailureReason: Codable, Equatable, Sendable {
+    case noDownloadableAudio
+    case downloadFailed
+    case localPreparationFailed
+    case cloud(CloudAdDetectionFailureCategory)
+}
+
 struct AnalysisJobEstimate: Codable, Equatable, Sendable {
     /// A value is published only for measured local work (download / transcription).
     var secondsRemaining: TimeInterval?
@@ -34,6 +44,8 @@ struct AnalysisJob: Codable, Equatable, Identifiable, Sendable {
     var detail: String?
     /// Never contains transcript data; used for recovery and listener-safe copy.
     var cloudFailure: CloudAdDetectionFailureCategory? = nil
+    /// Optional for backwards-compatible decoding of existing job checkpoints.
+    var failureReason: PreparationFailureReason? = nil
     var retryCount: Int = 0
 
     var id: String { episodeID }

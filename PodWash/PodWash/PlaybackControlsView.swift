@@ -14,6 +14,7 @@ struct PlaybackControlsView: View {
     @Bindable var engine: PlaybackEngine
     let readiness: AppShellModel.PlaybackReadiness
     let preparationStatusText: String
+    let preparationFailureStatusText: String?
     /// When true, paint complete green + ad/mute overlays (ADR-030).
     let showsCompleteSeekBarPaint: Bool
     let episodeDuration: Double
@@ -26,6 +27,7 @@ struct PlaybackControlsView: View {
     let onTogglePlayPause: (() -> Void)?
     let onSeekTo: ((Double) -> Void)?
     let onSeekBy: ((Double) -> Void)?
+    let onViewPreparationIssue: (() -> Void)?
 
     @State private var sleepClock = SystemMonotonicClock()
 
@@ -44,6 +46,7 @@ struct PlaybackControlsView: View {
         engine: PlaybackEngine,
         readiness: AppShellModel.PlaybackReadiness = .ready,
         preparationStatusText: String = EpisodeRowPresentationMapper.map(.preparing).statusText,
+        preparationFailureStatusText: String? = nil,
         showsCompleteSeekBarPaint: Bool = false,
         episodeDuration: Double = 0,
         muteIntervals: [CensorInterval] = [],
@@ -51,11 +54,13 @@ struct PlaybackControlsView: View {
         onViewTranscript: (() -> Void)? = nil,
         onTogglePlayPause: (() -> Void)? = nil,
         onSeekTo: ((Double) -> Void)? = nil,
-        onSeekBy: ((Double) -> Void)? = nil
+        onSeekBy: ((Double) -> Void)? = nil,
+        onViewPreparationIssue: (() -> Void)? = nil
     ) {
         self.engine = engine
         self.readiness = readiness
         self.preparationStatusText = preparationStatusText
+        self.preparationFailureStatusText = preparationFailureStatusText
         self.showsCompleteSeekBarPaint = showsCompleteSeekBarPaint
         self.episodeDuration = episodeDuration
         self.muteIntervals = muteIntervals
@@ -64,6 +69,7 @@ struct PlaybackControlsView: View {
         self.onTogglePlayPause = onTogglePlayPause
         self.onSeekTo = onSeekTo
         self.onSeekBy = onSeekBy
+        self.onViewPreparationIssue = onViewPreparationIssue
     }
 
     @State private var sleepTimer: SleepTimer?
@@ -277,8 +283,12 @@ struct PlaybackControlsView: View {
                 Text(preparationStatusText)
                     .accessibilityIdentifier("playback.preparing")
             } else {
-                Text("Preparation needs attention")
+                Text(preparationFailureStatusText ?? preparationStatusText)
                     .accessibilityIdentifier("playback.preparationFailed")
+                if preparationFailureStatusText != nil, let onViewPreparationIssue {
+                    Button("View Issue", action: onViewPreparationIssue)
+                        .accessibilityIdentifier("playback.viewPreparationIssue")
+                }
             }
         }
         .foregroundStyle(.secondary)
