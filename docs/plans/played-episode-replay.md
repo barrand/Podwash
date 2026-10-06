@@ -1,5 +1,8 @@
 # Played episodes, transcripts, and replay preparation
 
+> Superseded for played-row presentation and download cleanup by
+> [Played episode card and automatic download cleanup](played-episode-card-ux.md).
+
 ## Goal
 
 Separate listener history (**Played**), stored audio, and prepared transcript/
