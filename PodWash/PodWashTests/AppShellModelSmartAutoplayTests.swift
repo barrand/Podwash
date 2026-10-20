@@ -51,8 +51,8 @@ final class AppShellModelSmartAutoplayTests: XCTestCase {
         }
         model.playEpisode(episode.episode, podcastTitle: episode.podcastTitle, feedURL: episode.feedURL)
 
-        XCTAssertFalse(model.comingUpItems.isEmpty, "Coming up should peek next shows")
-        XCTAssertEqual(model.comingUpItems.first?.episodeID, "b-1")
+        XCTAssertFalse(model.queuePresentation.autoplay.isEmpty, "Queue should expose the radio forecast")
+        XCTAssertEqual(model.queuePresentation.autoplay.first?.episodeID, "b-1")
         model.stopAndDismissPlayer()
     }
 
@@ -72,8 +72,8 @@ final class AppShellModelSmartAutoplayTests: XCTestCase {
         model.playEpisode(episode.episode, podcastTitle: episode.podcastTitle, feedURL: episode.feedURL)
 
         XCTAssertTrue(
-            model.comingUpItems.isEmpty,
-            "Manual Up Next wins — Coming up stays empty"
+            model.queuePresentation.autoplay.isEmpty,
+            "A manually queued episode must not also appear in the radio forecast"
         )
         model.stopAndDismissPlayer()
     }
@@ -94,8 +94,8 @@ final class AppShellModelSmartAutoplayTests: XCTestCase {
         }
         model.playEpisode(episode.episode, podcastTitle: episode.podcastTitle, feedURL: episode.feedURL)
 
-        let next = model.queueCoordinator?.resolveSmartNext?("a-1")
-        XCTAssertNil(next)
+        let next = model.queueCoordinator?.resolveNext?("a-1", [])
+        XCTAssertEqual(next, QueueAdvanceResolution.none)
         model.stopAndDismissPlayer()
     }
 
@@ -140,10 +140,8 @@ final class AppShellModelSmartAutoplayTests: XCTestCase {
         }
         model.playEpisode(episode.episode, podcastTitle: episode.podcastTitle, feedURL: episode.feedURL)
 
-        let nextID = model.queueCoordinator?.resolveSmartNext?("a-1")
-        XCTAssertEqual(nextID, "b-1")
-        XCTAssertTrue(model.isPreparingNextEpisode)
-        XCTAssertEqual(model.preparingNextAnnouncement, "Preparing Show B")
+        let next = model.queueCoordinator?.resolveNext?("a-1", [])
+        XCTAssertEqual(next, .waiting(title: "B latest"))
         model.stopAndDismissPlayer()
     }
 
@@ -195,9 +193,8 @@ final class AppShellModelSmartAutoplayTests: XCTestCase {
         }
         model.playEpisode(episode.episode, podcastTitle: episode.podcastTitle, feedURL: episode.feedURL)
 
-        XCTAssertFalse(model.comingUpItems.isEmpty)
-        XCTAssertEqual(model.comingUpItems.first?.episodeID, "s-2")
-        XCTAssertTrue(model.comingUpItems.first?.isBinge == true)
+        XCTAssertFalse(model.queuePresentation.autoplay.isEmpty)
+        XCTAssertEqual(model.queuePresentation.autoplay.first?.episodeID, "s-2")
         model.stopAndDismissPlayer()
     }
 

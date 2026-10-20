@@ -101,14 +101,15 @@ nonisolated struct SmartOrderEngine: Sendable {
         count: Int,
         shows: [SmartOrderShow],
         currentEpisodeID: String?,
-        currentFeedURL: URL?
+        currentFeedURL: URL?,
+        excludingEpisodeIDs: Set<String> = []
     ) -> [ComingUpItem] {
         guard count > 0 else { return [] }
 
         var working = shows
         var bingeURL = activeBingeFeedURL
         var results: [ComingUpItem] = []
-        var excludeIDs = Set<String>()
+        var excludeIDs = excludingEpisodeIDs
         if let currentEpisodeID {
             excludeIDs.insert(currentEpisodeID)
         }

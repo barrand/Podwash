@@ -35,6 +35,14 @@ final class QueueStore {
         try context.save()
     }
 
+    /// Listener intent is "Play Next": insert a new item at the front of the
+    /// durable manual queue. Existing queued items are promoted instead.
+    func playNext(_ episodeID: String) throws {
+        var ids = queueEpisodeIDs().filter { $0 != episodeID }
+        ids.insert(episodeID, at: 0)
+        try replaceQueue(with: ids)
+    }
+
     func remove(_ episodeID: String) throws {
         let request = CDQueueEntry.fetchRequest()
         request.predicate = NSPredicate(format: "episodeID == %@", episodeID)

@@ -136,6 +136,11 @@ enum EpisodeRowContext: Equatable {
             return isPlayed ? "\(dateText) · Played" : dateText
         }
     }
+
+    var isPlayed: Bool {
+        if case .library(_, let isPlayed) = self { return isPlayed }
+        return false
+    }
 }
 
 struct EpisodeRowActions {
@@ -147,12 +152,12 @@ struct EpisodeRowActions {
 
 enum EpisodeMenuAction: String, Identifiable {
     case addToUpNext, moveToTop, removeFromUpNext, cancelDownload, cancelPreparation, retry, viewPreparationIssue
-    case playWithoutAdSkipping, playOriginalAudio, markPlayed, replay, transcript, removeDownload
+    case playWithoutAdSkipping, playOriginalAudio, markPlayed, transcript, removeDownload
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .addToUpNext: "Add to Up Next"
-        case .moveToTop: "Move to Top"
+        case .addToUpNext: "Play Next"
+        case .moveToTop: "Play Next"
         case .removeFromUpNext: "Remove from Up Next"
         case .cancelDownload: "Cancel Download"
         case .cancelPreparation: "Cancel Preparation"
@@ -161,7 +166,6 @@ enum EpisodeMenuAction: String, Identifiable {
         case .playWithoutAdSkipping: "Play without ad skipping"
         case .playOriginalAudio: "Play original audio"
         case .markPlayed: "Mark as Played"
-        case .replay: "Replay from Beginning"
         case .transcript: "View Transcript"
         case .removeDownload: "Remove Download"
         }
@@ -207,8 +211,10 @@ enum EpisodeMenuPolicy {
             }
         }
         if facts.hasTranscript { result.append(.transcript) }
-        result.append(facts.isPlayed ? .replay : .markPlayed)
-        if facts.hasLocalAudio && !facts.protectsLocalAudio { result.append(.removeDownload) }
+        if !facts.isPlayed { result.append(.markPlayed) }
+        if facts.hasLocalAudio && !facts.protectsLocalAudio && !facts.isPlayed {
+            result.append(.removeDownload)
+        }
         return result
     }
 }
@@ -260,7 +266,10 @@ struct EpisodeRowView: View {
             : AnyLayout(HStackLayout(alignment: .top, spacing: 10))
         return layout {
             VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.body.weight(.semibold)).lineLimit(2)
+                Text(title)
+                    .font(.body.weight(context.isPlayed ? .regular : .semibold))
+                    .foregroundStyle(context.isPlayed ? Color.secondary : Color.primary)
+                    .lineLimit(2)
                 Text(context.metadata).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                 Label(presentation.statusText, systemImage: presentation.symbolName)
                     .font(.caption)

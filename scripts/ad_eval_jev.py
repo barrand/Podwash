@@ -9,6 +9,7 @@ import html
 import json
 import math
 import os
+import re
 import statistics
 import time
 import urllib.error
@@ -27,7 +28,8 @@ from ad_eval_gemini import (
 )
 
 
-MODEL = "jev-1.13.0"
+MODEL = "jev-latest"
+VERSIONED_MODEL_PATTERN = re.compile(r"^jev-\d+\.\d+\.\d+$")
 ENDPOINT = "https://api.typesafe.ai/v1/systemone"
 PAID_PROMO_EXPERIMENT = "paid-promo-v2"
 ROLE_CHOICE_EXPERIMENT = "role-choice-v3"
@@ -385,8 +387,9 @@ def parse_answers(
     response: dict[str, Any], target_rows: list[Any], experiment: str = PAID_PROMO_EXPERIMENT,
     expected_gap_ids: set[str] | None = None,
 ) -> list[dict[str, Any]]:
-    if not isinstance(response, dict) or response.get("model") != MODEL:
-        raise ValueError(f"response must report pinned model {MODEL}")
+    response_model = response.get("model") if isinstance(response, dict) else None
+    if not isinstance(response_model, str) or not (response_model == MODEL or VERSIONED_MODEL_PATTERN.fullmatch(response_model) is not None):
+        raise ValueError(f"response must report {MODEL} or its resolved version")
     answers = response.get("answers")
     if experiment == ROLE_CHOICE_EXPERIMENT or experiment in BOUNDARY_EXPERIMENTS:
         criteria, probability_fields = role_config(experiment)

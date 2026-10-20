@@ -19,6 +19,8 @@ from app.main import (
     merge_segments,
     tier_payload,
     ContentSegment,
+    MODEL,
+    response_uses_jev,
 )
 
 
@@ -78,6 +80,13 @@ class ServiceTests(unittest.TestCase):
         self.assertFalse(first.cached)
         self.assertTrue(second.cached)
         self.assertEqual(jev.calls, 3)
+
+    def test_requests_latest_alias_and_accepts_resolved_version(self):
+        payload = broad_payload(self.request(), 0, 1)
+        self.assertEqual(payload["model"], MODEL)
+        self.assertEqual(MODEL, "jev-latest")
+        self.assertTrue(response_uses_jev({"model": "jev-1.14.0"}))
+        self.assertFalse(response_uses_jev({"model": "jev-preview"}))
 
     def test_mixed_block_recurses_before_reasoning(self):
         result = asyncio.run(Service(MemoryCache(), FakeJev(mixed_once=True), b"key").detect(self.request()))

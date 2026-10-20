@@ -17,6 +17,32 @@ nonisolated struct UpcomingSelection: Equatable, Sendable {
 nonisolated struct UpcomingSelectionPolicy: Sendable {
     static let readyTarget = 2
 
+    /// The one listener-visible projection of what will play after the current
+    /// episode. Manual entries are durable; autoplay entries are a forecast.
+    struct PlaybackPlan: Equatable, Sendable {
+        let manualEpisodeIDs: [String]
+        let autoplay: [ComingUpItem]
+
+        var preparationEpisodeIDs: [String] {
+            Array((manualEpisodeIDs + autoplay.map(\.episodeID)).prefix(UpcomingSelectionPolicy.readyTarget))
+        }
+    }
+
+    /// Builds the full Queue projection. Callers supply predictions that already
+    /// exclude manual IDs so Queue, playback, and warming cannot disagree.
+    func playbackPlan(
+        manualQueueIDs: [String],
+        autoplay: [ComingUpItem],
+        smartAutoplayEnabled: Bool
+    ) -> PlaybackPlan {
+        var seen = Set<String>()
+        let manual = manualQueueIDs.filter { !$0.isEmpty && seen.insert($0).inserted }
+        let automatic = smartAutoplayEnabled
+            ? autoplay.filter { seen.insert($0.episodeID).inserted }.prefix(Self.readyTarget)
+            : []
+        return PlaybackPlan(manualEpisodeIDs: manual, autoplay: Array(automatic))
+    }
+
     /// Preparation ownership is bounded independently of the complete listening order.
     func preparationWindow(
         currentEpisodeID: String?,

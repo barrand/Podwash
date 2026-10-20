@@ -33,9 +33,10 @@ final class SmartAutoplayCoordinatorTests: XCTestCase {
 
         let coordinator = QueueCoordinator(queue: queue, player: player, resume: resume)
         var smartCalled = false
-        coordinator.resolveSmartNext = { _ in
+        coordinator.resolveNext = { _, manual in
+            guard manual.isEmpty else { return .play(episodeID: manual[0], consumesManualQueueEntry: true) }
             smartCalled = true
-            return "smart-ep"
+            return .play(episodeID: "smart-ep", consumesManualQueueEntry: false)
         }
 
         coordinator.handlePlaybackEnded(episodeID: "current-ep", duration: 100)
@@ -52,8 +53,8 @@ final class SmartAutoplayCoordinatorTests: XCTestCase {
         let player = EpisodePlayingSpy()
 
         let coordinator = QueueCoordinator(queue: queue, player: player, resume: resume)
-        coordinator.resolveSmartNext = { _ in
-            return "smart-ep"
+        coordinator.resolveNext = { _, _ in
+            return .play(episodeID: "smart-ep", consumesManualQueueEntry: false)
         }
 
         coordinator.handlePlaybackEnded(episodeID: "current-ep", duration: 100)

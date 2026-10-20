@@ -20,8 +20,12 @@ Offline bulk download / storage policy is **out of scope** (follow-up).
 
 ### 1. Queue precedence
 
-1. Non-empty manual Up Next → play next queued ID via full `playEpisode`.
-2. Else if smart autoplay enabled → `SmartOrderEngine` next eligible.
+1. Manual Up Next has precedence; a ready manual item plays first. If its first
+   item is still preparing, a later ready manual item may play without changing
+   the blocked item's saved position.
+2. Else if smart autoplay enabled → the first ready item in the visible
+   two-episode autoplay forecast plays. If nothing is ready, handoff waits for
+   preparation instead of silently clearing the session.
 3. Else stop and clear durable session (ADR-027).
 
 ### 2. Smart order
@@ -32,8 +36,8 @@ Offline bulk download / storage policy is **out of scope** (follow-up).
 - Binge shows participate in LRP rotation; once entered (rotation or manual), stay.
 - Manual open of binge show enters binge; manual open of non-binge is one-off then
   global rotation resumes.
-- **Skip / Next show**: dismiss current episode from autoplay forever
-  (`CDEpisode.dismissedFromAutoplay`), advance to next **show** (exit binge turn).
+- **Skip / Next**: save the current position and keep the episode eligible for
+  future radio selection; it remains available for manual queueing and replay.
 - Eligible: not played, not dismissed; unfinished (`playbackPosition > 0`) allowed.
 - Cleaning-off episodes remain eligible (no analyze). Analysis failure: retry once,
   then skip and continue.

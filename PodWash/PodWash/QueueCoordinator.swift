@@ -8,6 +8,12 @@
 
 import Foundation
 
+enum QueueAdvanceResolution: Equatable {
+    case play(episodeID: String, consumesManualQueueEntry: Bool)
+    case waiting(title: String)
+    case none
+}
+
 @MainActor
 final class QueueCoordinator {
     // nonisolated(unsafe): avoid MainActor TaskLocal hop when releasing these in deinit
@@ -19,13 +25,12 @@ final class QueueCoordinator {
     nonisolated(unsafe) private let sessionStore: NowPlayingSessionStore?
     nonisolated(unsafe) private(set) var currentEpisodeID: String?
 
-    /// Resolves the next smart-autoplay episode ID when the manual queue is empty.
-    var resolveSmartNext: ((_ endedEpisodeID: String) -> String?)?
-    /// Selects the earliest fully prepared manual queue item. Returning nil means
-    /// autoplay must wait rather than starting an episode whose ad check is delayed.
-    var resolveQueuedNext: ((_ queuedIDs: [String]) -> String?)?
-    var onQueuedPreparationBlocked: (() -> Void)?
     var onEpisodeMarkedPlayed: ((String) -> Void)?
+    /// Unified manual + radio decision. This supersedes the legacy two-closure
+    /// split while remaining compatible with focused older coordinator tests.
+    var resolveNext: ((_ endedEpisodeID: String, _ manualQueueIDs: [String]) -> QueueAdvanceResolution)?
+    var onAdvanceWaiting: ((String) -> Void)?
+    private var pendingAdvanceFromEpisodeID: String?
 
     /// Wires queue + resume Core Data stores to an `EpisodePlaying` surface.
     /// Optional `sessionStore` updates the durable active episode on end / advance (ADR-027).
@@ -103,34 +108,41 @@ final class QueueCoordinator {
             onEpisodeMarkedPlayed?(episodeID)
         }
 
-        let ids = queue.queueEpisodeIDs()
-        if !ids.isEmpty {
-            let nextID: String
-            if let resolveQueuedNext {
-                guard let selected = resolveQueuedNext(ids) else {
-                    onQueuedPreparationBlocked?()
-                    currentEpisodeID = nil
-                    return
-                }
-                nextID = selected
-            } else {
-                nextID = ids[0]
-            }
-            try? queue.remove(nextID)
+        if let resolveNext {
+            apply(resolveNext(episodeID, queue.queueEpisodeIDs()), from: episodeID)
+            return
+        }
+        if let nextID = queue.queueEpisodeIDs().first {
+            apply(.play(episodeID: nextID, consumesManualQueueEntry: true), from: episodeID)
+        } else {
+            apply(.none, from: episodeID)
+        }
+    }
+
+    /// Called when preparation changes after an ended/Skipped episode was held
+    /// at the handoff boundary. It never records completion a second time.
+    func resumePendingAdvanceIfPossible() {
+        guard let from = pendingAdvanceFromEpisodeID, let resolveNext else { return }
+        apply(resolveNext(from, queue.queueEpisodeIDs()), from: from)
+    }
+
+    func cancelPendingAdvance() { pendingAdvanceFromEpisodeID = nil }
+
+    private func apply(_ resolution: QueueAdvanceResolution, from episodeID: String) {
+        switch resolution {
+        case let .play(nextID, consumesManual):
+            pendingAdvanceFromEpisodeID = nil
+            if consumesManual { try? queue.remove(nextID) }
             currentEpisodeID = nextID
             try? sessionStore?.setActiveEpisodeID(nextID)
             player?.play(episodeID: nextID)
-            return
+        case let .waiting(title):
+            pendingAdvanceFromEpisodeID = episodeID
+            onAdvanceWaiting?(title)
+        case .none:
+            pendingAdvanceFromEpisodeID = nil
+            currentEpisodeID = nil
+            try? sessionStore?.clear()
         }
-
-        if let nextID = resolveSmartNext?(episodeID) {
-            currentEpisodeID = nextID
-            try? sessionStore?.setActiveEpisodeID(nextID)
-            player?.play(episodeID: nextID)
-            return
-        }
-
-        currentEpisodeID = nil
-        try? sessionStore?.clear()
     }
 }

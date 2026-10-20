@@ -94,9 +94,6 @@ struct SettingsView: View {
         .onChange(of: store.autoDownloadEnabled) { _, value in
             PodWashAnalytics.featureStateChanged("automaticPreparation", isEnabled: value)
         }
-        .onChange(of: store.autoDeleteAfterPlayedEnabled) { _, value in
-            PodWashAnalytics.featureStateChanged("autoDeleteAfterPlayed", isEnabled: value)
-        }
     }
 
     // MARK: - Sections
@@ -445,16 +442,6 @@ struct SettingsView: View {
             .accessibilityLabel("Keep episodes ready automatically")
             .accessibilityValue(store.autoDownloadEnabled ? "1" : "0")
 
-            Toggle(isOn: $store.autoDeleteAfterPlayedEnabled) {
-                Text("Remove downloads after playing")
-            }
-            .padding(.vertical, 4)
-            .padding(.horizontal, 12)
-            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
-            .accessibilityIdentifier("autoDeleteToggle")
-            .accessibilityLabel("Remove downloads after playing")
-            .accessibilityHint("Removes downloaded audio while keeping played status and transcripts.")
-            .accessibilityValue(store.autoDeleteAfterPlayedEnabled ? "1" : "0")
         }
     }
 

@@ -9,6 +9,11 @@
 - Implement the [preparation failure recovery plan](docs/plans/preparation-failure-recovery.md): expose actionable details and safe retry or original-audio recovery.
 - Improve the played-episode card: make its played state prominent, and hide or de-emphasize the offline "Ready to play" label when the episode has already been played (the play button remains the replay action).
 - Build a home-screen display widget.
+- It doesn't appear to be deleting played episodes. I still see them hanging round. something odd in the file management
+- I got one episode to prepare clean playback, but nothing else is coming up in the queue. It seems like it should be queuing up more for the future. I don't think this part is working. Maybe it is in the deep cuts in other podcast lists but I don't see it happening. Maybe in the queue list it should show what is being prepared.
+- queue isn't working. I have many episodes that are ready to play but queue says empty
+- Played card is still as prominent as unplayed. I expected it to be greyed out
+- It shouldn't say "preparing clean playback" It could just say preparing 
 
 ## Done
 

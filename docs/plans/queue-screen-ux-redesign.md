@@ -84,8 +84,9 @@ Library and Queue have separate, simple jobs:
 
 - **Library** is the catalog of subscribed shows. A show screen contains its
   episodes.
-- **Queue** is the listener's ordered **Up Next** list. It contains no global
-  Downloads inventory.
+- **Queue** is the listener's ordered **Up Next** list plus a clearly labeled,
+  two-item autoplay forecast. It contains no global Downloads inventory; only
+  manual Up Next rows are persisted or reorderable.
 
 Both surfaces render an episode through the exact same row component and the
 same action handlers. Context changes only the row's secondary metadata and

@@ -246,6 +246,16 @@ import Observation
         reaim(requests: ordered.filter { seen.insert($0.item.episodeID).inserted })
     }
 
+    /// The shared upcoming plan is the sole source for automatic preparation.
+    func reaim(
+        replayEpisodeID: String? = nil,
+        currentEpisodeID: String? = nil,
+        playbackPlan: UpcomingSelectionPolicy.PlaybackPlan
+    ) {
+        reaim(replayEpisodeID: replayEpisodeID, currentEpisodeID: currentEpisodeID,
+              manualQueueIDs: playbackPlan.manualEpisodeIDs, predicted: playbackPlan.autoplay)
+    }
+
     /// Stops the serial worker and waits for it to settle so callers can safely
     /// replace an episode's on-disk artifacts without late writes from old work.
     func quiesce() async {
