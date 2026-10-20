@@ -194,6 +194,65 @@ final class PlaybackInterruptionTests: XCTestCase {
         XCTAssertEqual(session.activationCount, 1)
     }
 
+    func testManualPlayRecoversWithoutInterruptionEndedNotification() {
+        let session = AudioSessionConfiguratorDouble()
+        let engine = makeEngine(session: session)
+        engine.play()
+        engine.handleAudioSessionEvent(.interruptionBegan)
+
+        engine.play()
+
+        XCTAssertTrue(engine.isPlaybackRequested)
+        XCTAssertEqual(session.activationCount, 2)
+
+        // A delayed end must neither pause recovered playback nor activate twice.
+        engine.handleAudioSessionEvent(.interruptionEnded(shouldResume: false))
+        engine.handleAudioSessionEvent(.interruptionEnded(shouldResume: true))
+        XCTAssertTrue(engine.isPlaybackRequested)
+        XCTAssertEqual(session.activationCount, 2)
+
+        // Recovery must also allow the next interruption to pause normally.
+        engine.handleAudioSessionEvent(.interruptionBegan)
+        XCTAssertFalse(engine.isPlaybackRequested)
+        engine.handleAudioSessionEvent(.interruptionEnded(shouldResume: true))
+        XCTAssertTrue(engine.isPlaybackRequested)
+        XCTAssertEqual(session.activationCount, 3)
+        engine.pause()
+    }
+
+    func testManualPlayCanRetryAfterActivationFailsDuringInterruption() {
+        let session = AudioSessionConfiguratorDouble()
+        let engine = makeEngine(session: session)
+        engine.play()
+        engine.handleAudioSessionEvent(.interruptionBegan)
+        session.activationSucceeds = false
+
+        engine.play()
+        XCTAssertFalse(engine.isPlaybackRequested)
+        XCTAssertEqual(session.activationCount, 2)
+
+        session.activationSucceeds = true
+        engine.play()
+        XCTAssertTrue(engine.isPlaybackRequested)
+        XCTAssertEqual(session.activationCount, 3)
+        engine.pause()
+    }
+
+    func testNonResumableInterruptionWaitsForManualPlay() {
+        let session = AudioSessionConfiguratorDouble()
+        let engine = makeEngine(session: session)
+        engine.play()
+        engine.handleAudioSessionEvent(.interruptionBegan)
+        engine.handleAudioSessionEvent(.interruptionEnded(shouldResume: false))
+
+        XCTAssertFalse(engine.isPlaybackRequested)
+        XCTAssertEqual(session.activationCount, 1)
+        engine.play()
+        XCTAssertTrue(engine.isPlaybackRequested)
+        XCTAssertEqual(session.activationCount, 2)
+        engine.pause()
+    }
+
     func testRouteDisconnectPermanentlyCancelsPendingResume() {
         let session = AudioSessionConfiguratorDouble()
         let engine = makeEngine(session: session)

@@ -224,11 +224,6 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting, AudioSessionE
             itemStatus: player.currentItem?.status ?? .unknown,
             timeControl: PlaybackDiagnostics.timeControlLabel(player.timeControlStatus)
         )
-        if case .interrupted = audioInterruptionState {
-            audioInterruptionState = .interrupted(pendingPlay: true)
-            touchUI()
-            return
-        }
         guard !mediaServicesInvalid else {
             PlaybackDiagnostics.warning("play ignored — media services invalid")
             return
@@ -237,6 +232,10 @@ final class PlaybackEngine: PlaybackPausing, PlaybackTransporting, AudioSessionE
             pauseTransport(deactivateSession: false)
             return
         }
+        // iOS does not guarantee an interruption-ended notification. An explicit
+        // Play request must try reactivation even if we still appear interrupted.
+        // Only clear that state after success; a call may still own the session.
+        audioInterruptionState = .normal
         startPlaybackAfterActivation()
     }
 
