@@ -88,7 +88,7 @@ class TestJevAdEval(unittest.TestCase):
         episode_rows = rows(10)
         sample = Sample("sample", "show", "ad-boundary", 0, 10, 3, 6, "span")
         payload = request_payload({"show": "Show", "episode": "Episode", "showDescription": ""}, episode_rows, sample)
-        self.assertEqual(payload["model"], "jev-1.13.0")
+        self.assertEqual(payload["model"], "jev-latest")
         self.assertEqual(
             set(payload["questions"]),
             {

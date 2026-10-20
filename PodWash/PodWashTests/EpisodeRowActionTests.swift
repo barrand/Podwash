@@ -19,7 +19,6 @@ import XCTest
         let defaults = UserDefaults(suiteName: suite)!
         let settings = SettingsStore(userDefaults: defaults)
         settings.autoDownloadEnabled = false
-        settings.autoDeleteAfterPlayedEnabled = true
         settings.cloudTranscriptProcessingConsentPrompted = true
         downloads = DownloadManager(downloadsDirectory: root,
             stateStore: InMemoryDownloadStateStore())
@@ -70,7 +69,7 @@ import XCTest
         let removed = model.clearUpNext()
         model.addToUpNext("row-3")
         model.restoreUpNext(removed)
-        XCTAssertEqual(model.queueStore.queueEpisodeIDs(), ["row-1", "row-2", "row-3"])
+        XCTAssertEqual(model.queueStore.queueEpisodeIDs(), ["row-2", "row-1", "row-3"])
         XCTAssertNotNil(downloads.verifiedLocalFileURL(for: "row-1"))
     }
 
@@ -81,7 +80,7 @@ import XCTest
         model.moveUpNextToTop(episodeID: "row-3")
         try model.resumeStore.setPosition(42, for: "row-2")
         model.restoreQueueMutation(snapshot)
-        XCTAssertEqual(model.queueStore.queueEpisodeIDs(), ["row-2", "row-3", "row-1", "row-4"])
+        XCTAssertEqual(model.queueStore.queueEpisodeIDs(), ["row-3", "row-4", "row-2", "row-1"])
         XCTAssertEqual(model.resumeStore.position(for: "row-2"), 42)
     }
 
@@ -140,10 +139,7 @@ import XCTest
         try model.resumeStore.setPlayed(true, for: "row-1")
         try model.resumeStore.setPosition(42, for: "row-1")
         model.requestEpisodeDownload("row-1")
-        XCTAssertEqual(model.replayConfirmationEpisodeID, "row-1")
-        XCTAssertNotNil(transcripts.load(episodeID: "row-1"), "Confirmation has not authorized replacement yet")
-        model.replayConfirmationEpisodeID = nil
-        model.prepareReplay(episodeID: "row-1")
+        XCTAssertNil(transcripts.load(episodeID: "row-1"), "Replay preparation replaces stale analysis immediately")
         for _ in 0..<100 {
             if model.replayReadyEpisodeID == "row-1" { break }
             try await Task.sleep(for: .milliseconds(20))
@@ -154,5 +150,16 @@ import XCTest
         XCTAssertNil(model.nowPlayingEpisodeID)
         XCTAssertTrue(model.queueStore.queueEpisodeIDs().isEmpty)
         XCTAssertNotNil(downloads.verifiedLocalFileURL(for: "row-1"))
+    }
+
+    func testManualPlayedCommitAlwaysRemovesLocalAudio() async throws {
+        let snapshot = model.markPlayedWithUndo(episodeID: "row-1")
+        model.commitQueueMutation(snapshot)
+        for _ in 0..<100 where downloads.verifiedLocalFileURL(for: "row-1") != nil {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertNil(downloads.verifiedLocalFileURL(for: "row-1"))
+        XCTAssertTrue(model.resumeStore.isPlayed("row-1"))
+        XCTAssertNotNil(transcripts.load(episodeID: "row-1"))
     }
 }

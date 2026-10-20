@@ -135,18 +135,6 @@ struct AppShellView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            if let episodeID = model.replayReadyEpisodeID,
-               let lookup = model.podcastStore.episodeLookup(id: episodeID) {
-                ReplayReadyBanner(title: lookup.episode.title) {
-                    model.replayFromBeginning(episodeID: episodeID)
-                } onDismiss: {
-                    model.dismissReplayReadyBanner()
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, (showsMiniPlayerInShellInset ? MiniPlayerBar.shellOverlayClearance : tabBarHeight) + 12)
-            }
-        }
-        .overlay(alignment: .bottom) {
             if let message = model.episodeUndoMessage {
                 HStack {
                     Text(message)
@@ -158,19 +146,6 @@ struct AppShellView: View {
                 .padding(.horizontal)
                 .padding(.bottom, (showsMiniPlayerInShellInset ? MiniPlayerBar.shellOverlayClearance : tabBarHeight) + 12)
             }
-        }
-        .alert("Prepare replay?", isPresented: Binding(
-            get: { model.replayConfirmationEpisodeID != nil },
-            set: { if !$0 { model.replayConfirmationEpisodeID = nil } })) {
-                Button("Prepare") {
-                    if let id = model.replayConfirmationEpisodeID {
-                        model.replayConfirmationEpisodeID = nil
-                        model.prepareReplay(episodeID: id)
-                    }
-                }
-                Button("Cancel", role: .cancel) { model.replayConfirmationEpisodeID = nil }
-        } message: {
-            Text("Preparing a fresh replay replaces the saved transcript and cleaning analysis. Playback will not start automatically.")
         }
     }
 
@@ -584,29 +559,6 @@ private struct AutomaticPreparationNoticeBanner: View {
     }
 }
 
-private struct ReplayReadyBanner: View {
-    let title: String
-    let onPlay: () -> Void
-    let onDismiss: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.tint)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Ready to replay").font(.subheadline.weight(.semibold))
-                Text(title).font(.caption).lineLimit(1).foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 0)
-            Button("Not now", action: onDismiss)
-            Button("Play", action: onPlay).buttonStyle(.borderedProminent)
-        }
-        .padding(12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("replayReadyBanner")
-    }
-}
 
 /// Hosts existing PodcastDetailView for a library subscription (store-backed, no network).
 private struct LibraryPodcastDetailView: View {

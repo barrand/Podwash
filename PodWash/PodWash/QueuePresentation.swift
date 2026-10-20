@@ -156,10 +156,12 @@ struct QueueEpisodeMetadata: Equatable {
 }
 
 struct QueueEpisodePresentation: Identifiable, Equatable {
+    enum Origin: Equatable { case manual, autoplay }
     let episodeID: String
     let title: String
     let podcastTitle: String
     let availability: EpisodeAvailability
+    let origin: Origin
     var id: String { episodeID }
 }
 
@@ -170,35 +172,60 @@ struct QueueStatusPresentation: Equatable {
 
 struct QueuePresentation: Equatable {
     let upNext: [QueueEpisodePresentation]
+    let autoplay: [QueueEpisodePresentation]
+    let isSmartAutoplayEnabled: Bool
     let activeStatus: QueueStatusPresentation?
 }
 
 struct QueuePresentationInput {
     let manualQueueIDs: [String]
+    let autoplay: [ComingUpItem]
+    let isSmartAutoplayEnabled: Bool
     let metadataByEpisodeID: [String: QueueEpisodeMetadata]
     let availabilityByEpisodeID: [String: EpisodeAvailability]
     let foregroundJob: AnalysisJob?
+
+    init(
+        manualQueueIDs: [String],
+        autoplay: [ComingUpItem] = [],
+        isSmartAutoplayEnabled: Bool = true,
+        metadataByEpisodeID: [String: QueueEpisodeMetadata],
+        availabilityByEpisodeID: [String: EpisodeAvailability],
+        foregroundJob: AnalysisJob?
+    ) {
+        self.manualQueueIDs = manualQueueIDs
+        self.autoplay = autoplay
+        self.isSmartAutoplayEnabled = isSmartAutoplayEnabled
+        self.metadataByEpisodeID = metadataByEpisodeID
+        self.availabilityByEpisodeID = availabilityByEpisodeID
+        self.foregroundJob = foregroundJob
+    }
 }
 
 enum QueuePresentationBuilder {
     static func build(_ input: QueuePresentationInput) -> QueuePresentation {
-        let upNext = input.manualQueueIDs.compactMap { row(for: $0, input: input) }
+        let upNext = input.manualQueueIDs.compactMap { row(for: $0, origin: .manual, input: input) }
+        let autoplay = input.autoplay.compactMap { row(for: $0.episodeID, origin: .autoplay, input: input) }
         return QueuePresentation(
             upNext: upNext,
+            autoplay: autoplay,
+            isSmartAutoplayEnabled: input.isSmartAutoplayEnabled,
             activeStatus: QueueStatusResolver.resolve(
                 foreground: input.foregroundJob,
                 metadataByEpisodeID: input.metadataByEpisodeID,
                 availabilityByEpisodeID: input.availabilityByEpisodeID,
-                upNext: upNext
+                upNext: upNext + autoplay
             )
         )
     }
 
-    private static func row(for id: String, input: QueuePresentationInput) -> QueueEpisodePresentation? {
+    private static func row(for id: String, origin: QueueEpisodePresentation.Origin,
+                            input: QueuePresentationInput) -> QueueEpisodePresentation? {
         guard let metadata = input.metadataByEpisodeID[id] else { return nil }
         let availability = input.availabilityByEpisodeID[id]
             ?? EpisodeAvailability(localAudio: .notDownloaded, preparation: .notRequested, readiness: .notDownloaded)
-        return QueueEpisodePresentation(episodeID: id, title: metadata.title, podcastTitle: metadata.podcastTitle, availability: availability)
+        return QueueEpisodePresentation(episodeID: id, title: metadata.title, podcastTitle: metadata.podcastTitle,
+                                        availability: availability, origin: origin)
     }
 
 }

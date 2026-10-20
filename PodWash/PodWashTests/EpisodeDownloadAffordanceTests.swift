@@ -17,6 +17,13 @@ import XCTest
             hasExplicitOwner: false, hasTranscript: false, hasLocalCleaning: true, readiness: .readyOffline)
         XCTAssertTrue(EpisodeMenuPolicy.actions(facts).contains(.removeDownload))
     }
+    func testPlayedEpisodeDoesNotOfferHistoryOrDownloadMutations() {
+        let facts = EpisodeMenuFacts(isQueued: false, isPlayed: true, hasLocalAudio: true,
+            hasExplicitOwner: false, hasTranscript: true, hasLocalCleaning: true, readiness: .readyOffline)
+        let actions = EpisodeMenuPolicy.actions(facts)
+        XCTAssertFalse(actions.contains(.markPlayed))
+        XCTAssertFalse(actions.contains(.removeDownload))
+    }
     func testNonFiniteDownloadProgressIsIndeterminate() {
         XCTAssertEqual(EpisodeRowPresentationMapper.map(.downloading(progress: .nan)).primaryControl, .progress(nil))
         XCTAssertEqual(EpisodeRowPresentationMapper.map(.downloading(progress: .infinity)).primaryControl, .progress(nil))
@@ -49,7 +56,7 @@ import XCTest
             hasExplicitOwner: true, hasTranscript: true, hasLocalCleaning: false,
             readiness: .needsAttention(reason: .localPreparationFailed), protectsLocalAudio: true)
         XCTAssertEqual(EpisodeMenuPolicy.actions(facts), [.addToUpNext, .viewPreparationIssue,
-            .playOriginalAudio, .transcript, .replay])
+            .playOriginalAudio, .transcript])
     }
 
     func testNoDownloadableAudioShowsIssueInsteadOfPointlessRetry() {

@@ -78,7 +78,6 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.defaultPlaybackRate, 1.0, accuracy: rateTolerance)
         XCTAssertTrue(store.autoDownloadEnabled)
         XCTAssertTrue(store.shouldShowAutomaticPreparationNotice)
-        XCTAssertFalse(store.autoDeleteAfterPlayedEnabled)
         XCTAssertFalse(store.cloudTranscriptProcessingEnabled)
         XCTAssertFalse(store.cloudTranscriptProcessingConsentPrompted)
         XCTAssertFalse(store.cloudTranscriptProcessingConsentGranted)
@@ -220,14 +219,12 @@ final class SettingsStoreTests: XCTestCase {
         store.defaultCleaningAction = .skip
         store.defaultPlaybackRate = 2.0
         store.autoDownloadEnabled = true
-        store.autoDeleteAfterPlayedEnabled = true
 
         let reloaded = SettingsStore(userDefaults: userDefaults)
 
         XCTAssertEqual(reloaded.defaultCleaningAction, .skip)
         XCTAssertEqual(reloaded.defaultPlaybackRate, 2.0, accuracy: rateTolerance)
         XCTAssertTrue(reloaded.autoDownloadEnabled)
-        XCTAssertTrue(reloaded.autoDeleteAfterPlayedEnabled)
     }
 
     func testAutomaticPreparationNoticeDismissalPersists() {

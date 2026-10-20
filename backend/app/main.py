@@ -12,6 +12,7 @@ import json
 import logging
 import math
 import os
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -21,10 +22,13 @@ import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field, model_validator
 
-MODEL = "jev-1.13.0"
+MODEL = "jev-latest"
+VERSIONED_MODEL_PATTERN = re.compile(r"^jev-\d+\.\d+\.\d+$")
 PROMPT_VERSION = "typed-blocks-v7.1"
 SCHEMA_VERSION = 2
-PIPELINE_VERSION = f"{MODEL}:{PROMPT_VERSION}:{SCHEMA_VERSION}"
+# Keep this response contract stable for already-released iOS clients. The
+# requested Jev alias is logged separately and may resolve to a newer version.
+PIPELINE_VERSION = f"jev-1.13.0:{PROMPT_VERSION}:{SCHEMA_VERSION}"
 TYPESAFE_ENDPOINT = "https://api.typesafe.ai/v1/systemone"
 MAX_INPUT_BYTES = 20 * 1024 * 1024
 MAX_REQUEST_TOKENS = 20_000
@@ -44,6 +48,12 @@ CACHE_TTL_SECONDS = 180 * 24 * 60 * 60
 PROCESSING_LEASE_SECONDS = 10 * 60
 RATE_LIMIT_REQUESTS_PER_HOUR = 20
 logger = logging.getLogger("podwash.ad_spans")
+
+
+def response_uses_jev(response: dict[str, Any]) -> bool:
+    """Accept the alias request plus the versioned model ID returned by TypeSafe."""
+    model = response.get("model")
+    return isinstance(model, str) and (model == MODEL or VERSIONED_MODEL_PATTERN.fullmatch(model) is not None)
 
 REASONS = {
     "paid_ad": "A current paid commercial, host-read ad, dynamically inserted creative, legal copy, or commercial call to action.",
@@ -363,7 +373,7 @@ def reason_payload(request: AdSpanRequest, block: Block, tier: str) -> dict[str,
 
 def parse_broad(response: dict[str, Any], request: AdSpanRequest, start: int, end: int) -> list[bool]:
     answers = response.get("answers")
-    if response.get("model") != MODEL or not isinstance(answers, dict):
+    if not response_uses_jev(response) or not isinstance(answers, dict):
         raise ValueError("invalid broad response")
     candidates = []
     for index in range(start, end):
@@ -382,7 +392,7 @@ def parse_broad(response: dict[str, Any], request: AdSpanRequest, start: int, en
 
 def parse_tier(response: dict[str, Any], identifier: str) -> str:
     answer = (response.get("answers") or {}).get(f"{identifier}-tier")
-    if response.get("model") != MODEL or not isinstance(answer, dict) or answer.get("type") != "choice":
+    if not response_uses_jev(response) or not isinstance(answer, dict) or answer.get("type") != "choice":
         raise ValueError(f"{identifier}: invalid tier response")
     probabilities = answer.get("probabilities")
     if answer.get("choice") not in TIER_CRITERIA or not isinstance(probabilities, dict) or set(probabilities) != set(TIER_CRITERIA):
@@ -397,7 +407,7 @@ def parse_reasons(response: dict[str, Any], identifier: str, tier: str) -> list[
     answers = response.get("answers")
     allowed = TIER_REASONS[tier]
     primary_answer = answers.get(f"{identifier}-primary-reason") if isinstance(answers, dict) else None
-    if response.get("model") != MODEL or not isinstance(primary_answer, dict) or primary_answer.get("type") != "choice":
+    if not response_uses_jev(response) or not isinstance(primary_answer, dict) or primary_answer.get("type") != "choice":
         raise ValueError(f"{identifier}: invalid reason response")
     primary = primary_answer.get("choice")
     if primary not in allowed:

@@ -226,24 +226,21 @@ final class AppShellModel {
     /// Active binge context for smart autoplay (ADR-029).
     private var activeBingeFeedURL: URL?
 
-    /// Coming up peek for UI (next 2–3 smart predictions when Up Next is empty).
-    private(set) var comingUpItems: [ComingUpItem] = []
-
     /// Explicit Observation dependency for Core Data, downloads, and WarmPlanner.
     private(set) var queuePresentationRevision = 0
     private(set) var episodeUndoMessage: String?
     private var episodeUndoAction: (() -> Void)?
     private var episodeUndoCommit: (() -> Void)?
     private var episodeUndoTask: Task<Void, Never>?
-    var replayConfirmationEpisodeID: String?
     private var readyPlayGeneration = 0
     @ObservationIgnored private var downloadStateHandlerID: UUID?
 
     /// One shared snapshot powers the Queue tab and the mini-player status strip.
     var queuePresentation: QueuePresentation {
         _ = queuePresentationRevision
-        let manualIDs = queueStore.queueEpisodeIDs()
-        let candidateIDs = Set(manualIDs)
+        let plan = upcomingPlaybackPlan()
+        let candidateIDs = Set(plan.manualEpisodeIDs)
+            .union(plan.autoplay.map(\.episodeID))
             .union(foregroundPreparationJob.map { [$0.episodeID] } ?? [])
         var metadata: [String: QueueEpisodeMetadata] = [:]
         var availability: [String: EpisodeAvailability] = [:]
@@ -259,7 +256,9 @@ final class AppShellModel {
             availability[id] = episodeAvailability(for: id, lookup: lookup)
         }
         return QueuePresentationBuilder.build(QueuePresentationInput(
-            manualQueueIDs: manualIDs,
+            manualQueueIDs: plan.manualEpisodeIDs,
+            autoplay: plan.autoplay,
+            isSmartAutoplayEnabled: settingsStore.smartAutoplayEnabled,
             metadataByEpisodeID: metadata,
             availabilityByEpisodeID: availability,
             foregroundJob: foregroundPreparationJob
@@ -373,11 +372,7 @@ final class AppShellModel {
         warmPlanner?.onJobsChanged = { [weak self] in self?.handlePreparationJobsChanged() }
         if !isFixtureLibraryMode {
             let currentID = nowPlayingSessionStore.activeEpisodeID()
-            let eligibleQueue = queueStore.queueEpisodeIDs().filter {
-                $0 != currentID && !resumeStore.isPlayed($0)
-            }
-            warmPlanner?.reaim(currentEpisodeID: currentID, manualQueueIDs: eligibleQueue,
-                predicted: self.settingsStore.smartAutoplayEnabled ? smartPredictionItems(excluding: currentID) : [])
+            warmPlanner?.reaim(currentEpisodeID: currentID, playbackPlan: upcomingPlaybackPlan(currentEpisodeID: currentID))
         }
         warmPlanner?.reconcilePersistedJobs(requestedEpisodeIDs: warmPlanner?.ownedEpisodeIDs ?? [])
         downloadStateHandlerID = self.downloadManager.addStateChangeHandler { [weak self] in
@@ -420,6 +415,7 @@ final class AppShellModel {
         if !isFixtureLibraryMode {
             Task { [weak self] in await self?.refreshFeedsIfNeeded() }
         }
+        removeStalePlayedDownloads()
     }
 
     func refreshFeedsIfNeeded() async {
@@ -435,8 +431,8 @@ final class AppShellModel {
         let summary = FeedRefreshSummary(await feedRefreshCoordinator.refreshAll(force: force))
         feedRefreshState = summary.failed > 0 ? .partialFailure(summary) : .complete(summary)
         episodeListRevision &+= 1
-        refreshComingUp()
         scheduleWarmForComingUp()
+        removeStalePlayedDownloads()
     }
 
     func refreshFeed(_ feedURL: URL, force: Bool = false) async {
@@ -445,8 +441,8 @@ final class AppShellModel {
         let summary = FeedRefreshSummary([feedURL: result])
         feedRefreshState = result == .failed ? .partialFailure(summary) : .complete(summary)
         episodeListRevision &+= 1
-        refreshComingUp()
         scheduleWarmForComingUp()
+        removeStalePlayedDownloads()
     }
 
     func sceneDidBecomeActive() async {
@@ -528,6 +524,7 @@ final class AppShellModel {
     /// the session until a local file exists when channel cleaning is on (task-012).
     func playEpisode(_ episode: Episode, podcastTitle: String, feedURL: URL? = nil) {
         readyPlayGeneration &+= 1
+        queueCoordinator?.cancelPendingAdvance()
         PodWashAnalytics.episodePlaybackChanged(
             "started",
             episodeTitle: episode.title,
@@ -633,16 +630,13 @@ final class AppShellModel {
             sessionStore: nowPlayingSessionStore
         )
         queue.bindCurrentEpisode(episode.id)
-        queue.resolveSmartNext = { [weak self] endedID in
-            self?.resolveSmartNextEpisodeID(endedEpisodeID: endedID)
+        queue.resolveNext = { [weak self] endedID, manualIDs in
+            self?.resolveUpcomingAdvance(endedEpisodeID: endedID, manualQueueIDs: manualIDs) ?? .none
         }
-        queue.resolveQueuedNext = { [weak self] ids in
-            self?.firstReadyQueuedEpisode(in: ids)
-        }
-        queue.onQueuedPreparationBlocked = { [weak self] in
+        queue.onAdvanceWaiting = { [weak self] title in
             guard let self else { return }
             self.isPreparingNextEpisode = true
-            self.preparingNextAnnouncement = "Still checking the next episode for ads"
+            self.preparingNextAnnouncement = "Preparing \(title)"
         }
         queue.onEpisodeMarkedPlayed = { [weak self] episodeID in
             self?.handleEpisodeMarkedPlayed(episodeID)
@@ -688,7 +682,6 @@ final class AppShellModel {
                 activeBingeFeedURL = nil
             }
         }
-        refreshComingUp()
         // A new session waits for its first Play action before beginning background
         // preparation. A restored session is handled separately after its durable
         // playback state has been rebuilt.
@@ -959,7 +952,7 @@ final class AppShellModel {
     private func completePendingPreparationConsent(_ pending: PendingPreparationConsent) {
         guard podcastStore.episodeLookup(id: pending.episodeID) != nil else { return }
         if pending.kind == .replay {
-            replayConfirmationEpisodeID = pending.episodeID
+            prepareReplay(episodeID: pending.episodeID)
             return
         }
         requestEpisodeDownload(pending.episodeID)
@@ -1120,7 +1113,6 @@ final class AppShellModel {
         nowPlayingPodcastTitle = ""
         nowPlayingFeedURL = nil
         activePlaybackContext = nil
-        comingUpItems = []
         foregroundPreparationJob = nil
         warmPlanner?.cancel()
         clearPlaybackAnalysisProgress()
@@ -1138,9 +1130,6 @@ final class AppShellModel {
         if let id = pendingPreparationConsent?.episodeID, episodeIDSet.contains(id) {
             pendingPreparationConsent = nil
             isCloudTranscriptConsentPresented = false
-        }
-        if let id = replayConfirmationEpisodeID, episodeIDSet.contains(id) {
-            replayConfirmationEpisodeID = nil
         }
 
         let isPlayingTarget = nowPlayingFeedURL == feedURL
@@ -1253,6 +1242,9 @@ final class AppShellModel {
         }
         replayPreparationEpisodeID = episodeID
         replayReadyEpisodeID = nil
+        // A replay request replaces the old analysis immediately. Never leave a
+        // stale transcript or interval set visible while the worker quiesces.
+        purgeAnalysisArtifacts(episodeID: episodeID)
         episodeListRevision &+= 1
 
         if nowPlayingEpisodeID == episodeID {
@@ -1263,7 +1255,6 @@ final class AppShellModel {
             await self.warmPlanner?.quiesce()
             guard self.replayPreparationEpisodeID == episodeID else { return }
             await self.downloadManager.cancel(episodeID: episodeID)
-            self.purgeAnalysisArtifacts(episodeID: episodeID)
             if self.downloadManager.localFileURL(for: episodeID) == nil {
                 try? self.downloadManager.removeAudio(episodeID: episodeID)
             }
@@ -1296,15 +1287,6 @@ final class AppShellModel {
         playReadyEpisode(episodeID, context: .library)
     }
 
-    func dismissReplayReadyBanner() {
-        if let episodeID = replayPreparationEpisodeID {
-            warmPlanner?.removeJob(episodeID: episodeID)
-        }
-        replayPreparationEpisodeID = nil
-        replayReadyEpisodeID = nil
-        episodeListRevision &+= 1
-    }
-
     /// Mini-player Next control: advances to the first episode in manual Up Next.
     /// The interrupted episode remains resumable instead of being dismissed from autoplay.
     func skipToNextUp() {
@@ -1326,7 +1308,6 @@ final class AppShellModel {
         if enabled, nowPlayingFeedURL == feedURL {
             activeBingeFeedURL = feedURL
         }
-        refreshComingUp()
         scheduleWarmForComingUp()
     }
 
@@ -1346,58 +1327,7 @@ final class AppShellModel {
     }
 
     private func handleEpisodeMarkedPlayed(_ episodeID: String) {
-        if settingsStore.autoDeleteAfterPlayedEnabled {
-            removeDownloadedAudioAndPreparation(episodeID: episodeID)
-        } else {
-            refreshQueuePresentation()
-        }
-    }
-
-    private func resolveSmartNextEpisodeID(
-        endedEpisodeID: String
-    ) -> String? {
-        guard settingsStore.smartAutoplayEnabled else { return nil }
-
-        var engine = SmartOrderEngine(activeBingeFeedURL: activeBingeFeedURL)
-        let shows = podcastStore.smartOrderShows()
-        guard let next = engine.nextEpisode(
-            shows: shows,
-            currentEpisodeID: endedEpisodeID,
-            currentFeedURL: nowPlayingFeedURL
-        ) else {
-            return nil
-        }
-
-        activeBingeFeedURL = SmartOrderEngine.activeBingeURL(afterPlaying: next)
-
-        let ready = warmPlanner?.isReadyForSeamlessPlay(
-            episodeID: next.episodeID,
-            feedURL: next.feedURL
-        ) ?? false
-        if !ready {
-            isPreparingNextEpisode = true
-            preparingNextAnnouncement =
-                "Preparing \(next.podcastTitle)"
-        } else {
-            isPreparingNextEpisode = false
-            preparingNextAnnouncement = nil
-        }
-
-        return next.episodeID
-    }
-
-    func refreshComingUp() {
-        guard queueStore.queueEpisodeIDs().isEmpty else {
-            comingUpItems = []
-            return
-        }
-        let engine = SmartOrderEngine(activeBingeFeedURL: activeBingeFeedURL)
-        comingUpItems = engine.peek(
-            count: WarmPlanner.peekCount,
-            shows: podcastStore.smartOrderShows(),
-            currentEpisodeID: nowPlayingEpisodeID,
-            currentFeedURL: nowPlayingFeedURL
-        )
+        removeDownloadedAudioAndPreparation(episodeID: episodeID)
     }
 
     /// Explicit row actions never change queue membership. The planner owns the
@@ -1454,9 +1384,6 @@ final class AppShellModel {
                 case .playOriginalAudio: self.stageLocalPlayback(episodeID, context: context, mode: .original)
                 case .transcript: self.presentTranscript(for: episodeID)
                 case .removeDownload: self.removeEpisodeDownload(episodeID)
-                case .replay:
-                    if self.isReadyOffline(episodeID) { self.replayFromBeginning(episodeID: episodeID) }
-                    else { self.replayConfirmationEpisodeID = episodeID }
                 }
             })
     }
@@ -1494,7 +1421,7 @@ final class AppShellModel {
         guard let lookup = podcastStore.episodeLookup(id: episodeID) else { return }
         if requestCloudConsentBeforeDownload(for: lookup.episode) { return }
         if resumeStore.isPlayed(episodeID) {
-            replayConfirmationEpisodeID = episodeID
+            prepareReplay(episodeID: episodeID)
             return
         }
         warmPlanner?.requestExplicitPreparation(episodeID: episodeID)
@@ -1687,7 +1614,8 @@ final class AppShellModel {
 
     func addToUpNext(_ episodeID: String) {
         guard podcastStore.episodeLookup(id: episodeID) != nil else { return }
-        try? queueStore.add(episodeID)
+        try? queueStore.playNext(episodeID)
+        queueCoordinator?.cancelPendingAdvance()
         scheduleWarmForComingUp()
         refreshQueuePresentation()
     }
@@ -1695,6 +1623,7 @@ final class AppShellModel {
     func moveUpNext(episodeID: String, to index: Int) {
         PodWashAnalytics.action("Queue.reordered")
         try? queueStore.move(episodeID, toIndex: index)
+        queueCoordinator?.cancelPendingAdvance()
         scheduleWarmForComingUp()
         refreshQueuePresentation()
     }
@@ -1706,6 +1635,7 @@ final class AppShellModel {
     func removeFromUpNext(episodeID: String) {
         PodWashAnalytics.action("Queue.removed")
         try? queueStore.remove(episodeID)
+        queueCoordinator?.cancelPendingAdvance()
         scheduleWarmForComingUp()
         refreshQueuePresentation()
     }
@@ -1768,13 +1698,24 @@ final class AppShellModel {
 
     /// Called after the five-second Undo window for a manual Mark as Played.
     func commitQueueMutation(_ snapshot: QueueUndoSnapshot) {
-        guard snapshot.marksPlayed, settingsStore.autoDeleteAfterPlayedEnabled,
+        guard snapshot.marksPlayed,
               resumeStore.isPlayed(snapshot.episodeID),
               nowPlayingEpisodeID != snapshot.episodeID,
               replayPreparationEpisodeID != snapshot.episodeID,
               warmPlanner?.hasExplicitPreparation(episodeID: snapshot.episodeID) != true
         else { return }
         removeDownloadedAudioAndPreparation(episodeID: snapshot.episodeID)
+    }
+
+    private func removeStalePlayedDownloads() {
+        let protected = Set([nowPlayingEpisodeID, replayPreparationEpisodeID].compactMap { $0 })
+        let staleIDs = podcastStore.smartOrderShows()
+            .flatMap(\.episodes)
+            .filter { $0.isPlayed && !protected.contains($0.id) }
+            .map(\.id)
+        for episodeID in staleIDs where downloadManager.localFileURL(for: episodeID) != nil {
+            removeDownloadedAudioAndPreparation(episodeID: episodeID)
+        }
     }
 
     /// Clears manual Up Next while retaining completed downloads. Returns the
@@ -1784,6 +1725,7 @@ final class AppShellModel {
         PodWashAnalytics.action("Queue.cleared")
         let ids = queueStore.queueEpisodeIDs()
         try? queueStore.clear()
+        queueCoordinator?.cancelPendingAdvance()
         scheduleWarmForComingUp()
         return ids
     }
@@ -1804,23 +1746,16 @@ final class AppShellModel {
     }
 
     private func scheduleWarmForComingUp() {
-        refreshComingUp()
-        // Manual Up Next stays first, followed by visible smart predictions. This
-        // makes the listener's ordered queue trustworthy while keeping several
-        // likely next episodes ready in the background.
-        let smartPredictions = settingsStore.smartAutoplayEnabled ? smartPredictionItems() : []
         warmPlanner?.reaim(
             replayEpisodeID: replayPreparationEpisodeID,
             currentEpisodeID: nowPlayingEpisodeID,
-            manualQueueIDs: queueStore.queueEpisodeIDs().filter {
-                $0 != nowPlayingEpisodeID && !resumeStore.isPlayed($0)
-            },
-            predicted: smartPredictions
+            playbackPlan: upcomingPlaybackPlan()
         )
     }
 
     func episodePreparationSettingsChanged() {
         readyPlayGeneration &+= 1
+        if !settingsStore.smartAutoplayEnabled { queueCoordinator?.cancelPendingAdvance() }
         scheduleWarmForComingUp()
         episodeListRevision &+= 1
         refreshQueuePresentation()
@@ -1850,6 +1785,7 @@ final class AppShellModel {
     private func handlePreparationJobsChanged() {
         refreshQueuePresentation()
         episodeListRevision &+= 1
+        queueCoordinator?.resumePendingAdvanceIfPossible()
         if let episodeID = preparationIssueEpisodeID,
            foregroundPreparationJob?.episodeID != episodeID,
            warmPlanner?.job(for: episodeID)?.resolvedFailureReason == nil {
@@ -1939,23 +1875,46 @@ final class AppShellModel {
         stageLocalPlayback(episodeID, context: .library, mode: .original)
     }
 
-    private func smartPredictionItems(excluding currentEpisodeID: String? = nil) -> [ComingUpItem] {
-        let order = SmartOrderEngine(activeBingeFeedURL: activeBingeFeedURL)
+    private func upcomingPlaybackPlan(currentEpisodeID: String? = nil) -> UpcomingSelectionPolicy.PlaybackPlan {
         let currentID = currentEpisodeID ?? nowPlayingEpisodeID
-        return order.peek(
-            count: WarmPlanner.peekCount,
+        let manual = queueStore.queueEpisodeIDs().filter { $0 != currentID && !resumeStore.isPlayed($0) }
+        let order = SmartOrderEngine(activeBingeFeedURL: activeBingeFeedURL)
+        let forecast = order.peek(
+            count: UpcomingSelectionPolicy.readyTarget,
             shows: podcastStore.smartOrderShows(),
             currentEpisodeID: currentID,
-            currentFeedURL: currentID.flatMap { podcastStore.episodeLookup(id: $0)?.feedURL } ?? nowPlayingFeedURL
+            currentFeedURL: currentID.flatMap { podcastStore.episodeLookup(id: $0)?.feedURL } ?? nowPlayingFeedURL,
+            excludingEpisodeIDs: Set(manual)
+        )
+        return UpcomingSelectionPolicy().playbackPlan(
+            manualQueueIDs: manual,
+            autoplay: forecast,
+            smartAutoplayEnabled: settingsStore.smartAutoplayEnabled
         )
     }
 
-    private func firstReadyQueuedEpisode(in ids: [String]) -> String? {
-        guard let first = ids.first,
-              let lookup = podcastStore.episodeLookup(id: first),
-              warmPlanner?.isReadyForSeamlessPlay(episodeID: first, feedURL: lookup.feedURL) == true
-        else { return nil }
-        return first
+    private func resolveUpcomingAdvance(
+        endedEpisodeID: String,
+        manualQueueIDs: [String]
+    ) -> QueueAdvanceResolution {
+        let plan = upcomingPlaybackPlan(currentEpisodeID: endedEpisodeID)
+        for id in manualQueueIDs where plan.manualEpisodeIDs.contains(id) {
+            if isReadyForSeamlessPlay(id) { return .play(episodeID: id, consumesManualQueueEntry: true) }
+        }
+        for item in plan.autoplay where isReadyForSeamlessPlay(item.episodeID) {
+            activeBingeFeedURL = SmartOrderEngine.activeBingeURL(afterPlaying: item)
+            return .play(episodeID: item.episodeID, consumesManualQueueEntry: false)
+        }
+        if let title = plan.manualEpisodeIDs.compactMap({ podcastStore.episodeLookup(id: $0)?.episode.title }).first
+            ?? plan.autoplay.first?.episodeTitle {
+            return .waiting(title: title)
+        }
+        return .none
+    }
+
+    private func isReadyForSeamlessPlay(_ episodeID: String) -> Bool {
+        guard let lookup = podcastStore.episodeLookup(id: episodeID) else { return false }
+        return warmPlanner?.isReadyForSeamlessPlay(episodeID: episodeID, feedURL: lookup.feedURL) == true
     }
 
     /// Cold-start / post-relaunch: rebuild paused mini session from durable stores.

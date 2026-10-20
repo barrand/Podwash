@@ -29,7 +29,6 @@ nonisolated final class SettingsStore: @unchecked Sendable {
         static let defaultCleaningAction = "podwash.settings.defaultCleaningAction"
         static let defaultPlaybackRate = "podwash.settings.defaultPlaybackRate"
         static let autoDownloadEnabled = "podwash.settings.autoDownloadEnabled"
-        static let autoDeleteAfterPlayedEnabled = "podwash.settings.autoDeleteAfterPlayedEnabled"
         static let unrelatedContentEnabled = "podwash.settings.unrelatedContentEnabled"
         static let cloudTranscriptProcessingEnabled = "podwash.settings.cloudTranscriptProcessingEnabled"
         static let cloudTranscriptProcessingConsentPrompted = "podwash.settings.cloudTranscriptProcessingConsentPrompted"
@@ -47,7 +46,6 @@ nonisolated final class SettingsStore: @unchecked Sendable {
             defaultCleaningAction,
             defaultPlaybackRate,
             autoDownloadEnabled,
-            autoDeleteAfterPlayedEnabled,
             unrelatedContentEnabled,
             cloudTranscriptProcessingEnabled,
             cloudTranscriptProcessingConsentPrompted,
@@ -86,9 +84,6 @@ nonisolated final class SettingsStore: @unchecked Sendable {
     /// Separate from migration completion: presenting or dismissing the notice
     /// can never cause an opted-out preference to be enabled again.
     private(set) var shouldShowAutomaticPreparationNotice: Bool
-    var autoDeleteAfterPlayedEnabled: Bool {
-        didSet { userDefaults.set(autoDeleteAfterPlayedEnabled, forKey: Keys.autoDeleteAfterPlayedEnabled) }
-    }
     /// Global unrelated-content handling (Differentiator 2). Fresh default: off.
     var unrelatedContentEnabled: Bool {
         didSet { userDefaults.set(unrelatedContentEnabled, forKey: Keys.unrelatedContentEnabled) }
@@ -173,12 +168,6 @@ nonisolated final class SettingsStore: @unchecked Sendable {
             autoDownloadEnabled = userDefaults.bool(forKey: Keys.autoDownloadEnabled)
         } else {
             autoDownloadEnabled = true
-        }
-
-        if userDefaults.object(forKey: Keys.autoDeleteAfterPlayedEnabled) != nil {
-            autoDeleteAfterPlayedEnabled = userDefaults.bool(forKey: Keys.autoDeleteAfterPlayedEnabled)
-        } else {
-            autoDeleteAfterPlayedEnabled = false
         }
 
         if userDefaults.object(forKey: Keys.unrelatedContentEnabled) != nil {
