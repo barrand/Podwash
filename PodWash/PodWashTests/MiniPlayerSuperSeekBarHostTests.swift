@@ -83,8 +83,12 @@ final class MiniPlayerSuperSeekBarHostTests: XCTestCase {
             "The Queue tab-bar reservation must not replace the preparing seek bar with a clear view"
         )
         XCTAssertTrue(
-            shellSource.contains("isInteractive: model.playbackReadiness == .ready"),
-            "The Queue tab-bar preparation track must not accept seeks"
+            shellSource.contains("showsSuperSeekBar: true"),
+            "The shell must keep the preparation seek bar inside the mini-player card"
+        )
+        XCTAssertFalse(
+            shellSource.contains("shellMiniPlayerSeekBar"),
+            "The shell must not place a seek bar in the native tab-bar reservation"
         )
     }
 }

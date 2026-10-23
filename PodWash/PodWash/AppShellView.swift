@@ -126,11 +126,13 @@ struct AppShellView: View {
         // into the tab view's safe area. A safe-area inset can be painted above a
         // UITabBar while remaining behind that controller's accessibility
         // hierarchy, causing VoiceOver touch exploration to select content below
-        // the visible mini-player. The overlay is topmost for accessibility hit
-        // testing; its tab-bar reservation still leaves native tabs exposed.
+        // the visible mini-player. Offset the complete player above the native
+        // tab bar. A transparent reservation over the tab bar can be laid out
+        // with a stale height and lets player chrome cover the tab controls.
         .overlay(alignment: .bottom) {
             if showsMiniPlayerInShellInset, let engine = model.engine {
-                shellMiniPlayerBar(engine: engine, reservesTabBarClearance: true)
+                shellMiniPlayerBar(engine: engine)
+                    .padding(.bottom, tabBarHeight)
                     .accessibilitySortPriority(1)
             }
         }
@@ -254,44 +256,32 @@ struct AppShellView: View {
         model.isMiniPlayerVisible && !showsMiniPlayerInTranscriptInset
     }
 
-    @ViewBuilder
-    private func shellMiniPlayerBar(engine: PlaybackEngine, reservesTabBarClearance: Bool) -> some View {
-        VStack(spacing: 0) {
-            MiniPlayerBar(
-                engine: engine,
-                readiness: model.playbackReadiness,
-                preparationStatusText: model.preparationStatusText,
-                preparationFailureStatusText: model.preparationFailureStatusText,
-                episodeTitle: model.nowPlayingEpisodeTitle,
-                podcastTitle: model.nowPlayingPodcastTitle,
-                showsCompleteSeekBarPaint: model.isPlayerSeekBarAnalysisComplete,
-                isPreparingNextEpisode: model.isPreparingNextEpisode,
-                preparingNextAnnouncement: model.preparingNextAnnouncement,
-                queuePresentation: model.queuePresentation,
-                episodeDuration: model.superSeekDuration,
-                muteIntervals: model.nowPlayingMuteIntervals,
-                showsSuperSeekBar: !reservesTabBarClearance,
-                onExpand: { model.expandFullPlayer() },
-                onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
-                onSeekTo: { model.seekReadyPlayback(to: $0) },
-                onSkipToNext: { model.skipToNextUp() },
-                onOpenPreparation: { selectedTab = .queue },
-                onViewPreparationIssue: model.canPresentNowPlayingPreparationIssue ? {
-                    if let id = model.nowPlayingEpisodeID { model.presentPreparationIssue(episodeID: id) }
-                } : nil
-            )
-            if reservesTabBarClearance {
-                // iOS 26 TabView bottom inset overlaps the tab bar unless we reserve its height.
-                // The Super Seek Bar belongs in this reservation, immediately above the tabs.
-                // During preparation it remains a visible, non-interactive gray track so
-                // queue content cannot show through the player chrome.
-                shellMiniPlayerSeekBar(engine: engine)
-                .frame(height: tabBarHeight, alignment: .top)
-                // This reservation shares the tab bar's space; leave its unused
-                // portion clear so UIKit can render the tab controls.
-                .background(Color.clear)
-            }
-        }
+    private func shellMiniPlayerBar(engine: PlaybackEngine) -> some View {
+        MiniPlayerBar(
+            engine: engine,
+            readiness: model.playbackReadiness,
+            preparationStatusText: model.preparationStatusText,
+            preparationFailureStatusText: model.preparationFailureStatusText,
+            episodeTitle: model.nowPlayingEpisodeTitle,
+            podcastTitle: model.nowPlayingPodcastTitle,
+            showsCompleteSeekBarPaint: model.isPlayerSeekBarAnalysisComplete,
+            isPreparingNextEpisode: model.isPreparingNextEpisode,
+            preparingNextAnnouncement: model.preparingNextAnnouncement,
+            queuePresentation: model.queuePresentation,
+            episodeDuration: model.superSeekDuration,
+            muteIntervals: model.nowPlayingMuteIntervals,
+            // The seek bar belongs to the player card so it is always above,
+            // never inside, the native tab bar.
+            showsSuperSeekBar: true,
+            onExpand: { model.expandFullPlayer() },
+            onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
+            onSeekTo: { model.seekReadyPlayback(to: $0) },
+            onSkipToNext: { model.skipToNextUp() },
+            onOpenPreparation: { selectedTab = .queue },
+            onViewPreparationIssue: model.canPresentNowPlayingPreparationIssue ? {
+                if let id = model.nowPlayingEpisodeID { model.presentPreparationIssue(episodeID: id) }
+            } : nil
+        )
     }
 
     private var queueTab: some View {
@@ -328,49 +318,6 @@ struct AppShellView: View {
         )
     }
 
-    private func shellMiniPlayerSeekBar(engine: PlaybackEngine) -> some View {
-        TimelineView(.periodic(from: .now, by: 0.25)) { _ in
-            let _ = engine.uiRefreshToken
-            MiniPlayerSeekBar(
-                showsCompleteContentTrack: model.isPlayerSeekBarAnalysisComplete,
-                adBands: miniPlayerAdBands(for: engine),
-                elapsed: engine.avPlayer.currentTime().seconds,
-                duration: miniPlayerDuration(for: engine),
-                muteMarkers: miniPlayerMuteMarkers(for: engine),
-                muteMarkerCountForAccessibility: miniPlayerMuteMarkerCount(for: engine),
-                isInteractive: model.playbackReadiness == .ready,
-                onSeekTo: { model.seekReadyPlayback(to: $0) }
-            )
-        }
-        // Only the seek-bar strip itself overlays tab content. Do not paint the
-        // whole tab-bar reservation or Library / Queue / Discover disappear.
-        .background(BrandTheme.surface)
-    }
-
-    private func miniPlayerDuration(for engine: PlaybackEngine) -> Double {
-        model.superSeekDuration > 0 ? model.superSeekDuration : engine.duration
-    }
-
-    private func miniPlayerAdBands(for engine: PlaybackEngine) -> [AdBand] {
-        guard model.isPlayerSeekBarAnalysisComplete else { return [] }
-        return SuperSeekBarModel.adBands(
-            from: model.nowPlayingMuteIntervals,
-            duration: miniPlayerDuration(for: engine)
-        )
-    }
-
-    private func miniPlayerMuteMarkers(for engine: PlaybackEngine) -> [MuteMarker] {
-        guard model.isPlayerSeekBarAnalysisComplete else { return [] }
-        return SuperSeekBarModel.muteMarkers(
-            from: model.nowPlayingMuteIntervals,
-            duration: miniPlayerDuration(for: engine)
-        )
-    }
-
-    private func miniPlayerMuteMarkerCount(for engine: PlaybackEngine) -> Int? {
-        model.isPlayerSeekBarAnalysisComplete ? miniPlayerMuteMarkers(for: engine).count : nil
-    }
-
     @ViewBuilder
     private var transcriptSheetContent: some View {
         if let viewModel = model.transcriptSheetViewModel {
@@ -386,7 +333,7 @@ struct AppShellView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if showsMiniPlayerInTranscriptInset, let engine = model.engine {
-                    shellMiniPlayerBar(engine: engine, reservesTabBarClearance: false)
+                    shellMiniPlayerBar(engine: engine)
                 }
             }
         }
@@ -670,7 +617,12 @@ private struct TabBarAccessibilityConfigurator: UIViewRepresentable {
             }
             return
         }
-        let measuredHeight = tabBar.bounds.height
+        // `bounds.height` can exclude the home-indicator portion of a UIKit
+        // tab bar. The SwiftUI overlay is aligned to the window's bottom, so
+        // measure that same occupied window span instead.
+        guard let window = tabBar.window else { return }
+        let tabBarFrame = tabBar.convert(tabBar.bounds, to: window)
+        let measuredHeight = window.bounds.maxY - tabBarFrame.minY
         if measuredHeight > 0, coordinator.tabBarHeight.wrappedValue != measuredHeight {
             coordinator.tabBarHeight.wrappedValue = measuredHeight
         }
