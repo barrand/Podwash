@@ -1,19 +1,32 @@
 # PodWash
 
-PodWash is a family-friendly podcast player for **iOS**. It behaves like the podcast
-apps people already know, plus two on-device features:
+PodWash is a native iOS podcast player that gives listeners more control over what
+they hear. It combines a familiar library, queue, downloads, and full playback
+controls with optional tools for skipping or muting unwanted moments.
 
-- **Profanity handling** — for user-selected profanity, choose to **skip** it or
-  **mute** it (with an optional beep/quack overlay).
-- **Unrelated-content handling** — an optional, user-controlled toggle for segments
-  that seem superfluous to the story (which can include ads); choose to **skip** or
-  **mute** them.
+## What it does
 
-Both features are **dynamic**: PodWash analyzes an episode once to build a list of
-time ranges, then the player applies your chosen action (skip or mute) live during
-playback. The original audio is never edited, re-encoded, copied, or re-hosted.
-Everything runs **on the device** — private, negligible per-episode cost, and the
-strongest legal posture.
+- **Plays podcasts your way.** Subscribe to shows, browse episodes, build a queue,
+  download episodes for offline listening, adjust speed, set a sleep timer, and
+  resume where you left off.
+- **Cleans selected words.** Choose profanity categories or add custom words, then
+  have matching moments muted or skipped during playback. A beep or quack overlay
+  is also available for muted moments.
+- **Skips likely ad breaks.** Optional cloud ad detection examines timed transcript
+  text, never podcast audio, to identify likely ad segments. Listeners can turn it
+  off at any time.
+- **Shows what is ahead.** The player displays preparation and cleaned segments on
+  its seek bar, and a synchronized transcript can follow playback.
+
+PodWash applies skip and mute actions live while an episode plays. It never edits,
+re-encodes, copies, or re-hosts the original podcast audio.
+
+## Privacy and analysis
+
+Word detection and playback controls run on the device. Cloud ad detection is
+optional and uses timed transcript text only after the listener enables it; audio
+is not uploaded. Preferences, subscriptions, downloads, and listening progress are
+stored on the device.
 
 ## Platform
 
