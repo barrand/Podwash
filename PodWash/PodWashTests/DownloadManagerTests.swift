@@ -275,6 +275,10 @@ final class DownloadManagerTests: XCTestCase {
             for: Self.fixtureEpisodeID,
             underlyingError: underlyingError
         )
+        let diagnostic = manager.lastFailureDiagnostic(for: Self.fixtureEpisodeID) ?? ""
+        XCTAssertTrue(diagnostic.contains("phase=transport"))
+        XCTAssertTrue(diagnostic.contains("status=500"))
+        XCTAssertTrue(diagnostic.contains("bytes=0"))
     }
 
     // MARK: - Task 007 AC2: successful download leaves no failure diagnostic
