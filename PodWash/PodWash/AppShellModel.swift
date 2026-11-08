@@ -117,7 +117,8 @@ final class AppShellModel {
             episodeID: job.episodeID,
             episodeTitle: job.title,
             reason: reason,
-            hasVerifiedLocalAudio: downloadManager.verifiedLocalFileURL(for: job.episodeID) != nil
+            hasVerifiedLocalAudio: downloadManager.verifiedLocalFileURL(for: job.episodeID) != nil,
+            downloadDiagnostic: downloadManager.lastFailureDiagnostic(for: job.episodeID)
         )).shortStatus
     }
     var canPresentNowPlayingPreparationIssue: Bool {
@@ -300,7 +301,8 @@ final class AppShellModel {
             episodeID: episodeID,
             episodeTitle: lookup.episode.title,
             reason: reason,
-            hasVerifiedLocalAudio: downloadManager.verifiedLocalFileURL(for: episodeID) != nil
+            hasVerifiedLocalAudio: downloadManager.verifiedLocalFileURL(for: episodeID) != nil,
+            downloadDiagnostic: downloadManager.lastFailureDiagnostic(for: episodeID)
         )
     }
 
