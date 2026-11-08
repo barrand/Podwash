@@ -27,6 +27,8 @@ struct PreparationIssue: Identifiable, Equatable {
     let episodeTitle: String
     let reason: PreparationFailureReason
     let hasVerifiedLocalAudio: Bool
+    /// Safe, local-only detail for the listener's troubleshooting sheet.
+    let downloadDiagnostic: String? = nil
 
     var id: String { episodeID }
 }
