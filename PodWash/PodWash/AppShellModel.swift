@@ -124,6 +124,10 @@ final class AppShellModel {
     var canPresentNowPlayingPreparationIssue: Bool {
         foregroundPreparationJob?.resolvedFailureReason != nil
     }
+    var canMarkNowPlayingAsPlayed: Bool {
+        guard let episodeID = nowPlayingEpisodeID else { return false }
+        return !resumeStore.isPlayed(episodeID)
+    }
     private(set) var analysisRecoveryState: AnalysisRecoveryState = .notNeeded
     private var restoredAnalysisContext: RestoredAnalysisContext?
     private var stagedRefreshIntervals: ([CensorInterval], [CensorInterval], UnrelatedContentOptions, URL)?
@@ -1677,6 +1681,16 @@ final class AppShellModel {
         scheduleWarmForComingUp()
         refreshQueuePresentation()
         return snapshot
+    }
+
+    func markNowPlayingAsPlayed() {
+        guard let episodeID = nowPlayingEpisodeID, !resumeStore.isPlayed(episodeID) else { return }
+        let snapshot = markPlayedWithUndo(episodeID: episodeID)
+        offerEpisodeUndo(
+            "Marked as played",
+            action: { self.restoreQueueMutation(snapshot) },
+            commit: { self.commitQueueMutation(snapshot) }
+        )
     }
 
     func restoreQueueMutation(_ snapshot: QueueUndoSnapshot) {
