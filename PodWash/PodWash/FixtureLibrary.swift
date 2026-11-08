@@ -13,10 +13,12 @@ enum FixtureLibrary {
     /// A deliberately long detail list used to exercise bottom content around
     /// persistent shell chrome, without depending on a live RSS publisher.
     static let longEpisodesLaunchArgument = "-UITestFixtureLibraryLongEpisodes"
+    static let longShowsLaunchArgument = "-UITestFixtureLibraryLongShows"
 
     static var isEnabled: Bool {
         ProcessInfo.processInfo.arguments.contains(launchArgument)
             || ProcessInfo.processInfo.arguments.contains(longEpisodesLaunchArgument)
+            || ProcessInfo.processInfo.arguments.contains(longShowsLaunchArgument)
     }
 
     static var hasLongEpisodeList: Bool {
@@ -48,9 +50,16 @@ enum FixtureLibrary {
         let parser = RSSParser()
         let baseFeed = try parser.parse(data: feedData)
 
-        for index in 0 ..< 2 {
+        let longShows = ProcessInfo.processInfo.arguments.contains(longShowsLaunchArgument)
+        for index in 0 ..< (longShows ? 24 : 2) {
             let namespaced = namespacedFeed(baseFeed, showIndex: index, longList: hasLongEpisodeList)
-            try store.saveSubscription(from: results[index], feed: namespaced)
+            let result = longShows ? PodcastSearchResult(
+                collectionId: 90_000 + index,
+                title: index == 23 ? "Cougar Sports with Ben Criddle (BYU)" : "Library fixture podcast \(index + 1)",
+                feedURL: URL(string: "https://fixture.podwash.tests/library/\(index)")!,
+                artworkURL: nil
+            ) : results[index]
+            try store.saveSubscription(from: result, feed: namespaced)
         }
     }
 

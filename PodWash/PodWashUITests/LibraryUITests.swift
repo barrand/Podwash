@@ -38,6 +38,60 @@ final class LibraryUITests: XCTestCase {
 
     // MARK: - Launch helpers
 
+    @MainActor
+    func testLibraryLastPodcastFullyClearsPlayerAndPlayerMeetsTabs() throws {
+        continueAfterFailure = true
+        let app = launchLibraryApp(extraArguments: ["-UITestFixtureLibraryLongShows", "-UITestChannelCleaningOff"])
+        playFirstEpisodeAndWaitForMiniPlayer(app)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        let list = element("libraryRoot", in: app)
+        XCTAssertTrue(list.waitForExistence(timeout: fixtureTimeout))
+        let queueHeader = element("queueButton", in: app)
+        XCTAssertTrue(queueHeader.waitForExistence(timeout: fixtureTimeout))
+        let last = element("libraryCell_23", in: app)
+        for _ in 0 ..< 18 {
+            list.swipeUp()
+        }
+        XCTAssertTrue(last.exists)
+        XCTAssertTrue(last.isHittable)
+        XCTAssertEqual(last.label, "Cougar Sports with Ben Criddle (BYU)")
+        XCTAssertGreaterThan(last.frame.height, 60, "Measure the entire podcast row, not just its label")
+        XCTAssertGreaterThanOrEqual(last.frame.minY, list.frame.minY)
+        XCTAssertLessThanOrEqual(last.frame.maxY, queueHeader.frame.minY,
+                                 "The complete final row must clear the entire player, including Queue status")
+        assertPlayerMeetsVisibleTabs(in: app)
+        let bottom = XCTAttachment(screenshot: app.screenshot())
+        bottom.name = "Library bottom — complete final podcast row"
+        bottom.lifetime = .keepAlways
+        add(bottom)
+        list.swipeDown()
+        assertPlayerMeetsVisibleTabs(in: app)
+        let scrolled = XCTAttachment(screenshot: app.screenshot())
+        scrolled.name = "Library scrolled — no window between player and tabs"
+        scrolled.lifetime = .keepAlways
+        add(scrolled)
+    }
+
+    private func assertPlayerMeetsVisibleTabs(in app: XCUIApplication,
+                                             file: StaticString = #filePath, line: UInt = #line) {
+        // AX containers include transparent layout reservations. Measure actual
+        // controls instead: the seek strip has 8pt of bottom padding, and the
+        // native tab pill has a small border around its button frames. A <=16pt
+        // control-to-control separation permits those, but rejects the old 34pt
+        // see-through window in addition to the normal internal padding.
+        let seekBar = element("miniPlayer.superSeekBar", in: app)
+        XCTAssertTrue(seekBar.exists, file: file, line: line)
+        for name in ["Library", "Queue", "Discover", "Settings"] {
+            let control = tab(name, in: app)
+            XCTAssertTrue(control.isHittable, file: file, line: line)
+            let separation = control.frame.minY - seekBar.frame.maxY
+            XCTAssertGreaterThanOrEqual(separation, 0,
+                "Player must not overlap \(name): seek=\(seekBar.frame), tab=\(control.frame)", file: file, line: line)
+            XCTAssertLessThanOrEqual(separation, 16,
+                "No window may appear above \(name): seek=\(seekBar.frame), tab=\(control.frame)", file: file, line: line)
+        }
+    }
+
     private func launchLibraryApp(
         empty: Bool = false,
         extraArguments: [String] = []

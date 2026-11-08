@@ -72,7 +72,7 @@ struct LibraryView: View {
             }
         }
         .listStyle(.plain)
-        .safeAreaPadding(.bottom, bottomContentClearance)
+        .contentMargins(.bottom, bottomContentClearance, for: .scrollContent)
         .accessibilityIdentifier("libraryList")
         .accessibilityLabel("Subscriptions")
         .accessibilityValue("\(viewModel.subscriptionCount)")

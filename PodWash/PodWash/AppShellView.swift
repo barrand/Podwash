@@ -24,8 +24,18 @@ struct AppShellView: View {
     @State private var discoverViewModel: DiscoverViewModel
     @State private var libraryNavigationPath = NavigationPath()
     @State private var unsubscribeConfirmation: PodcastSummary?
-    /// Measured `UITabBar` height so the mini-player inset clears tab-bar hit targets (task-010).
-    @State private var tabBarHeight: CGFloat = 54
+    @State private var tabBarFrame: CGRect = .zero
+    @State private var shellFrame: CGRect = .zero
+    @State private var miniPlayerHeight: CGFloat = MiniPlayerBar.shellOverlayClearance
+
+    /// Both frames use window coordinates. TabView already excludes part of the
+    /// bottom safe area, so reserving the UITabBar's full height counts it twice.
+    private var tabBarClearance: CGFloat {
+        guard tabBarFrame != .zero, shellFrame != .zero else { return 0 }
+        return max(0, shellFrame.maxY - tabBarFrame.minY)
+    }
+
+    private var playerContentClearance: CGFloat { miniPlayerHeight + 8 }
 
     init(model: AppShellModel) {
         self.model = model
@@ -77,10 +87,13 @@ struct AppShellView: View {
                 }
                 .tag(AppShellTab.settings)
         }
+        .toolbarBackground(BrandTheme.surface, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
     }
 
     private var shellChrome: some View {
         tabContent
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { shellFrame = $0 }
         .background(BrandTheme.surface)
         .onChange(of: model.settingsStore.autoDownloadEnabled) { _, _ in model.episodePreparationSettingsChanged() }
         .onChange(of: model.settingsStore.smartAutoplayEnabled) { _, _ in model.episodePreparationSettingsChanged() }
@@ -144,7 +157,7 @@ struct AppShellView: View {
                 }
                 .padding().background(.ultraThinMaterial, in: Capsule())
                 .padding(.horizontal)
-                .padding(.bottom, (showsMiniPlayerInShellInset ? MiniPlayerBar.shellOverlayClearance : tabBarHeight) + 12)
+                .padding(.bottom, (showsMiniPlayerInShellInset ? miniPlayerHeight : 0) + tabBarClearance + 12)
             }
         }
     }
@@ -229,7 +242,7 @@ struct AppShellView: View {
         } message: {
             Text("This removes its episodes from Up Next, deletes downloads and offline analysis from this device, and clears playback progress.")
         }
-        .background(TabBarAccessibilityConfigurator(tabBarHeight: $tabBarHeight))
+        .background(TabBarFrameReader(tabBarFrame: $tabBarFrame))
         .task {
             model.restoreNowPlayingSessionIfNeeded()
         }
@@ -286,12 +299,13 @@ struct AppShellView: View {
                     if let id = model.nowPlayingEpisodeID { model.presentPreparationIssue(episodeID: id) }
                 } : nil
             )
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { miniPlayerHeight = $0 }
             if reservesTabBarClearance {
                 // Preserve the native tab bar's hit area without separating the
                 // seek bar from the mini-player. The spacer is transparent and
                 // does not participate in hit testing, so the tabs remain usable.
                 Color.clear
-                    .frame(height: tabBarHeight)
+                    .frame(height: tabBarClearance)
                     .allowsHitTesting(false)
             }
         }
@@ -304,7 +318,7 @@ struct AppShellView: View {
             // bottom inset. Reserve the mini-player card inside Queue itself so the
             // last queued row can always scroll fully above it.
             bottomContentClearance: showsMiniPlayerInShellInset
-                ? MiniPlayerBar.shellOverlayClearance
+                ? playerContentClearance
                 : 0,
             onMove: { offsets, destination in
                 guard let source = offsets.first,
@@ -339,7 +353,7 @@ struct AppShellView: View {
                 playbackEngine: model.transcriptSheetPlaybackEngine,
                 openPlaybackPosition: model.transcriptSheetOpenPlaybackPosition,
                 bottomControlClearance: showsMiniPlayerInTranscriptInset
-                    ? MiniPlayerBar.shellOverlayClearance
+                    ? playerContentClearance
                     : 0
             ) {
                 model.dismissTranscript()
@@ -431,7 +445,7 @@ struct AppShellView: View {
                 // space. Match Queue and detail screens so the final show can
                 // scroll entirely above the mini-player.
                 bottomContentClearance: showsMiniPlayerInShellInset
-                    ? MiniPlayerBar.shellOverlayClearance
+                    ? playerContentClearance
                     : 0
             )
                 .navigationBarTitleDisplayMode(.inline)
@@ -593,34 +607,51 @@ private struct PreparationIssueSheetToken: Identifiable {
     let id: String
 }
 
-/// Applies tab-bar accessibility identifiers that SwiftUI `tabItem` does not always expose.
-private struct TabBarAccessibilityConfigurator: UIViewRepresentable {
-    @Binding var tabBarHeight: CGFloat
+/// Reads the native bar's actual top edge after UIKit layout, including restored
+/// sessions and rotations. SwiftUI positions the player relative to that edge.
+private struct TabBarFrameReader: UIViewRepresentable {
+    @Binding var tabBarFrame: CGRect
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(tabBarHeight: $tabBarHeight)
+        Coordinator(tabBarFrame: $tabBarFrame)
     }
 
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: .zero)
+    func makeUIView(context: Context) -> LayoutReaderView {
+        let view = LayoutReaderView(frame: .zero)
         view.isUserInteractionEnabled = false
-        DispatchQueue.main.async {
-            Self.apply(from: view, coordinator: context.coordinator)
+        view.onLayout = { [weak view, coordinator = context.coordinator] in
+            guard let view else { return }
+            DispatchQueue.main.async { Self.apply(from: view, coordinator: coordinator) }
         }
+        view.onLayout?()
         return view
     }
 
-    func updateUIView(_ uiView: UIView, context: Context) {
+    func updateUIView(_ uiView: LayoutReaderView, context: Context) {
         DispatchQueue.main.async {
             Self.apply(from: uiView, coordinator: context.coordinator)
         }
     }
 
     final class Coordinator {
-        var tabBarHeight: Binding<CGFloat>
+        var tabBarFrame: Binding<CGRect>
 
-        init(tabBarHeight: Binding<CGFloat>) {
-            self.tabBarHeight = tabBarHeight
+        init(tabBarFrame: Binding<CGRect>) {
+            self.tabBarFrame = tabBarFrame
+        }
+    }
+
+    final class LayoutReaderView: UIView {
+        var onLayout: (() -> Void)?
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            onLayout?()
+        }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            onLayout?()
         }
     }
 
@@ -636,9 +667,10 @@ private struct TabBarAccessibilityConfigurator: UIViewRepresentable {
             }
             return
         }
-        let measuredHeight = tabBar.bounds.height
-        if measuredHeight > 0, coordinator.tabBarHeight.wrappedValue != measuredHeight {
-            coordinator.tabBarHeight.wrappedValue = measuredHeight
+        guard let window = tabBar.window else { return }
+        let frame = tabBar.convert(tabBar.bounds, to: window)
+        if frame.height > 0, coordinator.tabBarFrame.wrappedValue != frame {
+            coordinator.tabBarFrame.wrappedValue = frame
         }
         // SwiftUI already gives each tab a listener-facing name through `tabItem`.
         // Do not rewrite private UITabBar controls here: the shell has Library,
