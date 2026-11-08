@@ -33,6 +33,33 @@ final class DownloadManagerTests: XCTestCase {
     private var stateStore: InMemoryDownloadStateStore!
     private var manager: DownloadManager!
 
+    func testTransportFailuresAfterSuccessfulHTTPResponseKeepNetworkCategory() {
+        let response = HTTPURLResponse(url: Self.fixtureRemoteURL, statusCode: 200,
+                                       httpVersion: nil, headerFields: nil)!
+        for (code, expected) in [(URLError.Code.timedOut, "timeout"),
+                                 (.networkConnectionLost, "connectionLost")] {
+            XCTAssertEqual(DownloadManager.failureCategory(
+                for: URLError(code), response: response, phase: "transport"
+            ), expected)
+        }
+    }
+
+    func testHTTPFailureAndFileInstallCategoriesTakePrecedence() {
+        for (status, expected) in [(403, "http403"), (429, "http429"), (503, "http5xx")] {
+            let response = HTTPURLResponse(url: Self.fixtureRemoteURL, statusCode: status,
+                                           httpVersion: nil, headerFields: nil)!
+            XCTAssertEqual(DownloadManager.failureCategory(
+                for: URLError(.timedOut), response: response, phase: "transport"
+            ), expected)
+            XCTAssertEqual(DownloadManager.failureCategory(
+                for: URLError(.cannotWriteToFile), response: response, phase: "install"
+            ), "fileInstall")
+        }
+        XCTAssertEqual(DownloadManager.failureCategory(
+            for: URLError(.notConnectedToInternet), response: nil, phase: "transport"
+        ), "offline")
+    }
+
     override func setUp() async throws {
         downloadsDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("DownloadTests-\(UUID().uuidString)", isDirectory: true)

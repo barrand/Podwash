@@ -663,7 +663,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         notifyStateChanged()
         PlaybackDiagnostics.logDownloadEvent("failed", episodeID: episodeID, detail: diagnostic)
         PodWashAnalytics.downloadFailed(
-            category: Self.failureCategory(for: error, task: task, phase: phase),
+            category: Self.failureCategory(for: error, response: task?.response as? HTTPURLResponse, phase: phase),
             phase: phase,
             httpStatusClass: Self.httpStatusClass(for: task),
             bytes: active.lastReportedBytes,
@@ -782,9 +782,9 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         return "\(status / 100)xx"
     }
 
-    private static func failureCategory(for error: Error, task: URLSessionTask?, phase: String) -> String {
+    static func failureCategory(for error: Error, response: HTTPURLResponse?, phase: String) -> String {
         if phase == "install" { return "fileInstall" }
-        if let status = (task?.response as? HTTPURLResponse)?.statusCode {
+        if let status = response?.statusCode, !(200 ... 299).contains(status) {
             switch status {
             case 401: return "http401"
             case 403: return "http403"
