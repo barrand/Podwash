@@ -20,6 +20,9 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         var continuation: CheckedContinuation<URL, Error>
         var lastReportedProgress: Double = 0
         var lastReportedBytes: Int64 = 0
+        var remoteURL: URL
+        var startedAt: Date
+        var redirectCount: Int = 0
     }
 
     private var session: URLSession!
@@ -135,6 +138,11 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         // Capture bytes after flush wait — needed if URLSession returns nil resume data
         // (common when the response lacks ETag/Last-Modified, as with the unit-test stub).
         let partialBytes = activeDownloads[episodeID]?.lastReportedBytes ?? 0
+        PlaybackDiagnostics.logDownloadEvent(
+            "cancelRequested",
+            episodeID: episodeID,
+            detail: "bytes=\(partialBytes)"
+        )
 
         cancelLock.withLock {
             _ = cancellingEpisodeIDs.insert(episodeID)
@@ -290,6 +298,18 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         newRequest request: URLRequest,
         completionHandler: @escaping (URLRequest?) -> Void
     ) {
+        if let episodeID = task.taskDescription, let destination = request.url {
+            Task { @MainActor in
+                guard var active = activeDownloads[episodeID] else { return }
+                active.redirectCount += 1
+                activeDownloads[episodeID] = active
+                PlaybackDiagnostics.logDownloadEvent(
+                    "redirect",
+                    episodeID: episodeID,
+                    detail: "status=\(response.statusCode) count=\(active.redirectCount) to=\(PlaybackDiagnostics.redactedRemoteURL(destination))"
+                )
+            }
+        }
         completionHandler(request)
     }
 
@@ -335,7 +355,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
            !(200 ... 299).contains(httpResponse.statusCode) {
             try? fileManager.removeItem(at: location)
             Task { @MainActor in
-                failDownload(episodeID: episodeID, error: DownloadError.transportFailure)
+                failDownload(episodeID: episodeID, error: DownloadError.transportFailure, task: downloadTask)
             }
             return
         }
@@ -347,7 +367,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             }
         } catch {
             Task { @MainActor in
-                failDownload(episodeID: episodeID, error: error)
+                failDownload(episodeID: episodeID, error: error, task: downloadTask, phase: "install")
             }
         }
     }
@@ -388,7 +408,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
                 if localFileURL(for: episodeID) != nil {
                     return
                 }
-                failDownload(episodeID: episodeID, error: error)
+                failDownload(episodeID: episodeID, error: error, task: task)
             }
         }
     }
@@ -441,6 +461,11 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         removePartialFiles(for: episodeID)
         lastFailureDiagnosticByEpisodeID.removeValue(forKey: episodeID)
         preferredFileExtensionByEpisodeID[episodeID] = DownloadPaths.preferredFileExtension(for: remoteURL)
+        PlaybackDiagnostics.logDownloadEvent(
+            "start",
+            episodeID: episodeID,
+            detail: "url=\(PlaybackDiagnostics.redactedRemoteURL(remoteURL)) cellular=\(session.configuration.allowsCellularAccess)"
+        )
         stateStore.setState(.downloading(progress: 0), for: episodeID)
         notifyStateChanged()
 
@@ -455,7 +480,9 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
 
             activeDownloads[episodeID] = ActiveDownload(
                 progressHandler: progress,
-                continuation: continuation
+                continuation: continuation,
+                remoteURL: remoteURL,
+                startedAt: Date()
             )
             activeTasks[episodeID] = task
             task.resume()
@@ -593,17 +620,27 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         stateStore.setState(.downloaded, for: episodeID)
         notifyStateChanged()
         PlaybackDiagnostics.logDownloadReady(episodeID: episodeID, url: finalURL)
+        PlaybackDiagnostics.logDownloadEvent(
+            "complete",
+            episodeID: episodeID,
+            detail: "bytes=\(fileByteCount(at: finalURL)) elapsedMs=\(elapsedMilliseconds(since: active.startedAt)) redirects=\(active.redirectCount)"
+        )
         preferredFileExtensionByEpisodeID.removeValue(forKey: episodeID)
         active.continuation.resume(returning: finalURL)
     }
 
-    private func failDownload(episodeID: String, error: Error) {
+    private func failDownload(
+        episodeID: String,
+        error: Error,
+        task: URLSessionTask? = nil,
+        phase: String = "transport"
+    ) {
         // Only fail an in-flight download. `didCompleteWithError` can arrive after
         // `didFinishDownloadingTo` has already moved the file — without this guard a
         // late transport error would delete the sandbox `.m4a` and flip UI to `.failed`.
         guard let active = activeDownloads.removeValue(forKey: episodeID) else { return }
 
-        let diagnostic = Self.formatFailureDiagnostic(for: error)
+        let diagnostic = Self.formatFailureDiagnostic(for: error, task: task, active: active, phase: phase)
         lastFailureDiagnosticByEpisodeID[episodeID] = diagnostic
         Self.logger.error(
             "Download failed for \(episodeID, privacy: .public): \(diagnostic, privacy: .public)"
@@ -619,6 +656,16 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         preferredFileExtensionByEpisodeID.removeValue(forKey: episodeID)
         stateStore.setState(.failed, for: episodeID)
         notifyStateChanged()
+        PlaybackDiagnostics.logDownloadEvent("failed", episodeID: episodeID, detail: diagnostic)
+    }
+
+    private func fileByteCount(at url: URL) -> Int64 {
+        let attributes = try? fileManager.attributesOfItem(atPath: url.path)
+        return (attributes?[.size] as? NSNumber)?.int64Value ?? 0
+    }
+
+    private func elapsedMilliseconds(since date: Date) -> Int {
+        Int(Date().timeIntervalSince(date) * 1_000)
     }
 
     private func removePartialFiles(for episodeID: String) {
@@ -684,9 +731,37 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         stateChangeHandlers.values.forEach { $0() }
     }
 
-    private static func formatFailureDiagnostic(for error: Error) -> String {
+    private static func formatFailureDiagnostic(
+        for error: Error,
+        task: URLSessionTask?,
+        active: ActiveDownload,
+        phase: String
+    ) -> String {
         let nsError = error as NSError
-        return "\(nsError.domain) (\(nsError.code)): \(nsError.localizedDescription)"
+        let status = (task?.response as? HTTPURLResponse)?.statusCode
+        let headers = (task?.response as? HTTPURLResponse).map(Self.safeResponseHeaders) ?? ""
+        let underlying = (nsError.userInfo[NSUnderlyingErrorKey] as? NSError).map {
+            " underlying=\($0.domain)(\($0.code))"
+        } ?? ""
+        let storage = availableStorageDescription()
+        return "phase=\(phase) error=\(nsError.domain)(\(nsError.code)) status=\(status.map(String.init) ?? "none") bytes=\(active.lastReportedBytes) elapsedMs=\(Int(Date().timeIntervalSince(active.startedAt) * 1_000)) redirects=\(active.redirectCount) host=\(active.remoteURL.host ?? "unknown") storage=\(storage) headers=\(headers)\(underlying)"
+    }
+
+    private static func safeResponseHeaders(_ response: HTTPURLResponse) -> String {
+        let allowed = ["Content-Type", "Content-Length", "Accept-Ranges", "Retry-After", "Content-Range"]
+        let values = allowed.compactMap { name -> String? in
+            guard let value = response.value(forHTTPHeaderField: name) else { return nil }
+            return "\(name)=\(value)"
+        }
+        return values.isEmpty ? "none" : values.joined(separator: ",")
+    }
+
+    private static func availableStorageDescription() -> String {
+        guard let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first,
+              let values = try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]),
+              let bytes = values.volumeAvailableCapacityForImportantUsage
+        else { return "unknown" }
+        return String(bytes)
     }
 
     /// Emits monotonic progress at equal chunk boundaries so coalesced URLSession
