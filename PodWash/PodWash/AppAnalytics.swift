@@ -69,4 +69,53 @@ enum PodWashAnalytics {
             parameters: ["feature": feature, "enabled": isEnabled ? "true" : "false"]
         )
     }
+
+    /// Aggregate download health signals. Parameters are deliberately low-cardinality
+    /// and exclude podcast titles, enclosure URLs, and listener identifiers.
+    static func downloadStarted(allowsCellular: Bool) {
+        action("Download.started", parameters: ["allowsCellular": allowsCellular ? "true" : "false"])
+    }
+
+    static func downloadCompleted(bytes: Int64, redirects: Int) {
+        action("Download.completed", parameters: [
+            "byteBucket": byteBucket(bytes),
+            "redirectBucket": redirectBucket(redirects),
+        ])
+    }
+
+    static func downloadFailed(
+        category: String,
+        phase: String,
+        httpStatusClass: String,
+        bytes: Int64,
+        redirects: Int,
+        allowsCellular: Bool
+    ) {
+        action("Download.failed", parameters: [
+            "category": category,
+            "phase": phase,
+            "httpStatusClass": httpStatusClass,
+            "byteBucket": byteBucket(bytes),
+            "redirectBucket": redirectBucket(redirects),
+            "allowsCellular": allowsCellular ? "true" : "false",
+        ])
+    }
+
+    private static func byteBucket(_ bytes: Int64) -> String {
+        switch bytes {
+        case 0: return "zero"
+        case 1 ..< 1_000_000: return "under1MB"
+        case 1_000_000 ..< 10_000_000: return "1to10MB"
+        default: return "over10MB"
+        }
+    }
+
+    private static func redirectBucket(_ redirects: Int) -> String {
+        switch redirects {
+        case 0: return "zero"
+        case 1: return "one"
+        case 2: return "two"
+        default: return "threePlus"
+        }
+    }
 }
