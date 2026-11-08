@@ -270,7 +270,11 @@ struct AppShellView: View {
                 queuePresentation: model.queuePresentation,
                 episodeDuration: model.superSeekDuration,
                 muteIntervals: model.nowPlayingMuteIntervals,
-                showsSuperSeekBar: !reservesTabBarClearance,
+                // Keep the seek bar attached to the mini-player card. Previously
+                // the shell placed it at the top of a tab-bar-sized reservation,
+                // leaving the unused portion of that reservation looking like a
+                // blank gap between the player and the tabs.
+                showsSuperSeekBar: true,
                 onExpand: { model.expandFullPlayer() },
                 onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
                 onSeekTo: { model.seekReadyPlayback(to: $0) },
@@ -281,15 +285,12 @@ struct AppShellView: View {
                 } : nil
             )
             if reservesTabBarClearance {
-                // iOS 26 TabView bottom inset overlaps the tab bar unless we reserve its height.
-                // The Super Seek Bar belongs in this reservation, immediately above the tabs.
-                // During preparation it remains a visible, non-interactive gray track so
-                // queue content cannot show through the player chrome.
-                shellMiniPlayerSeekBar(engine: engine)
-                .frame(height: tabBarHeight, alignment: .top)
-                // This reservation shares the tab bar's space; leave its unused
-                // portion clear so UIKit can render the tab controls.
-                .background(Color.clear)
+                // Preserve the native tab bar's hit area without separating the
+                // seek bar from the mini-player. The spacer is transparent and
+                // does not participate in hit testing, so the tabs remain usable.
+                Color.clear
+                    .frame(height: tabBarHeight)
+                    .allowsHitTesting(false)
             }
         }
     }
@@ -326,49 +327,6 @@ struct AppShellView: View {
                 }
             }
         )
-    }
-
-    private func shellMiniPlayerSeekBar(engine: PlaybackEngine) -> some View {
-        TimelineView(.periodic(from: .now, by: 0.25)) { _ in
-            let _ = engine.uiRefreshToken
-            MiniPlayerSeekBar(
-                showsCompleteContentTrack: model.isPlayerSeekBarAnalysisComplete,
-                adBands: miniPlayerAdBands(for: engine),
-                elapsed: engine.avPlayer.currentTime().seconds,
-                duration: miniPlayerDuration(for: engine),
-                muteMarkers: miniPlayerMuteMarkers(for: engine),
-                muteMarkerCountForAccessibility: miniPlayerMuteMarkerCount(for: engine),
-                isInteractive: model.playbackReadiness == .ready,
-                onSeekTo: { model.seekReadyPlayback(to: $0) }
-            )
-        }
-        // Only the seek-bar strip itself overlays tab content. Do not paint the
-        // whole tab-bar reservation or Library / Queue / Discover disappear.
-        .background(BrandTheme.surface)
-    }
-
-    private func miniPlayerDuration(for engine: PlaybackEngine) -> Double {
-        model.superSeekDuration > 0 ? model.superSeekDuration : engine.duration
-    }
-
-    private func miniPlayerAdBands(for engine: PlaybackEngine) -> [AdBand] {
-        guard model.isPlayerSeekBarAnalysisComplete else { return [] }
-        return SuperSeekBarModel.adBands(
-            from: model.nowPlayingMuteIntervals,
-            duration: miniPlayerDuration(for: engine)
-        )
-    }
-
-    private func miniPlayerMuteMarkers(for engine: PlaybackEngine) -> [MuteMarker] {
-        guard model.isPlayerSeekBarAnalysisComplete else { return [] }
-        return SuperSeekBarModel.muteMarkers(
-            from: model.nowPlayingMuteIntervals,
-            duration: miniPlayerDuration(for: engine)
-        )
-    }
-
-    private func miniPlayerMuteMarkerCount(for engine: PlaybackEngine) -> Int? {
-        model.isPlayerSeekBarAnalysisComplete ? miniPlayerMuteMarkers(for: engine).count : nil
     }
 
     @ViewBuilder
@@ -466,7 +424,13 @@ struct AppShellView: View {
                 onDiscover: { selectedTab = .discover },
                 onRequestUnsubscribe: { unsubscribeConfirmation = $0 },
                 onRefresh: { await model.refreshAllFeeds() },
-                refreshState: model.feedRefreshState
+                refreshState: model.feedRefreshState,
+                // TabView's UIKit-backed List does not inherit the shell overlay's
+                // space. Match Queue and detail screens so the final show can
+                // scroll entirely above the mini-player.
+                bottomContentClearance: showsMiniPlayerInShellInset
+                    ? MiniPlayerBar.shellOverlayClearance
+                    : 0
             )
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(for: PodcastSummary.self) { summary in
