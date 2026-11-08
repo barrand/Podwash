@@ -28,8 +28,10 @@ struct MiniPlayerBar: View {
     let muteIntervals: [CensorInterval]
     /// The tab shell can host this below the player controls, immediately above its tab bar.
     let showsSuperSeekBar: Bool
+    let showsMarkAsPlayed: Bool
     let onExpand: () -> Void
     let onTogglePlayPause: () -> Void
+    let onMarkAsPlayed: () -> Void
     let onSeekTo: (Double) -> Void
     let onSkipToNext: () -> Void
     let onOpenPreparation: () -> Void
@@ -133,6 +135,17 @@ struct MiniPlayerBar: View {
                             .frame(width: 44, height: 44)
                             .accessibilityIdentifier("miniPlayer.preparingProgress")
                             .accessibilityLabel(preparationStatusText)
+                    }
+
+                    if readiness == .ready && showsMarkAsPlayed {
+                        Button(action: onMarkAsPlayed) {
+                            Image(systemName: "checkmark.circle")
+                                .font(.title3)
+                                .frame(width: 44, height: 44)
+                        }
+                        .accessibilityIdentifier("miniPlayerMarkPlayed")
+                        .accessibilityLabel("Mark as Played")
+                        .accessibilityHint("Marks this episode as played. You can undo it for a few seconds.")
                     }
                 }
                 .padding(.horizontal, 16)
