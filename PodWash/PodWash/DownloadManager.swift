@@ -466,6 +466,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             episodeID: episodeID,
             detail: "url=\(PlaybackDiagnostics.redactedRemoteURL(remoteURL)) cellular=\(session.configuration.allowsCellularAccess)"
         )
+        PodWashAnalytics.downloadStarted(allowsCellular: session.configuration.allowsCellularAccess)
         stateStore.setState(.downloading(progress: 0), for: episodeID)
         notifyStateChanged()
 
@@ -625,6 +626,10 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
             episodeID: episodeID,
             detail: "bytes=\(fileByteCount(at: finalURL)) elapsedMs=\(elapsedMilliseconds(since: active.startedAt)) redirects=\(active.redirectCount)"
         )
+        PodWashAnalytics.downloadCompleted(
+            bytes: fileByteCount(at: finalURL),
+            redirects: active.redirectCount
+        )
         preferredFileExtensionByEpisodeID.removeValue(forKey: episodeID)
         active.continuation.resume(returning: finalURL)
     }
@@ -657,6 +662,14 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         stateStore.setState(.failed, for: episodeID)
         notifyStateChanged()
         PlaybackDiagnostics.logDownloadEvent("failed", episodeID: episodeID, detail: diagnostic)
+        PodWashAnalytics.downloadFailed(
+            category: Self.failureCategory(for: error, task: task, phase: phase),
+            phase: phase,
+            httpStatusClass: Self.httpStatusClass(for: task),
+            bytes: active.lastReportedBytes,
+            redirects: active.redirectCount,
+            allowsCellular: session.configuration.allowsCellularAccess
+        )
     }
 
     private func fileByteCount(at url: URL) -> Int64 {
@@ -762,6 +775,38 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
               let bytes = values.volumeAvailableCapacityForImportantUsage
         else { return "unknown" }
         return String(bytes)
+    }
+
+    private static func httpStatusClass(for task: URLSessionTask?) -> String {
+        guard let status = (task?.response as? HTTPURLResponse)?.statusCode else { return "none" }
+        return "\(status / 100)xx"
+    }
+
+    private static func failureCategory(for error: Error, task: URLSessionTask?, phase: String) -> String {
+        if phase == "install" { return "fileInstall" }
+        if let status = (task?.response as? HTTPURLResponse)?.statusCode {
+            switch status {
+            case 401: return "http401"
+            case 403: return "http403"
+            case 404: return "http404"
+            case 408: return "http408"
+            case 429: return "http429"
+            case 500 ... 599: return "http5xx"
+            default: return "httpOther"
+            }
+        }
+        guard let urlError = error as? URLError else { return "other" }
+        switch urlError.code {
+        case .notConnectedToInternet: return "offline"
+        case .networkConnectionLost: return "connectionLost"
+        case .timedOut: return "timeout"
+        case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed: return "hostUnavailable"
+        case .secureConnectionFailed, .serverCertificateHasBadDate, .serverCertificateUntrusted,
+             .serverCertificateHasUnknownRoot, .serverCertificateNotYetValid: return "tls"
+        case .unsupportedURL, .badURL: return "invalidURL"
+        case .dataNotAllowed, .internationalRoamingOff, .callIsActive: return "networkPolicy"
+        default: return "urlSessionOther"
+        }
     }
 
     /// Emits monotonic progress at equal chunk boundaries so coalesced URLSession
