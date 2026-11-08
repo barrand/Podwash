@@ -25,6 +25,18 @@ struct PreparationIssueSheet: View {
                 Text(presentation.explanation)
                     .foregroundStyle(.secondary)
 
+                if issue.reason == .downloadFailed, let diagnostic = issue.downloadDiagnostic {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Download details")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(diagnostic)
+                            .font(.caption.monospaced())
+                            .textSelection(.enabled)
+                            .accessibilityIdentifier("preparationIssueDownloadDetails")
+                    }
+                }
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Preparation error code")
                         .font(.caption)
