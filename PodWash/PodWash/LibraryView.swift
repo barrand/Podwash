@@ -13,6 +13,9 @@ struct LibraryView: View {
     var onRequestUnsubscribe: (PodcastSummary) -> Void
     var onRefresh: (() async -> Void)? = nil
     var refreshState: FeedRefreshViewState = .idle
+    /// Space reserved for shell chrome that overlays the tab content, such as the
+    /// mini-player. This lets the final subscription scroll fully into view.
+    var bottomContentClearance: CGFloat = 0
 
     var body: some View {
         Group {
@@ -69,6 +72,7 @@ struct LibraryView: View {
             }
         }
         .listStyle(.plain)
+        .safeAreaPadding(.bottom, bottomContentClearance)
         .accessibilityIdentifier("libraryList")
         .accessibilityLabel("Subscriptions")
         .accessibilityValue("\(viewModel.subscriptionCount)")
