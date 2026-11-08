@@ -275,8 +275,10 @@ struct AppShellView: View {
                 // leaving the unused portion of that reservation looking like a
                 // blank gap between the player and the tabs.
                 showsSuperSeekBar: true,
+                showsMarkAsPlayed: model.canMarkNowPlayingAsPlayed,
                 onExpand: { model.expandFullPlayer() },
                 onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
+                onMarkAsPlayed: { model.markNowPlayingAsPlayed() },
                 onSeekTo: { model.seekReadyPlayback(to: $0) },
                 onSkipToNext: { model.skipToNextUp() },
                 onOpenPreparation: { selectedTab = .queue },
