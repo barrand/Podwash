@@ -177,7 +177,20 @@ enum PlaybackDiagnostics {
 
     static func logDownloadReady(episodeID: String, url: URL) {
         let size = fileByteCount(at: url)
-        info("download ready episodeID=\(episodeID) path=\(url.lastPathComponent) bytes=\(size)")
+        info("download ready episodeID=\(redactedEpisodeID(episodeID)) path=\(url.lastPathComponent) bytes=\(size)")
+    }
+
+    /// Download events share the on-device diagnostics timeline with playback, but
+    /// redact query strings because podcast enclosure URLs can contain signed tokens.
+    static func logDownloadEvent(_ event: String, episodeID: String, detail: String) {
+        info("download event=\(event) episodeID=\(redactedEpisodeID(episodeID)) \(detail)")
+    }
+
+    static func redactedRemoteURL(_ url: URL) -> String {
+        let scheme = url.scheme ?? "unknown"
+        let host = url.host ?? "unknown-host"
+        let leaf = url.lastPathComponent.isEmpty ? "" : "/…/\(url.lastPathComponent)"
+        return "\(scheme)://\(host)\(leaf)"
     }
 
     static func logDownloadStateCleared(episodeID: String, reason: String) {
@@ -244,6 +257,11 @@ enum PlaybackDiagnostics {
             return "file://…/\(url.lastPathComponent) (\(bytes) bytes)"
         }
         return url.absoluteString
+    }
+
+    private static func redactedEpisodeID(_ episodeID: String) -> String {
+        let prefix = episodeID.prefix(12)
+        return episodeID.count > prefix.count ? "\(prefix)…" : String(prefix)
     }
 
     private static func fileByteCount(at url: URL) -> Int64 {
