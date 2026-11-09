@@ -137,6 +137,13 @@ implemented and tested:
 > decline. Podcast audio is not uploaded. The listener can withdraw this choice
 > in Settings at any time.
 >
+> PodWash uses NSAllowsArbitraryLoads to support podcast RSS feeds, episode
+> downloads, and playback from third-party publishers. Publishers control these
+> URLs and redirect chains; some require HTTP, and their hosts cannot be
+> enumerated in advance. PodWash preserves the publisher's URL rather than
+> forcing an unsupported HTTPS URL. The PodWash transcript backend and Google
+> API domains retain default App Transport Security requirements.
+>
 > For assistance, contact barrandlixo@gmail.com.
 
 Do **not** use these review notes until the stated explicit-disclosure behavior

@@ -34,6 +34,29 @@ record the owner, date, and evidence beside each check when it is done.
 - [x] **1.8** Review the iOS 26.1 deployment target and confirm that device/OS coverage is
   intentional. Completed 2026-08-10: iPhone and iPad on iOS 26.1+ are the intended
   support matrix.
+- [ ] **1.9** Verify podcast transport compatibility in the new build on a physical
+  iPhone: download an HTTP episode (including the reported BBC enclosure), an
+  HTTPS episode, and an enclosure with mixed HTTP/HTTPS redirects; confirm local
+  playback after each download. Confirm HTTP requests to the PodWash transcript
+  backend and Google API domains remain blocked by ATS. Stubbed download tests
+  do not exercise the system's ATS enforcement.
+
+  The app's `NSAllowsArbitraryLoads` setting permits arbitrary publisher hosts;
+  explicit `NSExceptionDomains` entries retain default ATS for the transcript
+  backend and `googleapis.com` (including its subdomains). Update these entries
+  if the cloud endpoint changes. Do not add `NSAllowsArbitraryLoadsForMedia`,
+  `NSAllowsArbitraryLoadsInWebContent`, or `NSAllowsLocalNetworking`: their presence
+  makes iOS ignore `NSAllowsArbitraryLoads`, breaking HTTP `URLSession` downloads.
+  HTTPS connections still use normal certificate validation. Include the ATS
+  justification in `docs/app-store-listing.md` in the next submission's review
+  notes. See [Apple's NSAllowsArbitraryLoads documentation](https://developer.apple.com/documentation/bundleresources/information-property-list/nsapptransportsecurity/nsallowsarbitraryloads).
+
+  Local verification, 2026-11-08: the simulator app built successfully; all 18
+  `DownloadManagerTests` passed with no skips. Both the source and built app
+  plists were checked for the HTTP allowance, strict cloud domain entries, and
+  absence of keys that would override the allowance. Evidence:
+  `build/test-results/verify-20261108-153514-15099/`. Physical-device checks above
+  remain pending.
 
 ## 2. Production cloud service
 
