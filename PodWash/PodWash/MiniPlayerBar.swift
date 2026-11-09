@@ -11,9 +11,8 @@ import AVFoundation
 import SwiftUI
 
 struct MiniPlayerBar: View {
-    /// QueueStatusButton plus the playback controls, including a small scrolling
-    /// margin. The tab bar owns the seek bar below this card separately.
-    static let shellOverlayClearance: CGFloat = 112
+    /// Playback controls and a small scrolling margin; the shell measures live height.
+    static let shellOverlayClearance: CGFloat = 84
     @Bindable var engine: PlaybackEngine
     let readiness: AppShellModel.PlaybackReadiness
     let preparationStatusText: String
@@ -23,7 +22,6 @@ struct MiniPlayerBar: View {
     let showsCompleteSeekBarPaint: Bool
     let isPreparingNextEpisode: Bool
     let preparingNextAnnouncement: String?
-    let queuePresentation: QueuePresentation
     let episodeDuration: Double
     let muteIntervals: [CensorInterval]
     /// The tab shell can host this below the player controls, immediately above its tab bar.
@@ -34,7 +32,6 @@ struct MiniPlayerBar: View {
     let onMarkAsPlayed: () -> Void
     let onSeekTo: (Double) -> Void
     let onSkipToNext: () -> Void
-    let onOpenPreparation: () -> Void
     let onViewPreparationIssue: (() -> Void)?
 
     var body: some View {
@@ -56,8 +53,6 @@ struct MiniPlayerBar: View {
                 : nil
 
             VStack(spacing: 0) {
-                QueueStatusButton(presentation: queuePresentation, onOpen: onOpenPreparation)
-
                 HStack(spacing: 12) {
                     Button(action: readiness == .failed ? (onViewPreparationIssue ?? onExpand) : onExpand) {
                         HStack(spacing: 12) {

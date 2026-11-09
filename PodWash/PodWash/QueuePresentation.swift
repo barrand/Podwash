@@ -165,16 +165,10 @@ struct QueueEpisodePresentation: Identifiable, Equatable {
     var id: String { episodeID }
 }
 
-struct QueueStatusPresentation: Equatable {
-    let text: String
-    let accessibilityValue: String
-}
-
 struct QueuePresentation: Equatable {
     let upNext: [QueueEpisodePresentation]
     let autoplay: [QueueEpisodePresentation]
     let isSmartAutoplayEnabled: Bool
-    let activeStatus: QueueStatusPresentation?
 }
 
 struct QueuePresentationInput {
@@ -183,22 +177,19 @@ struct QueuePresentationInput {
     let isSmartAutoplayEnabled: Bool
     let metadataByEpisodeID: [String: QueueEpisodeMetadata]
     let availabilityByEpisodeID: [String: EpisodeAvailability]
-    let foregroundJob: AnalysisJob?
 
     init(
         manualQueueIDs: [String],
         autoplay: [ComingUpItem] = [],
         isSmartAutoplayEnabled: Bool = true,
         metadataByEpisodeID: [String: QueueEpisodeMetadata],
-        availabilityByEpisodeID: [String: EpisodeAvailability],
-        foregroundJob: AnalysisJob?
+        availabilityByEpisodeID: [String: EpisodeAvailability]
     ) {
         self.manualQueueIDs = manualQueueIDs
         self.autoplay = autoplay
         self.isSmartAutoplayEnabled = isSmartAutoplayEnabled
         self.metadataByEpisodeID = metadataByEpisodeID
         self.availabilityByEpisodeID = availabilityByEpisodeID
-        self.foregroundJob = foregroundJob
     }
 }
 
@@ -209,13 +200,7 @@ enum QueuePresentationBuilder {
         return QueuePresentation(
             upNext: upNext,
             autoplay: autoplay,
-            isSmartAutoplayEnabled: input.isSmartAutoplayEnabled,
-            activeStatus: QueueStatusResolver.resolve(
-                foreground: input.foregroundJob,
-                metadataByEpisodeID: input.metadataByEpisodeID,
-                availabilityByEpisodeID: input.availabilityByEpisodeID,
-                upNext: upNext + autoplay
-            )
+            isSmartAutoplayEnabled: input.isSmartAutoplayEnabled
         )
     }
 
@@ -226,25 +211,5 @@ enum QueuePresentationBuilder {
             ?? EpisodeAvailability(localAudio: .notDownloaded, preparation: .notRequested, readiness: .notDownloaded)
         return QueueEpisodePresentation(episodeID: id, title: metadata.title, podcastTitle: metadata.podcastTitle,
                                         availability: availability, origin: origin)
-    }
-
-}
-
-enum QueueStatusResolver {
-    static func resolve(
-        foreground: AnalysisJob?,
-        metadataByEpisodeID: [String: QueueEpisodeMetadata],
-        availabilityByEpisodeID: [String: EpisodeAvailability],
-        upNext: [QueueEpisodePresentation]
-    ) -> QueueStatusPresentation? {
-        if let foreground, let availability = availabilityByEpisodeID[foreground.episodeID], !availability.readiness.isReadyOffline {
-            return status(availability.readiness, title: foreground.title)
-        }
-        guard let row = upNext.first(where: { !$0.availability.readiness.isReadyOffline }) else { return nil }
-        return status(row.availability.readiness, title: row.title)
-    }
-
-    private static func status(_ readiness: EpisodeReadinessStatus, title: String) -> QueueStatusPresentation {
-        QueueStatusPresentation(text: "\(EpisodeRowPresentationMapper.map(readiness).statusText) · \(title)", accessibilityValue: "\(EpisodeRowPresentationMapper.map(readiness).statusText), \(title)")
     }
 }

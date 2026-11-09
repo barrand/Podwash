@@ -497,14 +497,15 @@ import Observation
                     episodeID: item.episodeID,
                     from: remote
                 ) { [weak self] progress in
-                    Task { @MainActor [weak self] in
-                        self?.updateJob(
-                            item,
-                            stage: .downloading,
-                            estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: progress),
-                            generation: generation
-                        )
-                    }
+                    // DownloadManager delivers on MainActor. A deferred Task can
+                    // overwrite the subsequent transcribing/ready stage with a
+                    // late 100% download checkpoint.
+                    self?.updateJob(
+                        item,
+                        stage: .downloading,
+                        estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: progress),
+                        generation: generation
+                    )
                 }
             }
             guard generation == warmGeneration, !Task.isCancelled else { return }

@@ -46,6 +46,8 @@ final class DownloadStateStore {
     /// In-flight `.downloading` is process-local only (not durable across reload).
     nonisolated(unsafe) private var transientDownloading: [String: Double] = [:]
 
+    var downloadingProgress: [String: Double] { transientDownloading }
+
     init(context: NSManagedObjectContext, retaining controller: PersistenceController? = nil) {
         self.context = context
         self.retainedController = controller
@@ -133,6 +135,8 @@ final class InMemoryDownloadStateStore {
     nonisolated(unsafe) private let store: DownloadStateStore
 
     var backing: DownloadStateStore { store }
+
+    var downloadingProgress: [String: Double] { store.downloadingProgress }
 
     init() {
         store = DownloadStateStore()

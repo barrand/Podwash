@@ -18,8 +18,7 @@ final class QueuePresentationTests: XCTestCase {
     func testQueuePreservesAllManualMembershipWithoutInventingDownloadsCollection() {
         let input = QueuePresentationInput(manualQueueIDs: ["third", "first", "second"],
             metadataByEpisodeID: ["first": metadata("first"), "second": metadata("second"), "third": metadata("third")],
-            availabilityByEpisodeID: ["first": readyAvailability()],
-            foregroundJob: nil)
+            availabilityByEpisodeID: ["first": readyAvailability()])
         XCTAssertEqual(QueuePresentationBuilder.build(input).upNext.map(\.episodeID), ["third", "first", "second"])
     }
 

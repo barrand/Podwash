@@ -88,6 +88,10 @@ final class WarmPlannerTests: XCTestCase {
     func testReaimDownloadsAndAnalyzesIntoCache() async throws {
         let counter = CountingEpisodeAnalyzer()
         let env = try makeEnv(cleaningOn: true, analyzer: counter)
+        var stages: [AnalysisJobStage] = []
+        env.planner.onJobsChanged = { [weak planner = env.planner] in
+            if let job = planner?.job(for: "warm-ep-1") { stages.append(job.stage) }
+        }
 
         env.planner.reaim(at: [comingUp("warm-ep-1")])
 
@@ -96,6 +100,9 @@ final class WarmPlannerTests: XCTestCase {
         }
 
         XCTAssertEqual(counter.analyzeCallCount, 1)
+        let preparationIndex = try XCTUnwrap(stages.firstIndex(of: .transcribing))
+        XCTAssertFalse(stages[preparationIndex...].contains(.downloading),
+                       "Late download progress must never overwrite preparation or completion")
         XCTAssertNotNil(env.downloadManager.localFileURL(for: "warm-ep-1"))
         XCTAssertTrue(
             env.planner.isReadyForSeamlessPlay(episodeID: "warm-ep-1", feedURL: feedURL)

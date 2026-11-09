@@ -145,6 +145,10 @@ struct AppShellView: View {
             if showsMiniPlayerInShellInset, let engine = model.engine {
                 shellMiniPlayerBar(engine: engine, reservesTabBarClearance: true)
                     .accessibilitySortPriority(1)
+            } else if !model.isFullPlayerPresented, model.backgroundActivity != nil {
+                activityMarquee
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { miniPlayerHeight = $0 }
+                    .padding(.bottom, tabBarClearance)
             }
         }
         .overlay(alignment: .bottom) {
@@ -157,7 +161,7 @@ struct AppShellView: View {
                 }
                 .padding().background(.ultraThinMaterial, in: Capsule())
                 .padding(.horizontal)
-                .padding(.bottom, (showsMiniPlayerInShellInset ? miniPlayerHeight : 0) + tabBarClearance + 12)
+                .padding(.bottom, (showsMiniPlayerInShellInset || model.backgroundActivity != nil ? miniPlayerHeight : 0) + tabBarClearance + 12)
             }
         }
     }
@@ -268,37 +272,47 @@ struct AppShellView: View {
     }
 
     @ViewBuilder
+    private var activityMarquee: some View {
+        if let activity = model.backgroundActivity {
+            BackgroundActivityMarquee(
+                presentation: activity,
+                onOpenIssue: {
+                    if let id = activity.episodeID { model.presentPreparationIssue(episodeID: id) }
+                },
+                onDismissIssue: { model.dismissBackgroundActivityIssue() }
+            )
+        }
+    }
+
+    @ViewBuilder
     private func shellMiniPlayerBar(engine: PlaybackEngine, reservesTabBarClearance: Bool) -> some View {
         VStack(spacing: 0) {
-            MiniPlayerBar(
-                engine: engine,
-                readiness: model.playbackReadiness,
-                preparationStatusText: model.preparationStatusText,
-                preparationFailureStatusText: model.preparationFailureStatusText,
-                episodeTitle: model.nowPlayingEpisodeTitle,
-                podcastTitle: model.nowPlayingPodcastTitle,
-                showsCompleteSeekBarPaint: model.isPlayerSeekBarAnalysisComplete,
-                isPreparingNextEpisode: model.isPreparingNextEpisode,
-                preparingNextAnnouncement: model.preparingNextAnnouncement,
-                queuePresentation: model.queuePresentation,
-                episodeDuration: model.superSeekDuration,
-                muteIntervals: model.nowPlayingMuteIntervals,
-                // Keep the seek bar attached to the mini-player card. Previously
-                // the shell placed it at the top of a tab-bar-sized reservation,
-                // leaving the unused portion of that reservation looking like a
-                // blank gap between the player and the tabs.
-                showsSuperSeekBar: true,
-                showsMarkAsPlayed: model.canMarkNowPlayingAsPlayed,
-                onExpand: { model.expandFullPlayer() },
-                onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
-                onMarkAsPlayed: { model.markNowPlayingAsPlayed() },
-                onSeekTo: { model.seekReadyPlayback(to: $0) },
-                onSkipToNext: { model.skipToNextUp() },
-                onOpenPreparation: { selectedTab = .queue },
-                onViewPreparationIssue: model.canPresentNowPlayingPreparationIssue ? {
-                    if let id = model.nowPlayingEpisodeID { model.presentPreparationIssue(episodeID: id) }
-                } : nil
-            )
+            VStack(spacing: 0) {
+                activityMarquee
+                MiniPlayerBar(
+                    engine: engine,
+                    readiness: model.playbackReadiness,
+                    preparationStatusText: model.preparationStatusText,
+                    preparationFailureStatusText: model.preparationFailureStatusText,
+                    episodeTitle: model.nowPlayingEpisodeTitle,
+                    podcastTitle: model.nowPlayingPodcastTitle,
+                    showsCompleteSeekBarPaint: model.isPlayerSeekBarAnalysisComplete,
+                    isPreparingNextEpisode: model.isPreparingNextEpisode,
+                    preparingNextAnnouncement: model.preparingNextAnnouncement,
+                    episodeDuration: model.superSeekDuration,
+                    muteIntervals: model.nowPlayingMuteIntervals,
+                    showsSuperSeekBar: true,
+                    showsMarkAsPlayed: model.canMarkNowPlayingAsPlayed,
+                    onExpand: { model.expandFullPlayer() },
+                    onTogglePlayPause: { model.toggleMiniPlayerPlayPause() },
+                    onMarkAsPlayed: { model.markNowPlayingAsPlayed() },
+                    onSeekTo: { model.seekReadyPlayback(to: $0) },
+                    onSkipToNext: { model.skipToNextUp() },
+                    onViewPreparationIssue: model.canPresentNowPlayingPreparationIssue ? {
+                        if let id = model.nowPlayingEpisodeID { model.presentPreparationIssue(episodeID: id) }
+                    } : nil
+                )
+            }
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { miniPlayerHeight = $0 }
             if reservesTabBarClearance {
                 // Preserve the native tab bar's hit area without separating the
@@ -317,7 +331,7 @@ struct AppShellView: View {
             // TabView's UIKit-backed List does not consistently inherit the shell's
             // bottom inset. Reserve the mini-player card inside Queue itself so the
             // last queued row can always scroll fully above it.
-            bottomContentClearance: showsMiniPlayerInShellInset
+            bottomContentClearance: showsMiniPlayerInShellInset || model.backgroundActivity != nil
                 ? playerContentClearance
                 : 0,
             onMove: { offsets, destination in
@@ -444,13 +458,13 @@ struct AppShellView: View {
                 // TabView's UIKit-backed List does not inherit the shell overlay's
                 // space. Match Queue and detail screens so the final show can
                 // scroll entirely above the mini-player.
-                bottomContentClearance: showsMiniPlayerInShellInset
+                bottomContentClearance: showsMiniPlayerInShellInset || model.backgroundActivity != nil
                     ? playerContentClearance
                     : 0
             )
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(for: PodcastSummary.self) { summary in
-                    LibraryPodcastDetailView(model: model, summary: summary)
+                    LibraryPodcastDetailView(model: model, summary: summary, bottomContentClearance: playerContentClearance)
                         .toolbar {
                             ToolbarItem(placement: .topBarTrailing) {
                                 Menu {
@@ -544,12 +558,14 @@ private struct AutomaticPreparationNoticeBanner: View {
 private struct LibraryPodcastDetailView: View {
     @Bindable var model: AppShellModel
     let summary: PodcastSummary
+    let bottomContentClearance: CGFloat
 
     @State private var feedViewModel: EpisodeListViewModel
 
-    init(model: AppShellModel, summary: PodcastSummary) {
+    init(model: AppShellModel, summary: PodcastSummary, bottomContentClearance: CGFloat) {
         self.model = model
         self.summary = summary
+        self.bottomContentClearance = bottomContentClearance
         let feedVM = EpisodeListViewModel(parser: RSSParser(), store: model.podcastStore)
         feedVM.loadFromStore(feedURL: summary.feedURL)
         _feedViewModel = State(initialValue: feedVM)
@@ -557,10 +573,10 @@ private struct LibraryPodcastDetailView: View {
     }
 
     private var miniPlayerContentClearance: CGFloat {
-        model.isMiniPlayerVisible
+        (model.isMiniPlayerVisible || model.backgroundActivity != nil)
             && !model.isFullPlayerPresented
             && model.transcriptSheetEpisodeID == nil
-            ? MiniPlayerBar.shellOverlayClearance
+            ? bottomContentClearance
             : 0
     }
 

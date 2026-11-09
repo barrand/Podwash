@@ -41,6 +41,7 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
     nonisolated(unsafe) private var preferredFileExtensionByEpisodeID: [String: String] = [:]
 
     var onStateChanged: (() -> Void)?
+    var downloadingProgress: [String: Double] { stateStore.downloadingProgress }
     private var stateChangeHandlers: [UUID: () -> Void] = [:]
 
     @discardableResult

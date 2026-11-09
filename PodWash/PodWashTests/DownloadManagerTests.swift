@@ -161,6 +161,11 @@ final class DownloadManagerTests: XCTestCase {
 
     func testProgressMonotonicEndsAtOne() async throws {
         var progressValues: [Double] = []
+        var activitySnapshots: [[String: Double]] = []
+        let observer = manager.addStateChangeHandler { [manager] in
+            activitySnapshots.append(manager!.downloadingProgress)
+        }
+        defer { manager.removeStateChangeHandler(observer) }
 
         _ = try await manager.download(
             episodeID: Self.fixtureEpisodeID,
@@ -184,6 +189,10 @@ final class DownloadManagerTests: XCTestCase {
         }
 
         XCTAssertEqual(progressValues.last!, 1.0, accuracy: 0.0001)
+        XCTAssertTrue(activitySnapshots.contains { $0[Self.fixtureEpisodeID] == 0 })
+        XCTAssertTrue(activitySnapshots.contains { $0[Self.fixtureEpisodeID] == 0.5 })
+        XCTAssertEqual(activitySnapshots.last, [:], "Completion must remove activity before notifying the shell")
+        XCTAssertTrue(manager.downloadingProgress.isEmpty)
     }
 
     // MARK: - AC3: cancel removes partial file, retains resume data
@@ -202,9 +211,11 @@ final class DownloadManagerTests: XCTestCase {
         }
 
         try await waitUntilAtLeastTwoProgressSignals(progressValues: progressValues)
+        XCTAssertNotNil(manager.downloadingProgress[Self.fixtureEpisodeID])
 
         await manager.cancel(episodeID: Self.fixtureEpisodeID)
         downloadTask.cancel()
+        XCTAssertTrue(manager.downloadingProgress.isEmpty, "Cancellation must collapse the activity strip")
 
         XCTAssertFalse(
             FileManager.default.fileExists(atPath: localURL.path),
@@ -277,6 +288,7 @@ final class DownloadManagerTests: XCTestCase {
         } catch let error as DownloadError {
             XCTAssertEqual(error, .transportFailure)
         }
+        XCTAssertTrue(manager.downloadingProgress.isEmpty, "A failed download must never look active")
 
         XCTAssertEqual(manager.state(for: Self.fixtureEpisodeID), .failed)
         XCTAssertFalse(FileManager.default.fileExists(atPath: localURL.path))

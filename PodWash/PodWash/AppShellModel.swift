@@ -240,13 +240,32 @@ final class AppShellModel {
     private var readyPlayGeneration = 0
     @ObservationIgnored private var downloadStateHandlerID: UUID?
 
-    /// One shared snapshot powers the Queue tab and the mini-player status strip.
+    private var dismissedActivityFailureIDs: Set<String> = []
+    private var activeFeedRefreshCount = 0
+
+    var backgroundActivity: BackgroundActivityPresentation? {
+        _ = queuePresentationRevision
+        let owned = warmPlanner?.ownedEpisodeIDs ?? []
+        return BackgroundActivityResolver.resolve(
+            foreground: foregroundPreparationJob,
+            ownedJobs: (warmPlanner?.allJobs ?? []).filter { owned.contains($0.episodeID) },
+            downloads: downloadManager.downloadingProgress.map { id, progress in
+                ActivityDownload(episodeID: id, title: podcastStore.episodeLookup(id: id)?.episode.title ?? "Episode", progress: progress)
+            },
+            isRefreshingFeeds: activeFeedRefreshCount > 0,
+            dismissedFailureIDs: dismissedActivityFailureIDs
+        )
+    }
+
+    func dismissBackgroundActivityIssue() {
+        if let id = backgroundActivity?.failureID { dismissedActivityFailureIDs.insert(id) }
+    }
+
+    /// Shared snapshot for the Queue tab.
     var queuePresentation: QueuePresentation {
         _ = queuePresentationRevision
         let plan = upcomingPlaybackPlan()
-        let candidateIDs = Set(plan.manualEpisodeIDs)
-            .union(plan.autoplay.map(\.episodeID))
-            .union(foregroundPreparationJob.map { [$0.episodeID] } ?? [])
+        let candidateIDs = Set(plan.manualEpisodeIDs).union(plan.autoplay.map(\.episodeID))
         var metadata: [String: QueueEpisodeMetadata] = [:]
         var availability: [String: EpisodeAvailability] = [:]
         for id in candidateIDs {
@@ -265,8 +284,7 @@ final class AppShellModel {
             autoplay: plan.autoplay,
             isSmartAutoplayEnabled: settingsStore.smartAutoplayEnabled,
             metadataByEpisodeID: metadata,
-            availabilityByEpisodeID: availability,
-            foregroundJob: foregroundPreparationJob
+            availabilityByEpisodeID: availability
         ))
     }
 
@@ -433,6 +451,8 @@ final class AppShellModel {
     }
 
     private func refreshAllFeeds(force: Bool) async {
+        activeFeedRefreshCount += 1
+        defer { activeFeedRefreshCount -= 1 }
         feedRefreshState = .refreshing
         let summary = FeedRefreshSummary(await feedRefreshCoordinator.refreshAll(force: force))
         feedRefreshState = summary.failed > 0 ? .partialFailure(summary) : .complete(summary)
@@ -442,6 +462,8 @@ final class AppShellModel {
     }
 
     func refreshFeed(_ feedURL: URL, force: Bool = false) async {
+        activeFeedRefreshCount += 1
+        defer { activeFeedRefreshCount -= 1 }
         feedRefreshState = .refreshing
         let result = await feedRefreshCoordinator.refresh(feedURL: feedURL, force: force)
         let summary = FeedRefreshSummary([feedURL: result])

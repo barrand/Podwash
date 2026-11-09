@@ -28,6 +28,9 @@ enum ProductionAnalyzerFactory {
                 || FixturePrerollAdBands.isAnyEnabled)
 
         if effectiveFixtureLibrary {
+            if FixtureBackgroundActivity.isEnabled {
+                return FixtureBackgroundActivity.makeAnalyzer()
+            }
             if FixtureLibraryAnalysisTimeline.isEnabled {
                 return FixtureLibraryAnalysisTimeline.makeSteppedAnalyzer()
             }

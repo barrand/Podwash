@@ -17,40 +17,43 @@ struct PreparationIssueSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 20) {
-                Text(issue.episodeTitle)
-                    .font(.headline)
-                    .lineLimit(2)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text(issue.episodeTitle)
+                        .font(.headline)
+                        .lineLimit(2)
 
-                Text(presentation.explanation)
-                    .foregroundStyle(.secondary)
+                    Text(presentation.explanation)
+                        .foregroundStyle(.secondary)
 
-                if issue.reason == .downloadFailed, let diagnostic = issue.downloadDiagnostic {
+                    if issue.reason == .downloadFailed, let diagnostic = issue.downloadDiagnostic {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Download details")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(diagnostic)
+                                .font(.caption.monospaced())
+                                .textSelection(.enabled)
+                                .accessibilityIdentifier("preparationIssueDownloadDetails")
+                        }
+                    }
+
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Download details")
+                        Text("Preparation error code")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        Text(diagnostic)
+                        Text(presentation.diagnosticCode)
                             .font(.caption.monospaced())
                             .textSelection(.enabled)
-                            .accessibilityIdentifier("preparationIssueDownloadDetails")
+                            .accessibilityLabel("Preparation error code")
+                            .accessibilityValue(presentation.diagnosticCode)
+                            .accessibilityIdentifier("preparationIssueCode")
                     }
                 }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Preparation error code")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(presentation.diagnosticCode)
-                        .font(.caption.monospaced())
-                        .textSelection(.enabled)
-                        .accessibilityLabel("Preparation error code")
-                        .accessibilityValue(presentation.diagnosticCode)
-                        .accessibilityIdentifier("preparationIssueCode")
-                }
-
-                Spacer(minLength: 0)
-
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 VStack(spacing: 10) {
                     if presentation.allowsRetry {
                         Button("Try Again", action: onRetry)
@@ -68,12 +71,16 @@ struct PreparationIssueSheet: View {
                         .frame(maxWidth: .infinity)
                         .accessibilityIdentifier("preparationIssueDone")
                 }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(BrandTheme.surface)
             }
-            .padding()
             .navigationTitle("Couldn’t prepare this episode")
             .navigationBarTitleDisplayMode(.inline)
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("preparationIssueSheet")
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 }

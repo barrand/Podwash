@@ -46,8 +46,9 @@ final class LibraryUITests: XCTestCase {
         app.navigationBars.buttons.element(boundBy: 0).tap()
         let list = element("libraryRoot", in: app)
         XCTAssertTrue(list.waitForExistence(timeout: fixtureTimeout))
-        let queueHeader = element("queueButton", in: app)
-        XCTAssertTrue(queueHeader.waitForExistence(timeout: fixtureTimeout))
+        let player = element("miniPlayer", in: app)
+        XCTAssertTrue(player.waitForExistence(timeout: fixtureTimeout))
+        XCTAssertFalse(element("queueButton", in: app).exists)
         let last = element("libraryCell_23", in: app)
         for _ in 0 ..< 18 {
             list.swipeUp()
@@ -57,8 +58,10 @@ final class LibraryUITests: XCTestCase {
         XCTAssertEqual(last.label, "Cougar Sports with Ben Criddle (BYU)")
         XCTAssertGreaterThan(last.frame.height, 60, "Measure the entire podcast row, not just its label")
         XCTAssertGreaterThanOrEqual(last.frame.minY, list.frame.minY)
-        XCTAssertLessThanOrEqual(last.frame.maxY, queueHeader.frame.minY,
-                                 "The complete final row must clear the entire player, including Queue status")
+        let activity = element("backgroundActivity", in: app)
+        let chromeTop = activity.exists ? activity.frame.minY : player.frame.minY - 10
+        XCTAssertLessThanOrEqual(last.frame.maxY, chromeTop,
+                                 "The complete final row must clear the entire player and any active work")
         assertPlayerMeetsVisibleTabs(in: app)
         let bottom = XCTAttachment(screenshot: app.screenshot())
         bottom.name = "Library bottom — complete final podcast row"

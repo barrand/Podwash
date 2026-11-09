@@ -657,6 +657,8 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         model.playEpisode(episode, podcastTitle: podcastTitle, feedURL: feedURL)
 
         XCTAssertTrue(model.isPreparingPlayback, "Cleaning play path should enter preparing state")
+        XCTAssertEqual(model.backgroundActivity?.episodeID, episode.id)
+        XCTAssertEqual(model.backgroundActivity?.status, "Preparing")
         XCTAssertFalse(model.engine?.isPlaying ?? true, "Playback must not start before analysis")
 
         model.toggleMiniPlayerPlayPause()
@@ -666,6 +668,7 @@ final class ProductionAnalysisWiringTests: XCTestCase {
         await waitUntil { model.playbackAnalysisSnapshot != nil }
         XCTAssertTrue(model.engine?.isPlaying ?? false, "Queued play should start after analysis completes")
         XCTAssertNotNil(model.playbackAnalysisSnapshot)
+        XCTAssertNil(model.backgroundActivity, "Finishing preparation must remove the activity strip")
     }
 
     // MARK: - AC5: mute ramp boundaries after prepare
