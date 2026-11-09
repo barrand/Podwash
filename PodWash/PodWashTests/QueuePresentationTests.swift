@@ -8,6 +8,18 @@ import XCTest
 
 final class QueuePresentationTests: XCTestCase {
 
+    func testAcceptedRetryShowsQueuedInsteadOfPreviousDownloadFailure() {
+        let queued = AnalysisJob(episodeID: "retry", title: "Retry", stage: .queued,
+            estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: nil), updatedAt: .now)
+        let availability = EpisodeAvailabilityResolver.resolve(EpisodeAvailabilityInput(
+            downloadState: .failed, hasVerifiedLocalFile: false, isAnalysisReady: false,
+            durableJob: queued, foregroundJob: nil, hasActiveWorkOwner: true))
+        XCTAssertEqual(availability.readiness, .waitingToDownload)
+        XCTAssertEqual(EpisodeRowPresentationMapper.map(availability).primaryControl, .waiting)
+        XCTAssertEqual(EpisodeRowPresentationMapper.map(availability).statusText, "Queued · Waiting to download")
+        XCTAssertNil(EpisodeRowPresentationMapper.map(availability).failureReason)
+    }
+
     func testCopyUsesOnlyMeasuredDownloadProgress() {
         XCTAssertEqual(EpisodeRowPresentationMapper.map(.preparing).statusText, "Preparing clean playback")
         XCTAssertEqual(EpisodeRowPresentationMapper.map(.checkingAds).statusText, "Checking for ads")

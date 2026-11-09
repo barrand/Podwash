@@ -1371,7 +1371,8 @@ final class AppShellModel {
         let menu = EpisodeMenuPolicy.actions(EpisodeMenuFacts(
             isQueued: queueStore.queueEpisodeIDs().contains(episode.id), isPlayed: played,
             hasLocalAudio: availability.hasLocalAudio,
-            hasExplicitOwner: warmPlanner?.hasExplicitPreparation(episodeID: episode.id) == true,
+            hasExplicitOwner: warmPlanner?.hasExplicitPreparation(episodeID: episode.id) == true
+                || warmPlanner?.hasAutomaticPreparation(episodeID: episode.id) == true,
             hasTranscript: transcriptExists(for: episode.id),
             hasLocalCleaning: intervalCache.loadRecord(episodeID: episode.id,
                 targetWords: settingsStore.activeNormalizedTargetSet(),
@@ -1612,7 +1613,7 @@ final class AppShellModel {
             isCloudTranscriptConsentPresented = false
         }
         if replayPreparationEpisodeID == episodeID { return }
-        warmPlanner?.cancelExplicitPreparation(episodeID: episodeID)
+        warmPlanner?.cancelPreparation(episodeID: episodeID)
         refreshQueuePresentation()
         episodeListRevision &+= 1
     }

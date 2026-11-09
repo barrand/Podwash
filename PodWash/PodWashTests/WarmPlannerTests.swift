@@ -234,6 +234,68 @@ final class WarmPlannerTests: XCTestCase {
 
     // MARK: - Helpers
 
+    func testQueuedRetryDoesNotInterruptAnotherEpisodeAndPublishesImmediately() async throws {
+        let gate = QueuedPreparationGateAnalyzer()
+        let env = try makeEnv(cleaningOn: true, analyzer: gate, failedEpisodeID: "warm-ep-2")
+        env.settings.autoDownloadEnabled = false
+        try installLocalDownload(for: "warm-ep-1")
+        env.planner.requestExplicitPreparation(episodeID: "warm-ep-1")
+        await waitUntil(timeout: 5) { gate.startedIDs == ["warm-ep-1"] }
+
+        env.planner.resetJobForRetry(episodeID: "warm-ep-2")
+        env.planner.requestExplicitPreparation(episodeID: "warm-ep-2")
+        env.planner.resetJobForRetry(episodeID: "warm-ep-2")
+        XCTAssertEqual(env.planner.job(for: "warm-ep-2")?.stage, .queued)
+        XCTAssertNil(env.planner.job(for: "warm-ep-2")?.resolvedFailureReason)
+        XCTAssertEqual(env.downloadManager.state(for: "warm-ep-2"), .notDownloaded)
+        XCTAssertEqual(gate.startedIDs, ["warm-ep-1"])
+
+        gate.release()
+        await waitUntil(timeout: 5) { env.planner.job(for: "warm-ep-2")?.stage == .ready }
+        XCTAssertEqual(gate.startedIDs, ["warm-ep-1", "warm-ep-2"])
+        XCTAssertFalse(gate.firstAttemptWasCancelled)
+        env.planner.cancel()
+    }
+
+    func testCancelQueuedPreparationSuppressesAutomaticAndExplicitOwners() async throws {
+        let gate = QueuedPreparationGateAnalyzer()
+        let env = try makeEnv(cleaningOn: true, analyzer: gate)
+        env.settings.autoDownloadEnabled = true
+        try installLocalDownload(for: "warm-ep-1")
+        env.planner.reaim(at: [comingUp("warm-ep-1"), comingUp("warm-ep-2")])
+        await waitUntil(timeout: 5) { gate.startedIDs == ["warm-ep-1"] }
+        env.planner.requestExplicitPreparation(episodeID: "warm-ep-2")
+        XCTAssertEqual(env.planner.job(for: "warm-ep-2")?.stage, .queued)
+        env.planner.cancelPreparation(episodeID: "warm-ep-2")
+        XCTAssertNil(env.planner.job(for: "warm-ep-2"))
+        XCTAssertFalse(env.planner.hasExplicitPreparation(episodeID: "warm-ep-2"))
+        XCTAssertFalse(env.planner.hasAutomaticPreparation(episodeID: "warm-ep-2"))
+
+        gate.release()
+        await waitUntil(timeout: 5) { env.planner.job(for: "warm-ep-1")?.stage == .ready }
+        XCTAssertFalse(gate.firstAttemptWasCancelled)
+        XCTAssertEqual(gate.startedIDs, ["warm-ep-1"])
+        XCTAssertNil(env.downloadManager.localFileURL(for: "warm-ep-2"))
+        env.planner.cancel()
+    }
+
+    func testCancelActivePreparationLetsNextEpisodeProceedAfterLateAdapterSettles() async throws {
+        let gate = QueuedPreparationGateAnalyzer()
+        let env = try makeEnv(cleaningOn: true, analyzer: gate)
+        env.settings.autoDownloadEnabled = false
+        try installLocalDownload(for: "warm-ep-1")
+        env.planner.requestExplicitPreparation(episodeID: "warm-ep-1")
+        await waitUntil(timeout: 5) { gate.startedIDs == ["warm-ep-1"] }
+        env.planner.requestExplicitPreparation(episodeID: "warm-ep-2")
+        env.planner.cancelPreparation(episodeID: "warm-ep-1")
+        gate.release()
+        await waitUntil(timeout: 5) { env.planner.job(for: "warm-ep-2")?.stage == .ready }
+        XCTAssertTrue(gate.firstAttemptWasCancelled)
+        XCTAssertNil(env.planner.job(for: "warm-ep-1"))
+        XCTAssertEqual(gate.startedIDs, ["warm-ep-1", "warm-ep-2"])
+        env.planner.cancel()
+    }
+
     func testExplicitIntentReconstructsWithoutQueueAndRetiresOnlyWhenReady() async throws {
         let env = try makeEnv(cleaningOn: true)
         env.settings.autoDownloadEnabled = false
@@ -350,7 +412,8 @@ final class WarmPlannerTests: XCTestCase {
     private func makeEnv(
         cleaningOn: Bool,
         analyzer: any EpisodeAnalyzing = InstantEpisodeAnalyzer(),
-        episodeCount: Int = 2
+        episodeCount: Int = 2,
+        failedEpisodeID: String? = nil
     ) throws -> Env {
         let persistence = harness.makeController()
         let context = persistence.viewContext
@@ -386,12 +449,19 @@ final class WarmPlannerTests: XCTestCase {
 
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [StubDownloadURLProtocol.self]
+        let stateStore = InMemoryDownloadStateStore(backing: DownloadStateStore(context: context))
+        let jobStore = AnalysisJobStore(defaults: defaults)
+        if let failedEpisodeID {
+            stateStore.setState(.failed, for: failedEpisodeID)
+            var failure = AnalysisJob(episodeID: failedEpisodeID, title: "Failed episode", stage: .needsAttention,
+                estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: nil), updatedAt: .now)
+            failure.failureReason = .downloadFailed
+            jobStore.save([failedEpisodeID: failure])
+        }
         let downloadManager = DownloadManager(
             sessionConfiguration: config,
             downloadsDirectory: downloadsDirectory,
-            stateStore: InMemoryDownloadStateStore(
-                backing: DownloadStateStore(context: context)
-            )
+            stateStore: stateStore
         )
         let cache = IntervalCache(baseDirectory: cacheDirectory, asrModelPin: "test-pin")
 
@@ -405,7 +475,7 @@ final class WarmPlannerTests: XCTestCase {
             // Warm job checkpoints are durable in production. Keep this harness
             // isolated so a completed job from another test cannot satisfy the
             // readiness predicate before this test's analyzer runs.
-            jobStore: AnalysisJobStore(defaults: defaults),
+            jobStore: jobStore,
             preferencesStore: EpisodePreparationPreferencesStore(defaults: defaults)
         )
         return Env(
@@ -452,6 +522,28 @@ final class WarmPlannerTests: XCTestCase {
 }
 
 // MARK: - Analyzer doubles
+
+@MainActor
+private final class QueuedPreparationGateAnalyzer: EpisodeAnalyzing, @unchecked Sendable {
+    private(set) var startedIDs: [String] = []
+    private(set) var firstAttemptWasCancelled = false
+    private var continuation: CheckedContinuation<Void, Never>?
+    nonisolated deinit {}
+
+    func release() { continuation?.resume(); continuation = nil }
+
+    func analyze(episode: EpisodeIdentity, audioURL: URL, targetWords: Set<String>,
+                 injectedTranscript: [TimedWord]?, profanityAction: CensorAction,
+                 unrelatedContent: UnrelatedContentOptions) async throws -> [CensorInterval] {
+        startedIDs.append(episode.id)
+        if startedIDs.count == 1 {
+            await withCheckedContinuation { continuation = $0 }
+            firstAttemptWasCancelled = Task.isCancelled
+        }
+        try Task.checkCancellation()
+        return []
+    }
+}
 
 @MainActor
 final class CountingEpisodeAnalyzer: EpisodeAnalyzing, @unchecked Sendable {

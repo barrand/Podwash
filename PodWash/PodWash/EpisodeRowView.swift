@@ -91,13 +91,13 @@ enum EpisodeRowPresentationMapper {
         } else {
             switch status {
             case .notDownloaded: text = "Not downloaded"
-            case .waitingToDownload: text = "Waiting to download"
+            case .waitingToDownload: text = "Queued · Waiting to download"
             case .downloading(let value):
                 if let value, value.isFinite {
                     text = "Downloading · \(Int((min(max(value, 0), 1) * 100).rounded()))%"
                 } else { text = "Downloading" }
             case .downloadedNotPrepared: text = "Downloaded · Not prepared"
-            case .waitingToPrepare: text = "Downloaded · Waiting to prepare"
+            case .waitingToPrepare: text = "Downloaded · Queued for preparation"
             case .preparing: text = "Preparing clean playback"
             case .checkingAds: text = "Checking for ads"
             case .readyOffline: text = "Ready to play offline"

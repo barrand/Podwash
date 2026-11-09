@@ -130,7 +130,10 @@ enum EpisodeAvailabilityResolver {
         if input.hasVerifiedLocalFile { return .downloaded }
         if case let .downloading(progress) = input.downloadState { return .downloading(progress: progress) }
         if job?.stage == .downloading { return .downloading(progress: job?.estimate.progress) }
-        if input.downloadState == .failed { return .failed(detail: job?.detail) }
+        if input.downloadState == .failed {
+            if input.hasActiveWorkOwner, job?.stage == .queued { return .notDownloaded }
+            return .failed(detail: job?.detail)
+        }
         return .notDownloaded
     }
 

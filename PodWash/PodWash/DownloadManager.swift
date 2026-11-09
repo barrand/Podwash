@@ -277,6 +277,14 @@ final class DownloadManager: NSObject, URLSessionDownloadDelegate {
         lastFailureDiagnosticByEpisodeID[episodeID]
     }
 
+    func clearFailure(episodeID: String) {
+        guard stateStore.state(for: episodeID) == .failed else { return }
+        lastFailureDiagnosticByEpisodeID.removeValue(forKey: episodeID)
+        stateStore.setState(verifiedLocalFileURL(for: episodeID) == nil ? .notDownloaded : .downloaded,
+                            for: episodeID)
+        notifyStateChanged()
+    }
+
     /// Surfaces a failed download affordance when download cannot start (e.g. missing audio URL).
     func markFailed(episodeID: String) {
         stateStore.setState(.failed, for: episodeID)

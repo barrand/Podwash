@@ -52,6 +52,9 @@ import Observation
     /// only after verified readiness or an explicit terminating action.
     private var explicitEpisodeIDs: Set<String>
     private var workerTask: Task<Void, Never>?
+    private var workerRequests: [PreparationRequest] = []
+    private var workerGeneration: Int?
+    private var attemptRevisions: [String: Int] = [:]
     private(set) var warmingEpisodeIDs: Set<String> = []
     private(set) var jobs: [String: AnalysisJob]
 
@@ -124,6 +127,7 @@ import Observation
         let effectiveRequests = (requests.filter { $0.kind != .automatic } + explicit + automatic)
             .filter { seen.insert($0.item.episodeID).inserted }
         let effectiveIDs = Set(effectiveRequests.map { $0.item.episodeID })
+        workerRequests = effectiveRequests
         let requirements = Dictionary(uniqueKeysWithValues: effectiveRequests.map { request in
             (request.item.episodeID, Requirements(targets: settingsStore.activeNormalizedTargetSet(),
                 cleaning: cleaningStore.isChannelCleaningEnabled(forFeedURL: request.item.feedURL),
@@ -158,6 +162,11 @@ import Observation
             jobStore.save(jobs)
             onJobsChanged?()
         }
+        // Publish accepted work before the single worker reaches it. In
+        // particular, a retry must not leave a previous download failure on screen.
+        for request in effectiveRequests where jobs[request.item.episodeID] == nil {
+            updateJob(request.item, stage: .queued)
+        }
         let requestIDs = effectiveRequests.map {
             $0.kind == .replay ? "replay-\($0.item.episodeID)" : $0.item.episodeID
         }
@@ -165,8 +174,15 @@ import Observation
         // work alive rather than cancelling and restarting it.
         guard force || requestIDs != activeRequestIDs || !changedRequirements.isEmpty else { return }
         activeRequestIDs = requestIDs
+        if !force, changedRequirements.isEmpty, workerGeneration == warmGeneration,
+           warmingEpisodeIDs.isSubset(of: effectiveIDs) {
+            // Pending additions/removals do not interrupt another episode. The
+            // live request list is read again after each serial preparation.
+            return
+        }
         warmGeneration += 1
         let generation = warmGeneration
+        workerGeneration = generation
         workerTask?.cancel()
         let previousTask = workerTask
         workerTask = Task { @MainActor [weak self, previousTask] in
@@ -175,8 +191,15 @@ import Observation
             // genuinely serial even when an adapter observes cancellation late.
             await previousTask?.value
             guard let self else { return }
-            for request in effectiveRequests {
+            defer {
+                if self.workerGeneration == generation { self.workerGeneration = nil }
+            }
+            var attempted: [String: Int] = [:]
+            while let request = self.workerRequests.first(where: {
+                attempted[$0.item.episodeID] != self.attemptRevisions[$0.item.episodeID, default: 0]
+            }) {
                 guard generation == self.warmGeneration, !Task.isCancelled else { return }
+                attempted[request.item.episodeID] = self.attemptRevisions[request.item.episodeID, default: 0]
                 if let job = self.jobs[request.item.episodeID] {
                     if job.stage == .needsAttention { continue }
                     if let deadline = job.retryAfter, deadline > Date() {
@@ -319,7 +342,22 @@ import Observation
         guard podcastStore.episodeLookup(id: episodeID) != nil else { return }
         explicitEpisodeIDs.insert(episodeID)
         preferencesStore.addExplicit(episodeID)
+        PlaybackDiagnostics.info("preparation action=request episodeID=\(episodeID.prefix(12)) state=queued")
         rebuildWorker()
+    }
+
+    /// A listener's Cancel stops all preparation owners for this episode, while
+    /// retaining Up Next membership and any already installed audio.
+    func cancelPreparation(episodeID: String) {
+        let wasActive = warmingEpisodeIDs.contains(episodeID)
+        explicitEpisodeIDs.remove(episodeID)
+        preferencesStore.removeExplicit(episodeID)
+        preferencesStore.suppressAutomatic(episodeID)
+        ownerRequests.removeAll { $0.kind != .automatic && $0.item.episodeID == episodeID }
+        removeJob(episodeID: episodeID)
+        downloadManager.clearFailure(episodeID: episodeID)
+        PlaybackDiagnostics.info("preparation action=cancel episodeID=\(episodeID.prefix(12))")
+        rebuildWorker(force: wasActive)
     }
 
     func cancelExplicitPreparation(episodeID: String) {
@@ -410,7 +448,12 @@ import Observation
         jobStore.save(jobs)
         onJobsChanged?()
         retryTasks.removeValue(forKey: episodeID)?.cancel()
-        rebuildWorker(force: true)
+        attemptRevisions[episodeID, default: 0] += 1
+        downloadManager.clearFailure(episodeID: episodeID)
+        PlaybackDiagnostics.info("preparation action=retry episodeID=\(episodeID.prefix(12)) state=queued")
+        // Revisit a completed attempt without restarting unrelated active work.
+        if workerGeneration == nil { activeRequestIDs = [] }
+        rebuildWorker()
     }
 
     /// True when cleaning is off for the channel, or interval cache already has a hit.
