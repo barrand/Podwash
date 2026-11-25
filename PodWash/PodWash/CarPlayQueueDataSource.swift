@@ -30,8 +30,16 @@ final class CarPlayQueueDataSource {
     nonisolated deinit {}
 
     func listItems() -> [CarPlayListItemModel] {
-        queue.queueEpisodeIDs().compactMap { episodeID in
-            guard let episode = Self.resolveEpisode(id: episodeID, in: store) else {
+        queue.entries().compactMap { entry in
+            let episodeID = entry.episodeID
+            let episode: Episode?
+            if let feed = entry.replayFeedURL, let shell = CarPlayDependencies.provider as? AppShellModel,
+               shell.queueStore === queue {
+                episode = shell.carPlayReplayEpisode(id: episodeID, feedURL: feed)
+            } else {
+                episode = Self.resolveEpisode(id: episodeID, in: store)
+            }
+            guard let episode else {
                 return nil
             }
             return CarPlayListItemModel(

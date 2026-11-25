@@ -10,6 +10,7 @@ import Foundation
 
 enum QueueAdvanceResolution: Equatable {
     case play(episodeID: String, consumesManualQueueEntry: Bool)
+    case replay(QueuedEpisode)
     case waiting(title: String)
     case none
 }
@@ -29,6 +30,7 @@ final class QueueCoordinator {
     /// Unified manual + radio decision. This supersedes the legacy two-closure
     /// split while remaining compatible with focused older coordinator tests.
     var resolveNext: ((_ endedEpisodeID: String, _ manualQueueIDs: [String]) -> QueueAdvanceResolution)?
+    var onReplayAdvance: ((QueuedEpisode) -> Void)?
     var onAdvanceWaiting: ((String) -> Void)?
     private var pendingAdvanceFromEpisodeID: String?
 
@@ -77,8 +79,9 @@ final class QueueCoordinator {
     }
 
     /// AC2 entry: treat `episodeID` as finished; advance Up Next or smart autoplay.
-    func handlePlaybackEnded(episodeID: String, duration: TimeInterval?) {
-        advance(from: episodeID, duration: duration, markPlayed: true)
+    func handlePlaybackEnded(episodeID: String, duration: TimeInterval?, completionSaved: Bool = false) {
+        if completionSaved { onEpisodeMarkedPlayed?(episodeID) }
+        advance(from: episodeID, duration: duration, markPlayed: !completionSaved)
     }
 
     /// User-requested Next: retain the current episode's resume position and
@@ -136,6 +139,9 @@ final class QueueCoordinator {
             currentEpisodeID = nextID
             try? sessionStore?.setActiveEpisodeID(nextID)
             player?.play(episodeID: nextID)
+        case let .replay(entry):
+            pendingAdvanceFromEpisodeID = nil
+            onReplayAdvance?(entry)
         case let .waiting(title):
             pendingAdvanceFromEpisodeID = episodeID
             onAdvanceWaiting?(title)

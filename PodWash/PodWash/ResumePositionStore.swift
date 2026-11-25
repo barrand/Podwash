@@ -52,12 +52,18 @@ final class ResumePositionStore {
         try context.save()
     }
 
+    func stageCompletion(for episodeID: String, duration: TimeInterval?) throws {
+        let episode = try requireEpisode(id: episodeID)
+        episode.isPlayed = true
+        if let duration, duration.isFinite, duration > 0 { episode.playbackPosition = duration }
+    }
+
     /// Explicit replay intent starts the episode over and clears its played flag.
-    func resetForReplay(_ episodeID: String) throws {
+    func resetForReplay(_ episodeID: String, save: Bool = true) throws {
         let episode = try requireEpisode(id: episodeID)
         episode.playbackPosition = 0
         episode.isPlayed = false
-        try context.save()
+        if save { try context.save() }
     }
 
     /// Updates position; sets `isPlayed == true` when
@@ -74,6 +80,12 @@ final class ResumePositionStore {
         if duration > 0, seconds / duration >= playedThreshold {
             episode.isPlayed = true
         }
+        try context.save()
+    }
+
+    func clearDetachedEpisode(_ episodeID: String) throws {
+        guard let episode = fetchEpisode(id: episodeID), episode.podcast == nil else { return }
+        context.delete(episode)
         try context.save()
     }
 

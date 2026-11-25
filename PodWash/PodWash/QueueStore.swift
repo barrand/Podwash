@@ -8,6 +8,12 @@
 import CoreData
 import Foundation
 
+struct QueuedEpisode: Equatable {
+    let episodeID: String
+    let replayFeedURL: URL?
+    let objectID: URL
+}
+
 @MainActor
 final class QueueStore {
     nonisolated(unsafe) private let context: NSManagedObjectContext
@@ -19,11 +25,20 @@ final class QueueStore {
     // Avoid MainActor/TaskLocal deinit crash (same pattern as AnalysisUIViewModel).
     nonisolated deinit {}
 
-    func queueEpisodeIDs() -> [String] {
+    func entries() -> [QueuedEpisode] {
         let request = CDQueueEntry.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "sortIndex", ascending: true)]
-        let rows = (try? context.fetch(request)) ?? []
-        return rows.compactMap(\.episodeID)
+        return ((try? context.fetch(request)) ?? []).compactMap { row in
+            guard let id = row.episodeID else { return nil }
+            return QueuedEpisode(episodeID: id, replayFeedURL: row.replayFeedURLString.flatMap(URL.init(string:)),
+                                 objectID: row.objectID.uriRepresentation())
+        }
+    }
+
+    func queueEpisodeIDs() -> [String] { entries().map(\.episodeID) }
+
+    func entry(for episodeID: String) -> QueuedEpisode? {
+        entries().first { $0.episodeID == episodeID }
     }
 
     func add(_ episodeID: String) throws {
@@ -37,20 +52,21 @@ final class QueueStore {
 
     /// Listener intent is "Play Next": insert a new item at the front of the
     /// durable manual queue. Existing queued items are promoted instead.
-    func playNext(_ episodeID: String) throws {
+    func playNext(_ episodeID: String, replayFeedURL: URL? = nil) throws {
         var ids = queueEpisodeIDs().filter { $0 != episodeID }
         ids.insert(episodeID, at: 0)
-        try replaceQueue(with: ids)
+        let replaySources = replayFeedURL.map { [episodeID: $0] } ?? [:]
+        try replaceQueue(with: ids, replaySources: replaySources)
     }
 
-    func remove(_ episodeID: String) throws {
+    func remove(_ episodeID: String, save: Bool = true) throws {
         let request = CDQueueEntry.fetchRequest()
         request.predicate = NSPredicate(format: "episodeID == %@", episodeID)
         for entry in try context.fetch(request) {
             context.delete(entry)
         }
         try reindex()
-        try context.save()
+        if save { try context.save() }
     }
 
     func move(_ episodeID: String, toIndex: Int) throws {
@@ -95,13 +111,14 @@ final class QueueStore {
     /// it was already in Up Next. Called only after local playback is staged.
     func prepareForImmediatePlayback(
         selectedEpisodeID: String,
-        replacingCurrentEpisodeID currentEpisodeID: String?
+        replacingCurrentEpisodeID currentEpisodeID: String?,
+        save: Bool = true
     ) throws {
         var reordered = queueEpisodeIDs().filter { $0 != selectedEpisodeID && $0 != currentEpisodeID }
         if let currentEpisodeID, currentEpisodeID != selectedEpisodeID {
             reordered.insert(currentEpisodeID, at: 0)
         }
-        try replaceQueue(with: reordered)
+        try replaceQueue(with: reordered, save: save)
     }
 
     /// Removes every queue row (fixture reset / UITest launch).
@@ -118,6 +135,14 @@ final class QueueStore {
         try replaceQueue(with: episodeIDs)
     }
 
+    func restoreEntries(_ entries: [QueuedEpisode]) throws {
+        var replaySources: [String: URL] = [:]
+        for entry in entries where replaySources[entry.episodeID] == nil {
+            replaySources[entry.episodeID] = entry.replayFeedURL
+        }
+        try replaceQueue(with: entries.map(\.episodeID), replaySources: replaySources)
+    }
+
     private func reindex() throws {
         let request = CDQueueEntry.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "sortIndex", ascending: true)]
@@ -127,7 +152,8 @@ final class QueueStore {
         }
     }
 
-    private func replaceQueue(with episodeIDs: [String]) throws {
+    private func replaceQueue(with episodeIDs: [String], replaySources: [String: URL] = [:],
+                              save: Bool = true) throws {
         let uniqueIDs = episodeIDs.reduce(into: [String]()) { result, id in
             guard !result.contains(id) else { return }
             result.append(id)
@@ -146,7 +172,8 @@ final class QueueStore {
             let entry = byID[id] ?? CDQueueEntry(context: context)
             entry.episodeID = id
             entry.sortIndex = Int32(index)
+            if let feed = replaySources[id] { entry.replayFeedURLString = feed.absoluteString }
         }
-        try context.save()
+        if save { try context.save() }
     }
 }

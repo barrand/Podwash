@@ -30,6 +30,20 @@ final class NowPlayingSessionStore {
         return id
     }
 
+    func playbackRunID() -> String? { fetchSingleton()?.playbackRunID }
+
+    func activeFeedURL() -> URL? {
+        fetchSingleton()?.activeFeedURLString.flatMap(URL.init(string:))
+    }
+
+    func setPlaybackRun(episodeID: String, feedURL: URL?, runID: String, save: Bool = true) throws {
+        let row = fetchSingleton() ?? CDNowPlayingSession(context: context)
+        row.activeEpisodeID = episodeID
+        row.activeFeedURLString = feedURL?.absoluteString
+        row.playbackRunID = runID
+        if save { try context.save() }
+    }
+
     /// Upserts the singleton row to `episodeID`. No-op if already set to the same id.
     func setActiveEpisodeID(_ episodeID: String) throws {
         guard !episodeID.isEmpty else {
@@ -39,6 +53,8 @@ final class NowPlayingSessionStore {
         if let existing = fetchSingleton() {
             if existing.activeEpisodeID == episodeID { return }
             existing.activeEpisodeID = episodeID
+            existing.activeFeedURLString = nil
+            existing.playbackRunID = nil
         } else {
             let row = CDNowPlayingSession(context: context)
             row.activeEpisodeID = episodeID

@@ -17,5 +17,7 @@ public class CDNowPlayingSession: NSManagedObject {
         NSFetchRequest<CDNowPlayingSession>(entityName: "CDNowPlayingSession")
     }
 
+    @NSManaged public var activeFeedURLString: String?
+    @NSManaged public var playbackRunID: String?
     @NSManaged public var activeEpisodeID: String?
 }

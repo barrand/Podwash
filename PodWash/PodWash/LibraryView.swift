@@ -18,13 +18,7 @@ struct LibraryView: View {
     var bottomContentClearance: CGFloat = 0
 
     var body: some View {
-        Group {
-            if viewModel.subscriptionCount == 0 {
-                emptyState
-            } else {
-                subscriptionList
-            }
-        }
+        subscriptionList
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("libraryRoot")
@@ -38,6 +32,12 @@ struct LibraryView: View {
 
     private var subscriptionList: some View {
         List {
+            historyLink
+            if viewModel.subscriptionCount == 0 {
+                emptyState
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+            }
             if case .partialFailure = refreshState {
                 Section {
                     HStack {
@@ -76,6 +76,15 @@ struct LibraryView: View {
         .accessibilityIdentifier("libraryList")
         .accessibilityLabel("Subscriptions")
         .accessibilityValue("\(viewModel.subscriptionCount)")
+    }
+
+    private var historyLink: some View {
+        NavigationLink(value: ListeningHistoryDestination.history) {
+            Label("History", systemImage: "clock.arrow.circlepath")
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .accessibilityIdentifier("libraryHistoryLink")
     }
 
     private var emptyState: some View {

@@ -24,6 +24,10 @@ struct TranscriptCache: Sendable {
         )
     }
 
+    var historyArchive: TranscriptCache {
+        TranscriptCache(baseDirectory: baseDirectory.appendingPathComponent("History", isDirectory: true))
+    }
+
     /// True iff a transcript file exists for `episodeID` (affordance gate; no decode required).
     func exists(episodeID: String) -> Bool {
         FileManager.default.fileExists(atPath: cacheFileURL(episodeID: episodeID).path)

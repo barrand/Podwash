@@ -244,7 +244,7 @@ struct AppShellView: View {
                 unsubscribeConfirmation = nil
             }
         } message: {
-            Text("This removes its episodes from Up Next, deletes downloads and offline analysis from this device, and clears playback progress.")
+            Text("This removes its episodes from Up Next, deletes downloads and offline analysis from this device, and clears playback progress. History keeps episode entries.")
         }
         .background(TabBarFrameReader(tabBarFrame: $tabBarFrame))
         .task {
@@ -344,12 +344,8 @@ struct AppShellView: View {
                     to: target
                 )
             },
-            rowSnapshot: { id in
-                model.podcastStore.episodeLookup(id: id).map {
-                    model.episodeRowSnapshot($0.episode, context: .queue)
-                }
-            },
-            rowBindings: { model.episodeRowBindings($0, context: .queue) },
+            rowSnapshot: model.queueRowSnapshot,
+            rowBindings: model.queueRowBindings,
             onClearUpNext: {
                 let ids = model.clearUpNext()
                 if !ids.isEmpty {
@@ -463,6 +459,9 @@ struct AppShellView: View {
                     : 0
             )
                 .navigationBarTitleDisplayMode(.inline)
+                .navigationDestination(for: ListeningHistoryDestination.self) { _ in
+                    ListeningHistoryView(model: model, bottomContentClearance: playerContentClearance)
+                }
                 .navigationDestination(for: PodcastSummary.self) { summary in
                     LibraryPodcastDetailView(model: model, summary: summary, bottomContentClearance: playerContentClearance)
                         .toolbar {

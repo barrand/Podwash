@@ -82,6 +82,14 @@ import Observation
         self.explicitEpisodeIDs = preferencesStore.preferences.explicitEpisodeIDs
     }
 
+    var beforeReplacingAudio: ((String, URL) throws -> Void)?
+    var historyLookup: ((String) -> (episode: Episode, podcastTitle: String, feedURL: URL)?)?
+
+    private func episodeLookup(id: String) -> (episode: Episode, podcastTitle: String, feedURL: URL)? {
+        if let historyLookup { return historyLookup(id) }
+        return podcastStore.episodeLookup(id: id)
+    }
+
     nonisolated deinit {}
 
     /// Cancel in-flight warm work and start warming `items` (up to peek / cap).
@@ -92,7 +100,7 @@ import Observation
     }
 
     private func reaim(requests: [PreparationRequest]) {
-        for id in explicitEpisodeIDs where podcastStore.episodeLookup(id: id) == nil {
+        for id in explicitEpisodeIDs where episodeLookup(id: id) == nil {
             explicitEpisodeIDs.remove(id)
             preferencesStore.removeExplicit(id)
         }
@@ -107,7 +115,7 @@ import Observation
     private func rebuildWorker(force: Bool = false) {
         let requests = ownerRequests
         let explicit = explicitEpisodeIDs.sorted().compactMap { id -> PreparationRequest? in
-            guard let lookup = podcastStore.episodeLookup(id: id) else { return nil }
+            guard let lookup = episodeLookup(id: id) else { return nil }
             return PreparationRequest(
                 item: ComingUpItem(
                     episodeID: id,
@@ -226,7 +234,7 @@ import Observation
         predicted: [ComingUpItem]
     ) {
         let replay = replayEpisodeID.flatMap { id -> PreparationRequest? in
-            guard let lookup = podcastStore.episodeLookup(id: id) else { return nil }
+            guard let lookup = episodeLookup(id: id) else { return nil }
             return PreparationRequest(
                 item: ComingUpItem(
                     episodeID: id,
@@ -239,7 +247,7 @@ import Observation
             )
         }
         let manual = manualQueueIDs.compactMap { id -> ComingUpItem? in
-            guard let lookup = podcastStore.episodeLookup(id: id) else { return nil }
+            guard let lookup = episodeLookup(id: id) else { return nil }
             return ComingUpItem(
                 episodeID: id,
                 episodeTitle: lookup.episode.title,
@@ -339,7 +347,7 @@ import Observation
     /// Promotes one listener-selected row without adding it to Up Next. This
     /// shares the same serial worker and is idempotent across repeated taps.
     func requestExplicitPreparation(episodeID: String) {
-        guard podcastStore.episodeLookup(id: episodeID) != nil else { return }
+        guard episodeLookup(id: episodeID) != nil else { return }
         explicitEpisodeIDs.insert(episodeID)
         preferencesStore.addExplicit(episodeID)
         PlaybackDiagnostics.info("preparation action=request episodeID=\(episodeID.prefix(12)) state=queued")
@@ -389,7 +397,7 @@ import Observation
     func reconcilePersistedJobs(requestedEpisodeIDs: Set<String>) {
         var changed = false
         for episodeID in Array(jobs.keys) {
-            guard let lookup = podcastStore.episodeLookup(id: episodeID) else {
+            guard let lookup = episodeLookup(id: episodeID) else {
                 jobs.removeValue(forKey: episodeID)
                 changed = true
                 continue
@@ -504,7 +512,7 @@ import Observation
     ) async {
         guard generation == warmGeneration, !Task.isCancelled else { return }
         let isReplay = kind == .replay
-        guard let lookup = podcastStore.episodeLookup(id: item.episodeID) else { return }
+        guard let lookup = episodeLookup(id: item.episodeID), lookup.feedURL == item.feedURL else { return }
         if isReplay, jobs[item.episodeID]?.stage == .ready,
            isReadyOffline(episodeID: item.episodeID, feedURL: item.feedURL) { return }
 
@@ -534,6 +542,7 @@ import Observation
                 // the previous audio. Keep transcript/artifact history until a
                 // successful fresh analysis replaces it; retire derived playback
                 // schedules before the new file can become visible.
+                try beforeReplacingAudio?(item.episodeID, item.feedURL)
                 try intervalCache.remove(episodeID: item.episodeID)
                 updateJob(item, stage: .downloading, estimate: AnalysisJobEstimate(secondsRemaining: nil, progress: 0), generation: generation)
                 localURL = try await downloadManager.download(
@@ -551,7 +560,8 @@ import Observation
                     )
                 }
             }
-            guard generation == warmGeneration, !Task.isCancelled else { return }
+            guard generation == warmGeneration, !Task.isCancelled,
+                  episodeLookup(id: item.episodeID)?.feedURL == item.feedURL else { return }
 
             if isReplay || (cleaningOn && !isAnalysisReady(episodeID: item.episodeID, feedURL: item.feedURL)) {
                 updateJob(item, stage: .transcribing, generation: generation)
@@ -594,7 +604,8 @@ import Observation
                     )
                 }
             }
-            guard generation == warmGeneration, !Task.isCancelled else { return }
+            guard generation == warmGeneration, !Task.isCancelled,
+                  episodeLookup(id: item.episodeID)?.feedURL == item.feedURL else { return }
             guard isLocallyDownloaded(episodeID: item.episodeID) else {
                 updateJob(item, stage: .needsAttention, detail: "Download failed",
                           failureReason: .downloadFailed, generation: generation)

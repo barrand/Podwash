@@ -7,11 +7,12 @@
 //
 
 import AVFoundation
+import CoreData
 import Foundation
 
 struct QueueUndoSnapshot: Equatable {
     let episodeID: String
-    let previousQueueIDs: [String]
+    let previousQueueEntries: [QueuedEpisode]
     let previousPlayedState: Bool
     let previousPlaybackPosition: TimeInterval
     let marksPlayed: Bool
@@ -35,6 +36,7 @@ enum FeedRefreshViewState: Equatable {
 enum EpisodePlayContext: Equatable {
     case library
     case queue
+    case history
 }
 
 @MainActor @Observable
@@ -63,6 +65,7 @@ final class AppShellModel {
     /// controller, IndexPath, or callback across sheet presentation/dismissal.
     private struct PendingPreparationConsent {
         let episodeID: String
+        let feedURL: URL?
         enum Kind { case explicit, replay }
         let kind: Kind
     }
@@ -78,6 +81,11 @@ final class AppShellModel {
     let podcastStore: PodcastStore
     let queueStore: QueueStore
     let resumeStore: ResumePositionStore
+    let listeningHistory: ListeningHistoryStore
+    private(set) var historyEntries: [ListeningHistoryEntry] = []
+    private var playbackRunID = UUID().uuidString
+    private var playbackRunEnded = false
+    private var unsubscribingFeeds: Set<URL> = []
     let nowPlayingSessionStore: NowPlayingSessionStore
     let cleaningStore: CleaningToggleStore
     let downloadManager: DownloadManager
@@ -199,6 +207,7 @@ final class AppShellModel {
     private(set) var transcriptAffordanceGeneration = 0
     /// Bumped when listener-visible episode history or replay availability changes.
     private(set) var episodeListRevision = 0
+    private var replayPreparationGeneration = 0
     private(set) var replayPreparationEpisodeID: String?
     private(set) var replayReadyEpisodeID: String?
 
@@ -212,8 +221,9 @@ final class AppShellModel {
     private(set) var transcriptSheetOpenPlaybackPosition: TimeInterval = 0
 
     /// Live engine for follow-along when the open transcript is the now-playing episode.
+    private var transcriptSheetIsArchived = false
     var transcriptSheetPlaybackEngine: PlaybackEngine? {
-        guard let episodeID = transcriptSheetEpisodeID,
+        guard !transcriptSheetIsArchived, let episodeID = transcriptSheetEpisodeID,
               episodeID == nowPlayingEpisodeID
         else { return nil }
         return engine
@@ -250,7 +260,7 @@ final class AppShellModel {
             foreground: foregroundPreparationJob,
             ownedJobs: (warmPlanner?.allJobs ?? []).filter { owned.contains($0.episodeID) },
             downloads: downloadManager.downloadingProgress.map { id, progress in
-                ActivityDownload(episodeID: id, title: podcastStore.episodeLookup(id: id)?.episode.title ?? "Episode", progress: progress)
+                ActivityDownload(episodeID: id, title: playbackEpisodeLookup(id: id)?.episode.title ?? "Episode", progress: progress)
             },
             isRefreshingFeeds: activeFeedRefreshCount > 0,
             dismissedFailureIDs: dismissedActivityFailureIDs
@@ -269,7 +279,15 @@ final class AppShellModel {
         var metadata: [String: QueueEpisodeMetadata] = [:]
         var availability: [String: EpisodeAvailability] = [:]
         for id in candidateIDs {
-            guard let lookup = podcastStore.episodeLookup(id: id) else { continue }
+            if let entry = queuedHistoryEntry(id) {
+                metadata[id] = QueueEpisodeMetadata(episodeID: id, title: entry.episode.title,
+                    podcastTitle: entry.showTitle, publicationDate: entry.episode.pubDate, isPlayed: true)
+                if let episode = historySource(entry.id) {
+                    availability[id] = episodeAvailability(for: id, lookup: (episode, entry.showTitle, entry.id.feedURL))
+                }
+                continue
+            }
+            guard let lookup = playbackEpisodeLookup(id: id) else { continue }
             metadata[id] = QueueEpisodeMetadata(
                 episodeID: id,
                 title: lookup.episode.title,
@@ -313,7 +331,7 @@ final class AppShellModel {
 
     var presentedPreparationIssue: PreparationIssue? {
         guard let episodeID = preparationIssueEpisodeID,
-              let lookup = podcastStore.episodeLookup(id: episodeID)
+              let lookup = playbackEpisodeLookup(id: episodeID)
         else { return nil }
         let job = foregroundPreparationJob?.episodeID == episodeID
             ? foregroundPreparationJob
@@ -370,6 +388,7 @@ final class AppShellModel {
         queueStore = QueueStore(context: context)
         resumeStore = ResumePositionStore(context: context)
         nowPlayingSessionStore = NowPlayingSessionStore(context: context)
+        listeningHistory = ListeningHistoryStore(context: context)
         cleaningStore = CleaningToggleStore(context: context)
         try? cleaningStore.migrateAllChannelsCleaningAndUnrelatedOnIfNeeded()
         if let downloadManager {
@@ -381,6 +400,12 @@ final class AppShellModel {
                 stateStore: InMemoryDownloadStateStore(backing: downloadStateStore)
             )
         }
+        do { try listeningHistory.importPlayedEpisodes() }
+        catch {
+            context.rollback()
+            PlaybackDiagnostics.error("Listening history import failed")
+        }
+        historyEntries = listeningHistory.entries()
         CarPlayDependencies.register(self)
 
         warmPlanner = WarmPlanner(
@@ -393,6 +418,19 @@ final class AppShellModel {
             jobStore: analysisJobStore,
             preferencesStore: preparationPreferencesStore
         )
+        warmPlanner?.historyLookup = { [weak self] id in
+            guard let self else { return nil }
+            if let feed = self.queueStore.entry(for: id)?.replayFeedURL,
+               self.historySource(.init(feedURL: feed, episodeID: id)) == nil { return nil }
+            return self.playbackEpisodeLookup(id: id)
+        }
+        warmPlanner?.beforeReplacingAudio = { [weak self] episodeID, feedURL in
+            guard let self else { return }
+            let key = ListeningHistoryEntry.ID(feedURL: feedURL, episodeID: episodeID)
+            guard self.listeningHistory.entry(for: key) != nil, self.historySource(key) != nil else { return }
+            try self.archiveTranscript(episodeID: episodeID, feedURL: feedURL)
+            self.purgeReplayAnalysis(episodeID: episodeID)
+        }
         warmPlanner?.onJobsChanged = { [weak self] in self?.handlePreparationJobsChanged() }
         if !isFixtureLibraryMode {
             let currentID = nowPlayingSessionStore.activeEpisodeID()
@@ -605,7 +643,9 @@ final class AppShellModel {
         remoteCandidate: URL?,
         startAnalysis: Bool = true,
         preparedEngine: PlaybackEngine? = nil,
-        preparedCoordinator: PlaybackCoordinator? = nil
+        preparedCoordinator: PlaybackCoordinator? = nil,
+        continuingRun: String? = nil,
+        flushPreviousPosition: Bool = true
     ) {
         analysisRecoveryState = .notNeeded
         restoredAnalysisContext = nil
@@ -623,7 +663,7 @@ final class AppShellModel {
         // Tear down the prior session before installing a new engine. LibraryEpisodePlayer
         // holds PlaybackEngine strongly; releasing it from nonisolated deinit while the
         // @Observable engine property is still being replaced SIGABRTs (NowPlayingSession).
-        flushPlaybackPosition()
+        if flushPreviousPosition { flushPlaybackPosition() }
         engine?.onPlaybackEnded = nil
         if let engine {
             audioSessionManager.unbind(engine)
@@ -661,6 +701,9 @@ final class AppShellModel {
         queue.resolveNext = { [weak self] endedID, manualIDs in
             self?.resolveUpcomingAdvance(endedEpisodeID: endedID, manualQueueIDs: manualIDs) ?? .none
         }
+        queue.onReplayAdvance = { [weak self] entry in
+            self?.stageLocalPlayback(entry.episodeID, context: .history, mode: .prepared, queuedReplay: entry)
+        }
         queue.onAdvanceWaiting = { [weak self] title in
             guard let self else { return }
             self.isPreparingNextEpisode = true
@@ -670,8 +713,11 @@ final class AppShellModel {
             self?.handleEpisodeMarkedPlayed(episodeID)
         }
 
-        newEngine.onPlaybackEnded = { [weak self] in
-            self?.handleEnginePlaybackEnded()
+        playbackRunID = continuingRun ?? UUID().uuidString
+        playbackRunEnded = false
+        newEngine.onPlaybackEnded = { [weak self, weak newEngine] in
+            guard let self, let newEngine, self.engine === newEngine else { return }
+            self.handleEnginePlaybackEnded()
         }
         newEngine.onSystemPause = { [weak self] in
             self?.flushPlaybackPosition()
@@ -701,7 +747,7 @@ final class AppShellModel {
         )
         isMiniPlayerVisible = true
         refreshQueuePresentation()
-        try? nowPlayingSessionStore.setActiveEpisodeID(episode.id)
+        try? nowPlayingSessionStore.setPlaybackRun(episodeID: episode.id, feedURL: feedURL, runID: playbackRunID)
         if let feedURL {
             try? podcastStore.touchLastHeard(feedURL: feedURL)
             if podcastStore.isBinge(feedURL: feedURL) {
@@ -964,21 +1010,23 @@ final class AppShellModel {
     /// Shows first-use disclosure before a manual download. The deferred work is
     /// represented only by episode data, avoiding a stale table-controller callback.
     @discardableResult
-    func requestCloudConsentBeforeDownload(for episode: Episode) -> Bool {
+    func requestCloudConsentBeforeDownload(for episode: Episode, forceReplay: Bool = false) -> Bool {
         guard !settingsStore.cloudTranscriptProcessingConsentPrompted,
               episode.audioURL != nil || downloadManager.verifiedLocalFileURL(for: episode.id) != nil
         else { return false }
         if pendingPreparationConsent != nil { return true }
         pendingPreparationConsent = PendingPreparationConsent(
             episodeID: episode.id,
-            kind: resumeStore.isPlayed(episode.id) ? .replay : .explicit
+            feedURL: playbackEpisodeLookup(id: episode.id)?.feedURL,
+            kind: (forceReplay || resumeStore.isPlayed(episode.id)) ? .replay : .explicit
         )
         isCloudTranscriptConsentPresented = true
         return true
     }
 
     private func completePendingPreparationConsent(_ pending: PendingPreparationConsent) {
-        guard podcastStore.episodeLookup(id: pending.episodeID) != nil else { return }
+        guard let lookup = playbackEpisodeLookup(id: pending.episodeID),
+              pending.feedURL == nil || pending.feedURL == lookup.feedURL else { return }
         if pending.kind == .replay {
             prepareReplay(episodeID: pending.episodeID)
             return
@@ -1066,13 +1114,16 @@ final class AppShellModel {
     }
 
     /// Present the transcript sheet for an episode (row or full-player entry).
-    func presentTranscript(for episodeID: String) {
-        guard let words = transcriptCache.load(episodeID: episodeID), !words.isEmpty else {
+    func presentTranscript(for episodeID: String, archived: [TimedWord]? = nil) {
+        guard let words = archived ?? transcriptCache.load(episodeID: episodeID), !words.isEmpty else {
             return
         }
 
+        transcriptSheetIsArchived = archived != nil
         let intervals: [CensorInterval]
-        if nowPlayingEpisodeID == episodeID {
+        if archived != nil {
+            intervals = []
+        } else if nowPlayingEpisodeID == episodeID {
             intervals = presentationIntervals(for: episodeID)
         } else if let fromDisk = intervalCache.load(
             episodeID: episodeID,
@@ -1088,7 +1139,9 @@ final class AppShellModel {
         // the episode currently playing, use the engine's live clock so opening
         // the transcript lands at the word being heard rather than an old save.
         let position: TimeInterval
-        if nowPlayingEpisodeID == episodeID, let engine {
+        if archived != nil {
+            position = 0
+        } else if nowPlayingEpisodeID == episodeID, let engine {
             position = engine.currentTime
         } else {
             position = resumeStore.position(for: episodeID)
@@ -1109,6 +1162,7 @@ final class AppShellModel {
 
     func dismissTranscript() {
         transcriptSheetEpisodeID = nil
+        transcriptSheetIsArchived = false
         transcriptSheetViewModel = nil
         transcriptSheetOpenPlaybackPosition = 0
     }
@@ -1151,17 +1205,40 @@ final class AppShellModel {
     /// This is async because active URLSession downloads must settle before their
     /// Core Data episode rows are removed.
     func unsubscribe(feedURL: URL) async {
-        guard let feed = podcastStore.subscription(forFeedURL: feedURL) else { return }
+        guard !unsubscribingFeeds.contains(feedURL),
+              let feed = podcastStore.subscription(forFeedURL: feedURL) else { return }
+        unsubscribingFeeds.insert(feedURL)
+        defer {
+            unsubscribingFeeds.remove(feedURL)
+            episodeListRevision &+= 1
+        }
         let podcastTitle = feed.title
-        let episodeIDs = feed.episodes.map(\.id).filter { !$0.isEmpty }
-        let episodeIDSet = Set(episodeIDs)
-        if let id = pendingPreparationConsent?.episodeID, episodeIDSet.contains(id) {
+        let historical = historyEntries.filter { $0.id.feedURL == feedURL }
+        let catalogIDs = Set(feed.episodes.map(\.id).filter { !$0.isEmpty })
+        let episodeIDs = catalogIDs.union(historical.compactMap {
+            guard podcastStore.episodeLookup(id: $0.episode.id) == nil,
+                  listeningHistory.entries(episodeID: $0.episode.id).count == 1 else { return nil }
+            return $0.episode.id
+        })
+        for entry in historical {
+            try? transcriptCache.historyArchive.remove(episodeID: entry.id.accessibilityID)
+        }
+        if let id = replayPreparationEpisodeID, episodeIDs.contains(id) {
+            replayPreparationEpisodeID = nil
+            replayReadyEpisodeID = nil
+        }
+        if nowPlayingSessionStore.activeFeedURL() == feedURL {
+            try? nowPlayingSessionStore.clear()
+        }
+        let episodeIDSet = episodeIDs
+        if let pending = pendingPreparationConsent,
+           pending.feedURL == feedURL || (pending.feedURL == nil && episodeIDSet.contains(pending.episodeID)) {
             pendingPreparationConsent = nil
             isCloudTranscriptConsentPresented = false
         }
 
-        let isPlayingTarget = nowPlayingFeedURL == feedURL
-            || nowPlayingEpisodeID.map(episodeIDSet.contains) == true
+        let isPlayingTarget = nowPlayingFeedURL.map { $0 == feedURL }
+            ?? (nowPlayingEpisodeID.map(episodeIDSet.contains) == true)
         if isPlayingTarget {
             stopAndDismissPlayer()
             try? nowPlayingSessionStore.clear()
@@ -1184,6 +1261,9 @@ final class AppShellModel {
             await discardAllLocalEpisodeData(episodeID: episodeID)
         }
 
+        for id in episodeIDs.subtracting(catalogIDs) {
+            try? resumeStore.clearDetachedEpisode(id)
+        }
         _ = try? podcastStore.unsubscribe(feedURL: feedURL)
         PodWashAnalytics.subscriptionChanged("unsubscribed", podcastTitle: podcastTitle)
         scheduleWarmForComingUp()
@@ -1223,7 +1303,7 @@ final class AppShellModel {
     }
 
     func playedEpisodeActionState(for episodeID: String) -> PlayedEpisodeActionState {
-        guard let lookup = podcastStore.episodeLookup(id: episodeID) else {
+        guard let lookup = playbackEpisodeLookup(id: episodeID) else {
             return .prepare(requiresDownload: true)
         }
 
@@ -1245,7 +1325,7 @@ final class AppShellModel {
            let activeJob = warmPlanner?.job(for: activeID),
            activeJob.stage != .ready,
            activeJob.stage != .needsAttention {
-            let title = podcastStore.episodeLookup(id: activeID)?.episode.title ?? "another episode"
+            let title = playbackEpisodeLookup(id: activeID)?.episode.title ?? "another episode"
             return .blocked(activeEpisodeTitle: title)
         }
 
@@ -1256,7 +1336,8 @@ final class AppShellModel {
     }
 
     func prepareReplay(episodeID: String) {
-        guard resumeStore.isPlayed(episodeID), podcastStore.episodeLookup(id: episodeID) != nil else { return }
+        guard (nowPlayingEpisodeID != episodeID || playbackRunEnded),
+              let initialSource = playbackEpisodeLookup(id: episodeID) else { return }
         if replayPreparationEpisodeID == episodeID { return }
         if let activeID = replayPreparationEpisodeID,
            let activeJob = warmPlanner?.job(for: activeID),
@@ -1268,21 +1349,33 @@ final class AppShellModel {
         if let retiredID = replayPreparationEpisodeID {
             warmPlanner?.removeJob(episodeID: retiredID)
         }
+        if nowPlayingEpisodeID == episodeID { stopAndDismissPlayer() }
+        replayPreparationGeneration &+= 1
+        let generation = replayPreparationGeneration
         replayPreparationEpisodeID = episodeID
         replayReadyEpisodeID = nil
-        // A replay request replaces the old analysis immediately. Never leave a
-        // stale transcript or interval set visible while the worker quiesces.
-        purgeAnalysisArtifacts(episodeID: episodeID)
+        // Quiesce the prior worker before replacing analysis for the replay.
         episodeListRevision &+= 1
 
-        if nowPlayingEpisodeID == episodeID {
-            stopAndDismissPlayer()
-        }
         Task { [weak self] in
             guard let self else { return }
             await self.warmPlanner?.quiesce()
-            guard self.replayPreparationEpisodeID == episodeID else { return }
+            guard self.replayPreparationEpisodeID == episodeID,
+                  self.replayPreparationGeneration == generation else { return }
             await self.downloadManager.cancel(episodeID: episodeID)
+            guard self.replayPreparationEpisodeID == episodeID,
+                  self.replayPreparationGeneration == generation,
+                  let source = self.playbackEpisodeLookup(id: episodeID),
+                  source.feedURL == initialSource.feedURL else { return }
+            do { try self.archiveTranscript(episodeID: episodeID, feedURL: source.feedURL) }
+            catch {
+                self.replayPreparationEpisodeID = nil
+                self.episodeActionError = "Could not preserve the saved transcript. Please try again."
+                self.episodeListRevision &+= 1
+                self.scheduleWarmForComingUp()
+                return
+            }
+            self.purgeReplayAnalysis(episodeID: episodeID)
             if self.downloadManager.localFileURL(for: episodeID) == nil {
                 try? self.downloadManager.removeAudio(episodeID: episodeID)
             }
@@ -1302,23 +1395,14 @@ final class AppShellModel {
 
     func replayFromBeginning(episodeID: String) {
         guard playedEpisodeActionState(for: episodeID) == .replayNow else { return }
-        try? resumeStore.resetForReplay(episodeID)
-        if nowPlayingEpisodeID == episodeID {
-            seekReadyPlayback(to: 0)
-            engine?.play()
-            return
-        }
-        replayPreparationEpisodeID = nil
-        replayReadyEpisodeID = nil
-        warmPlanner?.removeJob(episodeID: episodeID)
-        episodeListRevision &+= 1
-        playReadyEpisode(episodeID, context: .library)
+        playReadyEpisode(episodeID, context: .history)
     }
 
     /// Mini-player Next control: advances to the first episode in manual Up Next.
     /// The interrupted episode remains resumable instead of being dismissed from autoplay.
     func skipToNextUp() {
         guard let episodeID = nowPlayingEpisodeID else { return }
+        playbackRunEnded = true
         PodWashAnalytics.action("Playback.skipToNext")
         let position = engine?.currentTime
         queueCoordinator?.handleSkipToNext(
@@ -1343,15 +1427,192 @@ final class AppShellModel {
         podcastStore.isBinge(feedURL: feedURL)
     }
 
+
+    func playbackEpisodeLookup(id: String) -> (episode: Episode, podcastTitle: String, feedURL: URL)? {
+        if let live = podcastStore.episodeLookup(id: id) {
+            return unsubscribingFeeds.contains(live.feedURL) ? nil : live
+        }
+        let matches = listeningHistory.entries(episodeID: id)
+        guard matches.count == 1, let entry = matches.first,
+              !unsubscribingFeeds.contains(entry.id.feedURL),
+              podcastStore.isSubscribed(feedURL: entry.id.feedURL) else { return nil }
+        return (entry.episode, entry.showTitle, entry.id.feedURL)
+    }
+
+    func carPlayReplayEpisode(id: String, feedURL: URL) -> Episode? {
+        historySource(.init(feedURL: feedURL, episodeID: id))
+    }
+
+    private func historySource(_ key: ListeningHistoryEntry.ID) -> Episode? {
+        guard !unsubscribingFeeds.contains(key.feedURL),
+              podcastStore.isSubscribed(feedURL: key.feedURL),
+              let source = playbackEpisodeLookup(id: key.episodeID), source.feedURL == key.feedURL,
+              listeningHistory.entries(episodeID: key.episodeID).allSatisfy({ $0.id == key })
+        else { return nil }
+        return source.episode
+    }
+
+    private func archiveTranscript(episodeID: String, feedURL: URL) throws {
+        let key = ListeningHistoryEntry.ID(feedURL: feedURL, episodeID: episodeID)
+        guard listeningHistory.entry(for: key) != nil, historySource(key) != nil,
+              let words = transcriptCache.load(episodeID: episodeID), !words.isEmpty else { return }
+        try transcriptCache.historyArchive.store(words, episodeID: key.accessibilityID)
+    }
+
+    private func purgeReplayAnalysis(episodeID: String) {
+        try? transcriptCache.remove(episodeID: episodeID)
+        try? intervalCache.remove(episodeID: episodeID)
+        try? artifactStore.remove(episodeID: episodeID)
+        transcriptAffordanceGeneration &+= 1
+        episodeListRevision &+= 1
+    }
+
+    private func queuedHistoryEntry(_ id: String) -> ListeningHistoryEntry? {
+        guard let feed = queueStore.entry(for: id)?.replayFeedURL else { return nil }
+        let key = ListeningHistoryEntry.ID(feedURL: feed, episodeID: id)
+        if let entry = listeningHistory.entry(for: key) { return entry }
+        if let source = playbackEpisodeLookup(id: id), source.feedURL == feed {
+            return .init(id: key, episode: source.episode, showTitle: source.podcastTitle, completedAt: nil)
+        }
+        let episode = Episode(id: id, title: "Episode unavailable", pubDate: .distantPast,
+                              artworkURL: nil, showNotes: nil, audioURL: nil)
+        return .init(id: key, episode: episode, showTitle: "", completedAt: nil)
+    }
+
+    func queueRowSnapshot(_ id: String) -> EpisodeRowSnapshot? {
+        if let entry = queuedHistoryEntry(id) { return historyRowSnapshot(entry) }
+        return playbackEpisodeLookup(id: id).map { episodeRowSnapshot($0.episode, context: .queue) }
+    }
+
+    func queueRowBindings(_ id: String) -> EpisodeRowBindings {
+        guard let entry = queuedHistoryEntry(id) else { return episodeRowBindings(id, context: .queue) }
+        let history = historyRowBindings(entry)
+        var primary = history.primary
+        primary.play = { [weak self] in
+            guard let self, let queued = self.queueStore.entry(for: id), queued.replayFeedURL == entry.id.feedURL else { return }
+            self.stageLocalPlayback(id, context: .queue, mode: .prepared, queuedReplay: queued)
+        }
+        return .init(primary: primary, perform: history.perform)
+    }
+
+    func historyRowSnapshot(_ entry: ListeningHistoryEntry) -> EpisodeRowSnapshot {
+        _ = episodeListRevision
+        _ = transcriptAffordanceGeneration
+        let id = entry.episode.id
+        let archive = transcriptCache.historyArchive.exists(episodeID: entry.id.accessibilityID)
+        let resolved = historySource(entry.id)
+        guard let episode = resolved,
+              episode.audioURL != nil || downloadManager.verifiedLocalFileURL(for: id) != nil else {
+            let status = !podcastStore.isSubscribed(feedURL: entry.id.feedURL)
+                ? "Show unsubscribed" : resolved == nil ? "Episode unavailable" : "Audio unavailable"
+            var menu: [EpisodeMenuAction] = []
+            if archive || (resolved != nil && transcriptExists(for: id)) { menu.append(.transcript) }
+            if queueStore.entry(for: id)?.replayFeedURL == entry.id.feedURL { menu.append(.removeFromUpNext) }
+            return EpisodeRowSnapshot(episodeID: id, title: entry.episode.title,
+                presentation: .init(status: .notDownloaded, statusText: status, symbolName: "info.circle",
+                                    tint: .secondary, primaryControl: .waiting, accessibilityValue: status,
+                                    failureReason: nil),
+                context: .history(podcastTitle: entry.showTitle), cleaningSummary: nil,
+                menu: menu)
+        }
+        let row = episodeRowSnapshot(episode, context: .history)
+        var menu = row.menu.filter {
+            $0 != .markPlayed && $0 != .removeDownload &&
+            (nowPlayingEpisodeID != id || ($0 != .addToUpNext && $0 != .moveToTop))
+        }
+        if archive && !menu.contains(.transcript) { menu.append(.transcript) }
+        let presentation: EpisodeRowPresentation
+        if nowPlayingEpisodeID == id && !playbackRunEnded && row.presentation.primaryControl != .play {
+            presentation = .init(status: .notDownloaded, statusText: "Currently playing",
+                symbolName: "play.circle", tint: .secondary, primaryControl: .waiting,
+                accessibilityValue: "Currently playing", failureReason: nil)
+        } else {
+            presentation = row.presentation
+        }
+        return .init(episodeID: id, title: entry.episode.title, presentation: presentation,
+                     context: .history(podcastTitle: entry.showTitle), cleaningSummary: row.cleaningSummary,
+                     menu: menu)
+    }
+
+    func historyRowBindings(_ entry: ListeningHistoryEntry) -> EpisodeRowBindings {
+        let key = entry.id
+        let id = key.episodeID
+        return EpisodeRowBindings(primary: EpisodeRowActions(
+            download: { [weak self] in
+                guard let self, self.historySource(key) != nil else { return }
+                self.requestEpisodeDownload(id, forceReplay: true)
+            },
+            prepare: { [weak self] in
+                guard let self, self.historySource(key) != nil else { return }
+                self.requestEpisodeDownload(id, forceReplay: true)
+            },
+            retry: { [weak self] in
+                guard let self, self.historySource(key) != nil else { return }
+                if self.replayPreparationEpisodeID == id { self.retryReplayPreparation(episodeID: id) }
+                else { self.requestEpisodeDownload(id, forceReplay: true) }
+            },
+            play: { [weak self] in
+                guard let self, self.historySource(key) != nil else { return }
+                let queued = self.queueStore.entry(for: id)
+                self.stageLocalPlayback(id, context: .history, mode: .prepared,
+                                        queuedReplay: queued?.replayFeedURL == key.feedURL ? queued : nil)
+            }), perform: { [weak self] action in
+                guard let self, self.historyRowSnapshot(entry).menu.contains(action) else { return }
+                if action == .transcript {
+                    if self.historySource(key) != nil,
+                       let words = self.transcriptCache.load(episodeID: id), !words.isEmpty {
+                        self.presentTranscript(for: id)
+                    } else if let words = self.transcriptCache.historyArchive.load(episodeID: key.accessibilityID) {
+                        self.presentTranscript(for: id, archived: words)
+                    } else {
+                        try? self.transcriptCache.historyArchive.remove(episodeID: key.accessibilityID)
+                        if self.historySource(key) != nil { try? self.transcriptCache.remove(episodeID: id) }
+                        self.episodeActionError = "This transcript is no longer available."
+                        self.episodeListRevision &+= 1
+                    }
+                } else if action == .removeFromUpNext,
+                          self.queueStore.entry(for: id)?.replayFeedURL == key.feedURL {
+                    let snapshot = self.removeFromUpNextWithUndo(episodeID: id)
+                    self.offerEpisodeUndo("Removed from Up Next") { self.restoreQueueMutation(snapshot) }
+                } else if action == .addToUpNext || action == .moveToTop {
+                    self.addToUpNext(id, replayFeedURL: key.feedURL)
+                } else if self.historySource(key) != nil {
+                    if action == .playOriginalAudio || action == .playWithoutAdSkipping {
+                        self.stageLocalPlayback(id, context: .history,
+                            mode: action == .playOriginalAudio ? .original : .withoutAdSkipping)
+                        return
+                    }
+                    self.episodeRowBindings(id, context: .history).perform(action)
+                }
+            })
+    }
+
     private func handleEnginePlaybackEnded() {
-        guard let episodeID = nowPlayingEpisodeID else { return }
+        guard !playbackRunEnded, let episodeID = nowPlayingEpisodeID else { return }
+        playbackRunEnded = true
         PodWashAnalytics.episodePlaybackChanged(
             "completed",
             episodeTitle: nowPlayingEpisodeTitle,
             podcastTitle: nowPlayingPodcastTitle
         )
         let duration = engine?.duration
-        queueCoordinator?.handlePlaybackEnded(episodeID: episodeID, duration: duration)
+        var saved = false
+        if let active = activePlaybackContext, let feedURL = active.feedURL {
+            do {
+                guard try listeningHistory.recordCompletion(
+                    episode: active.episode, feedURL: feedURL, showTitle: active.podcastTitle,
+                    runID: playbackRunID, at: Date(), updateProgress: {
+                        try resumeStore.stageCompletion(for: episodeID, duration: duration)
+                    }
+                ) else { return }
+                saved = true
+                historyEntries = listeningHistory.entries()
+            } catch {
+                PlaybackDiagnostics.error("Listening history completion could not be saved")
+            }
+        }
+        episodeListRevision &+= 1
+        queueCoordinator?.handlePlaybackEnded(episodeID: episodeID, duration: duration, completionSaved: saved)
     }
 
     private func handleEpisodeMarkedPlayed(_ episodeID: String) {
@@ -1362,7 +1623,7 @@ final class AppShellModel {
     /// serial download/analysis pipeline; this method only establishes intent.
     func episodeRowSnapshot(_ episode: Episode, context: EpisodePlayContext) -> EpisodeRowSnapshot {
         _ = episodeListRevision
-        let lookup = podcastStore.episodeLookup(id: episode.id)
+        let lookup = playbackEpisodeLookup(id: episode.id)
         let availability = lookup.map { episodeAvailability(for: episode.id, lookup: $0) }
             ?? EpisodeAvailabilityResolver.resolve(EpisodeAvailabilityInput(
                 downloadState: .notDownloaded, hasVerifiedLocalFile: false,
@@ -1371,7 +1632,10 @@ final class AppShellModel {
         let menu = EpisodeMenuPolicy.actions(EpisodeMenuFacts(
             isQueued: queueStore.queueEpisodeIDs().contains(episode.id), isPlayed: played,
             hasLocalAudio: availability.hasLocalAudio,
-            hasExplicitOwner: warmPlanner?.hasExplicitPreparation(episodeID: episode.id) == true
+            hasExplicitOwner: (replayPreparationEpisodeID == episode.id
+                    && warmPlanner?.job(for: episode.id)?.stage != .ready
+                    && warmPlanner?.job(for: episode.id)?.stage != .needsAttention)
+                || warmPlanner?.hasExplicitPreparation(episodeID: episode.id) == true
                 || warmPlanner?.hasAutomaticPreparation(episodeID: episode.id) == true,
             hasTranscript: transcriptExists(for: episode.id),
             hasLocalCleaning: intervalCache.loadRecord(episodeID: episode.id,
@@ -1379,7 +1643,7 @@ final class AppShellModel {
                 preset: settingsStore.skipPreset) != nil,
             readiness: availability.readiness,
             cloudFailure: warmPlanner?.job(for: episode.id)?.cloudFailure,
-            protectsLocalAudio: nowPlayingEpisodeID == episode.id || replayPreparationEpisodeID == episode.id))
+            protectsLocalAudio: nowPlayingEpisodeID == episode.id))
         return EpisodeRowSnapshot(episodeID: episode.id, title: episode.title,
             presentation: EpisodeRowPresentationMapper.map(availability),
             context: context == .queue ? .queue(podcastTitle: lookup?.podcastTitle ?? "Podcast")
@@ -1392,9 +1656,16 @@ final class AppShellModel {
             download: { [weak self] in self?.requestEpisodeDownload(episodeID) },
             prepare: { [weak self] in self?.prepareDownloadedEpisode(episodeID) },
             retry: { [weak self] in self?.retryEpisodePreparation(episodeID) },
-            play: { [weak self] in self?.playReadyEpisode(episodeID, context: context) }),
+            play: { [weak self] in
+                guard let self else { return }
+                if context == .queue, let entry = self.queueStore.entry(for: episodeID), entry.replayFeedURL != nil {
+                    self.stageLocalPlayback(episodeID, context: context, mode: .prepared, queuedReplay: entry)
+                } else {
+                    self.playReadyEpisode(episodeID, context: context)
+                }
+            }),
             perform: { [weak self] action in
-                guard let self, let episode = self.podcastStore.episodeLookup(id: episodeID)?.episode,
+                guard let self, let episode = self.playbackEpisodeLookup(id: episodeID)?.episode,
                       self.episodeRowSnapshot(episode, context: context).menu.contains(action) else { return }
                 switch action {
                 case .addToUpNext: self.addToUpNext(episodeID)
@@ -1446,10 +1717,10 @@ final class AppShellModel {
         action?()
     }
 
-    func requestEpisodeDownload(_ episodeID: String) {
-        guard let lookup = podcastStore.episodeLookup(id: episodeID) else { return }
-        if requestCloudConsentBeforeDownload(for: lookup.episode) { return }
-        if resumeStore.isPlayed(episodeID) {
+    func requestEpisodeDownload(_ episodeID: String, forceReplay: Bool = false) {
+        guard let lookup = playbackEpisodeLookup(id: episodeID) else { return }
+        if requestCloudConsentBeforeDownload(for: lookup.episode, forceReplay: forceReplay) { return }
+        if forceReplay || resumeStore.isPlayed(episodeID) {
             prepareReplay(episodeID: episodeID)
             return
         }
@@ -1522,18 +1793,20 @@ final class AppShellModel {
     private enum LocalPlaybackMode { case prepared, withoutAdSkipping, original }
 
     private func acceptsLocalPlayback(_ episodeID: String, mode: LocalPlaybackMode) -> Bool {
-        guard let episode = podcastStore.episodeLookup(id: episodeID)?.episode else { return false }
+        guard let episode = playbackEpisodeLookup(id: episodeID)?.episode else { return false }
         if mode == .prepared { return isReadyOffline(episodeID) }
         let menu = episodeRowSnapshot(episode, context: .library).menu
         return menu.contains(mode == .withoutAdSkipping ? .playWithoutAdSkipping : .playOriginalAudio)
     }
 
-    private func stageLocalPlayback(_ episodeID: String, context: EpisodePlayContext, mode: LocalPlaybackMode) {
+    private func stageLocalPlayback(_ episodeID: String, context: EpisodePlayContext, mode: LocalPlaybackMode,
+                                    queuedReplay: QueuedEpisode? = nil) {
         guard acceptsLocalPlayback(episodeID, mode: mode),
-              let lookup = podcastStore.episodeLookup(id: episodeID),
+              let lookup = playbackEpisodeLookup(id: episodeID),
               let localURL = downloadManager.verifiedLocalFileURL(for: episodeID)
         else { return }
-        if nowPlayingEpisodeID == episodeID, mode == .prepared {
+        if let queuedReplay, queuedReplay.replayFeedURL != lookup.feedURL { return }
+        if nowPlayingEpisodeID == episodeID, mode == .prepared, context != .history {
             if engine?.isPlaybackRequested == false { toggleMiniPlayerPlayPause() }
             return
         }
@@ -1563,6 +1836,7 @@ final class AppShellModel {
             let duration = (try? await AVURLAsset(url: PlaybackEngine.playableFileURL(for: localURL)).load(.duration))?.seconds ?? 0
             let currentStamp = try? localURL.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
             guard generation == self.readyPlayGeneration, self.acceptsLocalPlayback(episodeID, mode: mode),
+                  self.playbackEpisodeLookup(id: episodeID)?.feedURL == lookup.feedURL,
                   fileStamp?.fileSize == currentStamp?.fileSize,
                   fileStamp?.contentModificationDate == currentStamp?.contentModificationDate,
                   self.settingsStore.activeNormalizedTargetSet() == targets,
@@ -1574,7 +1848,29 @@ final class AppShellModel {
                     preset: self.settingsStore.skipPreset)),
                   (mode == .original || self.cleaningStore.isChannelCleaningEnabled(forFeedURL: lookup.feedURL) == cleaningOn),
                   self.downloadManager.verifiedLocalFileURL(for: episodeID) == localURL else { return }
-            if context == .queue {
+            let replayRun = UUID().uuidString
+            if let queuedReplay {
+                guard self.queueStore.entry(for: episodeID) == queuedReplay,
+                      let feed = queuedReplay.replayFeedURL,
+                      self.historySource(.init(feedURL: feed, episodeID: episodeID)) != nil else { return }
+                do {
+                    try self.resumeStore.resetForReplay(episodeID, save: false)
+                    if context == .queue {
+                        try self.queueStore.prepareForImmediatePlayback(selectedEpisodeID: episodeID,
+                            replacingCurrentEpisodeID: self.playbackRunEnded ? nil : self.nowPlayingEpisodeID,
+                            save: false)
+                    } else {
+                        try self.queueStore.remove(episodeID, save: false)
+                    }
+                    try self.nowPlayingSessionStore.setPlaybackRun(episodeID: episodeID, feedURL: feed,
+                                                                   runID: replayRun, save: false)
+                    try self.persistence.save()
+                } catch {
+                    self.persistence.viewContext.rollback()
+                    self.episodeActionError = "Could not start the queued replay. Please try again."
+                    return
+                }
+            } else if context == .queue {
                 do {
                     try self.queueStore.prepareForImmediatePlayback(selectedEpisodeID: episodeID,
                         replacingCurrentEpisodeID: self.nowPlayingEpisodeID)
@@ -1583,7 +1879,14 @@ final class AppShellModel {
                     return
                 }
             }
-            if self.resumeStore.isPlayed(episodeID) { try? self.resumeStore.resetForReplay(episodeID) }
+            if queuedReplay == nil, context == .history || self.resumeStore.isPlayed(episodeID) {
+                do { try self.resumeStore.resetForReplay(episodeID) }
+                catch {
+                    self.persistence.viewContext.rollback()
+                    self.episodeActionError = "Could not reset playback for this replay. Please try again."
+                    return
+                }
+            }
             if self.replayPreparationEpisodeID == episodeID {
                 self.replayPreparationEpisodeID = nil
                 self.replayReadyEpisodeID = nil
@@ -1592,7 +1895,9 @@ final class AppShellModel {
             self.beginPlaybackSession(episode: lookup.episode, podcastTitle: lookup.podcastTitle,
                 feedURL: lookup.feedURL, audioURL: localURL, localCandidate: localURL,
                 remoteCandidate: lookup.episode.audioURL, startAnalysis: false,
-                preparedEngine: candidate, preparedCoordinator: coordinator)
+                preparedEngine: candidate, preparedCoordinator: coordinator,
+                continuingRun: queuedReplay == nil ? nil : replayRun,
+                flushPreviousPosition: self.nowPlayingEpisodeID != episodeID || context != .history)
             if cleaningOn, duration.isFinite, duration > 0 {
                 self.playbackAnalysisSnapshot = AnalysisTimelineModel.completeSnapshot(duration: duration,
                     intervals: coordinator.appliedPlaybackIntervals,
@@ -1612,7 +1917,10 @@ final class AppShellModel {
             pendingPreparationConsent = nil
             isCloudTranscriptConsentPresented = false
         }
-        if replayPreparationEpisodeID == episodeID { return }
+        if replayPreparationEpisodeID == episodeID {
+            replayPreparationEpisodeID = nil
+            replayReadyEpisodeID = nil
+        }
         warmPlanner?.cancelPreparation(episodeID: episodeID)
         refreshQueuePresentation()
         episodeListRevision &+= 1
@@ -1641,9 +1949,16 @@ final class AppShellModel {
         episodeListRevision &+= 1
     }
 
-    func addToUpNext(_ episodeID: String) {
-        guard podcastStore.episodeLookup(id: episodeID) != nil else { return }
-        try? queueStore.playNext(episodeID)
+    func addToUpNext(_ episodeID: String, replayFeedURL: URL? = nil) {
+        guard let lookup = playbackEpisodeLookup(id: episodeID) else { return }
+        let replayFeed = replayFeedURL ?? (resumeStore.isPlayed(episodeID) ? lookup.feedURL : nil)
+        if let replayFeed {
+            guard episodeID != nowPlayingEpisodeID,
+                  let episode = historySource(.init(feedURL: replayFeed, episodeID: episodeID)),
+                  episode.audioURL != nil || downloadManager.verifiedLocalFileURL(for: episodeID) != nil
+            else { return }
+        }
+        try? queueStore.playNext(episodeID, replayFeedURL: replayFeed)
         queueCoordinator?.cancelPendingAdvance()
         scheduleWarmForComingUp()
         refreshQueuePresentation()
@@ -1681,7 +1996,7 @@ final class AppShellModel {
     func removeFromUpNextWithUndo(episodeID: String) -> QueueUndoSnapshot {
         let snapshot = QueueUndoSnapshot(
             episodeID: episodeID,
-            previousQueueIDs: queueStore.queueEpisodeIDs(),
+            previousQueueEntries: queueStore.entries(),
             previousPlayedState: resumeStore.isPlayed(episodeID),
             previousPlaybackPosition: resumeStore.position(for: episodeID),
             marksPlayed: false
@@ -1694,7 +2009,7 @@ final class AppShellModel {
         PodWashAnalytics.action("Queue.markedPlayed")
         let snapshot = QueueUndoSnapshot(
             episodeID: episodeID,
-            previousQueueIDs: queueStore.queueEpisodeIDs(),
+            previousQueueEntries: queueStore.entries(),
             previousPlayedState: resumeStore.isPlayed(episodeID),
             previousPlaybackPosition: resumeStore.position(for: episodeID),
             marksPlayed: true
@@ -1720,15 +2035,16 @@ final class AppShellModel {
         if snapshot.marksPlayed, resumeStore.isPlayed(snapshot.episodeID) {
             try? resumeStore.setPlayed(snapshot.previousPlayedState, for: snapshot.episodeID)
         }
-        if let oldIndex = snapshot.previousQueueIDs.firstIndex(of: snapshot.episodeID) {
+        let previousQueueIDs = snapshot.previousQueueEntries.map(\.episodeID)
+        if let oldIndex = previousQueueIDs.firstIndex(of: snapshot.episodeID) {
             var current = queueStore.queueEpisodeIDs().filter { $0 != snapshot.episodeID }
-            let successors = snapshot.previousQueueIDs.dropFirst(oldIndex + 1)
-            let predecessors = snapshot.previousQueueIDs.prefix(oldIndex).reversed()
+            let successors = previousQueueIDs.dropFirst(oldIndex + 1)
+            let predecessors = previousQueueIDs.prefix(oldIndex).reversed()
             let insertion = successors.compactMap { current.firstIndex(of: $0) }.first
                 ?? predecessors.compactMap { current.firstIndex(of: $0).map { $0 + 1 } }.first
                 ?? min(oldIndex, current.count)
             current.insert(snapshot.episodeID, at: insertion)
-            try? queueStore.restore(current)
+            try? restoreQueueOrder(current, previous: snapshot.previousQueueEntries)
         }
         didStartPreparationForCurrentSession = true
         scheduleWarmForComingUp()
@@ -1748,6 +2064,7 @@ final class AppShellModel {
 
     private func removeStalePlayedDownloads() {
         let protected = Set([nowPlayingEpisodeID, replayPreparationEpisodeID].compactMap { $0 })
+            .union(queueStore.entries().filter { $0.replayFeedURL != nil }.map(\.episodeID))
         let staleIDs = podcastStore.smartOrderShows()
             .flatMap(\.episodes)
             .filter { $0.isPlayed && !protected.contains($0.id) }
@@ -1760,25 +2077,37 @@ final class AppShellModel {
     /// Clears manual Up Next while retaining completed downloads. Returns the
     /// exact prior order so the Queue tab can offer a short Undo window.
     @discardableResult
-    func clearUpNext() -> [String] {
+    func clearUpNext() -> [QueuedEpisode] {
         PodWashAnalytics.action("Queue.cleared")
-        let ids = queueStore.queueEpisodeIDs()
+        let entries = queueStore.entries()
         try? queueStore.clear()
         queueCoordinator?.cancelPendingAdvance()
         scheduleWarmForComingUp()
-        return ids
+        return entries
     }
 
-    func restoreUpNext(_ episodeIDs: [String]) {
+    func restoreUpNext(_ entries: [QueuedEpisode]) {
         let current = queueStore.queueEpisodeIDs()
-        try? queueStore.restore(episodeIDs.filter { !current.contains($0) } + current)
+        let previous = entries.map(\.episodeID).filter { !current.contains($0) }
+        try? restoreQueueOrder(previous + current, previous: entries)
         didStartPreparationForCurrentSession = true
         scheduleWarmForComingUp()
         refreshQueuePresentation()
     }
 
+    private func restoreQueueOrder(_ ids: [String], previous: [QueuedEpisode]) throws {
+        let entries = queueStore.entries() + previous
+        try queueStore.restoreEntries(ids.compactMap { id in
+            entries.first { entry in
+                guard entry.episodeID == id else { return false }
+                guard let feed = entry.replayFeedURL else { return true }
+                return historySource(.init(feedURL: feed, episodeID: id)) != nil
+            }
+        })
+    }
+
     private func isReadyOffline(_ episodeID: String) -> Bool {
-        guard let lookup = podcastStore.episodeLookup(id: episodeID) else { return false }
+        guard let lookup = playbackEpisodeLookup(id: episodeID) else { return false }
         if replayPreparationEpisodeID == episodeID,
            warmPlanner?.job(for: episodeID)?.stage != .ready { return false }
         return warmPlanner?.isReadyOffline(episodeID: episodeID, feedURL: lookup.feedURL) == true
@@ -1837,6 +2166,11 @@ final class AppShellModel {
             replayReadyEpisodeID = episodeID
         }
         if (job.stage == .ready || job.stage == .needsAttention), transcriptExists(for: episodeID) {
+            if let source = playbackEpisodeLookup(id: episodeID),
+               let words = transcriptCache.load(episodeID: episodeID), !words.isEmpty {
+                let key = ListeningHistoryEntry.ID(feedURL: source.feedURL, episodeID: episodeID)
+                try? transcriptCache.historyArchive.remove(episodeID: key.accessibilityID)
+            }
             transcriptAffordanceGeneration &+= 1
         }
     }
@@ -1916,13 +2250,15 @@ final class AppShellModel {
 
     private func upcomingPlaybackPlan(currentEpisodeID: String? = nil) -> UpcomingSelectionPolicy.PlaybackPlan {
         let currentID = currentEpisodeID ?? nowPlayingEpisodeID
-        let manual = queueStore.queueEpisodeIDs().filter { $0 != currentID && !resumeStore.isPlayed($0) }
+        let manual = queueStore.entries().filter { entry in
+            entry.episodeID != currentID && (entry.replayFeedURL != nil || !resumeStore.isPlayed(entry.episodeID))
+        }.map(\.episodeID)
         let order = SmartOrderEngine(activeBingeFeedURL: activeBingeFeedURL)
         let forecast = order.peek(
             count: UpcomingSelectionPolicy.readyTarget,
             shows: podcastStore.smartOrderShows(),
             currentEpisodeID: currentID,
-            currentFeedURL: currentID.flatMap { podcastStore.episodeLookup(id: $0)?.feedURL } ?? nowPlayingFeedURL,
+            currentFeedURL: currentID.flatMap { playbackEpisodeLookup(id: $0)?.feedURL } ?? nowPlayingFeedURL,
             excludingEpisodeIDs: Set(manual)
         )
         return UpcomingSelectionPolicy().playbackPlan(
@@ -1938,13 +2274,25 @@ final class AppShellModel {
     ) -> QueueAdvanceResolution {
         let plan = upcomingPlaybackPlan(currentEpisodeID: endedEpisodeID)
         for id in manualQueueIDs where plan.manualEpisodeIDs.contains(id) {
+            if let entry = queueStore.entry(for: id), let feed = entry.replayFeedURL {
+                if historySource(.init(feedURL: feed, episodeID: id)) != nil, isReadyOffline(id) {
+                    return .replay(entry)
+                }
+                continue
+            }
             if isReadyForSeamlessPlay(id) { return .play(episodeID: id, consumesManualQueueEntry: true) }
         }
         for item in plan.autoplay where isReadyForSeamlessPlay(item.episodeID) {
             activeBingeFeedURL = SmartOrderEngine.activeBingeURL(afterPlaying: item)
             return .play(episodeID: item.episodeID, consumesManualQueueEntry: false)
         }
-        if let title = plan.manualEpisodeIDs.compactMap({ podcastStore.episodeLookup(id: $0)?.episode.title }).first
+        if let title = plan.manualEpisodeIDs.compactMap({ id -> String? in
+            if let entry = queueStore.entry(for: id), let feed = entry.replayFeedURL {
+                guard historySource(.init(feedURL: feed, episodeID: id)) != nil,
+                      warmPlanner?.job(for: id)?.stage != .needsAttention else { return nil }
+            }
+            return playbackEpisodeLookup(id: id)?.episode.title
+        }).first
             ?? plan.autoplay.first?.episodeTitle {
             return .waiting(title: title)
         }
@@ -1952,7 +2300,7 @@ final class AppShellModel {
     }
 
     private func isReadyForSeamlessPlay(_ episodeID: String) -> Bool {
-        guard let lookup = podcastStore.episodeLookup(id: episodeID) else { return false }
+        guard let lookup = playbackEpisodeLookup(id: episodeID) else { return false }
         return warmPlanner?.isReadyForSeamlessPlay(episodeID: episodeID, feedURL: lookup.feedURL) == true
     }
 
@@ -1966,7 +2314,11 @@ final class AppShellModel {
 
         guard let id = nowPlayingSessionStore.activeEpisodeID(), !id.isEmpty else { return }
 
-        guard let lookup = podcastStore.episodeLookup(id: id) else {
+        let expectedFeed = nowPlayingSessionStore.activeFeedURL()
+        let restoredRun = nowPlayingSessionStore.playbackRunID()
+        let lookup = expectedFeed == nil ? podcastStore.episodeLookup(id: id) : playbackEpisodeLookup(id: id)
+        guard let lookup,
+              expectedFeed == nil || lookup.feedURL == expectedFeed else {
             try? nowPlayingSessionStore.clear()
             return
         }
@@ -1985,7 +2337,8 @@ final class AppShellModel {
             audioURL: audioURL,
             localCandidate: localCandidate,
             remoteCandidate: remoteCandidate,
-            startAnalysis: false
+            startAnalysis: false,
+            continuingRun: restoredRun
         )
 
         // A relaunch intentionally does not re-run analysis, but the player chrome and
@@ -2255,7 +2608,8 @@ final class AppShellModel {
             audioURL: context.sourceURL,
             localCandidate: context.localCandidate,
             remoteCandidate: context.remoteCandidate,
-            startAnalysis: false
+            startAnalysis: false,
+            continuingRun: playbackRunID
         )
         engine?.restorePausedPosition(position)
         playbackAnalysisSnapshot = snapshot
@@ -2463,15 +2817,13 @@ extension AppShellModel: CarPlayDependencyProviding {}
 
 extension AppShellModel: EpisodePlaying {
     func play(episodeID: String) {
-        for summary in podcastStore.allSubscriptions() {
-            guard
-                let feed = podcastStore.subscription(forFeedURL: summary.feedURL),
-                let episode = feed.episodes.first(where: { $0.id == episodeID })
-            else { continue }
-            playEpisode(episode, podcastTitle: summary.title, feedURL: summary.feedURL)
-            startPlaybackWhenReady()
+        if let entry = queueStore.entry(for: episodeID), entry.replayFeedURL != nil {
+            stageLocalPlayback(episodeID, context: .queue, mode: .prepared, queuedReplay: entry)
             return
         }
+        guard let source = playbackEpisodeLookup(id: episodeID) else { return }
+        playEpisode(source.episode, podcastTitle: source.podcastTitle, feedURL: source.feedURL)
+        startPlaybackWhenReady()
     }
 
     func pause() {

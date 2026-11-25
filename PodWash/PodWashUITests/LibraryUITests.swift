@@ -481,6 +481,17 @@ final class LibraryUITests: XCTestCase {
         XCTAssertTrue(discoverRoot.waitForExistence(timeout: fixtureTimeout), "discoverRoot must appear within \(fixtureTimeout)s")
     }
 
+    @MainActor
+    func testHistoryOpensFromEmptyLibrary() throws {
+        let app = launchLibraryApp(empty: true)
+        waitForLibraryRoot(app)
+
+        let history = element("libraryHistoryLink", in: app)
+        XCTAssertTrue(history.waitForExistence(timeout: fixtureTimeout))
+        history.tap()
+        XCTAssertTrue(app.staticTexts["Episodes you finish will appear here."].waitForExistence(timeout: fixtureTimeout))
+    }
+
     // MARK: - Task 010: mini-player must not cover tab bar
 
     @MainActor

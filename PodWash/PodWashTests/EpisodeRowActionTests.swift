@@ -139,7 +139,6 @@ import XCTest
         try model.resumeStore.setPlayed(true, for: "row-1")
         try model.resumeStore.setPosition(42, for: "row-1")
         model.requestEpisodeDownload("row-1")
-        XCTAssertNil(transcripts.load(episodeID: "row-1"), "Replay preparation replaces stale analysis immediately")
         for _ in 0..<100 {
             if model.replayReadyEpisodeID == "row-1" { break }
             try await Task.sleep(for: .milliseconds(20))
@@ -150,6 +149,74 @@ import XCTest
         XCTAssertNil(model.nowPlayingEpisodeID)
         XCTAssertTrue(model.queueStore.queueEpisodeIDs().isEmpty)
         XCTAssertNotNil(downloads.verifiedLocalFileURL(for: "row-1"))
+    }
+
+    func testEngineCompletionAddsOneHistoryRowAndIgnoresDuplicateCallback() throws {
+        let episode = try XCTUnwrap(model.podcastStore.episodeLookup(id: "row-1")?.episode)
+        model.playEpisode(episode, podcastTitle: "Show", feedURL: feedURL)
+        let complete = try XCTUnwrap(model.engine?.onPlaybackEnded)
+        complete()
+        let first = try XCTUnwrap(model.historyEntries.first?.completedAt)
+        complete()
+        XCTAssertEqual(model.historyEntries.map(\.episode.id), [episode.id])
+        XCTAssertEqual(model.historyEntries.first?.completedAt, first)
+        XCTAssertTrue(model.resumeStore.isPlayed(episode.id))
+    }
+
+    func testHistoryKeepsTranscriptWhileReplayUsesFreshAnalysis() async throws {
+        let episode = try XCTUnwrap(model.podcastStore.episodeLookup(id: "row-1")?.episode)
+        let key = ListeningHistoryEntry.ID(feedURL: feedURL, episodeID: episode.id)
+        _ = try model.listeningHistory.recordCompletion(episode: episode, feedURL: feedURL,
+            showTitle: "Show", runID: "playback", at: Date()) {
+                try model.resumeStore.stageCompletion(for: episode.id, duration: 90)
+            }
+
+        let entry = try XCTUnwrap(model.listeningHistory.entry(for: key))
+        model.historyRowBindings(entry).primary.prepare()
+        for _ in 0..<100 where model.replayReadyEpisodeID != episode.id {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertEqual(model.replayReadyEpisodeID, episode.id)
+        XCTAssertNil(transcripts.load(episodeID: episode.id))
+        XCTAssertNotNil(transcripts.historyArchive.load(episodeID: key.accessibilityID))
+        XCTAssertTrue(model.historyRowSnapshot(entry).menu.contains(.transcript))
+        model.historyRowBindings(entry).perform(.transcript)
+        XCTAssertEqual(model.transcriptSheetEpisodeID, episode.id)
+        XCTAssertNil(model.nowPlayingEpisodeID)
+    }
+
+    func testHistoryPlayNextRestoresReplayIntentWithUndo() throws {
+        try model.resumeStore.setPlayed(true, for: "row-1")
+        model.addToUpNext("row-1")
+        let before = try XCTUnwrap(model.queueStore.entry(for: "row-1"))
+        XCTAssertEqual(before.replayFeedURL, feedURL)
+        XCTAssertTrue(model.queuePresentation.upNext.contains { $0.episodeID == "row-1" })
+        let removed = model.clearUpNext()
+        model.restoreUpNext(removed)
+        let restored = try XCTUnwrap(model.queueStore.entry(for: "row-1"))
+        XCTAssertEqual(restored.replayFeedURL, feedURL)
+        XCTAssertNotEqual(restored.objectID, before.objectID)
+        XCTAssertTrue(model.resumeStore.isPlayed("row-1"))
+    }
+
+    func testUpNextAcceptsReplayBeforeConsumingItAndStartsAtBeginning() async throws {
+        let current = try XCTUnwrap(model.podcastStore.episodeLookup(id: "row-1")?.episode)
+        model.playEpisode(current, podcastTitle: "Show", feedURL: feedURL)
+        try model.resumeStore.setPlayed(true, for: "row-2")
+        try model.resumeStore.setPosition(42, for: "row-2")
+        model.addToUpNext("row-2")
+        let complete = try XCTUnwrap(model.engine?.onPlaybackEnded)
+
+        complete()
+        XCTAssertEqual(model.queueStore.queueEpisodeIDs(), ["row-2"])
+        for _ in 0..<150 where model.nowPlayingEpisodeID != "row-2" {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertEqual(model.nowPlayingEpisodeID, "row-2")
+        XCTAssertTrue(model.queueStore.queueEpisodeIDs().isEmpty)
+        XCTAssertEqual(model.resumeStore.position(for: "row-2"), 0)
+        XCTAssertFalse(model.resumeStore.isPlayed("row-2"))
+        XCTAssertEqual(model.historyEntries.map(\.episode.id), ["row-1"])
     }
 
     func testManualPlayedCommitAlwaysRemovesLocalAudio() async throws {

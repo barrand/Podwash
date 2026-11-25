@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22758" systemVersion="23F79" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="PodWashHistory">
+    <entity name="CDPodcast" representedClassName="CDPodcast" syncable="YES" codeGenerationType="class">
+        <attribute name="artworkURLString" optional="YES" attributeType="String"/>
+        <attribute name="channelCleaningEnabled" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="channelUnrelatedContentEnabled" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="collectionId" optional="YES" attributeType="Integer 64" usesScalarValueType="NO"/>
+        <attribute name="feedDescription" optional="YES" attributeType="String"/>
+        <attribute name="feedURLString" attributeType="String" defaultValueString=""/>
+        <attribute name="isBinge" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="lastHeardAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="subscribedAt" attributeType="Date" defaultDateTimeInterval="0" usesScalarValueType="NO"/>
+        <attribute name="title" attributeType="String" defaultValueString=""/>
+        <relationship name="episodes" optional="YES" toMany="YES" deletionRule="Cascade" ordered="YES" destinationEntity="CDEpisode" inverseName="podcast" inverseEntity="CDEpisode"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="feedURLString"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="CDEpisode" representedClassName="CDEpisode" syncable="YES" codeGenerationType="class">
+        <attribute name="artworkURLString" optional="YES" attributeType="String"/>
+        <attribute name="audioURLString" optional="YES" attributeType="String"/>
+        <attribute name="dismissedFromAutoplay" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="downloadStateRaw" attributeType="String" defaultValueString="notDownloaded"/>
+        <attribute name="episodeCleaningEnabled" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="String" defaultValueString=""/>
+        <attribute name="isPlayed" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="playbackPosition" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="pubDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="showNotes" optional="YES" attributeType="String"/>
+        <attribute name="title" attributeType="String" defaultValueString=""/>
+        <relationship name="podcast" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="CDPodcast" inverseName="episodes" inverseEntity="CDPodcast"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="CDQueueEntry" representedClassName="CDQueueEntry" syncable="YES" codeGenerationType="class">
+        <attribute name="episodeID" attributeType="String" defaultValueString=""/>
+        <attribute name="replayFeedURLString" optional="YES" attributeType="String"/>
+        <attribute name="sortIndex" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+    </entity>
+    <entity name="CDNowPlayingSession" representedClassName="CDNowPlayingSession" syncable="YES">
+        <attribute name="activeFeedURLString" optional="YES" attributeType="String"/>
+        <attribute name="playbackRunID" optional="YES" attributeType="String"/>
+        <attribute name="activeEpisodeID" attributeType="String" defaultValueString=""/>
+    </entity>
+    <entity name="CDListeningEntry" representedClassName="CDListeningEntry" codeGenerationType="class">
+        <attribute name="feedURLString" attributeType="String"/>
+        <attribute name="episodeID" attributeType="String"/>
+        <attribute name="episodeTitle" attributeType="String"/>
+        <attribute name="showTitle" attributeType="String"/>
+        <attribute name="publicationDate" attributeType="Date"/>
+        <attribute name="audioURLString" optional="YES" attributeType="String"/>
+        <attribute name="completedAt" optional="YES" attributeType="Date"/>
+        <attribute name="completedRunID" optional="YES" attributeType="String"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="feedURLString"/>
+                <constraint value="episodeID"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="CDListeningHistoryImport" representedClassName="CDListeningHistoryImport" codeGenerationType="class">
+        <attribute name="version" attributeType="Integer 16" defaultValueString="1" usesScalarValueType="YES"/>
+    </entity>
+</model>

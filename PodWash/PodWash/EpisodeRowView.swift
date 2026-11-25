@@ -126,11 +126,12 @@ enum EpisodeRowPresentationMapper {
 
 enum EpisodeRowContext: Equatable {
     case queue(podcastTitle: String)
+    case history(podcastTitle: String)
     case library(publicationDate: Date, isPlayed: Bool)
 
     var metadata: String {
         switch self {
-        case .queue(let title): return title
+        case .queue(let title), .history(let title): return title
         case .library(let date, let isPlayed):
             let dateText = date.formatted(date: .abbreviated, time: .omitted)
             return isPlayed ? "\(dateText) · Played" : dateText
@@ -238,7 +239,7 @@ struct SharedEpisodeRow: View {
     private func row(presentation: EpisodeRowPresentation) -> some View {
         EpisodeRowView(episodeID: snapshot.episodeID, title: snapshot.title,
             presentation: presentation, context: snapshot.context,
-            cleaningSummary: snapshot.cleaningSummary, isReordering: isReordering,
+            cleaningSummary: snapshot.cleaningSummary, isReordering: isReordering, showsMore: !snapshot.menu.isEmpty,
             actions: bindings.primary, moreMenu: {
                 AnyView(ForEach(snapshot.menu) { action in
                     Button(action.title, role: action.isDestructive ? .destructive : nil) {
@@ -257,6 +258,7 @@ struct EpisodeRowView: View {
     let context: EpisodeRowContext
     var cleaningSummary: EpisodeCleaningSummary? = nil
     var isReordering = false
+    var showsMore = true
     let actions: EpisodeRowActions
     let moreMenu: () -> AnyView
 
@@ -289,12 +291,14 @@ struct EpisodeRowView: View {
             if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 4) }
             if !isReordering {
                 HStack(spacing: 4) {
-                primaryControl
-                Menu { moreMenu() } label: {
-                    Image(systemName: "ellipsis.circle").frame(width: 44, height: 44)
-                }
-                .accessibilityIdentifier("episodeMore_\(episodeID)")
-                .accessibilityLabel("More actions")
+                    primaryControl
+                    if showsMore {
+                        Menu { moreMenu() } label: {
+                            Image(systemName: "ellipsis.circle").frame(width: 44, height: 44)
+                        }
+                        .accessibilityIdentifier("episodeMore_\(episodeID)")
+                        .accessibilityLabel("More actions")
+                    }
                 }
             }
         }
